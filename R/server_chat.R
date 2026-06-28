@@ -7,10 +7,95 @@ NULL
 server_chat <- function(input, output, session, chat, settings,
                          state, cwd) {
 
+  # Tool result store (button_id → ContentToolResult)
+  tool_results <- new.env(hash = TRUE, parent = emptyenv())
+
+  # on_tool_result: fires immediately when tool completes (before stream ends)
+  # Pushes to right panel and binds card click
+  chat$on_tool_result(function(result) {
+    button_id <- tryCatch(result@extra$display$button_id, error = function(e) NULL)
+
+    # If no explicit button_id, generate one from tool name + timestamp
+    if (is.null(button_id)) {
+      tool_name <- tryCatch(result@request@name %||% "tool", error = function(e) "tool")
+      button_id <- paste0(tool_name, "_", format(Sys.time(), "%H%M%S"))
+    }
+
+    # Store for re-selection
+    tool_results[[button_id]] <- result
+
+    # right_output field → push to main Output panel
+    right_out <- tryCatch(result@extra$display$right_output, error = function(e) NULL)
+    if (!is.null(right_out)) {
+      title <- tryCatch(
+        gsub("<[^>]+>", "", as.character(result@extra$display$title %||% "Output")),
+        error = function(e) "Output"
+      )
+      state$main_output <- list(title = title, content = right_out)
+      shiny::updateTabsetPanel(session, "main_tab", selected = "output")
+    } else {
+      # Immediate markdown push (two-phase display in Output tab)
+      md <- tryCatch(result@extra$display$markdown, error = function(e) NULL)
+      if (!is.null(md) && nzchar(md)) {
+        html_str <- tryCatch(
+          commonmark::markdown_html(md),
+          error = function(e) paste0("<pre>", md, "</pre>")
+        )
+        session$sendCustomMessage("show_ca_immediate", list(
+          html = as.character(htmltools::tags$div(
+            class = "ca-output-content p-3",
+            htmltools::HTML(html_str)
+          ))
+        ))
+        title <- tryCatch(
+          gsub("<[^>]+>", "", as.character(result@extra$display$title %||% "Output")),
+          error = function(e) "Output"
+        )
+        state$main_output <- list(
+          title   = title,
+          content = htmltools::HTML(html_str)
+        )
+        shiny::updateTabsetPanel(session, "main_tab", selected = "output")
+      }
+    }
+
+    # Bind tool card click → select this result
+    session$sendCustomMessage("bind_tool_card",
+                              list(button_id = button_id))
+  })
+
+  # Tool card click → re-render stored result
+  shiny::observeEvent(input$select_tool_output, {
+    bid    <- input$select_tool_output
+    result <- tool_results[[bid]]
+    if (is.null(result)) return()
+
+    right_out <- tryCatch(result@extra$display$right_output, error = function(e) NULL)
+    if (!is.null(right_out)) {
+      title <- tryCatch(
+        gsub("<[^>]+>", "", as.character(result@extra$display$title %||% "Output")),
+        error = function(e) "Output"
+      )
+      state$main_output <- list(title = title, content = right_out)
+    } else {
+      md <- tryCatch(result@extra$display$markdown, error = function(e) NULL)
+      if (!is.null(md)) {
+        html_str <- tryCatch(commonmark::markdown_html(md),
+                             error = function(e) paste0("<pre>", md, "</pre>"))
+        title <- tryCatch(
+          gsub("<[^>]+>", "", as.character(result@extra$display$title %||% "Output")),
+          error = function(e) "Output"
+        )
+        state$main_output <- list(title = title, content = htmltools::HTML(html_str))
+      }
+    }
+    shiny::updateTabsetPanel(session, "main_tab", selected = "output")
+  })
+
   # ------------------------------------------------------------------
   # Streaming task (ExtendedTask + coro::async)
   # ------------------------------------------------------------------
-  stream_task <- shiny::ExtendedTask$new(function(user_input) {
+    stream_task <- shiny::ExtendedTask$new(function(user_input) {
     parsed <- .preprocess_input(user_input, cwd)
     actual_input <- if (identical(parsed$type, "skill"))
       tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd),
@@ -40,35 +125,6 @@ server_chat <- function(input, output, session, chat, settings,
       sid <- shiny::isolate(state$session_id)
       if (!is.null(sid))
         tryCatch(save_session(chat, cwd, sid), error = function(e) NULL)
-
-      # Push tool results to right panel
-      turns <- tryCatch(chat$get_turns(), error = function(e) list())
-      for (t in rev(turns)) {
-        for (c in tryCatch(t@contents, error = function(e) list())) {
-          if (S7::S7_inherits(c, ellmer::ContentToolResult)) {
-            right_out <- tryCatch(c@extra$display$right_output, error = function(e) NULL)
-            if (!is.null(right_out)) {
-              title <- tryCatch(
-                as.character(c@extra$display$title %||% "Output"),
-                error = function(e) "Output"
-              )
-              state$main_output <- list(title = title, content = right_out)
-              shiny::updateTabsetPanel(session, "main_tab", selected = "output")
-            }
-            # Immediate HTML push (two-phase display)
-            html_raw <- tryCatch(c@extra$display$markdown, error = function(e) NULL)
-            if (!is.null(html_raw)) {
-              session$sendCustomMessage("show_ca_immediate", list(
-                html = as.character(htmltools::tags$div(
-                  class = "ca-output-content p-3",
-                  htmltools::HTML(commonmark::markdown_html(html_raw))
-                ))
-              ))
-            }
-          }
-        }
-        break  # only process last assistant turn
-      }
 
       "done"
     })()

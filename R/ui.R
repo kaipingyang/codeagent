@@ -143,7 +143,8 @@ codeagent_app <- function(
 
     server_settings(input, output, session,
                     chat     = chat_obj,
-                    settings = settings)
+                    settings = settings,
+                    cwd      = cwd)
 
     server_skills(input, output, session,
                   cwd           = cwd,

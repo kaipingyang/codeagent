@@ -74,6 +74,43 @@
         event.target.style.visibility = "visible";
       }
     });
+
+    // ---------------------------------------------------------------------------
+    // Tool card click → switch Output tab + select result (LiveTFLAI pattern)
+    // MutationObserver binds click to shiny-tool-result elements
+    // ---------------------------------------------------------------------------
+    Shiny.addCustomMessageHandler("bind_tool_card", function (msg) {
+      function tryBind() {
+        var cards = document.querySelectorAll("shiny-tool-result");
+        for (var i = cards.length - 1; i >= 0; i--) {
+          var card = cards[i];
+          if (!card.getAttribute("data-ca-bid")) {
+            card.setAttribute("data-ca-bid", msg.button_id);
+            card.style.cursor = "pointer";
+            (function (c, bid) {
+              c.addEventListener("click", function () {
+                Shiny.setInputValue("select_tool_output", bid, { priority: "event" });
+              });
+            })(card, msg.button_id);
+            return true;
+          }
+        }
+        return false;
+      }
+      if (tryBind()) return;
+      var done = false;
+      var tHandle = setTimeout(function () {
+        if (!done) observer.disconnect();
+      }, 6000);
+      var observer = new MutationObserver(function () {
+        if (!done && tryBind()) {
+          done = true;
+          observer.disconnect();
+          clearTimeout(tHandle);
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+    });
     Shiny.addCustomMessageHandler("set_theme", function (data) {
       document.documentElement.setAttribute("data-theme", data.theme);
     });

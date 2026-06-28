@@ -90,6 +90,10 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
         value = "Settings",
         htmltools::tags$div(
           class = "ca-settings",
+          # Live counts (Copilot Customizations style)
+          shiny::uiOutput("customizations_counts"),
+          htmltools::tags$hr(
+            style = "border-color:var(--ca-border); margin:8px 0;"),
           htmltools::tags$span("Permission mode", class = "ca-settings-label"),
           shiny::selectInput("perm_mode", NULL,
             choices  = unlist(PermissionMode),
@@ -131,7 +135,7 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
 chat_sidebar_ui <- function() {
   bslib::sidebar(
     id        = "ca_chat_sidebar",
-    width     = 420,
+    width     = "30%",
     resizable = TRUE,
     padding   = 0,
     position  = "left",
@@ -150,7 +154,6 @@ chat_sidebar_ui <- function() {
 main_output_ui <- function() {
   htmltools::tags$div(
     class = "ca-main-output",
-    style = "height:100%; display:flex; flex-direction:column; overflow:hidden;",
     bslib::navset_tab(
       id = "main_tab",
       selected = "output",
@@ -159,7 +162,6 @@ main_output_ui <- function() {
         value = "output",
         htmltools::tags$div(
           class = "ca-output-panel",
-          style = "flex:1; overflow:auto; padding:0;",
           htmltools::tags$div(
             id    = "ca_immediate_area",
             style = "display:none;"
@@ -170,7 +172,7 @@ main_output_ui <- function() {
       bslib::nav_panel(
         title = "Files",
         value = "files",
-        jsTreeR::treeNavigatorUI("file_tree", height = "100%")
+        jsTreeR::treeNavigatorUI("file_tree", height = "calc(100vh - 120px)")
       )
     )
   )

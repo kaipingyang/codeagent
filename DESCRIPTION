@@ -25,7 +25,8 @@ Imports:
     htmltools,
     coro,
     jsTreeR,
-    base64enc
+    base64enc,
+    commonmark
 Suggests:
     btw,
     mcptools,

@@ -364,6 +364,75 @@
 }
 
 /* --------------------------------------------------------------------------
+   Three-column layout: inner layout fills height, output panel fills rest
+   -------------------------------------------------------------------------- */
+
+/* Inner layout_sidebar (chat + output) fills its container */
+#ca_chat_sidebar ~ .main,
+.bslib-sidebar-layout .bslib-sidebar-layout > .main {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Main output container fills vertically */
+.ca-main-output {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* navset_tab inside main output fills height */
+.ca-main-output > .bslib-navs-bar,
+.ca-main-output .nav-content,
+.ca-main-output .tab-content,
+.ca-main-output .tab-pane.active {
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Output panel body scrollable */
+.ca-output-panel {
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* File tree tab fills height */
+.ca-main-output [data-value="files"] {
+  height: 100%;
+  overflow: hidden;
+}
+.ca-main-output [data-value="files"] .jstree {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Output title bar */
+.ca-output-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--ca-text-muted);
+  border-bottom: 1px solid var(--ca-border);
+  padding: 6px 12px;
+  background: var(--ca-btn-bg);
+  flex-shrink: 0;
+}
+
+/* Output body */
+.ca-output-body {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+}
+
+/* Chat sidebar: shinychat fills full height */
+#ca_chat_sidebar .shiny-bound-input,
+#ca_chat_sidebar shiny-chat-container {
+  height: 100% !important;
+}
+
+/* --------------------------------------------------------------------------
    Footer / version tag
    -------------------------------------------------------------------------- */
 .ca-footer {
