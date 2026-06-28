@@ -325,7 +325,16 @@ agent_loop <- function(user_input,
   rules <- settings$rules %||% list()
   cwd   <- settings$cwd %||% getwd()
 
-  register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn)
+  # Core tools — skip built-in file tools if Path A (btw files) is enabled
+  if (isTRUE(getOption("codeagent.use_btw_files", FALSE))) {
+    # Path A: register only Bash (+ non-file builtins); btw handles files
+    register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn,
+                           skip_file_tools = TRUE)
+    tryCatch(register_btw_file_tools(chat, mode, rules, ask_fn),
+             error = function(e) NULL)
+  } else {
+    register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn)
+  }
   tryCatch(register_web_tools(chat),                          error = function(e) NULL)
   tryCatch(register_task_tools(chat),                         error = function(e) NULL)
   tryCatch(register_notebook_tools(chat, mode, rules, ask_fn),error = function(e) NULL)

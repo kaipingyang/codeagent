@@ -86,7 +86,11 @@ web_search_tool <- function() {
           httr2::req_timeout(15) |>
           httr2::req_perform()
 
-        body  <- httr2::resp_body_json(resp, simplifyVector = FALSE)
+        body_str <- httr2::resp_body_string(resp)
+        body     <- tryCatch(
+          jsonlite::fromJSON(body_str, simplifyVector = FALSE),
+          error = function(e) list()
+        )
 
         # Extract related topics as results
         items <- body[["RelatedTopics"]] %||% list()
