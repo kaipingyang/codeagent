@@ -27,9 +27,11 @@ Imports:
 Suggests:
     btw,
     mcptools,
+    Rapp,
     promises,
     testthat (>= 3.0.0),
     withr,
+    devtools,
     knitr,
     rmarkdown
 Config/testthat/edition: 3

@@ -10,8 +10,8 @@ register_r_tools(chat, groups = NULL)
 \item{chat}{An \code{ellmer::Chat} object.}
 
 \item{groups}{Character vector of group names to include, or \code{NULL} for all.
-Valid groups: \code{"env"}, \code{"docs"}, \code{"files"}, \code{"git"}, \code{"search"},
-\code{"session"}, \code{"web"}.}
+Valid groups: \code{"agent"}, \code{"cran"}, \code{"docs"}, \code{"env"}, \code{"files"},
+\code{"git"}, \code{"ide"}, \code{"pkg"}, \code{"sessioninfo"}, \code{"web"}.}
 }
 \value{
 Invisibly returns the number of tools registered.
@@ -19,4 +19,9 @@ Invisibly returns the number of tools registered.
 \description{
 Wraps \code{\link[btw:btw_tools]{btw::btw_tools()}} and registers each returned tool to \code{chat}.
 If \code{btw} is not installed a warning is emitted and nothing is registered.
+}
+\details{
+The \code{skill} group is intentionally excluded here; it is registered via
+\code{\link[=codeagent_client]{codeagent_client()}} using \code{.make_skill_tool()} which merges btw skills
+with codeagent's own skill discovery.
 }

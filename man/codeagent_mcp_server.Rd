@@ -2,7 +2,9 @@
 % Please edit documentation in R/tools_agent.R
 \name{codeagent_mcp_server}
 \alias{codeagent_mcp_server}
-\title{Start a codeagent MCP server}
+\title{Exposes codeagent's tool set as an MCP server, powered by btw's
+\code{btw_mcp_server()}. The server runs in a blocking loop and is designed
+for non-interactive use (e.g. Claude Desktop, VS Code MCP config).}
 \usage{
 codeagent_mcp_server(tools = NULL, ...)
 }

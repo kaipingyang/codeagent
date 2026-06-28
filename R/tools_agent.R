@@ -186,7 +186,28 @@ register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
 # MCP server wrapper
 # ---------------------------------------------------------------------------
 
-#' Start a codeagent MCP server
+#' Install the codeagent CLI
+#'
+#' Installs the `codeagent` CLI script (powered by Rapp) to a directory on
+#' your PATH. After installation, run `codeagent run "prompt"`,
+#' `codeagent app`, `codeagent skills list`, etc.
+#'
+#' @param destdir Character or NULL. Destination directory. NULL uses
+#'   `~/.local/bin` (Linux/macOS) or `~/bin` as fallback.
+#' @return Character. Path(s) to installed script(s), invisibly.
+#' @export
+install_codeagent_cli <- function(destdir = NULL) {
+  if (!requireNamespace("Rapp", quietly = TRUE))
+    stop("Rapp package required. Install with: ",
+         "install.packages('Rapp', repos='https://r-lib.r-universe.dev')",
+         call. = FALSE)
+
+  result <- Rapp::install_pkg_cli_apps(package = "codeagent",
+                                        destdir = destdir)
+  for (path in result)
+    cli::cli_alert_success("Installed {.code codeagent} CLI to {.path {path}}")
+  invisible(result)
+}
 #'
 #' Exposes codeagent's tool set as an MCP server, powered by btw's
 #' `btw_mcp_server()`. The server runs in a blocking loop and is designed
