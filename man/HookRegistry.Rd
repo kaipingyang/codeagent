@@ -9,37 +9,73 @@ Tool hook registry
 Tool hook registry
 }
 \details{
-Manages pre- and post-tool hooks. Each hook is a function that receives
-tool information and can allow, deny, or modify the operation.
-\subsection{Pre-hook callback signature}{
+Manages lifecycle hooks. Hooks are registered per event type and run in
+registration order.
+\subsection{PreToolUse callback: \verb{function(tool_name, tool_input)}}{
 
-\verb{function(tool_name, tool_input)} returning a list with:
+Returns list with \code{action}:
 \itemize{
-\item \code{action = "allow"} -- proceed normally
-\item \code{action = "deny"} -- block execution (with optional \code{message})
-\item \code{action = "updated_input"} -- replace input with \code{input} field
+\item \code{"allow"} -- proceed normally
+\item \code{"deny"} -- block execution (add optional \code{message})
+\item \code{"updated_input"} -- replace input with \code{input} field
 }
 }
 
-\subsection{Post-hook callback signature}{
+\subsection{PostToolUse callback: \verb{function(tool_name, tool_input, tool_output)}}{
 
-\verb{function(tool_name, tool_input, tool_output)} returning a list with:
+Returns list with \code{action}:
 \itemize{
-\item \code{action = "allow"} -- pass output through unchanged
-\item \code{action = "updated_output"} -- replace output with \code{output} field
+\item \code{"allow"} -- pass output unchanged
+\item \code{"updated_output"} -- replace output with \code{output} field
 }
+}
+
+\subsection{PostToolUseFailure callback: \verb{function(tool_name, tool_input, error_message)}}{
+
+Return value ignored (informational only).
+}
+
+\subsection{PermissionDenied callback: \verb{function(tool_name, tool_input, mode)}}{
+
+Return value ignored (informational only).
+}
+
+\subsection{PermissionRequest callback: \verb{function(tool_name, tool_input, mode)}}{
+
+Returns list with \code{action}:
+\itemize{
+\item \code{"allow"} -- grant permission
+\item \code{"deny"} -- reject
+\item NULL / \code{"ask"} -- fall through to default ask_fn
+}
+}
+
+\subsection{UserMessage callback: \verb{function(message)}}{
+
+Return value ignored (informational only).
+}
+
+\subsection{AssistantMessage callback: \verb{function(message)}}{
+
+Return value ignored (informational only).
 }
 }
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-HookRegistry-new}{\code{HookRegistry$new()}}
+\item \href{#method-HookRegistry-register}{\code{HookRegistry$register()}}
 \item \href{#method-HookRegistry-register_pre}{\code{HookRegistry$register_pre()}}
 \item \href{#method-HookRegistry-register_post}{\code{HookRegistry$register_post()}}
 \item \href{#method-HookRegistry-run_pre}{\code{HookRegistry$run_pre()}}
 \item \href{#method-HookRegistry-run_post}{\code{HookRegistry$run_post()}}
+\item \href{#method-HookRegistry-run_failure}{\code{HookRegistry$run_failure()}}
+\item \href{#method-HookRegistry-run_permission_denied}{\code{HookRegistry$run_permission_denied()}}
+\item \href{#method-HookRegistry-run_permission_request}{\code{HookRegistry$run_permission_request()}}
+\item \href{#method-HookRegistry-run_user_message}{\code{HookRegistry$run_user_message()}}
+\item \href{#method-HookRegistry-run_assistant_message}{\code{HookRegistry$run_assistant_message()}}
 \item \href{#method-HookRegistry-clear}{\code{HookRegistry$clear()}}
-\item \href{#method-HookRegistry-clone}{\code{HookRegistry$clone()}}
+\item \href{#method-HookRegistry-count}{\code{HookRegistry$count()}}
 }
 }
 \if{html}{\out{<hr>}}
@@ -53,94 +89,119 @@ Create a new registry.
 
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-HookRegistry-register_pre"></a>}}
-\if{latex}{\out{\hypertarget{method-HookRegistry-register_pre}{}}}
-\subsection{Method \code{register_pre()}}{
-Register a pre-tool hook.
+\if{html}{\out{<a id="method-HookRegistry-register"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-register}{}}}
+\subsection{Method \code{register()}}{
+Register a hook for an event.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$register_pre(fn, tool_pattern = NULL, timeout_ms = 2000L)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$register(event, fn, tool_pattern = NULL, timeout_ms = 2000L)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{fn}}{Function. Pre-hook callback.}
+\item{\code{event}}{Character. One of \link{HookEvent} values.}
 
-\item{\code{tool_pattern}}{Character or NULL. Glob-style tool name filter.
-\code{NULL} matches all tools.}
+\item{\code{fn}}{Function. Hook callback.}
 
-\item{\code{timeout_ms}}{Integer. Max milliseconds before warning (default 2000).}
+\item{\code{tool_pattern}}{Character or NULL. Glob filter for tool name
+(only applies to tool-related events).}
+
+\item{\code{timeout_ms}}{Integer. Max ms before warning (default 2000).}
 }
 \if{html}{\out{</div>}}
 }
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-register_pre"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-register_pre}{}}}
+\subsection{Method \code{register_pre()}}{
+Register a PreToolUse hook (legacy shorthand).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$register_pre(fn, tool_pattern = NULL, timeout_ms = 2000L)}\if{html}{\out{</div>}}
+}
+
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-register_post"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-register_post}{}}}
 \subsection{Method \code{register_post()}}{
-Register a post-tool hook.
+Register a PostToolUse hook (legacy shorthand).
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{HookRegistry$register_post(fn, tool_pattern = NULL, timeout_ms = 2000L)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{fn}}{Function. Post-hook callback.}
-
-\item{\code{tool_pattern}}{Character or NULL. Glob-style tool name filter.}
-
-\item{\code{timeout_ms}}{Integer. Max milliseconds before warning (default 2000).}
-}
-\if{html}{\out{</div>}}
-}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_pre"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_pre}{}}}
 \subsection{Method \code{run_pre()}}{
-Run all matching pre-hooks for a tool call.
+Fire PreToolUse hooks.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_pre(tool_name, tool_input)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{tool_name}}{Character. Tool name.}
-
-\item{\code{tool_input}}{List. Tool arguments.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Named list: \code{action} ("allow", "deny", "updated_input"),
-optionally \code{input} and \code{message}.
-}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_post"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_post}{}}}
 \subsection{Method \code{run_post()}}{
-Run all matching post-hooks for a tool result.
+Fire PostToolUse hooks.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_post(tool_name, tool_input, tool_output)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{tool_name}}{Character. Tool name.}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_failure"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_failure}{}}}
+\subsection{Method \code{run_failure()}}{
+Fire PostToolUseFailure hooks (informational).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_failure(tool_name, tool_input, error_message)}\if{html}{\out{</div>}}
+}
 
-\item{\code{tool_input}}{List. Tool arguments (original).}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_permission_denied"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_permission_denied}{}}}
+\subsection{Method \code{run_permission_denied()}}{
+Fire PermissionDenied hooks (informational).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_permission_denied(tool_name, tool_input, mode)}\if{html}{\out{</div>}}
+}
 
-\item{\code{tool_output}}{Character. Tool result string.}
 }
-\if{html}{\out{</div>}}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_permission_request"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_permission_request}{}}}
+\subsection{Method \code{run_permission_request()}}{
+Fire PermissionRequest hooks.
+Returns "allow", "deny", or NULL (fall through to ask_fn).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_permission_request(tool_name, tool_input, mode)}\if{html}{\out{</div>}}
 }
-\subsection{Returns}{
-Character. Possibly modified output.
+
 }
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_user_message"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_user_message}{}}}
+\subsection{Method \code{run_user_message()}}{
+Fire UserMessage hooks (informational).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_user_message(message)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_assistant_message"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_assistant_message}{}}}
+\subsection{Method \code{run_assistant_message()}}{
+Fire AssistantMessage hooks (informational).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_assistant_message(message)}\if{html}{\out{</div>}}
+}
+
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-clear"></a>}}
@@ -153,20 +214,13 @@ Remove all registered hooks.
 
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-HookRegistry-clone"></a>}}
-\if{latex}{\out{\hypertarget{method-HookRegistry-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
+\if{html}{\out{<a id="method-HookRegistry-count"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-count}{}}}
+\subsection{Method \code{count()}}{
+Count total registered hooks across all events.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$count()}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
 }
 }

@@ -1,5 +1,5 @@
 #' @title Permission System
-#' @description Six-mode permission system mirroring Claude Code's permission model.
+#' @description Seven-mode permission system mirroring Claude Code's permission model.
 #' @name permissions
 #' @keywords internal
 #' @importFrom R6 R6Class
@@ -11,7 +11,7 @@ NULL
 
 #' Permission modes for codeagent
 #'
-#' A named list of the six permission modes, mirroring Claude Code's design.
+#' A named list of the seven permission modes, mirroring Claude Code's design.
 #'
 #' * `default`      -- Reads auto-allow; writes and shell execution require user confirmation.
 #' * `plan`         -- Read-only mode; all non-read tools are rejected.
@@ -19,6 +19,8 @@ NULL
 #' * `bypass`       -- Almost all operations auto-approved.
 #' * `dont_ask`     -- Operations that would ask are auto-rejected (CI/CD).
 #' * `auto`         -- AI classifier (haiku model) decides automatically.
+#' * `bubble`       -- Sub-agent mode: permission decisions bubble up to the
+#'                     parent agent rather than being resolved locally.
 #'
 #' @export
 PermissionMode <- list(
@@ -27,7 +29,8 @@ PermissionMode <- list(
   ACCEPT_EDITS = "accept_edits",
   BYPASS       = "bypass",
   DONT_ASK     = "dont_ask",
-  AUTO         = "auto"
+  AUTO         = "auto",
+  BUBBLE       = "bubble"
 )
 
 # Tools that are always read-only (safe to auto-allow in all non-plan modes)
@@ -70,19 +73,23 @@ check_permission <- function(tool_name, mode = "default",
   if (identical(mode, "accept_edits") && tool_name %in% .EDIT_TOOLS)
     return("allow")
 
-  # 4. bypass: everything allowed (killswitch can override externally)
+  # 4. bypass: everything allowed
   if (identical(mode, "bypass")) return("allow")
 
-  # 5. dont_ask: read-only tools still pass; "ask" decisions become "deny" (CI/CD)
+  # 5. bubble: sub-agent mode — permission bubbles up to parent; return "ask"
+  #    so the parent agent's ask_fn handles it (not auto-denied like dont_ask)
+  if (identical(mode, "bubble")) return("ask")
+
+  # 6. dont_ask: read-only tools still pass; "ask" decisions become "deny" (CI/CD)
   if (identical(mode, "dont_ask")) {
     if (is_readonly) return("allow")
     return("deny")
   }
 
-  # 6. auto: AI classifier via haiku model
+  # 7. auto: AI classifier via haiku model
   if (identical(mode, "auto")) return(.auto_classify_tool(tool_name, tool_input))
 
-  # 7. default: read-only tools auto-allow, rest ask
+  # 8. default: read-only tools auto-allow, rest ask
   if (is_readonly) return("allow")
 
   # Bash read-only optimisation: ls, cat, grep etc. auto-allow in default mode

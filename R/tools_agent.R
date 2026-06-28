@@ -1,51 +1,113 @@
 #' @title Agent Sub-agent Tool
-#' @description The Agent tool spawns a sub-agent (a fresh ellmer Chat session)
-#'   to handle a delegated task. The sub-agent inherits the parent's tool set
-#'   and permission mode but starts with a clean conversation history.
+#' @description Sub-agent delegation tools. Uses btw's hierarchical subagent
+#'   system when available (`btw_tool_agent_subagent`); falls back to codeagent's
+#'   own simple sub-agent loop.
+#'
+#'   Also discovers and registers custom agent definitions from:
+#'   - `.btw/agent-*.md` (project)
+#'   - `~/.btw/agent-*.md` (user)
+#'   - `.claude/agents/` (Claude Code compat)
 #' @name tools_agent
 #' @keywords internal
 NULL
 
 # ---------------------------------------------------------------------------
-# Agent tool
+# Worktree isolation helpers
+# ---------------------------------------------------------------------------
+
+#' Create an isolated git worktree for a sub-agent
+#'
+#' Creates a temporary git worktree so the sub-agent can make changes
+#' without affecting the main working tree. The caller is responsible for
+#' cleanup via [.cleanup_worktree()].
+#'
+#' @param base_dir Character. Git repo root (default current dir).
+#' @return Character. Path to new worktree, or NULL if git not available.
+#' @keywords internal
+.create_worktree <- function(base_dir = getwd()) {
+  if (!nzchar(Sys.which("git"))) return(NULL)
+  # Check we're inside a git repo
+  repo_check <- system2("git", c("-C", base_dir, "rev-parse", "--git-dir"),
+                         stdout = TRUE, stderr = FALSE)
+  if (!length(repo_check) || grepl("fatal", repo_check[1])) return(NULL)
+
+  wt_path <- file.path(tempdir(), paste0("codeagent-wt-", .generate_uuid_v4()))
+  branch  <- paste0("codeagent-subagent-", substr(.generate_uuid_v4(), 1L, 8L))
+
+  result <- system2("git",
+    c("-C", base_dir, "worktree", "add", "--detach", wt_path),
+    stdout = TRUE, stderr = TRUE
+  )
+  if (!is.null(attr(result, "status")) && attr(result, "status") != 0L) return(NULL)
+  wt_path
+}
+
+#' Remove a git worktree
+#' @param wt_path Character. Path returned by [.create_worktree()].
+#' @keywords internal
+.cleanup_worktree <- function(wt_path) {
+  if (is.null(wt_path) || !dir.exists(wt_path)) return(invisible(NULL))
+  tryCatch({
+    system2("git", c("worktree", "remove", "--force", wt_path),
+            stdout = FALSE, stderr = FALSE)
+    if (dir.exists(wt_path)) unlink(wt_path, recursive = TRUE)
+  }, error = function(e) NULL)
+  invisible(NULL)
+}
+
+# ---------------------------------------------------------------------------
+# Agent tool (btw subagent or codeagent fallback)
 # ---------------------------------------------------------------------------
 
 #' Create the Agent tool
 #'
-#' Spawns a sub-agent to handle complex multi-step delegated tasks.
-#' The sub-agent runs synchronously and its final response is returned
-#' as the tool result.
+#' When btw is available, delegates to `btw_tool_agent_subagent()` which
+#' provides isolated chat sessions with resumable state. Falls back to
+#' codeagent's own sub-agent loop otherwise.
 #'
-#' @param model Character. Model for sub-agents.
+#' @param model Character. Model for sub-agents (fallback only).
 #' @param mode Character. Permission mode (inherited from parent).
 #' @param rules List. Permission rules (inherited).
-#' @param max_turns Integer. Max turns for sub-agent (default 30).
+#' @param max_turns Integer. Max turns for sub-agent fallback (default 30).
+#' @param worktree_isolation Logical. Run sub-agent in an isolated git worktree.
+#'   Only applies to the fallback implementation; btw subagent handles its
+#'   own isolation.
 #' @return An `ellmer::tool()` object.
 #' @export
-agent_tool <- function(model       = "claude-sonnet-4-6",
-                        mode        = "default",
-                        rules       = list(),
-                        max_turns   = 30L) {
+agent_tool <- function(model              = "claude-sonnet-4-6",
+                        mode               = "default",
+                        rules              = list(),
+                        max_turns          = 30L,
+                        worktree_isolation = FALSE) {
+  # Use btw's subagent when available (preferred: isolated session, resumable)
+  if (requireNamespace("btw", quietly = TRUE)) {
+    tools <- tryCatch(btw::btw_tools("btw_tool_agent_subagent"),
+                      error = function(e) list())
+    if (length(tools) > 0L) return(tools[[1L]])
+  }
+
+  # Fallback: codeagent's own simple sub-agent
   ellmer::tool(
     fun = function(description, prompt, subagent_type = NULL) {
       tryCatch({
-        # Build sub-agent system prompt
+        # Optionally create an isolated worktree
+        wt_path <- if (isTRUE(worktree_isolation)) .create_worktree() else NULL
+        sub_cwd <- wt_path %||% getwd()
+        on.exit(.cleanup_worktree(wt_path), add = TRUE)
+
         system_prompt <- paste0(
           "You are a sub-agent helping with: ", description, "\n",
           "Complete the task thoroughly and return your findings/results.\n",
-          "You are running in sub-agent mode. Be concise and focused."
+          "Running in sub-agent mode (permission: ", mode, ").",
+          if (!is.null(wt_path)) paste0("\nWorking directory: ", sub_cwd) else ""
         )
-
-        # Create sub-agent chat
-        sub_chat <- ellmer::chat_anthropic(
-          model         = model,
-          system_prompt = system_prompt
+        sub_settings <- list(
+          model = model, permission_mode = mode,
+          cwd = sub_cwd, max_turns = as.integer(max_turns),
+          base_url = Sys.getenv("CODEAGENT_BASE_URL", "")
         )
-
-        # Register tools for sub-agent (builtin only -- no recursive agent tool)
+        sub_chat <- .make_chat(sub_settings, sub_cwd, system_prompt = system_prompt)
         register_builtin_tools(sub_chat, mode = mode, rules = rules)
-
-        # Run sub-agent loop (simple, no compaction for sub-agents)
         result <- .run_subagent_loop(sub_chat, prompt, max_turns)
         truncate_tool_result(result, "default")
       }, error = function(e) {
@@ -54,60 +116,104 @@ agent_tool <- function(model       = "claude-sonnet-4-6",
     },
     description = paste0(
       "Spawn a sub-agent to handle a complex, multi-step delegated task. ",
-      "The sub-agent starts fresh with its own context and returns ",
-      "a summary of its findings or results."
+      "The sub-agent starts fresh with its own context and returns a summary."
     ),
     arguments = list(
       description   = ellmer::type_string(
-        "Short description of what the sub-agent will do (3-5 words).",
-        required = TRUE),
+        "Short description of what the sub-agent will do.", required = TRUE),
       prompt        = ellmer::type_string(
         "The full task prompt for the sub-agent.", required = TRUE),
       subagent_type = ellmer::type_string(
-        "Optional hint about the type of sub-agent (e.g. 'explore', 'plan').",
-        required = FALSE)
+        "Optional hint (e.g. 'explore', 'plan').", required = FALSE)
     ),
     annotations = ellmer::tool_annotations(
-      title            = "Agent",
-      read_only_hint   = FALSE,
-      destructive_hint = FALSE
+      title = "Agent", read_only_hint = FALSE, destructive_hint = FALSE
     )
   )
 }
 
 # ---------------------------------------------------------------------------
-# Register agent tool
+# Register agent tool + btw custom agents
 # ---------------------------------------------------------------------------
 
-#' Register the Agent tool to an ellmer Chat object
+#' Register the Agent tool and any btw custom agent tools
+#'
+#' Registers `btw_tool_agent_subagent` (or fallback), plus any custom agents
+#' discovered from `.btw/agent-*.md`, `.claude/agents/`, etc.
 #'
 #' @param chat An `ellmer::Chat` object.
-#' @param model Character. Model for sub-agents.
+#' @param model Character. Model for sub-agents (fallback).
 #' @param mode Character. Permission mode.
 #' @param rules List. Permission rules.
 #' @param max_turns Integer. Max turns per sub-agent.
+#' @param worktree_isolation Logical. Run sub-agents in isolated git worktrees.
 #' @return Invisibly returns `chat`.
 #' @export
 register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
                                   mode = "default", rules = list(),
-                                  max_turns = 30L) {
-  chat$register_tool(agent_tool(model, mode, rules, max_turns))
+                                  max_turns = 30L,
+                                  worktree_isolation = FALSE) {
+  chat$register_tool(agent_tool(model, mode, rules, max_turns, worktree_isolation))
+
+  # Register custom btw agent tools from discovered .md files
+  if (requireNamespace("btw", quietly = TRUE)) {
+    tryCatch({
+      ns <- getNamespace("btw")
+      # btw_agent_tool() discovers agents from .btw/, .claude/agents/, etc.
+      # btw_tools() doesn't list them by default — use btw_agent_tool() per path
+      agent_dirs <- c(
+        file.path(getwd(), ".btw"),
+        file.path(getwd(), ".claude", "agents"),
+        file.path(path.expand("~"), ".btw")
+      )
+      for (d in agent_dirs[dir.exists(agent_dirs)]) {
+        agent_files <- list.files(d, pattern = "^agent-.*\\.md$",
+                                   full.names = TRUE)
+        for (f in agent_files) {
+          tryCatch({
+            t <- ns$btw_agent_tool(f)
+            chat$register_tool(t)
+          }, error = function(e) NULL)
+        }
+      }
+    }, error = function(e) NULL)
+  }
+
   invisible(chat)
 }
 
 # ---------------------------------------------------------------------------
-# Internal: simple sub-agent loop
+# MCP server wrapper
+# ---------------------------------------------------------------------------
+
+#' Start a codeagent MCP server
+#'
+#' Exposes codeagent's tool set as an MCP server, powered by btw's
+#' `btw_mcp_server()`. The server runs in a blocking loop and is designed
+#' for non-interactive use (e.g. Claude Desktop, VS Code MCP config).
+#'
+#' @param tools Character vector of btw tool groups to expose, or a list of
+#'   `ellmer::tool()` objects. Defaults to all btw tools.
+#' @param ... Additional arguments passed to `btw::btw_mcp_server()`.
+#' @return Does not return (blocking).
+#' @export
+codeagent_mcp_server <- function(tools = NULL, ...) {
+  if (!requireNamespace("btw", quietly = TRUE))
+    stop("btw package required for MCP server. Install with: install.packages('btw')",
+         call. = FALSE)
+  if (is.null(tools)) tools <- btw::btw_mcp_tools()
+  btw::btw_mcp_server(tools = tools, ...)
+}
+
+# ---------------------------------------------------------------------------
+# Internal: simple sub-agent loop (btw fallback)
 # ---------------------------------------------------------------------------
 
 .run_subagent_loop <- function(sub_chat, prompt, max_turns = 30L) {
-  # Send initial prompt
   response <- tryCatch(
     sub_chat$chat(prompt),
     error = function(e) paste0("[Error in sub-agent] ", conditionMessage(e))
   )
-
-  # ellmer handles the agentic loop internally when tools are registered
-  # and stop_reason != "end_turn". We just return the final text response.
   if (is.character(response)) return(response)
   "[Sub-agent completed with no text output]"
 }

@@ -2,37 +2,56 @@
 % Please edit documentation in R/query.R
 \name{codeagent}
 \alias{codeagent}
-\title{Run a codeagent query}
+\title{Run a one-shot codeagent query}
 \usage{
 codeagent(
-  prompt,
+  client_or_prompt,
+  prompt = NULL,
   model = "claude-sonnet-4-6",
   permission_mode = "default",
   rules = list(),
   cwd = getwd(),
   max_turns = 100L,
+  btw_groups = NULL,
   ...
 )
 }
 \arguments{
-\item{prompt}{Character. The user prompt.}
+\item{client_or_prompt}{Either a \code{CodagentClient} (from \code{\link[=codeagent_client]{codeagent_client()}})
+or a character prompt string (legacy mode).}
 
-\item{model}{Character. Anthropic model to use.}
+\item{prompt}{Character. The user prompt. Required when \code{client_or_prompt}
+is a \code{CodagentClient}; unused in legacy mode.}
 
-\item{permission_mode}{Character. One of \link{PermissionMode}.}
+\item{model}{Character. Legacy: model name.}
 
-\item{rules}{List. \code{\link[=PermissionRule]{PermissionRule()}} objects.}
+\item{permission_mode}{Character. Legacy: permission mode.}
 
-\item{cwd}{Character. Working directory.}
+\item{rules}{List. Legacy: permission rules.}
 
-\item{max_turns}{Integer. Maximum agentic turns.}
+\item{cwd}{Character. Legacy: working directory.}
 
-\item{...}{Additional arguments passed to \code{ellmer::chat_anthropic()}.}
+\item{max_turns}{Integer. Legacy: max turns.}
+
+\item{btw_groups}{Character vector or NULL. Legacy: btw tool groups.}
+
+\item{...}{Legacy: extra args passed to \code{.make_chat()}.}
 }
 \value{
 Character. The final model response.
 }
 \description{
-One-shot interface: creates a fresh Chat, registers tools, sends \code{prompt},
-and returns the final text response.
+Two calling conventions:
+}
+\details{
+\strong{New (recommended):} pass a \code{\link[=codeagent_client]{codeagent_client()}} as first argument.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{client <- codeagent_client(chat_openai_compatible(...), permission_mode = "bypass")
+codeagent(client, "List all .R files")
+}\if{html}{\out{</div>}}
+
+\strong{Legacy (backward-compatible):} omit client, pass model etc. directly.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{codeagent("List all .R files", model = "gsds-gpt41", permission_mode = "bypass")
+}\if{html}{\out{</div>}}
 }

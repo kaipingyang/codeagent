@@ -125,10 +125,10 @@ for (model in models) {
 }
 
 # ---------------------------------------------------------------------------
-# D. query_loop() multi-turn with iteration and max_turns
+# D. agent_loop() multi-turn with iteration and max_turns
 # ---------------------------------------------------------------------------
 
-section("D. query_loop() multi-turn and max_turns enforcement")
+section("D. agent_loop() multi-turn and max_turns enforcement")
 
 chat_loop_raw <- ellmer::chat_openai_compatible(
   base_url    = base_url, model = "gsds-gpt41",
@@ -139,15 +139,15 @@ client_loop <- codeagent:::codeagent_client(
   cwd = tempdir(), max_turns = 3L
 )
 
-result1 <- codeagent:::query_loop("Say TURN1_OK", client_loop, iteration = 1L)
+result1 <- codeagent:::agent_loop("Say TURN1_OK", client_loop, iteration = 1L)
 ok(identical(result1$stop_reason, "completed"), "turn 1: stop_reason = completed")
 ok(grepl("TURN1_OK", result1$response),         "turn 1: response contains TURN1_OK")
 
-result2 <- codeagent:::query_loop("Say TURN2_OK", client_loop, iteration = 2L)
+result2 <- codeagent:::agent_loop("Say TURN2_OK", client_loop, iteration = 2L)
 ok(identical(result2$stop_reason, "completed"), "turn 2: stop_reason = completed")
 
 # iteration > max_turns → max_turns stop
-result_over <- codeagent:::query_loop("Say SHOULD_NOT_REACH", client_loop,
+result_over <- codeagent:::agent_loop("Say SHOULD_NOT_REACH", client_loop,
                                        iteration = 4L)   # > max_turns = 3
 ok(identical(result_over$stop_reason, "max_turns"),
    "iteration > max_turns: stop_reason = max_turns")

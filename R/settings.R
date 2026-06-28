@@ -186,3 +186,34 @@ save_user_settings <- function(settings) {
 
   paste(parts, collapse = "\n")
 }
+
+# ---------------------------------------------------------------------------
+# System-reminder builder (dynamic, injected per-turn into user message)
+# ---------------------------------------------------------------------------
+
+#' Build a system-reminder block for dynamic per-turn context injection
+#'
+#' Mirrors Claude Code's `<system-reminder>` pattern: ephemeral context that
+#' is appended to the user message rather than the system prompt, so it
+#' doesn't break prompt caching.
+#'
+#' @param settings List. Output of [load_settings()].
+#' @param iteration Integer. Current agent loop iteration.
+#' @param cwd Character. Working directory.
+#' @return Character(1). The reminder block, or `""` if nothing to inject.
+#' @keywords internal
+.build_system_reminder <- function(settings, iteration = 1L, cwd = getwd()) {
+  lines <- character(0)
+
+  # Current date/time (changes each turn, so must NOT be in system prompt)
+  lines <- c(lines, sprintf("Current date/time: %s", format(Sys.time(), "%Y-%m-%d %H:%M %Z")))
+
+  # Iteration count
+  lines <- c(lines, sprintf("Agent loop iteration: %d", as.integer(iteration)))
+
+  # Working directory (in case cwd changes)
+  lines <- c(lines, sprintf("Working directory: %s", cwd))
+
+  if (length(lines) == 0L) return("")
+  paste0("<system-reminder>\n", paste(lines, collapse = "\n"), "\n</system-reminder>")
+}

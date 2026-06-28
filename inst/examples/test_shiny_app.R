@@ -56,7 +56,7 @@ section("A. Static UI/server structure checks")
 
 # Verify all expected exported symbols exist
 exports <- getNamespaceExports("codeagent")
-for (fn in c("codeagent_app", "codeagent", "query_loop",
+for (fn in c("codeagent_app", "codeagent", "agent_loop",
              "list_sessions", "save_session", "get_session_messages",
              "rename_session", "tag_session", "fork_session",
              "delete_session", "migrate_sessions",

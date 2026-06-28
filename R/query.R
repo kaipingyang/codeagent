@@ -1,6 +1,6 @@
 #' @title Agent Query Loop
 #' @description `codeagent_client()` builds a configured client from any
-#'   ellmer Chat. `codeagent()` runs one-shot queries. `query_loop()` drives
+#'   ellmer Chat. `codeagent()` runs one-shot queries. `agent_loop()` drives
 #'   the Shiny app's agentic loop.
 #' @name query
 #' @keywords internal
@@ -83,19 +83,23 @@ print.CodagentClient <- function(x, ...) {
 #' @return Object of class `CodagentClient` with slots `$chat` and `$settings`.
 #' @export
 codeagent_client <- function(
-  chat            = NULL,
-  permission_mode = "default",
-  rules           = list(),
-  cwd             = getwd(),
-  max_turns       = 100L,
-  btw_groups      = NULL
+  chat               = NULL,
+  permission_mode    = "default",
+  rules              = list(),
+  cwd                = getwd(),
+  max_turns          = 100L,
+  btw_groups         = NULL,
+  worktree_isolation = FALSE,
+  verify_fn          = NULL
 ) {
   settings <- load_settings(cwd)
-  settings$permission_mode <- permission_mode
-  settings$rules           <- rules
-  settings$cwd             <- cwd
-  settings$max_turns       <- as.integer(max_turns)
-  settings$btw_groups      <- btw_groups
+  settings$permission_mode     <- permission_mode
+  settings$rules               <- rules
+  settings$cwd                 <- cwd
+  settings$max_turns           <- as.integer(max_turns)
+  settings$btw_groups          <- btw_groups
+  settings$worktree_isolation  <- isTRUE(worktree_isolation)
+  settings$verify_fn           <- verify_fn
 
   if (is.null(chat)) {
     chat <- .make_chat(settings, cwd)
@@ -187,7 +191,7 @@ codeagent <- function(client_or_prompt,
 }
 
 # ---------------------------------------------------------------------------
-# query_loop() — used by the Shiny app
+# agent_loop() — used by the Shiny app
 # ---------------------------------------------------------------------------
 
 #' Main agentic query loop
@@ -210,7 +214,7 @@ codeagent <- function(client_or_prompt,
 #' @param iteration Integer. Current loop iteration.
 #' @return Named list: `response`, `session_id`, `stop_reason`.
 #' @export
-query_loop <- function(user_input,
+agent_loop <- function(user_input,
                         client,
                         settings        = NULL,
                         compaction_ctrl = CompactionController$new(),
@@ -240,6 +244,15 @@ query_loop <- function(user_input,
                 stop_reason = "max_turns"))
   }
 
+  # 1b. Inject system-reminder (dynamic context into user message, not system prompt)
+  #     This mirrors Claude Code's <system-reminder> pattern: ephemeral metadata
+  #     injected at message time so it doesn't invalidate the prompt cache.
+  reminder <- .build_system_reminder(settings, iteration, cwd)
+  actual_input <- if (nzchar(reminder))
+    paste0(user_input, "\n\n", reminder)
+  else
+    user_input
+
   # 2. Budget check
   current_tokens <- estimate_tokens(chat)
   if (budget_tracker$should_stop(current_tokens,
@@ -256,23 +269,40 @@ query_loop <- function(user_input,
   # 4. Resource management
   resource_state$maybe_replace(chat)
 
-  # 5. Send
+  # 5. Fire UserMessage hook
+  if (!is.null(hooks)) tryCatch(hooks$run_user_message(user_input), error = function(e) NULL)
+
+  # 6. Send (with system-reminder injected into actual_input)
   response <- tryCatch({
-    chat$chat(user_input)
+    chat$chat(actual_input)
   }, error = function(e) {
-    msg <- conditionMessage(e)
-    if (grepl("413|prompt_too_long", msg, ignore.case = TRUE)) {
-      compaction_ctrl$handle_ptl_error(chat)
-      tryCatch(chat$chat(user_input),
-               error = function(e2) paste0("[Error] ", conditionMessage(e2)))
-    } else {
-      paste0("[Error] ", msg)
-    }
+    .handle_agent_error(e, chat, actual_input, compaction_ctrl)
   })
 
   if (!is.character(response)) response <- "[No text response]"
 
-  # 6. Save session
+  # 7. Fire AssistantMessage hook
+  if (!is.null(hooks)) tryCatch(hooks$run_assistant_message(response), error = function(e) NULL)
+
+  # 7b. Verification loop — run verify_fn and re-enter if it reports failures
+  verify_fn <- settings$verify_fn
+  if (!is.null(verify_fn) && is.function(verify_fn)) {
+    verify_result <- tryCatch(verify_fn(response, chat, cwd), error = function(e) {
+      list(passed = FALSE, message = conditionMessage(e))
+    })
+    if (!isTRUE(verify_result$passed)) {
+      verify_msg <- verify_result$message %||% "Verification failed."
+      re_input   <- paste0(
+        "The previous response had verification failures. Please fix:\n\n",
+        verify_msg
+      )
+      re_response <- tryCatch(chat$chat(re_input),
+                               error = function(e) paste0("[Verify retry error] ", conditionMessage(e)))
+      if (is.character(re_response)) response <- re_response
+    }
+  }
+
+  # 8. Save session
   if (!is.null(session_id))
     tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)
 
@@ -300,7 +330,9 @@ query_loop <- function(user_input,
   tryCatch(register_task_tools(chat),                         error = function(e) NULL)
   tryCatch(register_notebook_tools(chat, mode, rules, ask_fn),error = function(e) NULL)
   tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",
-                                mode, rules),                 error = function(e) NULL)
+                                mode, rules,
+                                worktree_isolation = isTRUE(settings$worktree_isolation)),
+                                                              error = function(e) NULL)
   tryCatch(register_r_tools(chat, groups = settings$btw_groups %||% NULL),
                                                               error = function(e) NULL)
   tryCatch({
@@ -321,4 +353,94 @@ query_loop <- function(user_input,
               tool_name, substr(as.character(cmd), 1L, 120L)))
   ans <- trimws(readLines(con = stdin(), n = 1L))
   identical(tolower(ans), "y")
+}
+
+# ---------------------------------------------------------------------------
+# Built-in verify functions
+# ---------------------------------------------------------------------------
+
+#' R package test verification function
+#'
+#' Runs `devtools::test()` and returns pass/fail. Use as `verify_fn` in
+#' [codeagent_client()] to automatically re-prompt when tests fail.
+#'
+#' @return A function suitable for `verify_fn`.
+#' @export
+verify_r_tests <- function() {
+  function(response, chat, cwd) {
+    if (!requireNamespace("devtools", quietly = TRUE))
+      return(list(passed = TRUE))  # can't verify, pass through
+    result <- tryCatch({
+      withr::with_dir(cwd, {
+        res <- devtools::test(reporter = "silent")
+        failures <- sum(vapply(res, function(r) r$failed + r$error, integer(1)))
+        list(
+          passed  = failures == 0L,
+          message = if (failures > 0L)
+            sprintf("%d test(s) failed. Run devtools::test() for details.", failures)
+          else ""
+        )
+      })
+    }, error = function(e) {
+      list(passed = FALSE, message = conditionMessage(e))
+    })
+    result
+  }
+}
+
+# ---------------------------------------------------------------------------
+# Enhanced error recovery with classification + backoff
+# ---------------------------------------------------------------------------
+
+# Error classification patterns
+.ERR_PTL         <- "413|prompt_too_long|context_length_exceeded"
+.ERR_RATE_LIMIT  <- "429|rate.limit|too.many.requests|quota"
+.ERR_NETWORK     <- "timeout|connection|ECONNREFUSED|ETIMEDOUT|curl"
+.ERR_AUTH        <- "401|403|unauthorized|forbidden|invalid.*key"
+
+.handle_agent_error <- function(e, chat, input, compaction_ctrl,
+                                 max_retries = 3L) {
+  msg   <- conditionMessage(e)
+  clean <- cli::ansi_strip(msg)
+
+  # PTL: compact then retry once
+  if (grepl(.ERR_PTL, clean, ignore.case = TRUE)) {
+    compaction_ctrl$handle_ptl_error(chat)
+    return(tryCatch(
+      chat$chat(input),
+      error = function(e2) paste0("[PTL Error after compact] ", conditionMessage(e2))
+    ))
+  }
+
+  # Rate limit: exponential backoff up to max_retries
+  if (grepl(.ERR_RATE_LIMIT, clean, ignore.case = TRUE)) {
+    for (attempt in seq_len(max_retries)) {
+      wait_secs <- 2L ^ attempt   # 2, 4, 8 seconds
+      message(sprintf("[codeagent] Rate limited. Retry %d/%d in %ds...",
+                      attempt, max_retries, wait_secs))
+      Sys.sleep(wait_secs)
+      result <- tryCatch(chat$chat(input), error = function(e2) e2)
+      if (is.character(result)) return(result)
+      if (!grepl(.ERR_RATE_LIMIT, conditionMessage(result), ignore.case = TRUE))
+        return(paste0("[Error] ", conditionMessage(result)))
+    }
+    return(paste0("[Rate limit] Gave up after ", max_retries, " retries."))
+  }
+
+  # Network: retry with backoff
+  if (grepl(.ERR_NETWORK, clean, ignore.case = TRUE)) {
+    for (attempt in seq_len(min(max_retries, 2L))) {
+      Sys.sleep(attempt)
+      result <- tryCatch(chat$chat(input), error = function(e2) e2)
+      if (is.character(result)) return(result)
+    }
+    return(paste0("[Network Error] ", clean))
+  }
+
+  # Auth: no retry, surface clearly
+  if (grepl(.ERR_AUTH, clean, ignore.case = TRUE))
+    return(paste0("[Auth Error] Check CODEAGENT_API_KEY. ", clean))
+
+  # Unknown: surface as-is
+  paste0("[Error] ", clean)
 }

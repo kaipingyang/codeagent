@@ -8,12 +8,13 @@
 }
 \arguments{
 \item{input}{Character(1). Raw user input.}
+
+\item{cwd}{Character. Working directory.}
 }
 \value{
-Named list with \code{type} (\code{"skill"} or \code{"normal"}), and for skills:
-\code{name} and \code{args}.
+Named list with \code{type} (\code{"skill"} or \code{"normal"}).
 }
 \description{
-Detects \verb{/skillname [args]} patterns and returns a structured result.
+Detects \verb{/skillname [args]} patterns.
 }
 \keyword{internal}

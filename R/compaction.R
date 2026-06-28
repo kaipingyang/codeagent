@@ -282,6 +282,58 @@ ptl_fallback <- function(chat, drop_turns = 3L) {
 }
 
 # ---------------------------------------------------------------------------
+# L5: Context Collapse (read-time projection — replace large tool values inline)
+# ---------------------------------------------------------------------------
+
+#' L5: Context collapse via read-time projection
+#'
+#' Replaces the `value` field of all `ContentToolResult` objects in the
+#' conversation with a short summary, collapsing large tool outputs without
+#' dropping turns. Unlike L1 (which uses a fixed placeholder), this uses the
+#' first `max_chars` characters plus a token estimate notice.
+#'
+#' Called when token count is critically high and L3 full compaction has
+#' already been attempted (or failed). This is the lightest non-destructive
+#' option before L4 drop.
+#'
+#' @param chat An `ellmer::Chat` object.
+#' @param max_chars Integer. Max characters to retain per tool result.
+#' @return Invisibly NULL.
+#' @keywords internal
+context_collapse <- function(chat, max_chars = 200L) {
+  turns <- .safe_get_turns(chat)
+  if (length(turns) == 0L) return(invisible(NULL))
+  modified <- FALSE
+
+  new_turns <- lapply(turns, function(turn) {
+    contents <- tryCatch(turn@contents, error = function(e) NULL)
+    if (is.null(contents)) return(turn)
+    new_contents <- lapply(contents, function(c) {
+      is_result <- tryCatch(
+        inherits(c, "ellmer::ContentToolResult") ||
+          identical(class(c)[[1L]], "ContentToolResult"),
+        error = function(e) FALSE
+      )
+      if (!is_result) return(c)
+      val <- tryCatch(as.character(c@value %||% ""), error = function(e) "")
+      if (nchar(val) <= max_chars) return(c)
+      collapsed <- paste0(
+        substr(val, 1L, max_chars),
+        sprintf("\n[...collapsed %d chars]", nchar(val) - max_chars)
+      )
+      tryCatch({ c@value <- collapsed; modified <<- TRUE }, error = function(e) NULL)
+      c
+    })
+    tryCatch(turn@contents <- new_contents, error = function(e) NULL)
+    turn
+  })
+
+  if (modified)
+    tryCatch(chat$set_turns(new_turns), error = function(e) NULL)
+  invisible(NULL)
+}
+
+# ---------------------------------------------------------------------------
 # CompactionController R6 class (circuit breaker + level dispatcher)
 # ---------------------------------------------------------------------------
 
@@ -324,8 +376,11 @@ CompactionController <- R6::R6Class(
           snip_old_tools(chat)
         } else if (n < threshold + .COMPACT_L3_MARGIN) {
           session_memory_compact(chat, model = compact_model)
-        } else {
+        } else if (n < threshold + .COMPACT_L5_MARGIN) {
           full_compact(chat, model = compact_model)
+        } else {
+          # L5: context collapse (read-time projection) before L4 drop
+          context_collapse(chat)
         }
         private$failures <- 0L
       }, error = function(e) {

@@ -8,23 +8,28 @@ agent_tool(
   model = "claude-sonnet-4-6",
   mode = "default",
   rules = list(),
-  max_turns = 30L
+  max_turns = 30L,
+  worktree_isolation = FALSE
 )
 }
 \arguments{
-\item{model}{Character. Model for sub-agents.}
+\item{model}{Character. Model for sub-agents (fallback only).}
 
 \item{mode}{Character. Permission mode (inherited from parent).}
 
 \item{rules}{List. Permission rules (inherited).}
 
-\item{max_turns}{Integer. Max turns for sub-agent (default 30).}
+\item{max_turns}{Integer. Max turns for sub-agent fallback (default 30).}
+
+\item{worktree_isolation}{Logical. Run sub-agent in an isolated git worktree.
+Only applies to the fallback implementation; btw subagent handles its
+own isolation.}
 }
 \value{
 An \code{ellmer::tool()} object.
 }
 \description{
-Spawns a sub-agent to handle complex multi-step delegated tasks.
-The sub-agent runs synchronously and its final response is returned
-as the tool result.
+When btw is available, delegates to \code{btw_tool_agent_subagent()} which
+provides isolated chat sessions with resumable state. Falls back to
+codeagent's own sub-agent loop otherwise.
 }

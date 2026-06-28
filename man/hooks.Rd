@@ -4,8 +4,8 @@
 \alias{hooks}
 \title{Tool Hook System}
 \description{
-Pre- and post-tool execution hooks for codeagent.
-Pre-hooks run after permission checks, before execution.
-Post-hooks run after execution to inspect or modify output.
+Lifecycle hook system for codeagent.
+Supports PreToolUse, PostToolUse, PostToolUseFailure, PermissionDenied,
+UserMessage, AssistantMessage, and custom event hooks.
 }
 \keyword{internal}

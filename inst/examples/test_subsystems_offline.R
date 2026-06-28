@@ -553,7 +553,7 @@ if (!nzchar(api_key)) {
     system_prompt = "test"
   )
   sid2 <- codeagent:::save_session(chat2, cwd = .tmp)
-  ql   <- codeagent:::query_loop(
+  ql   <- codeagent:::agent_loop(
     "Say LOOP_OK",
     chat          = chat2,
     settings      = codeagent:::load_settings(.tmp),
@@ -561,9 +561,9 @@ if (!nzchar(api_key)) {
     session_id    = sid2,
     iteration     = 1L
   )
-  ok(identical(ql$stop_reason, "completed"),              "query_loop stop_reason = completed")
-  ok(is.character(ql$response) && nzchar(ql$response),   "query_loop returns non-empty response")
-  ok(grepl("LOOP_OK", ql$response, fixed = TRUE),         "query_loop response contains LOOP_OK")
+  ok(identical(ql$stop_reason, "completed"),              "agent_loop stop_reason = completed")
+  ok(is.character(ql$response) && nzchar(ql$response),   "agent_loop returns non-empty response")
+  ok(grepl("LOOP_OK", ql$response, fixed = TRUE),         "agent_loop response contains LOOP_OK")
 }
 
 # ---------------------------------------------------------------------------

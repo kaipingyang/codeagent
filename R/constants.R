@@ -34,6 +34,10 @@ NULL
 # L3 (full compact) triggers 30K above the base threshold
 .COMPACT_L3_MARGIN <- 30000L
 
+# L5 (context collapse) triggers 45K above the base threshold
+# Applied before L4 drop when full compact has been attempted
+.COMPACT_L5_MARGIN <- 45000L
+
 # L2: minimum tokens to retain in the summary
 .COMPACT_L2_MIN_TOKENS <- 10000L
 

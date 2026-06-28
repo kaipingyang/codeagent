@@ -9,7 +9,7 @@ load_skill_prompt(name, args = "", cwd = getwd())
 \arguments{
 \item{name}{Character. Skill name.}
 
-\item{args}{Character. Argument string passed after the skill name.}
+\item{args}{Character. Arguments passed after the skill name.}
 
 \item{cwd}{Character. Project working directory.}
 }
@@ -17,6 +17,6 @@ load_skill_prompt(name, args = "", cwd = getwd())
 Character(1). The fully resolved prompt string.
 }
 \description{
-Reads the complete Markdown body and substitutes \verb{$ARGUMENTS} / \verb{$ARG1}
-placeholders.
+Reads \code{SKILL.md} body and substitutes \verb{$ARGUMENTS} / \verb{$ARG1} etc.
+Uses btw's \code{find_skill()} when available, falls back to direct file read.
 }

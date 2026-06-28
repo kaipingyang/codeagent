@@ -5,29 +5,61 @@
 \title{Launch the codeagent Shiny application}
 \usage{
 codeagent_app(
-  model = "claude-sonnet-4-6",
+  client = NULL,
+  pinned_skills = character(0),
+  theme = c("light", "glassmorphism", "dark"),
+  port = NULL,
+  launch.browser = TRUE,
+  model = NULL,
   permission_mode = "default",
   cwd = getwd(),
-  port = NULL,
-  launch.browser = TRUE
+  btw_groups = NULL,
+  chat = NULL
 )
 }
 \arguments{
-\item{model}{Character. Anthropic model to use.}
+\item{client}{A \code{CodagentClient} from \code{\link[=codeagent_client]{codeagent_client()}}, an
+\code{ellmer::Chat}, or NULL (legacy mode — use \code{model}/\code{permission_mode}/etc.).}
 
-\item{permission_mode}{Character. Initial permission mode (see \link{PermissionMode}).}
+\item{pinned_skills}{Character vector. Skill names pinned at top of Skills panel.}
 
-\item{cwd}{Character. Working directory.}
+\item{theme}{Character. \code{"light"} (default), \code{"glassmorphism"}, or \code{"dark"}.}
 
-\item{port}{Integer or NULL. Port for the Shiny app (NULL uses a random port).}
+\item{port}{Integer or NULL. Shiny port (NULL = random).}
 
 \item{launch.browser}{Logical. Open in browser (default TRUE).}
+
+\item{model}{Character. Legacy: model name (ignored when \code{client} is a
+\code{CodagentClient}).}
+
+\item{permission_mode}{Character. Legacy: permission mode.}
+
+\item{cwd}{Character. Legacy: working directory.}
+
+\item{btw_groups}{Character vector or NULL. Legacy: btw tool groups.}
+
+\item{chat}{An \code{ellmer::Chat}. Legacy alias — prefer passing via
+\code{\link[=codeagent_client]{codeagent_client()}}.}
 }
 \value{
 A \code{shiny.appobj}.
 }
 \description{
-Opens an interactive coding assistant in your browser.
-Supports streaming output, tool approval dialogs, ESC interruption,
-permission mode switching, and session management.
+Two calling conventions:
+}
+\details{
+\strong{New (recommended):} pass a \code{\link[=codeagent_client]{codeagent_client()}} as first argument.
+All agent configuration (model, permission_mode, btw_groups, etc.) lives
+in the client. Only UI-specific params are needed here.
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{client <- codeagent_client(
+  chat_openai_compatible(base_url=..., model=..., credentials=...),
+  permission_mode = "bypass",
+  btw_groups = c("docs", "git")
+)
+codeagent_app(client, pinned_skills = c("plan"), theme = "light")
+}\if{html}{\out{</div>}}
+
+\strong{Legacy (backward-compatible):} pass model/permission_mode/etc. directly,
+or supply a raw \code{ellmer::Chat} via \verb{chat=}.
 }

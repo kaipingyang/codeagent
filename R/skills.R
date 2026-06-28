@@ -212,10 +212,28 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
   }, character(1)), collapse = "\n")
 
   ellmer::tool(
-    fun = function(name, args = "") {
-      tryCatch(
+    fun = function(name, args = "", `_intent` = NULL) {
+      result <- tryCatch(
         load_skill_prompt(name, args, cwd),
         error = function(e) paste0("[Skill error] ", conditionMessage(e))
+      )
+      intent_val <- `_intent`
+      ellmer::ContentToolResult(
+        value = result,
+        extra = list(
+          display = list(
+            title    = htmltools::HTML(sprintf(
+              "Skill: <code>/%s</code>%s",
+              htmltools::htmlEscape(name),
+              if (!is.null(intent_val) && nzchar(intent_val))
+                sprintf(" <em style='color:#888;font-size:0.85em;'>%s</em>",
+                        htmltools::htmlEscape(intent_val))
+              else ""
+            )),
+            markdown = sprintf("**Skill `/%s` loaded**\n\n%s",
+                               name, substr(result, 1L, 200L))
+          )
+        )
       )
     },
     description = paste0(
@@ -226,16 +244,22 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
       "Available skills:\n", skill_list, "\n\n",
       "After loading, follow the skill's instructions exactly."
     ),
-    arguments = list(
-      name = ellmer::type_enum(
-        values      = names(auto_skills),
-        description = "Skill name to load.",
-        required    = TRUE
+    arguments = c(
+      list(
+        name = ellmer::type_enum(
+          values      = names(auto_skills),
+          description = "Skill name to load.",
+          required    = TRUE
+        ),
+        args = ellmer::type_string(
+          description = "Arguments to pass (e.g. task description for /plan).",
+          required    = FALSE
+        )
       ),
-      args = ellmer::type_string(
-        description = "Arguments to pass (e.g. task description for /plan).",
+      `_intent` = list(ellmer::type_string(
+        description = "Brief description of why this skill was selected.",
         required    = FALSE
-      )
+      ))
     ),
     annotations = ellmer::tool_annotations(
       title          = "Load Skill",

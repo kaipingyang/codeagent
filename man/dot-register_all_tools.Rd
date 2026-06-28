@@ -9,9 +9,9 @@
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
 
-\item{settings}{Named list. Output of \code{load_settings()}.}
+\item{settings}{Named list from \code{\link[=load_settings]{load_settings()}}.}
 
-\item{ask_fn}{Function or NULL. Permission ask callback.}
+\item{ask_fn}{Function or NULL.}
 }
 \value{
 Invisibly \code{chat}.
