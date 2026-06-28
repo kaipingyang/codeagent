@@ -9,13 +9,12 @@ build_skill_hint(cwd = getwd(), max_tokens = 1000L)
 \arguments{
 \item{cwd}{Character. Project working directory.}
 
-\item{max_tokens}{Integer. Approximate token budget for the listing.}
+\item{max_tokens}{Integer. Approximate token budget.}
 }
 \value{
 Character(1). The skill hint block, or \code{""} if no skills found.
 }
 \description{
-Returns a short listing of available skills (name + one-line description).
-Total size is capped at \code{max_tokens} estimated tokens to stay within the
-1\% context budget recommended by Claude Code.
+Returns skill listing for the system prompt.
+Uses btw's system prompt format when available; falls back to simple list.
 }

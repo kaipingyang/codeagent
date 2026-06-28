@@ -5,13 +5,13 @@
 \alias{PermissionMode}
 \title{Permission modes for codeagent}
 \format{
-An object of class \code{list} of length 6.
+An object of class \code{list} of length 7.
 }
 \usage{
 PermissionMode
 }
 \description{
-A named list of the six permission modes, mirroring Claude Code's design.
+A named list of the seven permission modes, mirroring Claude Code's design.
 }
 \details{
 \itemize{
@@ -21,6 +21,8 @@ A named list of the six permission modes, mirroring Claude Code's design.
 \item \code{bypass}       -- Almost all operations auto-approved.
 \item \code{dont_ask}     -- Operations that would ask are auto-rejected (CI/CD).
 \item \code{auto}         -- AI classifier (haiku model) decides automatically.
+\item \code{bubble}       -- Sub-agent mode: permission decisions bubble up to the
+parent agent rather than being resolved locally.
 }
 }
 \keyword{datasets}

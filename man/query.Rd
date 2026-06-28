@@ -4,8 +4,8 @@
 \alias{query}
 \title{Agent Query Loop}
 \description{
-\code{codeagent()} for one-shot queries and \code{query_loop()} for
-the main agentic loop. Integrates all subsystems: compaction, budget,
-resource management, permissions, hooks, and session persistence.
+\code{codeagent_client()} builds a configured client from any
+ellmer Chat. \code{codeagent()} runs one-shot queries. \code{agent_loop()} drives
+the Shiny app's agentic loop.
 }
 \keyword{internal}

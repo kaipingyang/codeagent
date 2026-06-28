@@ -2,30 +2,34 @@
 % Please edit documentation in R/tools_agent.R
 \name{register_agent_tool}
 \alias{register_agent_tool}
-\title{Register the Agent tool to an ellmer Chat object}
+\title{Register the Agent tool and any btw custom agent tools}
 \usage{
 register_agent_tool(
   chat,
   model = "claude-sonnet-4-6",
   mode = "default",
   rules = list(),
-  max_turns = 30L
+  max_turns = 30L,
+  worktree_isolation = FALSE
 )
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
 
-\item{model}{Character. Model for sub-agents.}
+\item{model}{Character. Model for sub-agents (fallback).}
 
 \item{mode}{Character. Permission mode.}
 
 \item{rules}{List. Permission rules.}
 
 \item{max_turns}{Integer. Max turns per sub-agent.}
+
+\item{worktree_isolation}{Logical. Run sub-agents in isolated git worktrees.}
 }
 \value{
 Invisibly returns \code{chat}.
 }
 \description{
-Register the Agent tool to an ellmer Chat object
+Registers \code{btw_tool_agent_subagent} (or fallback), plus any custom agents
+discovered from \verb{.btw/agent-*.md}, \verb{.claude/agents/}, etc.
 }

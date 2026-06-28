@@ -10,11 +10,11 @@ list_skills_meta(cwd = getwd())
 \item{cwd}{Character. Project working directory.}
 }
 \value{
-Named list of \code{\link[=SkillMeta]{SkillMeta()}} objects (keyed by skill name).
+Named list of \code{SkillMeta} objects (keyed by skill name).
 }
 \description{
-Scans three directories in order (package built-ins, user global, project
-local). Later entries override earlier ones by name.
-Results are cached per working directory; the cache is invalidated when
-skill file mtimes change.
+Scans all configured directories for \verb{<name>/SKILL.md} files.
+btw is used as the primary backend when available; codeagent-specific
+paths (.claude/, .codex/) are merged in.
+Results are cached per cwd; invalidated when any SKILL.md mtime changes.
 }

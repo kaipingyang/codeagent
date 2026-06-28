@@ -5,7 +5,20 @@
 \title{Skill System}
 \description{
 Progressive skill loading for codeagent.
-Level 1: only name + description (frontmatter) loaded at startup.
-Level 2: full prompt loaded on demand when skill is invoked.
+Uses btw as the discovery and loading backend.
+Skill format: \verb{<name>/SKILL.md} directories (btw-compatible).
+
+Discovery order (later overrides earlier):
+\enumerate{
+\item codeagent built-ins (inst/skills/)
+\item Other attached R packages with inst/skills/
+\item btw built-in skills
+\item btw user dirs (~/.config/btw/skills/, ~/.btw/skills/)
+\item ~/.codeagent/skills/  (codeagent user global)
+\item .btw/skills/, .agents/skills/ (btw project dirs)
+\item .codeagent/skills/  (codeagent project local)
+\item .claude/skills/     (Claude Code compat)
+\item .codex/skills/      (Codex compat)
+}
 }
 \keyword{internal}

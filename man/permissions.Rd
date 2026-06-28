@@ -4,6 +4,6 @@
 \alias{permissions}
 \title{Permission System}
 \description{
-Six-mode permission system mirroring Claude Code's permission model.
+Seven-mode permission system mirroring Claude Code's permission model.
 }
 \keyword{internal}

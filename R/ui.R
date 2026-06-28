@@ -86,10 +86,8 @@ codeagent_app <- function(
   # btw tool groups available for Settings panel
   btw_available_groups <- tryCatch({
     if (requireNamespace("btw", quietly = TRUE)) {
-      tools <- btw::btw_tools()
-      grps  <- unique(sub("btw_tool_([a-z]+)_.*", "\\1",
-                          sapply(tools, function(t) t@name)))
-      sort(grps[grps != "btw_tool_skill"])
+      # Use .BTW_GROUPS keys (authoritative list, excludes skill)
+      sort(names(codeagent:::.BTW_GROUPS))
     } else character(0)
   }, error = function(e) character(0))
 

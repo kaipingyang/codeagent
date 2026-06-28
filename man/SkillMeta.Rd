@@ -7,21 +7,27 @@
 SkillMeta(
   name,
   description = "",
-  context = "inline",
+  argument_hint = "",
+  auto_trigger = TRUE,
   allowed_tools = NULL,
+  base_dir = NULL,
   path = NULL
 )
 }
 \arguments{
 \item{name}{Character. Skill name.}
 
-\item{description}{Character. One-line description.}
+\item{description}{Character. One-line description shown in skill list.}
 
-\item{context}{Character. \code{"inline"} or \code{"fork"}.}
+\item{argument_hint}{Character. Hint shown after skill name (e.g. "\if{html}{\out{<task>}}").}
 
-\item{allowed_tools}{Character vector or NULL.}
+\item{auto_trigger}{Logical. Whether LLM may auto-invoke this skill.}
 
-\item{path}{Character. Absolute path to the .md file.}
+\item{allowed_tools}{Character vector or NULL. Tools this skill may use.}
+
+\item{base_dir}{Character. Directory containing SKILL.md.}
+
+\item{path}{Character. Absolute path to SKILL.md.}
 }
 \value{
 Object of class \code{SkillMeta}.

@@ -4,8 +4,15 @@
 \alias{tools_agent}
 \title{Agent Sub-agent Tool}
 \description{
-The Agent tool spawns a sub-agent (a fresh ellmer Chat session)
-to handle a delegated task. The sub-agent inherits the parent's tool set
-and permission mode but starts with a clean conversation history.
+Sub-agent delegation tools. Uses btw's hierarchical subagent
+system when available (\code{btw_tool_agent_subagent}); falls back to codeagent's
+own simple sub-agent loop.
+
+Also discovers and registers custom agent definitions from:
+\itemize{
+\item \verb{.btw/agent-*.md} (project)
+\item \verb{~/.btw/agent-*.md} (user)
+\item \verb{.claude/agents/} (Claude Code compat)
+}
 }
 \keyword{internal}
