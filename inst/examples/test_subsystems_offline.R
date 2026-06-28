@@ -337,7 +337,7 @@ ok(is.character(hint) && nzchar(hint),                    "build_skill_hint retu
 ok(grepl("compact", hint),                                "hint mentions compact skill")
 
 # Local skill override — new directory format: <name>/SKILL.md
-skill_dir <- file.path(.tmp, ".codeagent", "skills", "greet")
+skill_dir <- file.path(.tmp, ".btw", "skills", "greet")
 dir.create(skill_dir, recursive = TRUE, showWarnings = FALSE)
 writeLines(c(
   "---",

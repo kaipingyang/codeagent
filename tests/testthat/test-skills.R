@@ -64,9 +64,9 @@ test_that(".parse_skill_md falls back to directory name if name missing", {
 # list_skills_meta: discovers SKILL.md directories
 # ---------------------------------------------------------------------------
 
-test_that("list_skills_meta discovers SKILL.md directories in .codeagent/skills", {
+test_that("list_skills_meta discovers SKILL.md directories in .btw/skills", {
   tmp_dir    <- withr::local_tempdir()
-  skills_dir <- file.path(tmp_dir, ".codeagent", "skills", "myskill")
+  skills_dir <- file.path(tmp_dir, ".btw", "skills", "myskill")
   dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
   writeLines(c("---", "name: myskill", "description: desc", "---", "body"),
              file.path(skills_dir, "SKILL.md"))
@@ -78,7 +78,7 @@ test_that("list_skills_meta discovers SKILL.md directories in .codeagent/skills"
 
 test_that("list_skills_meta caches and invalidates on SKILL.md change", {
   tmp_dir    <- withr::local_tempdir()
-  skills_dir <- file.path(tmp_dir, ".codeagent", "skills", "myskill")
+  skills_dir <- file.path(tmp_dir, ".btw", "skills", "myskill")
   dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
   skill_path <- file.path(skills_dir, "SKILL.md")
   writeLines(c("---", "name: myskill", "description: v1", "---", "body"), skill_path)
