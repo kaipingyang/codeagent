@@ -1,39 +1,123 @@
-test_that(".parse_skill_frontmatter returns NULL for files without ---", {
-  tmp <- withr::local_tempfile(fileext = ".md")
-  writeLines(c("# No frontmatter", "Just content."), tmp)
-  expect_null(codeagent:::.parse_skill_frontmatter(tmp))
+# tests/testthat/test-skills.R
+# Updated for btw-compatible skill system (name/SKILL.md directory format)
+
+# ---------------------------------------------------------------------------
+# .parse_skill_md: new SKILL.md parser
+# ---------------------------------------------------------------------------
+
+test_that(".parse_skill_md returns NULL for files without ---", {
+  tmp_dir <- withr::local_tempdir()
+  skill_md <- file.path(tmp_dir, "SKILL.md")
+  writeLines(c("# No frontmatter", "Just content."), skill_md)
+  expect_null(codeagent:::.parse_skill_md(skill_md))
 })
 
-test_that(".parse_skill_frontmatter returns NULL for non-existent file", {
-  expect_null(codeagent:::.parse_skill_frontmatter("/nonexistent/skill.md"))
+test_that(".parse_skill_md returns NULL for non-existent file", {
+  expect_null(codeagent:::.parse_skill_md("/nonexistent/SKILL.md"))
 })
 
-test_that(".parse_skill_frontmatter parses name, description, context", {
-  tmp <- withr::local_tempfile(fileext = ".md")
+test_that(".parse_skill_md parses name, description, argument-hint", {
+  tmp_dir  <- withr::local_tempdir()
+  skill_md <- file.path(tmp_dir, "SKILL.md")
   writeLines(c(
     "---",
     "name: my-skill",
     "description: A test skill",
-    "context: inline",
+    "argument-hint: \"<task>\"",
     "---",
     "This is the skill body."
-  ), tmp)
-  meta <- codeagent:::.parse_skill_frontmatter(tmp)
+  ), skill_md)
+  meta <- codeagent:::.parse_skill_md(skill_md)
   expect_false(is.null(meta))
-  expect_equal(meta$name,        "my-skill")
-  expect_equal(meta$description, "A test skill")
-  expect_equal(meta$context,     "inline")
+  expect_equal(meta$name,          "my-skill")
+  expect_equal(meta$description,   "A test skill")
+  expect_equal(meta$argument_hint, '"<task>"')
 })
 
-test_that(".parse_skill_frontmatter falls back to filename if name missing", {
-  tmp <- withr::local_tempfile(fileext = ".md")
-  writeLines(c("---", "description: No name field", "---", "Body."), tmp)
-  meta <- codeagent:::.parse_skill_frontmatter(tmp)
-  expect_false(is.null(meta))
-  # Name should be filename stem
-  expect_true(nzchar(meta$name))
-  expect_false(identical(meta$name, ""))
+test_that(".parse_skill_md auto_trigger defaults to TRUE", {
+  tmp_dir  <- withr::local_tempdir()
+  skill_md <- file.path(tmp_dir, "SKILL.md")
+  writeLines(c("---", "name: s", "description: d", "---", "body"), skill_md)
+  meta <- codeagent:::.parse_skill_md(skill_md)
+  expect_true(meta$auto_trigger)
 })
+
+test_that(".parse_skill_md auto_trigger can be disabled", {
+  tmp_dir  <- withr::local_tempdir()
+  skill_md <- file.path(tmp_dir, "SKILL.md")
+  writeLines(c("---", "name: s", "description: d", "auto-trigger: false", "---", "body"),
+             skill_md)
+  meta <- codeagent:::.parse_skill_md(skill_md)
+  expect_false(meta$auto_trigger)
+})
+
+test_that(".parse_skill_md falls back to directory name if name missing", {
+  tmp_dir  <- withr::local_tempdir()
+  skill_md <- file.path(tmp_dir, "SKILL.md")
+  writeLines(c("---", "description: No name field", "---", "Body."), skill_md)
+  meta <- codeagent:::.parse_skill_md(skill_md)
+  expect_false(is.null(meta))
+  expect_true(nzchar(meta$name))
+})
+
+# ---------------------------------------------------------------------------
+# list_skills_meta: discovers SKILL.md directories
+# ---------------------------------------------------------------------------
+
+test_that("list_skills_meta discovers SKILL.md directories in .codeagent/skills", {
+  tmp_dir    <- withr::local_tempdir()
+  skills_dir <- file.path(tmp_dir, ".codeagent", "skills", "myskill")
+  dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
+  writeLines(c("---", "name: myskill", "description: desc", "---", "body"),
+             file.path(skills_dir, "SKILL.md"))
+
+  metas <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_true("myskill" %in% names(metas))
+  expect_equal(metas[["myskill"]]$description, "desc")
+})
+
+test_that("list_skills_meta caches and invalidates on SKILL.md change", {
+  tmp_dir    <- withr::local_tempdir()
+  skills_dir <- file.path(tmp_dir, ".codeagent", "skills", "myskill")
+  dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
+  skill_path <- file.path(skills_dir, "SKILL.md")
+  writeLines(c("---", "name: myskill", "description: v1", "---", "body"), skill_path)
+
+  metas1 <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  metas2 <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_identical(metas1, metas2)
+
+  Sys.sleep(0.1)
+  writeLines(c("---", "name: myskill", "description: v2", "---", "body"), skill_path)
+  metas3 <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_equal(metas3[["myskill"]]$description, "v2")
+})
+
+test_that("list_skills_meta discovers .claude/skills/ directory", {
+  tmp_dir    <- withr::local_tempdir()
+  skills_dir <- file.path(tmp_dir, ".claude", "skills", "claude-skill")
+  dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
+  writeLines(c("---", "name: claude-skill", "description: from claude", "---", "body"),
+             file.path(skills_dir, "SKILL.md"))
+
+  metas <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_true("claude-skill" %in% names(metas))
+})
+
+test_that("list_skills_meta discovers .codex/skills/ directory", {
+  tmp_dir    <- withr::local_tempdir()
+  skills_dir <- file.path(tmp_dir, ".codex", "skills", "codex-skill")
+  dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
+  writeLines(c("---", "name: codex-skill", "description: from codex", "---", "body"),
+             file.path(skills_dir, "SKILL.md"))
+
+  metas <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_true("codex-skill" %in% names(metas))
+})
+
+# ---------------------------------------------------------------------------
+# .substitute_args
+# ---------------------------------------------------------------------------
 
 test_that(".substitute_args replaces $ARGUMENTS and $ARG1/$ARG2", {
   body <- "Run with args: $ARGUMENTS. First: $ARG1. Second: $ARG2."
@@ -47,26 +131,9 @@ test_that(".substitute_args leaves unmatched $ARGn untouched", {
   expect_equal(result, "Only one arg: hello. Missing: $ARG2.")
 })
 
-test_that("list_skills_meta caches results and invalidates on file change", {
-  tmp_dir    <- withr::local_tempdir()
-  skills_dir <- file.path(tmp_dir, ".codeagent", "skills")
-  dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
-
-  skill_path <- file.path(skills_dir, "myskill.md")
-  writeLines(c("---", "name: myskill", "description: desc", "---", "body"), skill_path)
-
-  metas1 <- codeagent:::list_skills_meta(cwd = tmp_dir)
-  metas2 <- codeagent:::list_skills_meta(cwd = tmp_dir)
-  # Second call should use cache (identical objects)
-  expect_identical(metas1, metas2)
-  expect_true("myskill" %in% names(metas1))
-
-  # After modifying the file, cache should be invalidated
-  Sys.sleep(0.1)
-  writeLines(c("---", "name: myskill", "description: updated", "---", "body"), skill_path)
-  metas3 <- codeagent:::list_skills_meta(cwd = tmp_dir)
-  expect_equal(metas3[["myskill"]]$description, "updated")
-})
+# ---------------------------------------------------------------------------
+# .strip_frontmatter
+# ---------------------------------------------------------------------------
 
 test_that(".strip_frontmatter removes YAML front matter", {
   lines <- c("---", "name: test", "---", "# Heading", "Body content")
@@ -81,7 +148,7 @@ test_that(".strip_frontmatter returns lines unchanged if no front matter", {
 })
 
 # ---------------------------------------------------------------------------
-# .preprocess_input: regmatches must use same string as regexec
+# .preprocess_input
 # ---------------------------------------------------------------------------
 
 test_that(".preprocess_input detects skill in clean input", {
@@ -92,7 +159,6 @@ test_that(".preprocess_input detects skill in clean input", {
 })
 
 test_that(".preprocess_input handles leading/trailing whitespace correctly", {
-  # Bug: regexec was on trimws(input) but regmatches on untrimmed input
   r <- codeagent:::.preprocess_input("  /plan refactor utils  ")
   expect_equal(r$type, "skill")
   expect_equal(r$name, "plan")

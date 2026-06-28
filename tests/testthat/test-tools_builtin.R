@@ -3,6 +3,16 @@
 #
 # ellmer::tool() returns an S7 ToolDef that extends `function`, so tools
 # are directly callable: tool_obj(arg1, arg2, ...).
+#
+# Tools now return ContentToolResult objects. Use .tool_val() to extract
+# the character value for assertions.
+
+# Extract the string value from a tool result (ContentToolResult or character)
+.tool_val <- function(x) {
+  if (S7::S7_inherits(x, ellmer::ContentToolResult)) as.character(x@value)
+  else if (is.character(x)) x
+  else tryCatch(as.character(x), error = function(e) format(x))
+}
 
 # ---------------------------------------------------------------------------
 # read_tool: limit=0 / offset-past-EOF bugs
@@ -12,14 +22,14 @@ test_that("read_tool: limit=0 returns empty string", {
   tmp <- withr::local_tempfile()
   writeLines(c("line1", "line2", "line3"), tmp)
   tool <- codeagent:::read_tool()
-  expect_equal(tool(tmp, offset = NULL, limit = 0), "")
+  expect_equal(.tool_val(tool(tmp, offset = NULL, limit = 0)), "")
 })
 
 test_that("read_tool: offset past EOF returns empty string", {
   tmp <- withr::local_tempfile()
   writeLines(c("line1", "line2"), tmp)
   tool <- codeagent:::read_tool()
-  expect_equal(tool(tmp, offset = 99, limit = NULL), "")
+  expect_equal(.tool_val(tool(tmp, offset = 99, limit = NULL)), "")
 })
 
 test_that("read_tool: offset=2 limit=1 returns exactly line 2", {
@@ -27,9 +37,9 @@ test_that("read_tool: offset=2 limit=1 returns exactly line 2", {
   writeLines(c("alpha", "beta", "gamma"), tmp)
   tool <- codeagent:::read_tool()
   result <- tool(tmp, offset = 2, limit = 1)
-  expect_match(result, "^2\tbeta$")
-  expect_false(grepl("alpha", result))
-  expect_false(grepl("gamma", result))
+  expect_match(.tool_val(result), "^2\tbeta$")
+  expect_false(grepl("alpha", .tool_val(result)))
+  expect_false(grepl("gamma", .tool_val(result)))
 })
 
 test_that("read_tool: line numbers are in ascending order (not reversed)", {
@@ -37,7 +47,7 @@ test_that("read_tool: line numbers are in ascending order (not reversed)", {
   writeLines(c("A", "B", "C", "D", "E"), tmp)
   tool <- codeagent:::read_tool()
   result <- tool(tmp, offset = 2, limit = 3)
-  nums   <- as.integer(sub("\t.*", "", strsplit(result, "\n")[[1L]]))
+  nums   <- as.integer(sub("\t.*", "", strsplit(.tool_val(result), "\n")[[1L]]))
   expect_equal(nums, c(2L, 3L, 4L))
 })
 
@@ -50,7 +60,7 @@ test_that("edit_tool returns error when old_string not found", {
   writeLines(c("hello world", "foo bar"), tmp)
   tool   <- codeagent:::edit_tool(mode = "bypass")
   result <- tool(tmp, "NONEXISTENT_STRING", "replacement", replace_all = FALSE)
-  expect_match(result, "\\[Error\\].*not found", ignore.case = TRUE)
+  expect_match(.tool_val(result), "\\[Error\\].*not found", ignore.case = TRUE)
   expect_equal(readLines(tmp), c("hello world", "foo bar"))
 })
 
@@ -59,7 +69,7 @@ test_that("edit_tool returns error when old_string appears more than once", {
   writeLines(c("dup line", "dup line", "other"), tmp)
   tool   <- codeagent:::edit_tool(mode = "bypass")
   result <- tool(tmp, "dup line", "replaced", replace_all = FALSE)
-  expect_match(result, "\\[Error\\].*2.*times", ignore.case = TRUE)
+  expect_match(.tool_val(result), "\\[Error\\].*2.*times", ignore.case = TRUE)
 })
 
 test_that("edit_tool succeeds when old_string appears exactly once", {
@@ -67,7 +77,7 @@ test_that("edit_tool succeeds when old_string appears exactly once", {
   writeLines(c("find me", "leave alone"), tmp)
   tool   <- codeagent:::edit_tool(mode = "bypass")
   result <- tool(tmp, "find me", "replaced", replace_all = FALSE)
-  expect_match(result, "Edited:")
+  expect_match(.tool_val(result), "Edited:")
   content <- paste(readLines(tmp), collapse = "\n")
   expect_true(grepl("replaced", content))
   expect_false(grepl("find me", content))
@@ -83,7 +93,7 @@ test_that("multi_edit_tool returns error when old_string not found", {
   tool   <- codeagent:::multi_edit_tool(mode = "bypass")
   edits  <- list(list(old_string = "DOES_NOT_EXIST", new_string = "X"))
   result <- tool(tmp, edits)
-  expect_match(result, "\\[Error\\].*found 0", ignore.case = TRUE)
+  expect_match(.tool_val(result), "\\[Error\\].*found 0", ignore.case = TRUE)
   expect_equal(readLines(tmp), c("existing content", "second line"))
 })
 
@@ -93,7 +103,7 @@ test_that("multi_edit_tool aborts on first failed edit without partial apply", {
   tool  <- codeagent:::multi_edit_tool(mode = "bypass")
   edits <- list(list(old_string = "MISSING", new_string = "X"))
   result <- tool(tmp, edits)
-  expect_match(result, "\\[Error\\]", ignore.case = TRUE)
+  expect_match(.tool_val(result), "\\[Error\\]", ignore.case = TRUE)
   expect_equal(readLines(tmp), c("aaa", "bbb"))
 })
 
@@ -105,15 +115,15 @@ test_that("bash_tool: run_in_background=TRUE returns background message immediat
   tool   <- codeagent:::bash_tool(mode = "bypass")
   # Use a harmless no-op command; timing would be flaky so just check return value.
   result <- tool("true", run_in_background = TRUE)
-  expect_match(result, "Background", ignore.case = TRUE)
-  expect_match(result, "command started", ignore.case = TRUE)
+  expect_match(.tool_val(result), "Background", ignore.case = TRUE)
+  expect_match(.tool_val(result), "command started", ignore.case = TRUE)
 })
 
 test_that("bash_tool: run_in_background=FALSE (default) does NOT return background message", {
   tool   <- codeagent:::bash_tool(mode = "bypass")
   # Verify the normal (synchronous) code path is taken: no "Background" in result.
   result <- tool("true")
-  expect_false(grepl("Background", result, ignore.case = TRUE))
+  expect_false(grepl("Background", .tool_val(result), ignore.case = TRUE))
 })
 
 # ---------------------------------------------------------------------------
@@ -159,9 +169,9 @@ test_that("glob_tool: **/*.R pattern returns R files via portable helper", {
   tool   <- codeagent:::glob_tool()
   result <- tool("**/*.R", path = tmpdir)
 
-  expect_false(identical(result, "No files matched."))
-  expect_match(result, "root\\.R")
-  expect_match(result, "leaf\\.R")
+  expect_false(identical(.tool_val(result), "No files matched."))
+  expect_match(.tool_val(result), "root\\.R")
+  expect_match(.tool_val(result), "leaf\\.R")
 })
 
 test_that("glob_tool: non-** pattern still works via Sys.glob", {
@@ -171,8 +181,8 @@ test_that("glob_tool: non-** pattern still works via Sys.glob", {
 
   tool   <- codeagent:::glob_tool()
   result <- tool("*.R", path = tmpdir)
-  expect_match(result, "script\\.R")
-  expect_false(grepl("script\\.txt", result))
+  expect_match(.tool_val(result), "script\\.R")
+  expect_false(grepl("script\\.txt", .tool_val(result)))
 })
 
 # ---------------------------------------------------------------------------
@@ -189,7 +199,7 @@ test_that("grep_tool fallback: -n=TRUE produces filepath:linenum:content", {
   result <- tool("hello", path = tmpdir, glob = "*.R", `-n` = TRUE)
 
   # Each match line must contain at least two colons (path:num:content).
-  lines <- strsplit(result, "\n")[[1L]]
+  lines <- strsplit(.tool_val(result), "\n")[[1L]]
   match_lines <- grep("hello", lines, value = TRUE)
   expect_true(length(match_lines) >= 1L)
   # Pattern: <path>:<digit(s)>:<content> — at minimum two colons
@@ -211,11 +221,11 @@ test_that("grep_tool fallback: -n=FALSE produces filepath:content (colon present
 
   # Must NOT produce <extension><letter> with no colon in between (old bug).
   # e.g. ".Rhello" would indicate missing separator.
-  expect_false(grepl("\\.R[^:\n/]", result),
+  expect_false(grepl("\\.R[^:\n/]", .tool_val(result)),
                info = paste("missing colon separator in result:", result))
 
   # Must produce filepath:content format.
-  expect_match(result, "\\.R:hello")
+  expect_match(.tool_val(result), "\\.R:hello")
 })
 
 test_that("grep_tool fallback: files_with_matches mode returns unique paths", {
@@ -227,7 +237,7 @@ test_that("grep_tool fallback: files_with_matches mode returns unique paths", {
   result <- tool("needle", path = tmpdir, glob = "*.R",
                  output_mode = "files_with_matches")
 
-  lines <- strsplit(result, "\n")[[1L]]
+  lines <- strsplit(.tool_val(result), "\n")[[1L]]
   # Only one unique file path should appear (deduplication).
   expect_equal(length(lines), 1L)
   expect_match(lines[[1L]], "haystack\\.R")
@@ -242,5 +252,5 @@ test_that("grep_tool fallback: count mode returns filepath:N", {
   result <- tool("needle", path = tmpdir, glob = "*.R",
                  output_mode = "count")
 
-  expect_match(result, "haystack\\.R:2")
+  expect_match(.tool_val(result), "haystack\\.R:2")
 })
