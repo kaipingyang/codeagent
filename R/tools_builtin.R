@@ -677,14 +677,17 @@ ls_tool <- function() {
 #' @return Invisibly returns `chat`.
 #' @export
 register_builtin_tools <- function(chat, mode = "default",
-                                    rules = list(), ask_fn = NULL) {
+                                    rules = list(), ask_fn = NULL,
+                                    skip_file_tools = FALSE) {
   chat$register_tool(bash_tool(mode, rules, ask_fn))
-  chat$register_tool(read_tool(mode, rules))
-  chat$register_tool(write_tool(mode, rules, ask_fn))
-  chat$register_tool(edit_tool(mode, rules, ask_fn))
-  chat$register_tool(multi_edit_tool(mode, rules, ask_fn))
-  chat$register_tool(glob_tool())
-  chat$register_tool(grep_tool())
-  chat$register_tool(ls_tool())
+  if (!isTRUE(skip_file_tools)) {
+    chat$register_tool(read_tool(mode, rules))
+    chat$register_tool(write_tool(mode, rules, ask_fn))
+    chat$register_tool(edit_tool(mode, rules, ask_fn))
+    chat$register_tool(multi_edit_tool(mode, rules, ask_fn))
+    chat$register_tool(glob_tool())
+    chat$register_tool(grep_tool())
+    chat$register_tool(ls_tool())
+  }
   invisible(chat)
 }
