@@ -11,7 +11,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | File | When to read |
 |------|-------------|
 | `ellmer-package.md` | Core Chat API, tool(), type_*(), ContentToolResult, S7 internals |
-| `ellmer-tool-calling.md` | Tool registration, tool_annotations(), _intent pattern, streaming |
+| `ellmer-tool-calling.md` | tool(), type_*(), ContentToolResult extra$display, tool_annotations(), on_tool_request/result, stream="content" |
+| `btw-package.md` | btw 1.2.1 overview, client config, skill system |
+| `btw-tools.md` | btw 工具组完整参考（10组 + skill系统 + btw_app设计）|
 | `shinychat.md` | chat_append(), tool cards, _intent display, ContentToolResult extra$display |
 | `btw-package.md` | btw 1.2.1 complete reference: skill system, CLI, agent tools, MCP |
 | `shiny-extended-task.md` | ExtendedTask + coro::async streaming pattern used in ui.R |
@@ -155,7 +157,9 @@ codeagent_app(client, theme="light") # Shiny UI
 - L4 `ptl_fallback`: drop oldest turns on 413 errors
 - L5 `context_collapse`: read-time projection (truncate all tool result values)
 
-**`skills.R`** — **btw-compatible** skill system. Skill format: `<name>/SKILL.md` directories (not flat `.md` files). Uses `btw:::btw_skills_list()` as primary discovery backend. Discovery paths: codeagent `inst/skills/` + btw paths + `~/.codeagent/skills/` + `.codeagent/skills/` + `.claude/skills/` + `.codex/skills/`. `.make_skill_tool()` registers `use_skill` ellmer tool for LLM semantic auto-trigger; returns `ContentToolResult` with HTML title card. Two trigger paths: user `/name` → `load_skill_prompt()` inject; LLM semantic match → `use_skill` tool call.
+**`tools_web.R`** — `web_fetch_tool()` and `web_search_tool()`. All tools return `ContentToolResult` with `extra$display` (HTML title + markdown preview for humans). WebSearch backend: `BRAVE_API_KEY` → Brave Search API (real results, 2000 free/month); fallback → DuckDuckGo Instant Answer (entity queries only, no key needed). WebFetch uses httr2 directly (no Chrome dependency). btw `web_read_url` (needs Chrome) is available as extra via `btw_groups = "web"`.
+
+**`skills.R`** — **btw-compatible** skill system. Skill format: `<name>/SKILL.md` directories (not flat `.md` files). Uses `btw:::btw_skills_list()` as primary discovery backend. Discovery paths: codeagent `inst/skills/` + btw paths + `.btw/skills/` + `.agents/skills/` + `.claude/skills/` + `.codex/skills/`. `.make_skill_tool()` registers `use_skill` ellmer tool for LLM semantic auto-trigger; returns `ContentToolResult` with HTML title card. Two trigger paths: user `/name` → `load_skill_prompt()` inject; LLM semantic match → `use_skill` tool call. User custom skills: use `~/.btw/skills/` (not `~/.codeagent/skills/`).
 
 **`client_config.R`** — `codeagent_client_config(alias=)` reads `codeagent.md` / `.codeagent/config.md`. Supports single client spec (`"openai/model"`) or alias maps with interactive selection. `use_codeagent_md()` creates template.
 
@@ -170,6 +174,8 @@ codeagent_app(client, theme="light") # Shiny UI
 ### Key design decisions
 
 - **`codeagent_client()` is the central factory**: takes any ellmer Chat, injects tools + system prompt, returns `CodagentClient`. Both `codeagent()` and `codeagent_app()` accept `CodagentClient` as first arg; old flat params still work for backward compat.
+- **All tools return `ContentToolResult` with `extra$display`**: `title` (HTML, use `htmltools::HTML()`), `markdown` (human-readable preview), `value` (LLM-facing text). See `ellmer-tool-calling.md` for the full `extra$display` field spec.
+- **WebSearch backends**: `BRAVE_API_KEY` env var enables Brave Search API; without it falls back to DuckDuckGo (entity queries only). Never rely on DDG for general questions.
 - **btw as tool layer**: codeagent is the harness (loop/permissions/compaction/hooks/skills); btw provides the R-environment tool set (docs/git/pkg/env/etc). They compose, not compete.
 - **Skill format is `name/SKILL.md`** (btw/Claude Code compatible). Never use flat `.md` files.
 - **`ContentToolResult` with `extra$display`**: all tools return typed results with HTML title + markdown for shinychat cards.
