@@ -20,7 +20,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
-## Common Commands
+## Development Rules
+
+**改代码必须同步更新测试和 example：**
+- 新增/修改函数 → 对应 `tests/testthat/test-*.R` 补测试
+- 修改公开 API（签名/行为）→ 对应 `inst/examples/demo_*.R` 或 `test_databricks.R` 更新
+- 新功能 → 加进 `inst/examples/test_databricks.R` 的 section
+
+**工具函数用闭包工厂模式：**
+```r
+# 正确：外部资源（connection、checker）通过工厂函数捕获
+my_tool <- function(con, mode = "bypass") {
+  force(con)
+  checker <- .make_permission_checker("MyTool", mode, list(), NULL)
+  ellmer::tool(
+    fun = function(query) {
+      if (!checker(list(query = query))) return("[Permission denied]")
+      dbGetQuery(con, query)  # con 在闭包里
+    },
+    description = "...",
+    arguments   = list(query = ellmer::type_string("SQL query"))
+  )
+}
+# 参考：BIP_copilot/R/tool_run_sql.R — tool_run_sql(con) 模式
+```
+
+---
 
 ```r
 # Document + rebuild NAMESPACE
