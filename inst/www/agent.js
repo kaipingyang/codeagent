@@ -56,8 +56,24 @@
     });
 
     // ---------------------------------------------------------------------------
-    // Theme switching — data-theme on <html>
+    // Two-phase display: tool returns → immediate push → renderUI replaces
     // ---------------------------------------------------------------------------
+    Shiny.addCustomMessageHandler("show_ca_immediate", function (data) {
+      var area = document.getElementById("ca_immediate_area");
+      if (!area) return;
+      area.innerHTML = data.html;
+      area.style.display = "block";
+      var preview = document.getElementById("main_output");
+      if (preview) preview.style.visibility = "hidden";
+    });
+
+    $(document).on("shiny:value", function (event) {
+      if (event.target.id === "main_output") {
+        var area = document.getElementById("ca_immediate_area");
+        if (area) { area.innerHTML = ""; area.style.display = "none"; }
+        event.target.style.visibility = "visible";
+      }
+    });
     Shiny.addCustomMessageHandler("set_theme", function (data) {
       document.documentElement.setAttribute("data-theme", data.theme);
     });
