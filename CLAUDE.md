@@ -4,21 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-`codeagent` is an R package — an R-native implementation of Claude Code CLI capabilities, built directly on the Anthropic API via `ellmer`. It does **not** wrap the Claude Code CLI subprocess; it reimplements the agent loop, tools, permissions, compaction, and UI from scratch.
+`codeagent` is an R package — an R-native implementation of Claude Code CLI capabilities (harness layer), built on `ellmer` + `btw`. It does **not** wrap the Claude Code CLI subprocess; it reimplements the agent loop, tools, permissions, compaction, skill system, and Shiny UI from scratch.
 
-**Reference docs:** `.claude/docs/` contains learning materials on ellmer, shinychat, btw, coro/side patterns, and Claude Code architecture. Read these before touching a subsystem.
+**Reference docs:** `.claude/docs/` contains learning materials. Read before touching a subsystem.
 
 | File | When to read |
 |------|-------------|
 | `ellmer-package.md` | Core Chat API, tool(), type_*(), ContentToolResult, S7 internals |
 | `ellmer-tool-calling.md` | Tool registration, tool_annotations(), _intent pattern, streaming |
-| `shinychat.md` | chat_append(), chat_append_stream(), tool cards, _intent display, tool_annotations title/icon, ContentToolResult extra$display |
-| `btw-package.md` | Reference implementation: tool card titles, _intent, ContentToolResult display, wrap_with_intent pattern |
+| `shinychat.md` | chat_append(), tool cards, _intent display, ContentToolResult extra$display |
+| `btw-package.md` | btw 1.2.1 complete reference: skill system, CLI, agent tools, MCP |
 | `shiny-extended-task.md` | ExtendedTask + coro::async streaming pattern used in ui.R |
 | `promises-async-r.md` | promises, await(), async/await patterns in Shiny |
-| `shiny-realtime-update-blocking-loop.md` | Non-blocking streaming, interrupt patterns |
 | `claude-code-cli-architecture.md` | Claude Code CLI design: compaction, tools, permissions, sessions |
-| `side-package-learnings.md` | coro generator patterns, for-loop in async context |
 
 ---
 
@@ -34,81 +32,124 @@ devtools::check()
 # Load package interactively
 devtools::load_all()
 
-# Run all tests (none yet — tests/testthat/ is empty)
+# Run all tests (281 pass as of Batch 3)
 devtools::test()
 
 # Run a single test file
 testthat::test_file("tests/testthat/test-permissions.R")
 
-# One-shot query (non-interactive, bypass mode for dev)
+# New-style one-shot query (recommended)
 library(codeagent)
-codeagent("List all .R files in R/", permission_mode = "bypass")
+chat   <- ellmer::chat_openai_compatible(base_url=Sys.getenv("CODEAGENT_BASE_URL"),
+           model=Sys.getenv("CODEAGENT_MODEL"), credentials=function() Sys.getenv("CODEAGENT_API_KEY"))
+client <- codeagent_client(chat, permission_mode = "bypass")
+codeagent(client, "List all .R files in R/")
 
-# Launch Shiny app
-codeagent_app(permission_mode = "bypass")
+# Launch Shiny app (new style)
+codeagent_app(client, theme = "light")
+
+# From codeagent.md config
+client <- codeagent_client_config(alias = "gpt41")
+codeagent_app(client)
 ```
 
-**Non-ASCII in source:** R CMD check rejects non-ASCII characters in R source files. Use `\uXXXX` escapes only inside string literals — **not** in roxygen `#'` comments (those get copied to `.Rd` and the `\u` escape is not valid there). Use plain ASCII in comments.
+**Non-ASCII in source:** R CMD check rejects non-ASCII characters in R source files. Use `\uXXXX` escapes only inside string literals — **not** in roxygen `#'` comments.
 
-**`coro::for` inside `coro::async`:** Write plain `for (x in gen)` — do not qualify as `coro::for`. Wrapping a `for` loop over an async generator in `tryCatch()` is a parse error; handle errors outside the loop.
+**`coro::for` inside `coro::async`:** Write plain `for (x in gen)` — do not qualify as `coro::for`. Do not wrap in `tryCatch()` inside the loop.
+
+**Env vars:** Use `CODEAGENT_BASE_URL`, `CODEAGENT_MODEL`, `CODEAGENT_API_KEY` (not `OPENAI_*`).
 
 ---
 
 ## Architecture
 
-### Data flow
+### Entry point / data flow
 
 ```
 User input
-  → .preprocess_input()      # detect /skillname args
-  → load_skill_prompt()      # Level 2 skill load (on demand)
-  → query_loop()             # main agentic turn
-      → CompactionController$maybe_compact()
+  → .preprocess_input()         # detect /skillname
+  → load_skill_prompt()         # Level 2 skill load (on demand)
+  → agent_loop()                # main agentic turn (was query_loop)
+      → .build_system_reminder()  # dynamic per-turn context injection
+      → CompactionController$maybe_compact()   # L1-L5
       → ContentReplacementState$maybe_replace()
-      → ellmer Chat$chat() / stream_async()
-          → tools dispatch (ellmer handles tool loop internally)
-              → check_permission()  ← permission gate
-              → HookRegistry$run_pre()
-              → tool execution
-              → truncate_tool_result() / persist_large_result()
-              → HookRegistry$run_post()
+      → HookRegistry$run_user_message()
+      → ellmer Chat$chat() / stream_async(stream="content")
+          → tools dispatch (ellmer tool loop)
+              → check_permission()         # 7-mode gate
+              → HookRegistry$run_pre()     # PreToolUse
+              → tool execution             # returns ContentToolResult
+              → HookRegistry$run_post()    # PostToolUse
+      → verify_fn (optional)    # re-enter if fails
+      → HookRegistry$run_assistant_message()
       → save_session()
+```
+
+### Client object model
+
+```r
+# Step 1: any ellmer Chat (user picks backend)
+chat <- ellmer::chat_openai_compatible(...)   # Databricks/Azure
+# OR chat <- ellmer::chat_anthropic(...)
+# OR chat <- ellmer::chat_ollama(...)
+
+# Step 2: codeagent_client() injects tools + system prompt → CodagentClient
+client <- codeagent_client(chat,
+  permission_mode    = "bypass",
+  btw_groups         = c("docs","git","pkg"),
+  worktree_isolation = FALSE,
+  verify_fn          = NULL
+)
+# client$chat    — the ellmer Chat
+# client$settings — named list with all config
+
+# Step 3: use the client
+codeagent(client, "prompt")          # one-shot
+agent_loop(user_input, client, ...)  # per-turn (Shiny)
+codeagent_app(client, theme="light") # Shiny UI
 ```
 
 ### Subsystems
 
-**`query.R`** — Entry points. `codeagent()` is the one-shot console API. `query_loop()` is called per-turn by the Shiny app. `.register_all_tools()` wires all tool groups onto a Chat object.
+**`query.R`** — `codeagent_client()` is the primary factory; builds `CodagentClient` S3 object. `codeagent()` dispatches new/legacy style. `agent_loop()` is called per-turn (was `query_loop`). `.register_all_tools()` wires all tool groups. `.handle_agent_error()` classifies PTL/rate-limit/network/auth errors with backoff. `verify_r_tests()` is a built-in verify function.
 
-**`permissions.R`** — Six-mode gate (`default / plan / accept_edits / bypass / dont_ask / auto`). Every tool factory calls `.make_permission_checker()` which closes over `check_permission()`. The `auto` mode calls claude-haiku-4-5-20251001 as a classifier. `DenialTracker` emits warnings at 3 consecutive / 20 total denials.
+**`permissions.R`** — **Seven-mode** gate: `default / plan / accept_edits / bypass / dont_ask / auto / bubble`. `bubble` returns `"ask"` to bubble permission up to parent agent (sub-agent mode). `auto` uses haiku ML classifier. `DenialTracker` emits warnings.
 
-**`tools_builtin.R`** — Eight core tools (Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS). Each is a factory function `*_tool(mode, rules, ask_fn)` returning an `ellmer::tool()` object. `register_builtin_tools()` registers all eight. The permission checker is injected as a closure at construction time.
+**`hooks.R`** — `HookRegistry` with **7 lifecycle events** via `HookEvent$*`: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `PermissionRequest`, `UserMessage`, `AssistantMessage`. Legacy `register_pre()`/`register_post()` still work.
 
-**`tools_web.R / tools_task.R / tools_notebook.R / tools_agent.R / tools_r.R`** — Additional tool groups. Task tools use an in-process `new.env()` store (`.task_store`) — not persisted. `tools_r.R` wraps `btw::btw_tools()` and supports group-level filtering.
+**`tools_builtin.R`** — 8 core tools (Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS). All return `ContentToolResult` with `extra$display` (HTML title + markdown) for shinychat tool cards. All have `_intent` parameter for card display.
 
-**`compaction.R`** — Four-level compaction triggered at `model_limit − 33K` tokens. L1 (`snip_old_tools`) replaces large old tool results with a placeholder. L2 (`session_memory_compact`) summarises early turns via haiku. L3 (`full_compact`) forks a haiku agent to generate a 9-section `<summary>`. L4 (`ptl_fallback`) drops oldest turns on 413 errors. `CompactionController` has a 3-failure circuit breaker. `estimate_tokens()` uses a char÷4 heuristic — it accesses `turn@contents` (S7 slot) inside `tryCatch` to survive ellmer API changes.
+**`tools_r.R`** — Wraps `btw::btw_tools()`. `.BTW_GROUPS` covers all 10 btw 1.2.1 groups: `agent, cran, docs, env, files, git, ide, pkg, sessioninfo, web`. `btw_tool_skill` excluded (handled by skill system).
 
-**`resource.R`** — Three-layer output size control. L1 is `truncate_tool_result()` in `utils.R` (applied at tool execution). L2 `persist_large_result()` saves results >5 KB to `~/.codeagent/tool-results/`. L3 `ContentReplacementState` replaces the largest old `ContentToolResult` in the turn history when context exceeds 80K estimated tokens.
+**`tools_agent.R`** — `agent_tool()` uses `btw_tool_agent_subagent` when btw available; falls back to codeagent's own loop. Supports `worktree_isolation=TRUE` (git worktree per sub-agent). Discovers custom agents from `.btw/agent-*.md`, `.claude/agents/`. `codeagent_mcp_server()` wraps `btw::btw_mcp_server()`. `install_codeagent_cli()` installs Rapp-based CLI.
 
-**`budget.R`** — `BudgetTracker` stops the loop at 90% of `max_tokens`, or after 3 consecutive turns with <500-token growth (diminishing-return detection). Sub-agents are exempt.
+**`compaction.R`** — **Five-level** compaction:
+- L1 `snip_old_tools`: replace large old tool results with placeholder
+- L2 `session_memory_compact`: summarise early turns via compact model
+- L3 `full_compact`: fork agent → 9-section `<summary>`
+- L4 `ptl_fallback`: drop oldest turns on 413 errors
+- L5 `context_collapse`: read-time projection (truncate all tool result values)
 
-**`executor.R`** — `StreamingToolExecutor` classifies tools as concurrent-safe (read-only) or not. Safe tools run immediately; unsafe tools queue and execute serially. Bash read-only detection re-uses `.is_bash_readonly()` from `permissions.R`.
+**`skills.R`** — **btw-compatible** skill system. Skill format: `<name>/SKILL.md` directories (not flat `.md` files). Uses `btw:::btw_skills_list()` as primary discovery backend. Discovery paths: codeagent `inst/skills/` + btw paths + `~/.codeagent/skills/` + `.codeagent/skills/` + `.claude/skills/` + `.codex/skills/`. `.make_skill_tool()` registers `use_skill` ellmer tool for LLM semantic auto-trigger; returns `ContentToolResult` with HTML title card. Two trigger paths: user `/name` → `load_skill_prompt()` inject; LLM semantic match → `use_skill` tool call.
 
-**`hooks.R`** — `HookRegistry` stores pre/post hooks with optional tool-name glob patterns. Pre-hooks can allow, deny, or replace `tool_input`. Post-hooks can replace `tool_output`. Hooks >500 ms log a message; >2000 ms emit a warning.
+**`client_config.R`** — `codeagent_client_config(alias=)` reads `codeagent.md` / `.codeagent/config.md`. Supports single client spec (`"openai/model"`) or alias maps with interactive selection. `use_codeagent_md()` creates template.
 
-**`skills.R`** — Two-level progressive disclosure. Level 1: `list_skills_meta()` reads only YAML frontmatter (first 30 lines) from `.md` files — keeps system prompt small. Level 2: `load_skill_prompt()` reads full body + substitutes `$ARGUMENTS` / `$ARG1`. Discovery order: `inst/skills/` → `~/.codeagent/skills/` → `.codeagent/skills/` (project-local overrides package built-ins).
+**`settings.R`** — Priority: env vars > `~/.codeagent/settings.json` > `.codeagent/settings.json` > defaults. `.build_system_reminder()` injects ephemeral per-turn context (date/iteration/cwd) into user message (not system prompt) to preserve prompt cache.
 
-**`settings.R`** — Priority chain: env vars (`CODEAGENT_MODEL`, `CODEAGENT_PERMISSION_MODE`, `CODEAGENT_MAX_TURNS`, `CODEAGENT_MODEL_LIMIT`) > `~/.codeagent/settings.json` > `.codeagent/settings.json` > defaults. `CLAUDE.md` is loaded as context (injected into system prompt), not merged as settings. `.build_system_prompt()` assembles: identity + cwd/date/model + CLAUDE.md content + skill hint (≤1000 tokens) + permission mode.
+**`compaction.R` `.make_compact_chat()`** — When `CODEAGENT_BASE_URL` set, uses `chat_openai_compatible` with `databricks-claude-haiku-4-5`; otherwise `chat_anthropic`.
 
-**`sessions.R / mutations.R`** — Sessions stored as JSONL under `~/.codeagent/projects/<sanitized-path-hash>/`. Format: first line is a `session-start` header with `cwd`, `model`, optional `customTitle`; subsequent lines are `user`/`assistant` entries. `mutations.R` is append-only (`rename_session`, `tag_session`, `delete_session`). **Note:** this format is NOT compatible with Claude Code CLI's `~/.claude/projects/`.
+**`ui.R`** — `codeagent_app(client, pinned_skills, theme, port, launch.browser)`. Three accordion panels: Sessions (1st, open), Skills (2nd, searchable + scrollable + install), Settings (permission mode + btw tool groups + theme toggle). Three themes: `"light"` (bslib flatly), `"glassmorphism"` (dark purple gradient + frosted glass), `"dark"` (minimal dark). Tools stream via `stream="content"` → shinychat renders tool cards automatically.
 
-**`ui.R`** — `codeagent_app()` builds a `bslib::page_fillable` layout with a sidebar (token budget, permission mode selector, session list) and a `shinychat::chat_ui`. Streaming uses `shiny::ExtendedTask` + `coro::async`. The ESC key sets an `interrupt_flag` reactive which is checked inside the `for (chunk in stream)` loop. The `chat` object is created once at app startup and shared across the session via closure.
+**`sessions.R / mutations.R`** — Sessions stored as JSONL under `~/.codeagent/projects/<hash>/`. Session titles fall back to first user message (not UUID). `fork_session()` implemented.
 
 ### Key design decisions
 
-- **ellmer handles the agentic tool loop**: `chat$chat()` automatically iterates tool calls until `stop_reason == "end_turn"`. `query_loop()` wraps a single turn, not an inner loop.
-- **Tool factories close over permissions**: Each `*_tool()` function captures `mode`, `rules`, and `ask_fn` at construction. Changing permission mode after tool registration requires calling `.register_all_tools()` again (as done in `ui.R`'s `observeEvent(input$perm_mode, ...)`).
-- **S7 slot access is fragile**: `turn@contents`, `c@text`, `c@value`, `c@tool_use_id` are ellmer internals. All accesses use `tryCatch(..., error = function(e) ...)` to silently fail if ellmer's S7 schema changes.
-- **`%||%` is the null-coalescing operator**: defined in `utils.R`, used throughout.
+- **`codeagent_client()` is the central factory**: takes any ellmer Chat, injects tools + system prompt, returns `CodagentClient`. Both `codeagent()` and `codeagent_app()` accept `CodagentClient` as first arg; old flat params still work for backward compat.
+- **btw as tool layer**: codeagent is the harness (loop/permissions/compaction/hooks/skills); btw provides the R-environment tool set (docs/git/pkg/env/etc). They compose, not compete.
+- **Skill format is `name/SKILL.md`** (btw/Claude Code compatible). Never use flat `.md` files.
+- **`ContentToolResult` with `extra$display`**: all tools return typed results with HTML title + markdown for shinychat cards.
+- **S7 slot access is fragile**: wrap in `tryCatch`.
+- **`%||%` null-coalescing**: defined in `utils.R`.
 
 ### Runtime directories
 
@@ -118,17 +159,29 @@ User input
 | `~/.codeagent/projects/<hash>/` | Session JSONL files |
 | `~/.codeagent/tool-results/` | L2 large-result disk cache |
 | `~/.codeagent/skills/` | User-global custom skills |
-| `.codeagent/settings.json` | Project-local settings override |
 | `.codeagent/skills/` | Project-local skill overrides |
+| `.codeagent/config.md` | Project-local multi-client config |
+| `codeagent.md` | Project-local multi-client config (alt location) |
+| `exec/codeagent.R` | Rapp CLI entry point |
 
 ---
 
-## What is not yet implemented
+## What is implemented
 
-- `tests/testthat/` — no tests exist yet
-- `fork_session()` in `mutations.R`
-- Tool approval dialog in `ui.R` (permission `"ask"` silently denies in Shiny)
-- `inst/www/styles.css` and `inst/www/agent.js`
-- `grep_tool` `output_mode = "files_with_matches"` and `"count"` modes
-- Session list sidebar load buttons (`load_sess_*`) have no `observeEvent` binding
-- MCP server integration via `mcptools`
+All core subsystems are complete. 281 tests pass.
+
+- ✅ Agent loop (`agent_loop()`) with max_turns, budget, compaction, hooks
+- ✅ 7-mode permission system (includes `bubble`)
+- ✅ 7-event hook system (`HookEvent$*`)
+- ✅ 5-level compaction (L1-L5)
+- ✅ Skill system (btw-compatible `name/SKILL.md`, dual trigger)
+- ✅ btw integration (10 tool groups + skill + subagent + MCP)
+- ✅ Worktree isolation for sub-agents
+- ✅ Verification loop (`verify_fn`)
+- ✅ system-reminder dynamic injection
+- ✅ Enhanced error recovery (PTL/rate-limit/network/auth)
+- ✅ Shiny app (3 themes, accordion sidebar, tool cards)
+- ✅ Session management (save/load/fork/tag/rename)
+- ✅ codeagent.md multi-client config
+- ✅ Rapp CLI (`exec/codeagent.R`)
+- ✅ MCP server (`codeagent_mcp_server()`)
