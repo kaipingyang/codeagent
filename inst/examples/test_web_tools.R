@@ -119,24 +119,19 @@ if (requireNamespace("btw", quietly = TRUE)) {
 # ---------------------------------------------------------------------------
 section("D. WebSearch diagnosis")
 
-cat("  DDG Instant Answer API limitations:\n")
-cat("    - Only works for entity queries (people, places, things)\n")
-cat("    - Returns empty RelatedTopics for 'how to...' / 'what is...' queries\n")
-cat("    - Not rate-limited but not a general search engine\n\n")
+cat("  Implementation: DDG HTML scraping (primary) + DDG Instant Answer (fallback)\n")
+cat("  No API key required. General queries and entity queries both supported.\n\n")
 
-cat("  Recommended alternatives:\n")
-cat("    1. btw::btw_tool_web_read_url() — fetch known URLs (already in btw group 'web')\n")
-cat("    2. SerpAPI (requires API key): https://serpapi.com\n")
-cat("    3. Brave Search API (free tier): https://api.search.brave.com\n")
-cat("    4. Use Bash + curl + jq for custom search\n\n")
-
-# Check if current WebSearch will reliably fail
+# Verify general query works with HTML scraping
 test_general <- search_tool("how to do linear regression in R")
-if (grepl("No results found", .val(test_general))) {
-  cat("  [CONFIRMED] WebSearch fails for general queries — replacement recommended.\n")
-  ok(FALSE, "WebSearch: FAILS for general queries (DDG API limitation)")
+val_general  <- .val(test_general)
+if (grepl("No results found", val_general)) {
+  cat("  [WARN] DDG HTML scraping returned no results — may be blocked or changed.\n")
+  ok(FALSE, "WebSearch: general query returned results via DDG HTML scraping")
 } else {
-  ok(TRUE, "WebSearch: general query unexpectedly returned results")
+  ok(TRUE,  "WebSearch: general query works (DDG HTML scraping)")
+  ok(nchar(val_general) > 50, "WebSearch: general query result has content")
+  cat(sprintf("  [INFO] First result: %s\n", substr(val_general, 1, 80)))
 }
 
 # ---------------------------------------------------------------------------
