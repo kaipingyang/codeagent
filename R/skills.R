@@ -8,27 +8,26 @@
 #'   2. Other attached R packages with inst/skills/
 #'   3. btw built-in skills
 #'   4. btw user dirs (~/.config/btw/skills/, ~/.btw/skills/)
-#'   5. ~/.codeagent/skills/  (codeagent user global)
-#'   6. .btw/skills/, .agents/skills/ (btw project dirs)
-#'   7. .codeagent/skills/  (codeagent project local)
-#'   8. .claude/skills/     (Claude Code compat)
-#'   9. .codex/skills/      (Codex compat)
+#'   5. .btw/skills/, .agents/skills/ (btw project dirs)
+#'   6. .claude/skills/     (Claude Code compat)
+#'   7. .codex/skills/      (Codex compat)
+#'
+#'   User-global custom skills: use ~/.btw/skills/ (btw native).
+#'   Project-local custom skills: use .btw/skills/ (btw native).
 #'
 #' @name skills
 #' @keywords internal
 NULL
 
-# ---------------------------------------------------------------------------
-# Extra skill directories (beyond what btw scans)
-# ---------------------------------------------------------------------------
-
+# All project-local skill subdirs codeagent scans (relative to cwd).
+# btw scans .btw/skills and .agents/skills only under getwd();
+# we also scan them under the provided cwd for test/multi-project support.
 .CODEAGENT_SKILL_SUBDIRS <- c(
-  ".codeagent/skills",
-  ".claude/skills",
-  ".codex/skills"
+  ".btw/skills",       # btw native (ensure works when cwd != getwd())
+  ".agents/skills",    # btw agents dir
+  ".claude/skills",    # Claude Code compat
+  ".codex/skills"      # Codex compat
 )
-
-.CODEAGENT_USER_SKILL_DIR <- file.path("~", ".codeagent", "skills")
 
 # Build the full list of skill directories to scan, merging btw + codeagent paths
 .skill_dirs <- function(cwd = getwd()) {
@@ -39,19 +38,14 @@ NULL
   if (nzchar(pkg_skills) && dir.exists(pkg_skills))
     dirs <- c(dirs, pkg_skills)
 
-  # 2+3. btw built-ins + other attached packages (via btw if available)
+  # 2+3+4+5. btw built-ins + attached packages + btw user dirs + btw project dirs
   if (requireNamespace("btw", quietly = TRUE)) {
     tryCatch({
       dirs <- c(dirs, btw:::btw_skills_directories())
     }, error = function(e) NULL)
   }
 
-  # 5. codeagent user global
-  user_dir <- path.expand(.CODEAGENT_USER_SKILL_DIR)
-  if (dir.exists(user_dir) && !user_dir %in% dirs)
-    dirs <- c(dirs, user_dir)
-
-  # 7-9. project local: .codeagent/, .claude/, .codex/
+  # 6-7. .claude/skills/ and .codex/skills/ (not covered by btw)
   for (sub in .CODEAGENT_SKILL_SUBDIRS) {
     d <- file.path(cwd, sub)
     if (dir.exists(d) && !d %in% dirs)
@@ -123,11 +117,10 @@ list_skills_meta <- function(cwd = getwd()) {
   }
 
   # Supplement: codeagent-only paths not covered by btw.
-  # Include codeagent inst/skills/ only when NOT already found by btw
-  # (btw picks it up via attached_package_skill_dirs() when installed).
+  # codeagent inst/skills/ is picked up via attached_package_skill_dirs() when installed.
+  # Extra: .claude/ and .codex/ project paths only.
   extra_dirs <- c(
     system.file("skills", package = "codeagent"),
-    path.expand(.CODEAGENT_USER_SKILL_DIR),
     vapply(.CODEAGENT_SKILL_SUBDIRS, function(s) file.path(cwd, s), character(1))
   )
   extra_dirs <- unique(extra_dirs[nzchar(extra_dirs) & dir.exists(extra_dirs)])
