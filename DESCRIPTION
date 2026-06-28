@@ -23,7 +23,9 @@ Imports:
     bslib,
     shinychat,
     htmltools,
-    coro
+    coro,
+    jsTreeR,
+    base64enc
 Suggests:
     btw,
     mcptools,
