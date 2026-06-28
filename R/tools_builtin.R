@@ -14,11 +14,14 @@ NULL
 # title: HTML string shown in the shinychat tool card header.
 # text:  plain-text value seen by the LLM.
 # markdown: optional richer representation shown to the user.
-.tool_result <- function(text, title = NULL, markdown = NULL) {
+# right_output: optional htmltools tag pushed to the right Output panel.
+.tool_result <- function(text, title = NULL, markdown = NULL,
+                          right_output = NULL) {
   display <- list()
-  if (!is.null(title))    display$title    <- htmltools::HTML(title)
-  if (!is.null(markdown)) display$markdown <- markdown
-  if (length(display) == 0L) display <- NULL
+  if (!is.null(title))        display$title        <- htmltools::HTML(title)
+  if (!is.null(markdown))     display$markdown     <- markdown
+  if (!is.null(right_output)) display$right_output <- right_output
+  if (length(display) == 0L)  display <- NULL
   ellmer::ContentToolResult(
     value = text,
     extra = if (!is.null(display)) list(display = display) else list()
@@ -155,11 +158,22 @@ read_tool <- function(mode = "default", rules = list()) {
         fname    <- basename(path)
         range_str <- if (!is.null(offset) || !is.null(limit))
           sprintf(" (lines %d-%d)", start, end) else ""
+
+        # right_output: code preview for the right panel
+        right_preview <- htmltools::tags$pre(
+          style = "margin:0; font-size:0.75rem; overflow:auto;",
+          htmltools::tags$code(
+            class = paste0("language-", if (nzchar(ext)) ext else "text"),
+            result
+          )
+        )
+
         .tool_result(
           result,
-          title    = sprintf("Read <code>%s</code>%s",
-                             htmltools::htmlEscape(fname), range_str),
-          markdown = sprintf("```%s\n%s\n```", ext, result)
+          title        = sprintf("Read <code>%s</code>%s",
+                                 htmltools::htmlEscape(fname), range_str),
+          markdown     = sprintf("```%s\n%s\n```", ext, result),
+          right_output = right_preview
         )
       }, error = function(e) {
         paste0("[Error] ", conditionMessage(e))
