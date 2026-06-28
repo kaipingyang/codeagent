@@ -1,0 +1,73 @@
+*Used Read Skill File, Run Databricks Cli, Fetch Omitted Content*
+
+以下是当前 workspace 中所有状态为 READY 的模型端点，按类型分组：
+
+**Databricks 托管基础模型（chat）**
+
+| 端点名称 | 模型 | 任务 |
+| --- | --- | --- |
+| databricks-claude-opus-4-8 | Claude Opus 4.8 | chat |
+| databricks-claude-opus-4-7 | Claude Opus 4.7 | chat |
+| databricks-claude-opus-4-6 | Claude Opus 4.6 | chat |
+| databricks-claude-opus-4-5 | Claude Opus 4.5 | chat |
+| databricks-claude-opus-4-1 | Claude Opus 4.1 | chat |
+| databricks-claude-sonnet-4-6 | Claude Sonnet 4.6 | chat |
+| databricks-claude-sonnet-4-5 | Claude Sonnet 4.5 | chat |
+| databricks-claude-sonnet-4 | Claude Sonnet 4 | chat |
+| databricks-claude-haiku-4-5 | Claude Haiku 4.5 | chat |
+| databricks-gpt-oss-120b | GPT OSS 120B | chat |
+| databricks-gpt-oss-20b | GPT OSS 20B | chat |
+| databricks-llama-4-maverick | Llama 4 Maverick | chat |
+| databricks-meta-llama-3-3-70b-instruct | Meta Llama 3.3 70B Instruct | chat |
+| databricks-meta-llama-3-1-8b-instruct | Meta Llama 3.1 8B Instruct | chat |
+| databricks-gemma-3-12b | Gemma 3 12B | chat |
+| databricks-qwen3-next-80b-a3b-instruct | Qwen3 Next Instruct | chat |
+| databricks-qwen35-122b-a10b | Qwen3.5 122B A10B | chat |
+
+**Databricks 托管基础模型（embeddings）**
+
+| 端点名称 | 模型 | 任务 |
+| --- | --- | --- |
+| databricks-gte-large-en | GTE Large (En) | embeddings |
+| databricks-bge-large-en | BGE Large (En) | embeddings |
+| databricks-qwen3-embedding-0-6b | Qwen3 Embedding 0.6B | embeddings |
+
+**GSDS 外部模型（OpenAI / DeepSeek，通过 AI Gateway）**
+
+| 端点名称 | 底层模型 | 任务 |
+| --- | --- | --- |
+| gsds-DeepSeek-V4-Flash | DeepSeek-V4-Flash | chat |
+| gsds-DeepSeek-V4-Pro | gsds-DeepSeek-V4-Pro | chat |
+| deepseek-r1 | deepseek-r1 | chat |
+| deepseek-r1-distill-llama-70b | deepseek-r1-distill-llama-70b | chat |
+| deepseek-r1-distill-qwen-32b | deepseek-r1-distill-qwen-32b | chat |
+| deepseek-v3 | deepseek-v3 | chat |
+| gsds-gpt-4o | gpt-4o | chat |
+| gsds-gpt-4o-mini | gpt-4o-mini | chat |
+| gsds-gpt41 | gpt-4.1 | chat |
+| gsds-gpt41-mini | gpt-4.1-mini | chat |
+| gsds-gpt41-nano | gpt-4.1-nano | chat |
+| gsds-gpt45-preview | gpt4.5-preview | chat |
+| gsds-gpt-5 | gpt-5 | chat |
+| gsds-gpt-5-chat | gpt-5-chat | chat |
+| gsds-gpt-5-mini | gpt-5-mini | chat |
+| gsds-gpt-5-nano | gpt-5-nano | chat |
+| gsds-gpt-51 | gpt-5.1 | chat |
+| gsds-gpt-51-chat | gpt-5.1-chat | chat |
+| gsds-gpt-52 | gpt-5.2 | chat |
+| gsds-gpt-54 | gpt-5.4 | chat |
+| gsds-gpt-55 | gpt-5.5 | chat |
+| gsds-o1 | o1 | chat |
+| gsds-openai-o1-mini | o1-mini | chat |
+| gsds-o3 | o3 | chat |
+| gsds-o3-mini | o3-mini | chat |
+| gsds-o4-mini | o4-mini | chat |
+| gsds-model-router | model-router | chat |
+| sp-gpt35t | gpt-35-turbo | chat |
+| sp-gpt4 / sp-gpt4t | gpt-4 | chat |
+| sp-gpt4o | gpt-4o | chat |
+| gsds-text-embedding-3-large | text-embedding-3-large | embeddings |
+| gsds-text-embedding-3-small | text-embedding-3-small | embeddings |
+| dsdi-text-embedding-3-small | text-embedding-3-small | embeddings |
+
+共计 **约 50 个 READY 端点**，覆盖 Claude、GPT、Llama、DeepSeek、Gemma、Qwen 等主流系列。Playground 中可直接选用上述任意 chat 类端点进行对话测试。

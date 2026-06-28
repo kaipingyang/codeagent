@@ -1,0 +1,26 @@
+# R
+*.Rcheck/
+.Rhistory
+.RData
+.Rproj.user/
+*.tar.gz
+*.Rproj
+
+# renv
+renv/library/
+renv/staging/
+renv/local/
+
+# Credentials — NEVER commit
+.Renviron
+.env
+*.pem
+*.key
+
+# Claude Code internal
+.claude/
+.btw/
+
+# OS
+.DS_Store
+Thumbs.db

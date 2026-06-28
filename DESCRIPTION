@@ -1,0 +1,37 @@
+Package: codeagent
+Title: An AI Coding Agent for R
+Version: 0.1.0
+Authors@R:
+    person("Kaiping", "Yang", email = "kaiping.yang@example.com",
+           role = c("aut", "cre"))
+Description: An R-native agentic coding assistant powered by the Claude API via
+    'ellmer'. Provides a full-featured coding agent with streaming output,
+    tool execution, permission management, context compaction, skill system,
+    and an interactive 'Shiny' UI. Designed as an R equivalent of the
+    Claude Code CLI.
+License: MIT + file LICENSE
+License_is_FOSS: yes
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
+Imports:
+    ellmer (>= 0.3.0),
+    R6,
+    jsonlite,
+    httr2,
+    shiny,
+    bslib,
+    shinychat,
+    htmltools,
+    coro
+Suggests:
+    btw,
+    mcptools,
+    promises,
+    testthat (>= 3.0.0),
+    withr,
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+URL: https://github.com/kaipingyang/codeagent
+BugReports: https://github.com/kaipingyang/codeagent/issues
