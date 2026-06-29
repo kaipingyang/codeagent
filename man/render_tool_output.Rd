@@ -13,7 +13,7 @@ render_tool_output(display)
 An htmltools tag.
 }
 \description{
-Branches on \code{display$ca$kind}. Falls back to \code{right_output}, then markdown,
+Branches on \code{display$card$kind}. Falls back to \code{right_output}, then markdown,
 then a plain \verb{<pre>} so untyped / raw results still render.
 }
 \keyword{internal}

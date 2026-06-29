@@ -13,7 +13,7 @@
 A typed \code{ContentToolResult}.
 }
 \description{
-Idempotent: if \code{result@extra$display$ca} already exists it is returned
+Idempotent: if \code{result@extra$display$card} already exists it is returned
 unchanged. Otherwise inspects the result (and btw's \verb{@extra$contents} Content
 objects) to classify a kind and build a typed \code{ContentToolResult} whose
 \verb{@value} is preserved for the LLM.

@@ -5,13 +5,13 @@
 \title{Typed Tool-Result Display Contract + Render Dispatcher}
 \description{
 Rich, interactive tool-card rendering for the right Output panel.
-Defines a typed display contract (\code{extra$display$ca}) layered on top of the
+Defines a typed display contract (\code{extra$display$card}) layered on top of the
 existing \verb{\{title, markdown, right_output\}} keys, a render dispatcher that
 branches on result kind (code/image/table/diff/text/error), and a
 generalized adapter that normalizes any native \code{ContentToolResult} -- raw
 \code{btw::btw_tools()} results included -- into the typed contract.
 
-Design: the private \code{ca} sub-list never collides with shinychat's reserved
+Design: the private \code{card} sub-list never collides with shinychat's reserved
 display keys (title/icon/markdown/html/text), so the in-chat card keeps
 rendering natively while codeagent owns the right-panel rendering.
 }
