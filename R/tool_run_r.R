@@ -137,34 +137,34 @@ register_run_r_tool <- function(chat, mode = "default", rules = list(),
   if (nzchar(output_text))
     markdown <- paste0(markdown, "\n\n```\n", output_text, "\n```")
 
-  # right_output: code + output + inline plot images for the Output panel
-  img_tags <- lapply(images, function(im) {
-    htmltools::tags$img(
-      src   = paste0("data:", im$type, ";base64,", im$data),
-      style = "max-width:100%; height:auto; margin-top:8px; border-radius:4px;"
+  # Typed payload: image kind when plots present, else code kind.
+  imgs <- lapply(images, function(im)
+    list(mime = im$type, b64 = im$data))
+
+  if (length(imgs) > 0L) {
+    .tool_result2(
+      value,
+      kind     = "image",
+      status   = if (status == "success") "success" else "error",
+      icon     = "play-circle",
+      title    = if (status == "success") "Run R code" else "RunR - error",
+      markdown = markdown,
+      payload  = list(images = imgs, code = code, output = output_text)
     )
-  })
-  right_output <- htmltools::tagList(
-    htmltools::tags$pre(
-      style = "margin:0; font-size:0.75rem; overflow:auto;",
-      htmltools::tags$code(class = "language-r", code)
-    ),
-    if (nzchar(output_text))
-      htmltools::tags$pre(
-        style = "margin:8px 0 0; font-size:0.75rem; overflow:auto;",
-        output_text
-      ),
-    img_tags
-  )
-
-  title <- if (status == "success")
-    "<span>Run R code</span>" else "RunR — error"
-
-  .tool_result(
-    value,
-    title        = title,
-    markdown     = markdown,
-    right_output = right_output
-  )
+  } else {
+    .tool_result2(
+      value,
+      kind     = if (status == "success") "code" else "error",
+      status   = if (status == "success") "success" else "error",
+      icon     = "play-circle",
+      title    = if (status == "success") "Run R code" else "RunR - error",
+      markdown = markdown,
+      payload  = if (status == "success")
+        list(text = code, lang = "r", output = output_text)
+      else
+        list(message = output_text)
+    )
+  }
 }
+
 

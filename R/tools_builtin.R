@@ -61,17 +61,21 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
                    description = NULL, run_in_background = FALSE,
                    `_intent` = NULL) {
       if (!checker(list(command = command))) {
-        return(.tool_result(paste0("[Permission denied] Bash: ", command),
-                            title = "Bash — denied"))
+        return(.tool_result2(paste0("[Permission denied] Bash: ", command),
+                             kind = "error", status = "denied",
+                             icon = "terminal", title = "Bash — denied",
+                             payload = list(message = paste0("Permission denied: ", command))))
       }
       # Fire-and-forget: do not capture output, do not block.
       if (isTRUE(run_in_background)) {
         tmp <- tempfile(fileext = ".sh")
         writeLines(command, tmp)
         system2("bash", tmp, wait = FALSE, stdout = FALSE, stderr = FALSE)
-        return(.tool_result(paste0("[Background: command started]\nCommand: ", command),
-                            title = sprintf("Bash (bg) <code>%s</code>",
-                                            substr(command, 1L, 60L))))
+        return(.tool_result2(paste0("[Background: command started]\nCommand: ", command),
+                             kind = "text", icon = "terminal",
+                             title = sprintf("Bash (bg) <code>%s</code>",
+                                             substr(command, 1L, 60L)),
+                             payload = list(text = command, lang = "sh")))
       }
       tryCatch({
         # Write command to temp file so shell quote nesting is never an issue
@@ -90,10 +94,13 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
         result <- truncate_tool_result(result, "Bash")
         label  <- substr(command, 1L, 80L)
         if (nchar(command) > 80L) label <- paste0(label, "…")
-        .tool_result(result,
-                     title    = sprintf("<code>%s</code>",
-                                        htmltools::htmlEscape(label)),
-                     markdown = sprintf("```sh\n%s\n```\n\n%s", command, result))
+        .tool_result2(result,
+                      kind     = "text",
+                      icon     = "terminal",
+                      title    = sprintf("<code>%s</code>",
+                                         htmltools::htmlEscape(label)),
+                      markdown = sprintf("```sh\n%s\n```\n\n%s", command, result),
+                      payload  = list(text = result, lang = "sh"))
       }, error = function(e) {
         paste0("[Error] ", conditionMessage(e))
       })
@@ -160,20 +167,16 @@ read_tool <- function(mode = "default", rules = list()) {
           sprintf(" (lines %d-%d)", start, end) else ""
 
         # right_output: code preview for the right panel
-        right_preview <- htmltools::tags$pre(
-          style = "margin:0; font-size:0.75rem; overflow:auto;",
-          htmltools::tags$code(
-            class = paste0("language-", if (nzchar(ext)) ext else "text"),
-            result
-          )
-        )
-
-        .tool_result(
+        .tool_result2(
           result,
-          title        = sprintf("Read <code>%s</code>%s",
-                                 htmltools::htmlEscape(fname), range_str),
-          markdown     = sprintf("```%s\n%s\n```", ext, result),
-          right_output = right_preview
+          kind     = "code",
+          icon     = "file-text",
+          title    = sprintf("Read <code>%s</code>%s",
+                             htmltools::htmlEscape(fname), range_str),
+          markdown = sprintf("```%s\n%s\n```", ext, result),
+          payload  = list(text = result,
+                          lang = if (nzchar(ext)) ext else "text",
+                          filename = fname)
         )
       }, error = function(e) {
         paste0("[Error] ", conditionMessage(e))
@@ -225,10 +228,13 @@ write_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
         writeLines(content, file_path)
         verb  <- if (existed) "Updated" else "Created"
         fname <- basename(file_path)
-        .tool_result(
+        .tool_result2(
           paste0(verb, ": ", file_path),
-          title = sprintf("%s <code>%s</code>",
-                          verb, htmltools::htmlEscape(fname))
+          kind    = "diff",
+          icon    = if (existed) "pencil" else "file-earmark-plus",
+          title   = sprintf("%s <code>%s</code>",
+                            verb, htmltools::htmlEscape(fname)),
+          payload = list(verb = verb, path = file_path, new = content)
         )
       }, error = function(e) {
         paste0("[Error] ", conditionMessage(e))
@@ -294,10 +300,14 @@ edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
         else
           sub(old_string, new_string, content, fixed = TRUE)
         writeLines(new_content, path)
-        .tool_result(
+        .tool_result2(
           paste0("Edited: ", file_path),
-          title = sprintf("Edit <code>%s</code>",
-                          htmltools::htmlEscape(basename(file_path)))
+          kind    = "diff",
+          icon    = "pencil",
+          title   = sprintf("Edit <code>%s</code>",
+                            htmltools::htmlEscape(basename(file_path))),
+          payload = list(verb = "Edited", path = file_path,
+                         old = content, new = new_content)
         )
       }, error = function(e) {
         paste0("[Error] ", conditionMessage(e))
@@ -355,6 +365,7 @@ multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
       path <- r$path
       tryCatch({
         content <- paste(readLines(path, warn = FALSE), collapse = "\n")
+        orig_content <- content
         applied <- 0L
         for (edit in edits) {
           old <- edit[["old_string"]] %||% ""
@@ -374,10 +385,14 @@ multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
           applied <- applied + 1L
         }
         writeLines(content, path)
-        .tool_result(
+        .tool_result2(
           paste0("Applied ", applied, " edit(s) to: ", file_path),
-          title = sprintf("MultiEdit <code>%s</code> (%d edits)",
-                          htmltools::htmlEscape(basename(file_path)), applied)
+          kind    = "diff",
+          icon    = "pencil-square",
+          title   = sprintf("MultiEdit <code>%s</code> (%d edits)",
+                            htmltools::htmlEscape(basename(file_path)), applied),
+          payload = list(verb = sprintf("MultiEdit (%d)", applied),
+                         path = file_path, old = orig_content, new = content)
         )
       }, error = function(e) {
         paste0("[Error] ", conditionMessage(e))
@@ -468,12 +483,15 @@ glob_tool <- function() {
         result <- paste(files, collapse = "\n")
         result <- truncate_tool_result(result, "Glob")
         n <- length(files)
-        .tool_result(
+        .tool_result2(
           result,
+          kind     = "text",
+          icon     = "search",
           title    = sprintf("Glob <code>%s</code> (%d file%s)",
                              htmltools::htmlEscape(pattern), n,
                              if (n == 1L) "" else "s"),
-          markdown = paste0("```\n", result, "\n```")
+          markdown = paste0("```\n", result, "\n```"),
+          payload  = list(text = result)
         )
       }, error = function(e) {
         paste0("[Error] ", conditionMessage(e))
@@ -575,12 +593,15 @@ grep_tool <- function() {
       result <- paste(out, collapse = "\n")
       result <- truncate_tool_result(result, "Grep")
       n_hits <- length(out)
-      .tool_result(
+      .tool_result2(
         result,
+        kind     = "text",
+        icon     = "search",
         title    = sprintf("Grep <code>%s</code> (%d match%s)",
                            htmltools::htmlEscape(pattern), n_hits,
                            if (n_hits == 1L) "" else "es"),
-        markdown = paste0("```\n", result, "\n```")
+        markdown = paste0("```\n", result, "\n```"),
+        payload  = list(text = result)
       )
     },
     description = paste0(
@@ -648,12 +669,15 @@ ls_tool <- function() {
         result <- truncate_tool_result(result, "LS")
         n <- length(annotated)
         dname <- if (path == ".") "." else basename(path)
-        .tool_result(
+        .tool_result2(
           result,
+          kind     = "text",
+          icon     = "folder",
           title    = sprintf("LS <code>%s</code> (%d entr%s)",
                              htmltools::htmlEscape(dname), n,
                              if (n == 1L) "y" else "ies"),
-          markdown = paste0("```\n", result, "\n```")
+          markdown = paste0("```\n", result, "\n```"),
+          payload  = list(text = result)
         )
       }, error = function(e) {
         paste0("[Error] ", conditionMessage(e))

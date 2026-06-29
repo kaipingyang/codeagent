@@ -14,6 +14,15 @@ head_assets <- function() {
       rel  = "stylesheet",
       href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
     ),
+    # Prism.js — syntax highlighting for code/diff tool cards
+    htmltools::tags$link(
+      rel  = "stylesheet",
+      href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
+    ),
+    htmltools::tags$script(
+      src = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"),
+    htmltools::tags$script(
+      src = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"),
     htmltools::tags$link(rel = "stylesheet", type = "text/css",
                          href = "codeagent-www/styles.css"),
     htmltools::tags$script(src = "codeagent-www/agent.js"),
