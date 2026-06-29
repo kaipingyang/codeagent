@@ -1,31 +1,15 @@
 #' @title Shiny UI — codeagent_app()
-#' @description Three-panel layout: left sidebar (Sessions/Skills/Settings) +
-#'   chat sidebar + main output panel (files/tool results/interactive content).
-#'   Left and chat sidebars are bslib-native resizable.
+#' @description Three-panel layout: left sidebar (Sessions/Customizations/Settings) +
+#'   chat panel + main output panel.
 #' @name ui
 #' @keywords internal
 NULL
 
 #' Launch the codeagent Shiny application
 #'
-#' Two calling conventions:
-#'
-#' **New (recommended):** pass a [codeagent_client()] as first argument.
-#' ```r
-#' client <- codeagent_client(
-#'   chat_openai_compatible(...),
-#'   permission_mode = "bypass"
-#' )
-#' codeagent_app(client, pinned_skills = c("plan"), theme = "default")
-#' ```
-#'
-#' **Legacy:** pass model/permission_mode/etc. directly or supply `chat=`.
-#'
 #' @param client A `CodagentClient` from [codeagent_client()], an
 #'   `ellmer::Chat`, or NULL (legacy mode).
 #' @param pinned_skills Character vector. Skill names pinned at top of Skills panel.
-#' @param theme Character. `"default"` (bslib-native), `"flatly"`,
-#'   `"darkly"`, or `"glass"`.
 #' @param port Integer or NULL. Shiny port (NULL = random).
 #' @param launch.browser Logical. Open in browser (default TRUE).
 #' @param model Character. Legacy: model name.
@@ -38,7 +22,6 @@ NULL
 codeagent_app <- function(
   client          = NULL,
   pinned_skills   = character(0),
-  theme           = c("default", "flatly", "darkly", "glass"),
   port            = NULL,
   launch.browser  = TRUE,
   # Legacy params
@@ -48,7 +31,6 @@ codeagent_app <- function(
   btw_groups      = NULL,
   chat            = NULL
 ) {
-  theme <- match.arg(theme)
 
   # Resolve to CodagentClient ------------------------------------------------
   if (inherits(client, "CodagentClient")) {
@@ -100,39 +82,15 @@ codeagent_app <- function(
   # ---------------------------------------------------------------------------
   # UI
   # ---------------------------------------------------------------------------
-  .bs_theme <- if (identical(theme, "default")) {
-    bslib::bs_theme()
-  } else if (identical(theme, "flatly")) {
-    bslib::bs_theme(bootswatch = "flatly")
-  } else if (identical(theme, "darkly")) {
-    bslib::bs_theme(bootswatch = "darkly")
-  } else {
-    bslib::bs_theme(
-      bootswatch    = "darkly",
-      bg            = "#0f0c29",
-      fg            = "rgba(255,255,255,0.92)",
-      "body-bg"     = "#0f0c29",
-      "body-color"  = "rgba(255,255,255,0.92)",
-      "border-color"    = "rgba(255,255,255,0.10)",
-      "secondary-color" = "rgba(255,255,255,0.45)",
-      "tertiary-bg"     = "rgba(255,255,255,0.07)",
-      "secondary-bg"    = "rgba(255,255,255,0.12)",
-      primary   = "#a855f7",
-      secondary = "#06b6d4",
-      base_font = bslib::font_google("Inter")
-    )
-  }
-
   ui <- bslib::page_fillable(
-    theme   = .bs_theme,
     padding = 8,
-    head_assets(theme),
-    bslib::layout_columns(
-      col_widths = c(2, 10),
-      fill       = TRUE,
-      bslib::card(
-        id   = "ca_left_card",
-        fill = TRUE,
+    head_assets(),
+    bslib::layout_sidebar(
+      sidebar = bslib::sidebar(
+        id        = "ca_left_sidebar",
+        width     = 240,
+        resizable = TRUE,
+        padding   = 8,
         left_sidebar_ui(
           permission_mode      = permission_mode,
           btw_available_groups = btw_available_groups,

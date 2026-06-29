@@ -20,7 +20,7 @@ server_settings <- function(input, output, session, chat, settings, cwd, hooks =
         if (!is.null(count) && count > 0L)
           htmltools::tags$span(
             class = "ci-count",
-            style = "font-size:0.7rem; background:var(--ca-btn-bg); border-radius:3px; padding:0 4px; color:var(--ca-text-muted);",
+            style = "font-size:0.7rem; background:var(--bs-tertiary-bg, #f8f9fa); border-radius:3px; padding:0 4px; color:var(--bs-secondary-color, #6c757d);",
             count
           )
       )
@@ -44,13 +44,5 @@ server_settings <- function(input, output, session, chat, settings, cwd, hooks =
     tryCatch(
       register_r_tools(chat, groups = input$btw_groups_input),
       error = function(e) NULL)
-  }, ignoreInit = TRUE)
-
-  shiny::observeEvent(input$theme_select, {
-    shiny::showNotification(
-      paste0("Theme change to '", input$theme_select, "' requires app relaunch."),
-      type = "message",
-      duration = 4
-    )
   }, ignoreInit = TRUE)
 }

@@ -111,8 +111,5 @@
       });
       observer.observe(document.body, { childList: true, subtree: true });
     });
-    Shiny.addCustomMessageHandler("set_theme", function (data) {
-      document.documentElement.setAttribute("data-theme", data.theme);
-    });
   }
 })();

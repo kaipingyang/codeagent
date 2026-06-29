@@ -145,14 +145,14 @@ server_chat <- function(input, output, session, chat, settings,
     val <- state$main_output
     if (is.null(val)) {
       return(htmltools::tags$p(
-        style = "color:var(--ca-text-muted); padding:24px; text-align:center;",
+        style = "color:var(--bs-secondary-color, #6c757d); padding:24px; text-align:center;",
         "Tool output will appear here."
       ))
     }
     htmltools::tagList(
       htmltools::tags$div(
         class = "ca-output-title px-3 py-2",
-        style = "font-size:0.8rem; font-weight:600; border-bottom:1px solid var(--ca-border);",
+        style = "font-size:0.8rem; font-weight:600; border-bottom:1px solid var(--bs-border-color, #dee2e6);",
         val$title
       ),
       htmltools::tags$div(

@@ -1,31 +1,13 @@
-/* ==========================================================================
-   codeagent — Shiny UI styles
-   ========================================================================== */
-
-/* ── CSS variables ────────────────────────────────────────────────────────── */
-:root {
-  --ca-accent:        #0d6efd;
-  --ca-accent2:       #0dcaf0;
-  --ca-accent-glow:   rgba(13, 110, 253, 0.2);
-  --ca-text-muted:    #6c757d;
-  --ca-border:        #dee2e6;
-  --ca-btn-bg:        #f8f9fa;
-  --ca-btn-hover:     #e9ecef;
-  --ca-input-bg:      #ffffff;
-  --ca-radius-sm:     6px;
-  --ca-budget-low:    #0d6efd;
-  --ca-budget-warn:   #fd7e14;
-  --ca-budget-danger: #dc3545;
-}
+/* codeagent — minimal functional styles only, no theme overrides */
 
 /* ── Token budget bar ────────────────────────────────────────────────────── */
-.ca-budget-wrap { padding: 8px 0 4px; }
+.ca-budget-wrap { padding: 4px 0; }
 
 .ca-budget-label {
   display: flex;
   justify-content: space-between;
   font-size: 0.72rem;
-  color: var(--ca-text-muted);
+  color: var(--bs-secondary-color, #6c757d);
   margin-bottom: 4px;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -34,7 +16,7 @@
 .token-budget-bar {
   height: 3px;
   border-radius: 2px;
-  background: var(--ca-border);
+  background: var(--bs-border-color, #dee2e6);
   overflow: hidden;
 }
 
@@ -42,54 +24,21 @@
   height: 100%;
   border-radius: 2px;
   transition: width 0.4s ease, background-color 0.4s ease;
-  background: var(--ca-budget-low);
+  background: var(--bs-primary, #0d6efd);
 }
-.token-budget-bar-fill.warn   { background: var(--ca-budget-warn); }
-.token-budget-bar-fill.danger { background: var(--ca-budget-danger); }
+.token-budget-bar-fill.warn   { background: var(--bs-warning, #fd7e14); }
+.token-budget-bar-fill.danger { background: var(--bs-danger,  #dc3545); }
 
-/* ── Left sidebar accordion ─────────────────────────────────────────────── */
-.ca-sidebar-accordion .accordion-item {
-  border-left: none !important;
-  border-right: none !important;
-  border-radius: 0 !important;
-  background: transparent !important;
-}
-
-.ca-sidebar-accordion .accordion-button {
-  font-size: 0.78rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding: 10px 4px;
-  box-shadow: none !important;
-  background: transparent !important;
-}
-
-.ca-sidebar-accordion .accordion-body {
-  background: transparent !important;
-  padding-left: 2px;
-  padding-right: 2px;
-}
-
-/* ── Session buttons ─────────────────────────────────────────────────────── */
-.ca-session-btn {
-  font-size: 0.78rem !important;
-  transition: background 0.15s, border-color 0.15s;
-  text-align: left !important;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ca-session-action-btn {
-  font-size: 0.75rem !important;
-  transition: all 0.15s;
+/* ── Voice recording indicator ───────────────────────────────────────────── */
+#ca_voice_btn.is-recording {
+  border-color: var(--bs-danger, #dc3545) !important;
+  color: var(--bs-danger, #dc3545) !important;
 }
 
 /* ── Settings labels ─────────────────────────────────────────────────────── */
 .ca-settings-label {
   font-size: 0.7rem;
-  color: var(--ca-text-muted);
+  color: var(--bs-secondary-color, #6c757d);
   text-transform: uppercase;
   letter-spacing: 0.06em;
   margin-bottom: 4px;
@@ -98,28 +47,11 @@
 }
 .ca-settings-label:first-child { margin-top: 0; }
 
-.ca-settings .form-select,
-.ca-settings .form-control { font-size: 0.8rem !important; }
-.ca-settings .form-check-label { font-size: 0.78rem; }
-
 /* ── Footer ──────────────────────────────────────────────────────────────── */
 .ca-footer {
   font-size: 0.68rem;
-  color: var(--ca-text-muted);
+  color: var(--bs-secondary-color, #6c757d);
   text-align: center;
   padding-top: 8px;
-  margin-top: 4px;
-  letter-spacing: 0.03em;
-}
-
-/* ── Voice recording indicator ───────────────────────────────────────────── */
-.ca-input-btn.is-recording,
-#ca_voice_btn.is-recording {
-  border-color: var(--bs-danger, #dc3545) !important;
-  color: var(--bs-danger, #dc3545) !important;
-}
-
-.ca-speech-status {
-  font-size: 0.75rem;
-  color: var(--ca-text-muted);
+  margin-top: auto;
 }
