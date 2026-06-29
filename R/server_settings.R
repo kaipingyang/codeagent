@@ -47,6 +47,10 @@ server_settings <- function(input, output, session, chat, settings, cwd, hooks =
   }, ignoreInit = TRUE)
 
   shiny::observeEvent(input$theme_select, {
-    session$sendCustomMessage("set_theme", list(theme = input$theme_select))
+    shiny::showNotification(
+      paste0("Theme change to '", input$theme_select, "' requires app relaunch."),
+      type = "message",
+      duration = 4
+    )
   }, ignoreInit = TRUE)
 }

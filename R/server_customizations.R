@@ -1,0 +1,186 @@
+#' @title Customizations Server Logic
+#' @description Handles Customizations panel row clicks → show modal.
+#'   Each category is independent: data loading + modal dispatch are isolated.
+#' @name server_customizations
+#' @keywords internal
+NULL
+
+server_customizations <- function(input, output, session, chat, settings, cwd, hooks = NULL) {
+
+  `%||%` <- codeagent:::`%||%`
+
+  # ── Count badges ──────────────────────────────────────────────────────────
+
+  n_skills <- shiny::reactive({
+    tryCatch(length(list_skills_meta(cwd)), error = function(e) 0L)
+  })
+
+  n_agents <- shiny::reactive({
+    tryCatch({
+      paths <- c(
+        file.path(cwd, ".claude/agents"),
+        file.path(cwd, ".btw"),
+        file.path("~/.claude/agents")
+      )
+      files <- unlist(lapply(paths, function(p) {
+        if (dir.exists(p)) list.files(p, pattern = "\\.md$", full.names = FALSE)
+        else character(0)
+      }))
+      length(files)
+    }, error = function(e) 0L)
+  })
+
+  n_hooks <- shiny::reactive({
+    if (!is.null(hooks)) tryCatch(hooks$count(), error = function(e) 0L) else 0L
+  })
+
+  n_mcp <- shiny::reactive({
+    tryCatch({
+      cfg <- file.path(cwd, "mcp.json")
+      if (!file.exists(cfg)) return(0L)
+      length(jsonlite::read_json(cfg)$mcpServers %||% list())
+    }, error = function(e) 0L)
+  })
+
+  output$ca_open_agents_badge    <- shiny::renderUI(.count_badge(n_agents()))
+  output$ca_open_skills_badge    <- shiny::renderUI(.count_badge(n_skills()))
+  output$ca_open_hooks_badge     <- shiny::renderUI(.count_badge(n_hooks()))
+  output$ca_open_mcp_badge       <- shiny::renderUI(.count_badge(n_mcp()))
+
+  # ── Agents modal ──────────────────────────────────────────────────────────
+
+  shiny::observeEvent(input$ca_open_agents, {
+    agent_list <- tryCatch({
+      paths <- c(
+        file.path(cwd, ".claude/agents"),
+        file.path(cwd, ".btw"),
+        path.expand("~/.claude/agents")
+      )
+      mds <- unlist(lapply(paths, function(p) {
+        if (dir.exists(p)) list.files(p, pattern = "\\.md$", full.names = TRUE)
+        else character(0)
+      }))
+      lapply(mds, function(f) {
+        lines <- readLines(f, n = 20, warn = FALSE)
+        list(
+          name        = sub("\\.md$", "", basename(f)),
+          description = .extract_yaml_field(lines, "description"),
+          model       = .extract_yaml_field(lines, "model")
+        )
+      })
+    }, error = function(e) list())
+    shiny::showModal(modal_agents_ui(agent_list))
+  })
+
+  # ── Skills modal ──────────────────────────────────────────────────────────
+
+  shiny::observeEvent(input$ca_open_skills, {
+    skill_list <- tryCatch(list_skills_meta(cwd), error = function(e) list())
+    shiny::showModal(modal_skills_ui(skill_list))
+  })
+
+  # Install skill (triggered from Skills modal footer button)
+  shiny::observeEvent(input$install_skill_btn, {
+    shiny::removeModal()
+    shiny::showModal(shiny::modalDialog(
+      title  = "Install Skill",
+      footer = shiny::tagList(
+        shiny::modalButton("Cancel"),
+        shiny::actionButton("install_skill_confirm", "Install", class = "btn-primary")
+      ),
+      shiny::textInput("install_skill_pkg",  "Package name",      placeholder = "e.g. btw"),
+      shiny::textInput("install_skill_name", "Skill name (optional)",
+                       placeholder = "leave empty to pick interactively"),
+      shiny::selectInput("install_skill_scope", "Scope",
+                         choices = c("project", "user"), selected = "project")
+    ))
+  })
+
+  shiny::observeEvent(input$install_skill_confirm, {
+    pkg   <- trimws(input$install_skill_pkg  %||% "")
+    name  <- trimws(input$install_skill_name %||% "")
+    scope <- input$install_skill_scope       %||% "project"
+    shiny::removeModal()
+    if (!nzchar(pkg)) {
+      shiny::showNotification("Package name is required.", type = "warning"); return()
+    }
+    if (!requireNamespace("btw", quietly = TRUE)) {
+      shiny::showNotification("btw required for skill installation.", type = "error"); return()
+    }
+    tryCatch({
+      btw::btw_skill_install_package(pkg,
+        skill = if (nzchar(name)) name else NULL,
+        scope = scope)
+      shiny::showNotification(sprintf("Skill installed from '%s'.", pkg),
+                              type = "message", duration = 4)
+    }, error = function(e) {
+      shiny::showNotification(conditionMessage(e), type = "error", duration = 6)
+    })
+  })
+
+  # ── Instructions modal ────────────────────────────────────────────────────
+
+  shiny::observeEvent(input$ca_open_instructions, {
+    files <- tryCatch({
+      candidates <- c(
+        file.path(cwd, "CLAUDE.md"),
+        file.path(cwd, ".claude/instructions.md"),
+        path.expand("~/.claude/CLAUDE.md")
+      )
+      lapply(candidates[file.exists(candidates)], function(f) {
+        list(path = f, active = TRUE)
+      })
+    }, error = function(e) list())
+    shiny::showModal(modal_instructions_ui(files))
+  })
+
+  # ── Hooks modal ───────────────────────────────────────────────────────────
+
+  shiny::observeEvent(input$ca_open_hooks, {
+    hook_list <- tryCatch({
+      if (!is.null(hooks) && is.function(hooks$list)) {
+        hooks$list()
+      } else {
+        list()
+      }
+    }, error = function(e) list())
+    shiny::showModal(modal_hooks_ui(hook_list))
+  })
+
+  # ── MCP modal ─────────────────────────────────────────────────────────────
+
+  shiny::observeEvent(input$ca_open_mcp, {
+    mcp_list <- tryCatch({
+      cfg <- file.path(cwd, "mcp.json")
+      if (!file.exists(cfg)) return(list())
+      servers <- jsonlite::read_json(cfg)$mcpServers %||% list()
+      lapply(names(servers), function(nm) {
+        s <- servers[[nm]]
+        list(
+          name    = nm,
+          command = if (!is.null(s$command)) paste(c(s$command, s$args), collapse = " ") else NULL,
+          url     = s$url,
+          status  = "unknown"
+        )
+      })
+    }, error = function(e) list())
+    shiny::showModal(modal_mcp_ui(mcp_list))
+  })
+
+  # ── Plugins modal ─────────────────────────────────────────────────────────
+
+  shiny::observeEvent(input$ca_open_plugins, {
+    shiny::showModal(modal_plugins_ui(list()))
+  })
+}
+
+# ---------------------------------------------------------------------------
+# Internal helper: extract a YAML front-matter field from lines
+# ---------------------------------------------------------------------------
+
+.extract_yaml_field <- function(lines, field) {
+  pat <- paste0("^", field, ":\\s*['\"]?(.+?)['\"]?\\s*$")
+  m   <- regmatches(lines, regexpr(pat, lines, perl = TRUE))
+  if (length(m) == 0L) return(NULL)
+  sub(pat, "\\1", m[[1]])
+}

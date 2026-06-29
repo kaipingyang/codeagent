@@ -9,10 +9,23 @@ NULL
 # ---------------------------------------------------------------------------
 
 head_assets <- function(theme) {
-  htmltools::tags$head(
+  base <- htmltools::tagList(
+    htmltools::tags$link(
+      rel  = "stylesheet",
+      href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    ),
     htmltools::tags$link(rel = "stylesheet", type = "text/css",
                          href = "codeagent-www/styles.css"),
-    htmltools::tags$script(src = "codeagent-www/agent.js"),
+    htmltools::tags$script(src = "codeagent-www/voice.js"),
+    htmltools::tags$script(src = "codeagent-www/agent.js")
+  )
+
+  if (identical(theme, "default")) {
+    return(htmltools::tags$head(base))
+  }
+
+  htmltools::tags$head(
+    base,
     htmltools::tags$script(htmltools::HTML(sprintf(
       'document.documentElement.setAttribute("data-theme", "%s");', theme
     )))
@@ -20,21 +33,75 @@ head_assets <- function(theme) {
 }
 
 # ---------------------------------------------------------------------------
-# Left sidebar: Sessions + Customizations
+# Skill picker footer — shared by both chat sidebar variants
+# ---------------------------------------------------------------------------
+
+.skill_picker_footer <- function(skill_meta) {
+  skill_choices <- list(
+    "Slash Commands" = stats::setNames(skill_meta$key, skill_meta$label)
+  )
+  htmltools::tags$div(
+    class = "d-flex align-items-center gap-1 py-1",
+
+    # Hidden file input
+    htmltools::tags$input(
+      type   = "file",
+      id     = "ca_file_hidden",
+      style  = "display:none;",
+      accept = ".pdf,.txt,.csv,.R,.Rmd,.md,.docx,.xlsx,.png,.jpg"
+    ),
+    shiny::actionButton("ca_upload_local_btn", NULL,
+      icon  = shiny::icon("paperclip"),
+      class = "btn-outline-secondary btn-sm flex-shrink-0",
+      title = "Upload local file"),
+    shiny::actionButton("ca_voice_btn", NULL,
+      icon  = shiny::icon("microphone"),
+      class = "btn-outline-secondary btn-sm flex-shrink-0",
+      title = "Voice input"),
+    shinyFiles::shinyFilesButton(
+      "ca_server_btn",
+      label    = NULL,
+      title    = "Browse server files",
+      icon     = shiny::icon("server"),
+      class    = "btn-outline-secondary btn-sm flex-shrink-0",
+      multiple = FALSE),
+    htmltools::tags$div(
+      style = "flex:1; min-width:0;",
+      shinyWidgets::pickerInput(
+      inputId    = "skill_picker",
+      label      = NULL,
+      choices    = skill_choices,
+      selected   = character(0),
+      multiple   = FALSE,
+      width      = "100%",
+      choicesOpt = list(
+        subtext = skill_meta$desc,
+        tokens  = paste(skill_meta$key, skill_meta$desc)
+      ),
+      options = shinyWidgets::pickerOptions(
+        liveSearch            = TRUE,
+        noneSelectedText      = "Select a skill...",
+        liveSearchPlaceholder = "Search skills...",
+        showSubtext           = FALSE,
+        size                  = 8,
+        container             = "body",
+        width                 = "100%"
+      )
+    )
+    )   # close flex:1 div
+  )     # close outer flex row
+}
+
+# ---------------------------------------------------------------------------
+# Left sidebar: Sessions + Settings (Skills panel removed — now in footer)
 # ---------------------------------------------------------------------------
 
 left_sidebar_ui <- function(permission_mode, btw_available_groups,
                              btw_groups_selected) {
-  bslib::sidebar(
-    id       = "ca_left_sidebar",
-    width    = 240,
-    resizable = TRUE,
-    padding  = 0,
-
+  htmltools::tagList(
     # Token budget bar
     htmltools::tags$div(
       class = "ca-budget-wrap",
-      style = "padding:8px 10px 4px;",
       htmltools::tags$div(
         class = "ca-budget-label",
         htmltools::tags$span("Context"),
@@ -46,54 +113,47 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
       )
     ),
 
-    # Accordion: Sessions / Skills / Customizations
     bslib::accordion(
       id       = "ca_left_accordion",
       class    = "ca-sidebar-accordion",
       multiple = TRUE,
       open     = "Sessions",
 
-      # ── Sessions ──────────────────────────────────────────────────────────
       bslib::accordion_panel(
         title = "Sessions",
         value = "Sessions",
-        htmltools::tags$div(
-          class = "d-flex gap-1 mb-2",
-          shiny::actionButton("new_session", "New",
-            class = "ca-session-action-btn primary flex-fill btn-sm"),
-          shiny::actionButton("save_session_btn", "Save",
-            class = "ca-session-action-btn flex-fill btn-sm")
+        bslib::toolbar(
+          gap = "0.5rem",
+          bslib::toolbar_input_button(
+            "new_session", "New", border = TRUE,
+            class = "ca-session-action-btn primary btn-sm"
+          ),
+          bslib::toolbar_input_button(
+            "save_session_btn", "Save", border = TRUE,
+            class = "ca-session-action-btn btn-sm"
+          )
         ),
         shiny::uiOutput("session_list_ui")
       ),
 
-      # ── Skills ────────────────────────────────────────────────────────────
       bslib::accordion_panel(
-        title = "⚡ Skills",
-        value = "Skills",
-        shiny::textInput("skill_search", NULL,
-          placeholder = "Search skills…", width = "100%") |>
-          htmltools::tagAppendAttributes(class = "ca-skill-search"),
+        title = "Customizations",
+        value = "Customizations",
         htmltools::tags$div(
-          class = "ca-skill-scroll",
-          shiny::uiOutput("skill_list_ui")
-        ),
-        htmltools::tags$hr(
-          style = "border-color:var(--ca-border); margin:10px 0 6px;"),
-        shiny::actionButton("install_skill_btn", "+ Install skill",
-          class = "ca-session-action-btn w-100 btn-sm")
+          customization_row_ui("ca_open_agents",       "robot",        "Agents"),
+          customization_row_ui("ca_open_skills",       "bolt",         "Skills"),
+          customization_row_ui("ca_open_instructions", "file-lines",   "Instructions"),
+          customization_row_ui("ca_open_hooks",        "plug",         "Hooks"),
+          customization_row_ui("ca_open_mcp",          "server",       "MCP Servers"),
+          customization_row_ui("ca_open_plugins",      "puzzle-piece", "Plugins")
+        )
       ),
 
-      # ── Customizations ────────────────────────────────────────────────────
       bslib::accordion_panel(
-        title = "⚙️ Settings",
+        title = "Settings",
         value = "Settings",
         htmltools::tags$div(
           class = "ca-settings",
-          # Live counts (Copilot Customizations style)
-          shiny::uiOutput("customizations_counts"),
-          htmltools::tags$hr(
-            style = "border-color:var(--ca-border); margin:8px 0;"),
           htmltools::tags$span("Permission mode", class = "ca-settings-label"),
           shiny::selectInput("perm_mode", NULL,
             choices  = unlist(PermissionMode),
@@ -111,51 +171,60 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
           },
           htmltools::tags$span("Theme", class = "ca-settings-label"),
           shiny::selectInput("theme_select", NULL,
-            choices  = c("Light" = "light",
-                         "Glassmorphism" = "glassmorphism",
-                         "Dark" = "dark"),
-            selected = "light",
+            choices  = c("Default" = "default",
+                         "Flatly"  = "flatly",
+                         "Darkly"  = "darkly",
+                         "Glass"   = "glass"),
+            selected = "default",
             width    = "100%")
         )
       )
     ),
 
-    # Footer
     htmltools::tags$div(
-      class = "ca-footer",
+      class = "ca-footer mt-auto",
       "codeagent v0.1.0 · ESC to interrupt"
     )
   )
 }
 
+left_sidebar_ui_default <- left_sidebar_ui
+
+
 # ---------------------------------------------------------------------------
-# Chat sidebar (right-of-left, position="left" in inner layout)
+# Chat sidebar — chat_ui with skill picker + file/voice footer
 # ---------------------------------------------------------------------------
 
-chat_sidebar_ui <- function() {
-  bslib::sidebar(
-    id        = "ca_chat_sidebar",
-    width     = "30%",
-    resizable = TRUE,
-    padding   = 0,
-    position  = "left",
-    shinychat::chat_ui(
-      "chat",
-      fill        = TRUE,
-      placeholder = "Ask codeagent… (/ for skills, ESC to interrupt)"
-    )
+chat_sidebar_ui <- function(skill_meta) {
+  shinychat::chat_ui(
+    "chat",
+    fill          = TRUE,
+    enable_cancel = TRUE,
+    placeholder   = "Ask codeagent… (/ for skills, ESC to interrupt)",
+    footer        = .skill_picker_footer(skill_meta)
   )
 }
+
+chat_sidebar_ui_default <- function(skill_meta) {
+  shinychat::chat_ui(
+    "chat",
+    fill          = TRUE,
+    enable_cancel = TRUE,
+    placeholder   = "Ask codeagent…",
+    footer        = .skill_picker_footer(skill_meta)
+  )
+}
+
+# chat_sidebar_ui_default is an alias kept for back-compat
+chat_sidebar_ui_default <- chat_sidebar_ui
 
 # ---------------------------------------------------------------------------
 # Main output panel (right, largest area)
 # ---------------------------------------------------------------------------
 
 main_output_ui <- function() {
-  htmltools::tags$div(
-    class = "ca-main-output",
-    bslib::navset_tab(
-      id = "main_tab",
+  bslib::navset_tab(
+      id       = "main_tab",
       selected = "output",
       bslib::nav_panel(
         title = "Output",
@@ -175,5 +244,4 @@ main_output_ui <- function() {
         jsTreeR::treeNavigatorUI("file_tree", height = "calc(100vh - 120px)")
       )
     )
-  )
 }

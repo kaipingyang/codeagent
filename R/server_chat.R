@@ -102,11 +102,11 @@ server_chat <- function(input, output, session, chat, settings,
                error = function(e) user_input)
     else user_input
 
-    compaction_ctrl <- state$compaction_ctrl
-    resource_state  <- state$resource_state
-
-    compaction_ctrl$maybe_compact(chat, settings$model_limit %||% 200000L)
-    resource_state$maybe_replace(chat)
+    shiny::isolate(state$compaction_ctrl$maybe_compact(
+      chat,
+      settings$model_limit %||% 200000L
+    ))
+    shiny::isolate(state$resource_state$maybe_replace(chat))
 
     coro::async(function() {
       stream <- chat$stream_async(actual_input, stream = "content")

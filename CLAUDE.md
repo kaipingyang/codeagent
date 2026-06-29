@@ -15,6 +15,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | `btw-package.md` | btw 1.2.1 overview, client config, skill system |
 | `btw-tools.md` | btw 工具组完整参考（10组 + skill系统 + btw_app设计）|
 | `shinychat.md` | chat_append(), tool cards, _intent display, ContentToolResult extra$display |
+| `bslib-shinychat-layout.md` | `chat_ui(fill=TRUE)`、`page_fillable()`、`layout_sidebar()`、`sidebar(fillable=TRUE)` 的真实约束；先读再改聊天布局 |
+| `bslib-toolbar-toast.md` | `toolbar()` / `toolbar_input_button()` / `toast()` 在本项目中的推荐用法 |
+| `bslib-toast-vs-notification.md` | `bslib::show_toast()` 与 `shiny::showNotification()` 的选型结论 |
+| `shinyAssistantUI-grouping.md` | slash command / action item 的固定 6 分组：`Context` / `Model` / `Customize` / `Slash Commands` / `Settings` / `Support` |
 | `btw-package.md` | btw 1.2.1 complete reference: skill system, CLI, agent tools, MCP |
 | `shiny-extended-task.md` | ExtendedTask + coro::async streaming pattern used in ui.R |
 | `promises-async-r.md` | promises, await(), async/await patterns in Shiny |
@@ -73,7 +77,7 @@ client <- codeagent_client(chat, permission_mode = "bypass")
 codeagent(client, "List all .R files in R/")
 
 # Launch Shiny app (new style)
-codeagent_app(client, theme = "light")
+codeagent_app(client, theme = "default")
 
 # From codeagent.md config
 client <- codeagent_client_config(alias = "gpt41")
@@ -85,6 +89,10 @@ codeagent_app(client)
 **`coro::for` inside `coro::async`:** Write plain `for (x in gen)` — do not qualify as `coro::for`. Do not wrap in `tryCatch()` inside the loop.
 
 **Env vars:** Use `CODEAGENT_BASE_URL`, `CODEAGENT_MODEL`, `CODEAGENT_API_KEY` (not `OPENAI_*`).
+
+**Shiny layout rule:** Before changing chat/sidebar layout, read `~/.claude/docs/bslib-shinychat-layout.md`. In particular, `shinychat::chat_ui(fill = TRUE)` must live inside a truly fillable parent (for example `bslib::sidebar(fillable = TRUE, ...)`), and extra wrappers often break sticky-bottom input behavior.
+
+**Shiny component rule:** Prefer `bslib::toolbar()` for compact action rows and prefer `bslib::show_toast()` over `shiny::showNotification()` for user-facing status feedback. Read `~/.claude/docs/bslib-toolbar-toast.md` and `~/.claude/docs/bslib-toast-vs-notification.md` before introducing new action bars or notifications.
 
 ---
 
@@ -133,7 +141,7 @@ client <- codeagent_client(chat,
 # Step 3: use the client
 codeagent(client, "prompt")          # one-shot
 agent_loop(user_input, client, ...)  # per-turn (Shiny)
-codeagent_app(client, theme="light") # Shiny UI
+codeagent_app(client, theme="default") # Shiny UI
 ```
 
 ### Subsystems
@@ -167,7 +175,7 @@ codeagent_app(client, theme="light") # Shiny UI
 
 **`compaction.R` `.make_compact_chat()`** — When `CODEAGENT_BASE_URL` set, uses `chat_openai_compatible` with `databricks-claude-haiku-4-5`; otherwise `chat_anthropic`.
 
-**`ui.R`** — `codeagent_app(client, pinned_skills, theme, port, launch.browser)`. Three accordion panels: Sessions (1st, open), Skills (2nd, searchable + scrollable + install), Settings (permission mode + btw tool groups + theme toggle). Three themes: `"light"` (bslib flatly), `"glassmorphism"` (dark purple gradient + frosted glass), `"dark"` (minimal dark). Tools stream via `stream="content"` → shinychat renders tool cards automatically.
+**`ui.R`** — `codeagent_app(client, pinned_skills, theme, port, launch.browser)`. Three accordion panels: Sessions (1st, open), Skills (2nd, searchable + scrollable + install), Settings (permission mode + btw tool groups + theme toggle). Themes: `"default"` (pure bslib), `"flatly"` (Bootswatch), `"darkly"` (Bootswatch), `"glass"` (custom visual layer). Tools stream via `stream="content"` → shinychat renders tool cards automatically.
 
 **`sessions.R / mutations.R`** — Sessions stored as JSONL under `~/.codeagent/projects/<hash>/`. Session titles fall back to first user message (not UUID). `fork_session()` implemented.
 
@@ -181,6 +189,7 @@ codeagent_app(client, theme="light") # Shiny UI
 - **`ContentToolResult` with `extra$display`**: all tools return typed results with HTML title + markdown for shinychat cards.
 - **S7 slot access is fragile**: wrap in `tryCatch`.
 - **`%||%` null-coalescing**: defined in `utils.R`.
+- **shinyAssistantUI canonical groups**: when mimicking the slash menu, use the 6 fixed sections from `shinyAssistantUI` examples/source — `Context`, `Model`, `Customize`, `Slash Commands`, `Settings`, `Support`. Do not invent ad-hoc group names for the UI prototype unless the user explicitly asks.
 
 ### Runtime directories
 

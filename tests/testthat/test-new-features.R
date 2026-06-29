@@ -225,6 +225,100 @@ test_that("verify_r_tests() passes when devtools not available", {
 })
 
 # ---------------------------------------------------------------------------
+# Shiny UI helpers
+# ---------------------------------------------------------------------------
+
+test_that("chat_sidebar_ui includes upload and voice controls", {
+  ui <- chat_sidebar_ui()
+  html <- as.character(ui)
+
+  expect_match(html, "ca-chat-shell")
+  expect_match(html, "ca-chat-history")
+  expect_match(html, "chat_local_files")
+  expect_match(html, "chat_server_files")
+  expect_match(html, "chat_speech_toggle")
+  expect_match(html, "ca-speech-status")
+})
+
+test_that("chat_sidebar_ui_default keeps only native chat UI", {
+  ui <- chat_sidebar_ui_default()
+  html <- as.character(ui)
+
+  expect_match(html, "Ask codeagent…")
+  expect_match(html, "bslib_sidebar")
+  expect_false(grepl("overflow-auto", html, fixed = TRUE))
+  expect_false(grepl("chat_local_files", html, fixed = TRUE))
+  expect_false(grepl("chat_server_files", html, fixed = TRUE))
+  expect_false(grepl("chat_speech_toggle", html, fixed = TRUE))
+  expect_false(grepl("ca-speech-status", html, fixed = TRUE))
+})
+
+test_that("left_sidebar_ui exposes default theme option", {
+  ui <- left_sidebar_ui("default", character(0), character(0))
+  html <- as.character(ui)
+
+  expect_match(html, "Default")
+  expect_match(html, "theme_select")
+  expect_match(html, "default")
+})
+
+test_that("head_assets(default) does not include custom CSS or JS", {
+  html <- as.character(head_assets("default"))
+
+  expect_false(grepl("codeagent-www/styles.css", html, fixed = TRUE))
+  expect_true(grepl("codeagent-www/agent.js", html, fixed = TRUE))
+  expect_false(grepl("data-theme", html, fixed = TRUE))
+})
+
+test_that("default theme uses native sidebar builders", {
+  expect_true(is.function(left_sidebar_ui_default))
+  expect_true(is.function(chat_sidebar_ui_default))
+})
+
+test_that("chat sidebars use 50 percent width", {
+  expect_match(paste(deparse(body(chat_sidebar_ui)), collapse = "\n"), 'width     = "50%"', fixed = TRUE)
+  expect_match(paste(deparse(body(chat_sidebar_ui_default)), collapse = "\n"), 'width     = "50%"', fixed = TRUE)
+})
+
+test_that("sidebar action rows use bslib toolbar", {
+  src <- paste(readLines(test_path("..", "..", "R", "ui_panels.R")), collapse = "\n")
+  expect_true(grepl("bslib::toolbar\\(", src))
+  expect_true(grepl("bslib::toolbar_input_button\\(", src))
+})
+
+test_that("skills use shinychat native input update", {
+  src <- paste(readLines(test_path("..", "..", "R", "server_skills.R")), collapse = "\n")
+  expect_true(grepl("shinychat::update_chat_user_input", src, fixed = TRUE))
+})
+
+test_that("skill cards keep colored borders and compact text styling", {
+  css <- paste(readLines(test_path("..", "..", "inst", "www", "styles.css")), collapse = "\n")
+  expect_true(grepl("\\.ca-skill-btn:hover \\{", css))
+  expect_true(grepl("border-color: var\\(--bs-secondary", css))
+  expect_true(grepl("\\.ca-skill-btn\\.pinned", css))
+  expect_true(grepl("\\.ca-skill-name", css))
+  expect_true(grepl("color: var\\(--bs-secondary", css))
+  expect_true(grepl("\\.ca-skill-desc", css))
+})
+
+test_that("styles.css limits component visual overrides to glass theme", {
+  css <- paste(readLines(test_path("..", "..", "inst", "www", "styles.css")), collapse = "\n")
+
+  expect_false(grepl('\\[data-theme="darkly"\\].*ca-session-btn', css))
+  expect_false(grepl('\\[data-theme="darkly"\\].*ca-skill-btn', css))
+  expect_false(grepl('\\[data-theme="darkly"\\].*ca-settings', css))
+  expect_false(grepl('\\[data-theme="darkly"\\].*accordion', css))
+  expect_true(grepl('\\[data-theme="glass"\\].*ca-session-btn', css))
+})
+
+test_that("server_chat isolates shared state access inside ExtendedTask", {
+  src <- paste(readLines(test_path("..", "..", "R", "server_chat.R")), collapse = "\n")
+
+  expect_match(src, "shiny::isolate\\(state\\$compaction_ctrl\\$maybe_compact")
+  expect_match(src, "shiny::isolate\\(state\\$resource_state\\$maybe_replace")
+})
+
+# ---------------------------------------------------------------------------
 # Worktree helpers (mock — no real git needed for unit tests)
 # ---------------------------------------------------------------------------
 

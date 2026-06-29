@@ -15,11 +15,11 @@ server_right <- function(input, output, session, cwd, state) {
   shiny::observeEvent(selected_paths(), {
     paths <- selected_paths()
     if (length(paths) == 0L) return()
-    path <- paths[[1L]]
+    path <- normalizePath(paths[[length(paths)]], winslash = "/", mustWork = FALSE)
     if (!file.exists(path) || dir.exists(path)) return()
 
     ext     <- tools::file_ext(path)
-    fname   <- basename(path)
+    fname   <- sub(paste0("^", normalizePath(cwd, winslash = "/", mustWork = FALSE), "/?"), "", path)
     preview <- tryCatch({
       switch(tolower(ext),
         r  = ,
@@ -67,5 +67,5 @@ server_right <- function(input, output, session, cwd, state) {
 
     state$main_output <- list(title = fname, content = preview)
     shiny::updateTabsetPanel(session, "main_tab", selected = "output")
-  })
+  }, ignoreInit = TRUE)
 }
