@@ -2,6 +2,14 @@
 # inst/examples/demo_04_thinking.R
 #
 # Demo: visible thinking content via deepseek-r1 (ContentThinking)
+#
+# Notes:
+# - `deepseek-r1` works with `ellmer::chat_openai_compatible()` out of the box
+#   because the provider returns `reasoning_content`, which ellmer parses into
+#   `ContentThinking`.
+# - Databricks Claude extended thinking uses a different typed-block response
+#   shape. See `references/thinking_claude_haiku.R` for an ellmer monkey-patch
+#   example, or `references/thinking_claude_httr2.R` for a raw httr2 example.
 # Run from package root: Rscript inst/examples/demo_04_thinking.R
 
 library(ellmer)

@@ -42,18 +42,18 @@
     });
 
     // ---------------------------------------------------------------------------
-    // Fill chat input when a skill button is clicked
+    // Legacy skill-fill path (disabled)
+    // Skills now use shinychat::update_chat_user_input() from the server.
+    // Keep this block commented for reference/rollback only.
     // ---------------------------------------------------------------------------
-    Shiny.addCustomMessageHandler("fill_skill", function (data) {
-      var inp = document.querySelector("shiny-chat-input textarea");
-      if (!inp) inp = document.querySelector("[id$='_user_input']");
-      if (!inp) inp = document.getElementById("chat_user_input");
-      if (inp) {
-        inp.value = data.text;
-        inp.dispatchEvent(new Event("input", { bubbles: true }));
-        inp.focus();
-      }
-    });
+    // Shiny.addCustomMessageHandler("fill_skill", function (data) {
+    //   var inp = getChatInput();
+    //   if (inp) {
+    //     inp.value = data.text;
+    //     inp.dispatchEvent(new Event("input", { bubbles: true }));
+    //     inp.focus();
+    //   }
+    // });
 
     // ---------------------------------------------------------------------------
     // Two-phase display: tool returns → immediate push → renderUI replaces

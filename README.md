@@ -33,8 +33,28 @@ client <- codeagent_client(chat, permission_mode = "bypass")
 codeagent(client, "List all .R files in R/")
 
 # Step 3b: interactive Shiny app
-codeagent_app(client, theme = "light")
+codeagent_app(client, theme = "default")
 ```
+
+## Thinking / reasoning support
+
+`codeagent` can use any `ellmer` chat backend, but visible thinking depends on the
+provider response format.
+
+- `deepseek-r1` via `chat_openai_compatible()` works out of the box; ellmer maps
+  `reasoning_content` to `ContentThinking`.
+- GPT-style `reasoning_effort` can be sent to compatible endpoints, but this does
+  not expose raw thinking text; you typically only see usage metadata.
+- Databricks-hosted Claude extended thinking is not parsed by ellmer's current
+  `ProviderOpenAICompatible` implementation because it returns typed content blocks
+  instead of `reasoning_content`.
+
+Reference scripts:
+
+- `inst/examples/demo_04_thinking.R`: supported end-to-end example using `deepseek-r1`
+- `references/thinking_claude_haiku.R`: runtime monkey-patch for Databricks Claude
+- `references/thinking_claude_httr2.R`: raw `httr2` request that prints reasoning blocks
+- `references/ellmer_chat.R`: side-by-side notes for basic chat, GPT reasoning, and thinking
 
 ### From a config file
 
@@ -138,7 +158,7 @@ install_codeagent_cli()
 
 ```bash
 codeagent run "List all .R files"
-codeagent app --theme glassmorphism
+codeagent app --theme glass
 codeagent skills list
 codeagent skills install --package btw
 codeagent mcp
@@ -147,12 +167,12 @@ codeagent info --json
 
 ### Shiny app
 
-Three themes, three-panel accordion sidebar:
+Four themes, three-panel accordion sidebar:
 
 ```r
 codeagent_app(
   client,
-  theme         = "light",          # "light" | "glassmorphism" | "dark"
+  theme         = "default",        # "default" | "flatly" | "darkly" | "glass"
   pinned_skills = c("plan", "compact"),
   port          = NULL
 )

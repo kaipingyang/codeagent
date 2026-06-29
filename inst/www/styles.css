@@ -1,126 +1,26 @@
 /* ==========================================================================
    codeagent — Shiny UI styles
-   Themes: light (default, bslib flatly) | glassmorphism | dark
    ========================================================================== */
 
-/* --------------------------------------------------------------------------
-   CSS custom properties — light theme (default, bslib flatly)
-   -------------------------------------------------------------------------- */
+/* ── CSS variables ────────────────────────────────────────────────────────── */
 :root {
   --ca-accent:        #0d6efd;
   --ca-accent2:       #0dcaf0;
   --ca-accent-glow:   rgba(13, 110, 253, 0.2);
-  --ca-bg:            #f8f9fa;
-  --ca-sidebar-bg:    #ffffff;
-  --ca-sidebar-border:#dee2e6;
-  --ca-card-bg:       #ffffff;
-  --ca-text:          #212529;
   --ca-text-muted:    #6c757d;
   --ca-border:        #dee2e6;
   --ca-btn-bg:        #f8f9fa;
   --ca-btn-hover:     #e9ecef;
   --ca-input-bg:      #ffffff;
-  --ca-blur:          none;
-  --ca-radius:        8px;
   --ca-radius-sm:     6px;
-  --ca-shadow:        0 2px 8px rgba(0, 0, 0, 0.08);
   --ca-budget-low:    #0d6efd;
   --ca-budget-warn:   #fd7e14;
   --ca-budget-danger: #dc3545;
 }
 
-/* --------------------------------------------------------------------------
-   Glassmorphism theme — data-theme="glassmorphism"
-   -------------------------------------------------------------------------- */
-[data-theme="glassmorphism"] {
-  --ca-accent:        #a855f7;
-  --ca-accent2:       #06b6d4;
-  --ca-accent-glow:   rgba(168, 85, 247, 0.35);
-  --ca-bg:            #0f0c29;
-  --ca-sidebar-bg:    rgba(255, 255, 255, 0.04);
-  --ca-sidebar-border:rgba(255, 255, 255, 0.10);
-  --ca-card-bg:       rgba(255, 255, 255, 0.06);
-  --ca-text:          rgba(255, 255, 255, 0.92);
-  --ca-text-muted:    rgba(255, 255, 255, 0.45);
-  --ca-border:        rgba(255, 255, 255, 0.10);
-  --ca-btn-bg:        rgba(255, 255, 255, 0.07);
-  --ca-btn-hover:     rgba(255, 255, 255, 0.12);
-  --ca-input-bg:      rgba(255, 255, 255, 0.06);
-  --ca-blur:          blur(20px);
-  --ca-shadow:        0 8px 32px rgba(0, 0, 0, 0.4);
-  --ca-budget-low:    #a855f7;
-  --ca-budget-warn:   #f59e0b;
-  --ca-budget-danger: #ef4444;
-}
+/* ── Token budget bar ────────────────────────────────────────────────────── */
+.ca-budget-wrap { padding: 8px 0 4px; }
 
-/* --------------------------------------------------------------------------
-   Dark (minimal) theme — data-theme="dark"
-   -------------------------------------------------------------------------- */
-[data-theme="dark"] {
-  --ca-accent:        #00bcd4;
-  --ca-accent2:       #7c3aed;
-  --ca-accent-glow:   rgba(0, 188, 212, 0.25);
-  --ca-bg:            #0d0d0d;
-  --ca-sidebar-bg:    #111111;
-  --ca-sidebar-border:#1e1e1e;
-  --ca-card-bg:       #161616;
-  --ca-text:          #e0e0e0;
-  --ca-text-muted:    #666666;
-  --ca-border:        #222222;
-  --ca-btn-bg:        #1a1a1a;
-  --ca-btn-hover:     #222222;
-  --ca-input-bg:      #161616;
-  --ca-blur:          none;
-  --ca-shadow:        0 4px 16px rgba(0, 0, 0, 0.6);
-  --ca-budget-low:    #00bcd4;
-  --ca-budget-warn:   #f59e0b;
-  --ca-budget-danger: #ef4444;
-}
-
-/* --------------------------------------------------------------------------
-   Page background — only apply gradient for glassmorphism/dark
-   -------------------------------------------------------------------------- */
-[data-theme="glassmorphism"] body,
-[data-theme="glassmorphism"] .bslib-page-fillable {
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%) !important;
-  background-attachment: fixed !important;
-}
-[data-theme="dark"] body,
-[data-theme="dark"] .bslib-page-fillable {
-  background: var(--ca-bg) !important;
-}
-
-/* --------------------------------------------------------------------------
-   Sidebar — subtle shadow for all themes (btw style); dark overrides for glass/dark
-   -------------------------------------------------------------------------- */
-.bslib-sidebar-layout > .bslib-sidebar {
-  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.08);
-}
-
-[data-theme="glassmorphism"] .bslib-sidebar-layout > .bslib-sidebar,
-[data-theme="dark"] .bslib-sidebar-layout > .bslib-sidebar {
-  background: var(--ca-sidebar-bg) !important;
-  backdrop-filter: var(--ca-blur);
-  -webkit-backdrop-filter: var(--ca-blur);
-  border-right: 1px solid var(--ca-sidebar-border) !important;
-  box-shadow: var(--ca-shadow);
-  color: var(--ca-text) !important;
-}
-
-/* Sidebar scrollbar */
-.bslib-sidebar-layout > .bslib-sidebar::-webkit-scrollbar { width: 4px; }
-.bslib-sidebar-layout > .bslib-sidebar::-webkit-scrollbar-track { background: transparent; }
-.bslib-sidebar-layout > .bslib-sidebar::-webkit-scrollbar-thumb {
-  background: var(--ca-border);
-  border-radius: 2px;
-}
-
-/* --------------------------------------------------------------------------
-   Token budget bar
-   -------------------------------------------------------------------------- */
-.ca-budget-wrap {
-  padding: 8px 0 4px;
-}
 .ca-budget-label {
   display: flex;
   justify-content: space-between;
@@ -130,35 +30,31 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
+
 .token-budget-bar {
   height: 3px;
   border-radius: 2px;
   background: var(--ca-border);
   overflow: hidden;
 }
+
 .token-budget-bar-fill {
   height: 100%;
   border-radius: 2px;
   transition: width 0.4s ease, background-color 0.4s ease;
   background: var(--ca-budget-low);
 }
-[data-theme="glassmorphism"] .token-budget-bar-fill,
-[data-theme="dark"] .token-budget-bar-fill {
-  box-shadow: 0 0 6px var(--ca-accent-glow);
-}
 .token-budget-bar-fill.warn   { background: var(--ca-budget-warn); }
 .token-budget-bar-fill.danger { background: var(--ca-budget-danger); }
 
-/* --------------------------------------------------------------------------
-   Accordion — sidebar panels
-   Light: let bslib handle it naturally, just remove excess borders
-   Glass/Dark: full override
-   -------------------------------------------------------------------------- */
+/* ── Left sidebar accordion ─────────────────────────────────────────────── */
 .ca-sidebar-accordion .accordion-item {
   border-left: none !important;
   border-right: none !important;
   border-radius: 0 !important;
+  background: transparent !important;
 }
+
 .ca-sidebar-accordion .accordion-button {
   font-size: 0.78rem;
   font-weight: 600;
@@ -166,153 +62,31 @@
   text-transform: uppercase;
   padding: 10px 4px;
   box-shadow: none !important;
-}
-
-[data-theme="glassmorphism"] .ca-sidebar-accordion .accordion-item,
-[data-theme="dark"] .ca-sidebar-accordion .accordion-item {
-  background: transparent !important;
-  border: none !important;
-  border-bottom: 1px solid var(--ca-border) !important;
-  border-radius: 0 !important;
-}
-[data-theme="glassmorphism"] .ca-sidebar-accordion .accordion-item:last-child,
-[data-theme="dark"] .ca-sidebar-accordion .accordion-item:last-child {
-  border-bottom: none !important;
-}
-[data-theme="glassmorphism"] .ca-sidebar-accordion .accordion-button,
-[data-theme="dark"] .ca-sidebar-accordion .accordion-button {
-  background: transparent !important;
-  color: var(--ca-text) !important;
-  border: none !important;
-}
-[data-theme="glassmorphism"] .ca-sidebar-accordion .accordion-button::after,
-[data-theme="dark"] .ca-sidebar-accordion .accordion-button::after {
-  filter: invert(1) opacity(0.5);
-}
-[data-theme="glassmorphism"] .ca-sidebar-accordion .accordion-button:not(.collapsed),
-[data-theme="dark"] .ca-sidebar-accordion .accordion-button:not(.collapsed) {
-  color: var(--ca-accent) !important;
-}
-[data-theme="glassmorphism"] .ca-sidebar-accordion .accordion-button:not(.collapsed)::after,
-[data-theme="dark"] .ca-sidebar-accordion .accordion-button:not(.collapsed)::after {
-  filter: none;
-  opacity: 0.8;
-}
-[data-theme="glassmorphism"] .ca-sidebar-accordion .accordion-body,
-[data-theme="dark"] .ca-sidebar-accordion .accordion-body {
-  padding: 4px 0 12px;
-}
-[data-theme="glassmorphism"] .ca-sidebar-accordion .accordion-collapse,
-[data-theme="dark"] .ca-sidebar-accordion .accordion-collapse {
   background: transparent !important;
 }
 
-/* --------------------------------------------------------------------------
-   Session buttons
-   -------------------------------------------------------------------------- */
+.ca-sidebar-accordion .accordion-body {
+  background: transparent !important;
+  padding-left: 2px;
+  padding-right: 2px;
+}
+
+/* ── Session buttons ─────────────────────────────────────────────────────── */
 .ca-session-btn {
-  background: var(--ca-btn-bg) !important;
-  border: 1px solid var(--ca-border) !important;
-  color: var(--ca-text) !important;
-  border-radius: var(--ca-radius-sm) !important;
   font-size: 0.78rem !important;
   transition: background 0.15s, border-color 0.15s;
   text-align: left !important;
-  padding: 6px 10px !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.ca-session-btn:hover {
-  background: var(--ca-btn-hover) !important;
-  border-color: var(--ca-accent) !important;
-  color: var(--ca-accent) !important;
-}
+
 .ca-session-action-btn {
-  background: transparent !important;
-  border: 1px solid var(--ca-border) !important;
-  color: var(--ca-text-muted) !important;
-  border-radius: var(--ca-radius-sm) !important;
   font-size: 0.75rem !important;
   transition: all 0.15s;
 }
-.ca-session-action-btn:hover {
-  border-color: var(--ca-accent) !important;
-  color: var(--ca-accent) !important;
-}
-.ca-session-action-btn.primary:hover {
-  background: var(--ca-accent) !important;
-  color: #fff !important;
-  border-color: var(--ca-accent) !important;
-}
 
-/* --------------------------------------------------------------------------
-   Skill buttons
-   -------------------------------------------------------------------------- */
-.ca-skill-btn {
-  background: var(--ca-btn-bg) !important;
-  border: 1px solid var(--ca-border) !important;
-  color: var(--ca-text) !important;
-  border-radius: var(--ca-radius-sm) !important;
-  font-size: 0.75rem !important;
-  text-align: left !important;
-  transition: all 0.15s;
-  white-space: normal;
-  line-height: 1.4;
-  padding: 6px 10px !important;
-}
-.ca-skill-btn:hover {
-  background: var(--ca-btn-hover) !important;
-  border-color: var(--ca-accent2) !important;
-  color: var(--ca-accent2) !important;
-}
-.ca-skill-btn.pinned {
-  border-color: var(--ca-accent) !important;
-  background: rgba(168, 85, 247, 0.08) !important;
-}
-.ca-skill-btn.pinned:hover {
-  background: rgba(168, 85, 247, 0.15) !important;
-}
-.ca-skill-name {
-  font-family: ui-monospace, 'Cascadia Code', monospace;
-  font-size: 0.8rem;
-  color: var(--ca-accent2);
-  display: block;
-}
-.ca-skill-btn.pinned .ca-skill-name { color: var(--ca-accent); }
-.ca-skill-desc {
-  font-size: 0.7rem;
-  color: var(--ca-text-muted);
-  display: block;
-  margin-top: 2px;
-}
-.ca-skill-search {
-  background: var(--ca-input-bg) !important;
-  border: 1px solid var(--ca-border) !important;
-  color: var(--ca-text) !important;
-  border-radius: var(--ca-radius-sm) !important;
-  font-size: 0.8rem !important;
-  margin-bottom: 8px;
-}
-.ca-skill-search:focus {
-  border-color: var(--ca-accent) !important;
-  box-shadow: 0 0 0 2px var(--ca-accent-glow) !important;
-  outline: none;
-}
-.ca-skill-search::placeholder { color: var(--ca-text-muted) !important; }
-.ca-skill-scroll {
-  max-height: 280px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-right: 2px;
-}
-.ca-skill-scroll::-webkit-scrollbar { width: 3px; }
-.ca-skill-scroll::-webkit-scrollbar-track { background: transparent; }
-.ca-skill-scroll::-webkit-scrollbar-thumb { background: var(--ca-border); border-radius: 2px; }
-
-/* --------------------------------------------------------------------------
-   Settings panel — selects, checkboxes
-   -------------------------------------------------------------------------- */
+/* ── Settings labels ─────────────────────────────────────────────────────── */
 .ca-settings-label {
   font-size: 0.7rem;
   color: var(--ca-text-muted);
@@ -323,124 +97,29 @@
   display: block;
 }
 .ca-settings-label:first-child { margin-top: 0; }
+
 .ca-settings .form-select,
-.ca-settings .form-control {
-  background: var(--ca-input-bg) !important;
-  border: 1px solid var(--ca-border) !important;
-  color: var(--ca-text) !important;
-  border-radius: var(--ca-radius-sm) !important;
-  font-size: 0.8rem !important;
-}
-.ca-settings .form-select:focus,
-.ca-settings .form-control:focus {
-  border-color: var(--ca-accent) !important;
-  box-shadow: 0 0 0 2px var(--ca-accent-glow) !important;
-}
-.ca-settings .form-check-input {
-  background-color: var(--ca-btn-bg) !important;
-  border-color: var(--ca-border) !important;
-}
-.ca-settings .form-check-input:checked {
-  background-color: var(--ca-accent) !important;
-  border-color: var(--ca-accent) !important;
-}
-.ca-settings .form-check-label {
-  color: var(--ca-text) !important;
-  font-size: 0.78rem;
-}
-.ca-theme-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 8px;
-}
-.ca-theme-toggle .form-check-label { color: var(--ca-text-muted) !important; font-size: 0.72rem; }
+.ca-settings .form-control { font-size: 0.8rem !important; }
+.ca-settings .form-check-label { font-size: 0.78rem; }
 
-/* --------------------------------------------------------------------------
-   Main chat area
-   -------------------------------------------------------------------------- */
-.bslib-sidebar-layout > .main {
-  background: transparent !important;
-}
-
-/* --------------------------------------------------------------------------
-   Three-column layout: inner layout fills height, output panel fills rest
-   -------------------------------------------------------------------------- */
-
-/* Inner layout_sidebar (chat + output) fills its container */
-#ca_chat_sidebar ~ .main,
-.bslib-sidebar-layout .bslib-sidebar-layout > .main {
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-/* Main output container fills vertically */
-.ca-main-output {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
-/* navset_tab inside main output fills height */
-.ca-main-output > .bslib-navs-bar,
-.ca-main-output .nav-content,
-.ca-main-output .tab-content,
-.ca-main-output .tab-pane.active {
-  height: 100%;
-  overflow: hidden;
-}
-
-/* Output panel body scrollable */
-.ca-output-panel {
-  height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* File tree tab fills height */
-.ca-main-output [data-value="files"] {
-  height: 100%;
-  overflow: hidden;
-}
-.ca-main-output [data-value="files"] .jstree {
-  height: 100%;
-  overflow-y: auto;
-}
-
-/* Output title bar */
-.ca-output-title {
-  font-size: 0.78rem;
-  font-weight: 600;
-  color: var(--ca-text-muted);
-  border-bottom: 1px solid var(--ca-border);
-  padding: 6px 12px;
-  background: var(--ca-btn-bg);
-  flex-shrink: 0;
-}
-
-/* Output body */
-.ca-output-body {
-  flex: 1;
-  overflow: auto;
-  padding: 12px;
-}
-
-/* Chat sidebar: shinychat fills full height */
-#ca_chat_sidebar .shiny-bound-input,
-#ca_chat_sidebar shiny-chat-container {
-  height: 100% !important;
-}
-
-/* --------------------------------------------------------------------------
-   Footer / version tag
-   -------------------------------------------------------------------------- */
+/* ── Footer ──────────────────────────────────────────────────────────────── */
 .ca-footer {
   font-size: 0.68rem;
   color: var(--ca-text-muted);
   text-align: center;
   padding-top: 8px;
-  border-top: 1px solid var(--ca-border);
   margin-top: 4px;
   letter-spacing: 0.03em;
+}
+
+/* ── Voice recording indicator ───────────────────────────────────────────── */
+.ca-input-btn.is-recording,
+#ca_voice_btn.is-recording {
+  border-color: var(--bs-danger, #dc3545) !important;
+  color: var(--bs-danger, #dc3545) !important;
+}
+
+.ca-speech-status {
+  font-size: 0.75rem;
+  color: var(--ca-text-muted);
 }
