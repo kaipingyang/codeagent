@@ -55,3 +55,124 @@
   padding-top: 8px;
   margin-top: auto;
 }
+
+/* ===========================================================================
+   Tool-result cards (right Output panel)
+   =========================================================================== */
+.ca-card {
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 4px;
+  background: var(--bs-body-bg, #fff);
+}
+.ca-card.ca-status-error  { border-color: var(--bs-danger, #dc3545); }
+.ca-card.ca-status-denied { border-color: var(--bs-warning, #fd7e14); }
+
+.ca-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bs-tertiary-bg, #f8f9fa);
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.ca-card-title  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ca-card-spacer { flex: 1 1 auto; }
+.ca-lang-badge {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--bs-secondary-bg, #e9ecef);
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+.ca-copy-btn, .ca-icon-btn {
+  border: none;
+  background: transparent;
+  color: var(--bs-secondary-color, #6c757d);
+  cursor: pointer;
+  padding: 2px 5px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.ca-copy-btn:hover, .ca-icon-btn:hover {
+  background: var(--bs-secondary-bg, #e9ecef);
+  color: var(--bs-body-color, #212529);
+}
+.ca-copy-btn.ca-copied { color: var(--bs-success, #198754); }
+
+.ca-pre {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 0.75rem;
+  overflow: auto;
+  background: var(--bs-body-bg, #fff);
+  white-space: pre;
+}
+.ca-pre-output {
+  border-top: 1px dashed var(--bs-border-color, #dee2e6);
+  background: var(--bs-tertiary-bg, #f8f9fa);
+  color: var(--bs-secondary-color, #6c757d);
+}
+
+/* Error box */
+.ca-error-box { padding: 10px 12px; }
+.ca-error-msg {
+  color: var(--bs-danger, #dc3545);
+  font-weight: 600;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+}
+
+/* Image frame + zoom */
+.ca-img-frame { position: relative; }
+.ca-zoom-toolbar {
+  display: flex;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+  background: var(--bs-tertiary-bg, #f8f9fa);
+}
+.ca-img-scroll { overflow: auto; padding: 8px; max-height: 70vh; }
+.ca-zoomable { transition: transform 0.15s ease; max-width: 100%; height: auto; }
+.ca-fullscreen-overlay {
+  position: fixed; inset: 0; z-index: 1080;
+  background: var(--bs-body-bg, #fff); overflow: auto;
+}
+.ca-fullscreen-overlay .ca-img-scroll { max-height: none; }
+
+/* Tables */
+.ca-table-wrap { padding: 6px; overflow: auto; }
+.ca-html-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.75rem;
+}
+.ca-html-table th, .ca-html-table td {
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  padding: 3px 8px;
+  text-align: left;
+}
+.ca-html-table th { background: var(--bs-tertiary-bg, #f8f9fa); }
+
+/* Diff */
+.ca-diff {
+  font-family: ui-monospace, "Cascadia Code", monospace;
+  font-size: 0.75rem;
+  overflow: auto;
+  padding: 4px 0;
+}
+.ca-diff-line { padding: 0 12px; white-space: pre; }
+.ca-diff-add { background: rgba(25, 135, 84, 0.12);  color: var(--bs-success, #198754); }
+.ca-diff-del { background: rgba(220, 53, 69, 0.12);  color: var(--bs-danger,  #dc3545); }
+.ca-diff-ctx { color: var(--bs-secondary-color, #6c757d); }
+.ca-diff-chip {
+  padding: 8px 12px;
+  font-size: 0.78rem;
+  color: var(--bs-secondary-color, #6c757d);
+}

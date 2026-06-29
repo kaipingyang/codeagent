@@ -65,6 +65,9 @@
       area.style.display = "block";
       var preview = document.getElementById("main_output");
       if (preview) preview.style.visibility = "hidden";
+      if (window.Prism && Prism.highlightAllUnder) {
+        setTimeout(function () { try { Prism.highlightAllUnder(area); } catch (e) {} }, 0);
+      }
     });
 
     $(document).on("shiny:value", function (event) {
@@ -72,6 +75,12 @@
         var area = document.getElementById("ca_immediate_area");
         if (area) { area.innerHTML = ""; area.style.display = "none"; }
         event.target.style.visibility = "visible";
+        // Re-run Prism highlight on freshly rendered code/diff cards
+        if (window.Prism && Prism.highlightAllUnder) {
+          setTimeout(function () {
+            try { Prism.highlightAllUnder(event.target); } catch (e) {}
+          }, 0);
+        }
       }
     });
 
@@ -112,4 +121,75 @@
       observer.observe(document.body, { childList: true, subtree: true });
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Tool-card interactivity (delegated — right panel re-renders constantly)
+  // ---------------------------------------------------------------------------
+
+  // Copy to clipboard
+  document.addEventListener("click", function (e) {
+    var btn = e.target.closest("[data-ca-copy]");
+    if (!btn) return;
+    var sel = btn.getAttribute("data-ca-copy");
+    var node = sel ? document.querySelector(sel) : null;
+    var text = node ? node.textContent : "";
+    if (!text) return;
+    var done = function () {
+      var old = btn.getAttribute("title");
+      btn.classList.add("ca-copied");
+      btn.setAttribute("title", "Copied");
+      setTimeout(function () {
+        btn.classList.remove("ca-copied");
+        btn.setAttribute("title", old || "Copy");
+      }, 1200);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(function () {});
+    } else {
+      var ta = document.createElement("textarea");
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand("copy"); done(); } catch (err) {}
+      document.body.removeChild(ta);
+    }
+  });
+
+  // Image zoom (CSS transform on raster PNG)
+  function applyCaZoom(frame, mode) {
+    var img = frame.querySelector(".ca-zoomable");
+    if (!img) return;
+    var scale = parseFloat(frame.getAttribute("data-ca-scale") || "1");
+    if (mode === "in")  scale = Math.min(8, scale * 1.25);
+    if (mode === "out") scale = Math.max(0.25, scale / 1.25);
+    if (mode === "fit") scale = 1;
+    frame.setAttribute("data-ca-scale", scale);
+    img.style.transform = "scale(" + scale + ")";
+    img.style.transformOrigin = "top left";
+  }
+
+  document.addEventListener("click", function (e) {
+    var zb = e.target.closest("[data-ca-zoom]");
+    if (zb) {
+      var frame = zb.closest(".ca-img-frame");
+      if (frame) applyCaZoom(frame, zb.getAttribute("data-ca-zoom"));
+      return;
+    }
+    var fb = e.target.closest("[data-ca-fullscreen]");
+    if (fb) {
+      var f = fb.closest(".ca-img-frame");
+      if (f) {
+        if (f.requestFullscreen) f.requestFullscreen();
+        else f.classList.toggle("ca-fullscreen-overlay");
+      }
+      return;
+    }
+    var db = e.target.closest("[data-ca-download]");
+    if (db) {
+      var src = db.getAttribute("data-ca-src");
+      if (src) {
+        var a = document.createElement("a");
+        a.href = src; a.download = "plot.png";
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      }
+    }
+  });
 })();
