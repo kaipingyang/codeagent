@@ -16,8 +16,12 @@ head_assets <- function() {
     ),
     htmltools::tags$link(rel = "stylesheet", type = "text/css",
                          href = "codeagent-www/styles.css"),
-    htmltools::tags$script(src = "codeagent-www/voice.js"),
-    htmltools::tags$script(src = "codeagent-www/agent.js")
+    htmltools::tags$script(src = "codeagent-www/agent.js"),
+    htmltools::tags$script(htmltools::HTML(
+      paste(readLines(
+        system.file("www/voice.js", package = "codeagent")
+      ), collapse = "\n")
+    ))
   )
 }
 
@@ -111,16 +115,12 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
       bslib::accordion_panel(
         title = "Sessions",
         value = "Sessions",
-        bslib::toolbar(
-          gap = "0.5rem",
-          bslib::toolbar_input_button(
-            "new_session", "New", border = TRUE,
-            class = "ca-session-action-btn primary btn-sm"
-          ),
-          bslib::toolbar_input_button(
-            "save_session_btn", "Save", border = TRUE,
-            class = "ca-session-action-btn btn-sm"
-          )
+        htmltools::tags$div(
+          class = "d-flex gap-2 mb-2",
+          shiny::actionButton("new_session", "New",
+            class = "btn-outline-secondary btn-sm flex-fill"),
+          shiny::actionButton("save_session_btn", "Save",
+            class = "btn-outline-secondary btn-sm flex-fill")
         ),
         shiny::uiOutput("session_list_ui")
       ),
@@ -176,7 +176,7 @@ left_sidebar_ui_default <- left_sidebar_ui
 # Chat sidebar — chat_ui with skill picker + file/voice footer
 # ---------------------------------------------------------------------------
 
-chat_sidebar_ui <- function(skill_meta) {
+chat_codeagent_ui <- function(skill_meta) {
   shinychat::chat_ui(
     "chat",
     fill          = TRUE,
@@ -186,24 +186,11 @@ chat_sidebar_ui <- function(skill_meta) {
   )
 }
 
-chat_sidebar_ui_default <- function(skill_meta) {
-  shinychat::chat_ui(
-    "chat",
-    fill          = TRUE,
-    enable_cancel = TRUE,
-    placeholder   = "Ask codeagent…",
-    footer        = .skill_picker_footer(skill_meta)
-  )
-}
-
-# chat_sidebar_ui_default is an alias kept for back-compat
-chat_sidebar_ui_default <- chat_sidebar_ui
-
 # ---------------------------------------------------------------------------
 # Main output panel (right, largest area)
 # ---------------------------------------------------------------------------
 
-main_output_ui <- function() {
+output_panel_ui <- function() {
   bslib::navset_tab(
       id       = "main_tab",
       selected = "output",

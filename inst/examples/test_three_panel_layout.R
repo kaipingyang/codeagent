@@ -15,7 +15,7 @@ ui <- page_sidebar(
     id        = "left_sidebar",
     width     = 240,
     resizable = TRUE,
-    padding   = 12,
+    padding   = 4,
     br(),
     card(
       fill = TRUE,
@@ -35,7 +35,7 @@ ui <- page_sidebar(
       width     = "40%",
       resizable = TRUE,
       fillable  = TRUE,
-      padding   = 0,
+      padding   = 4,
       card(
         fill = TRUE,
         card_header(

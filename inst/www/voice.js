@@ -50,7 +50,6 @@
       }
       var text = (finalText || interimText).trim();
       if (!text) return;
-      // Use Shiny message so server can update_chat_user_input (proper binding)
       if (typeof Shiny !== "undefined") {
         Shiny.setInputValue("ca_voice_text",
           { text: text, final: !!finalText, ts: Date.now() },
@@ -75,31 +74,40 @@
     recognition.start();
   }
 
-  // Button click toggle
-  document.addEventListener("click", function (e) {
-    if (!e.target.closest("#ca_voice_btn")) return;
-    if (isRecording) stopRecognition();
-    else startRecognition();
-  });
+  function init() {
+    // Voice button toggle
+    $(document).on("click", "#ca_voice_btn", function () {
+      if (isRecording) stopRecognition();
+      else startRecognition();
+    });
 
-  // Local file: icon button -> hidden <input type=file>
-  document.addEventListener("click", function (e) {
-    if (!e.target.closest("#ca_upload_local_btn")) return;
-    var fi = document.getElementById("ca_file_hidden");
-    if (fi) fi.click();
-  });
+    // Local file: icon button -> hidden <input type=file>
+    $(document).on("click", "#ca_upload_local_btn", function () {
+      var fi = document.getElementById("ca_file_hidden");
+      if (fi) fi.click();
+    });
 
-  document.addEventListener("DOMContentLoaded", function () {
-    var fi = document.getElementById("ca_file_hidden");
-    if (!fi) return;
-    fi.addEventListener("change", function (e) {
-      if (!e.target.files.length) return;
-      var names = Array.from(e.target.files).map(function (f) { return f.name; }).join(", ");
+    // File input change (delegated — footer rendered after page load)
+    $(document).on("change", "#ca_file_hidden", function (e) {
+      var fi = e.target;
+      if (!fi.files.length) return;
+      var names = Array.from(fi.files).map(function (f) { return f.name; }).join(", ");
       if (typeof Shiny !== "undefined") {
         Shiny.setInputValue("ca_uploaded_files",
           { names: names, ts: Date.now() }, { priority: "event" });
       }
-      e.target.value = "";
+      fi.value = "";
     });
-  });
+  }
+
+  // Wait for jQuery (loaded by Shiny) to be available
+  if (typeof $ !== "undefined") {
+    $(document).ready(init);
+  } else {
+    document.addEventListener("DOMContentLoaded", function () {
+      if (typeof $ !== "undefined") $(document).ready(init);
+      else init();
+    });
+  }
+
 })();

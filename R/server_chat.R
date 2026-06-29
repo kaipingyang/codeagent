@@ -10,6 +10,9 @@ server_chat <- function(input, output, session, chat, settings,
   # Tool result store (button_id → ContentToolResult)
   tool_results <- new.env(hash = TRUE, parent = emptyenv())
 
+  # Stream controller for cancellation (ESC / stop button)
+  stream_ctrl <- tryCatch(ellmer::stream_controller(), error = function(e) NULL)
+
   # on_tool_result: fires immediately when tool completes (before stream ends)
   # Pushes to right panel and binds card click
   chat$on_tool_result(function(result) {
@@ -109,7 +112,9 @@ server_chat <- function(input, output, session, chat, settings,
     shiny::isolate(state$resource_state$maybe_replace(chat))
 
     coro::async(function() {
-      stream <- chat$stream_async(actual_input, stream = "content")
+      if (!is.null(stream_ctrl)) stream_ctrl$reset()
+      stream <- chat$stream_async(actual_input, stream = "content",
+                                  controller = stream_ctrl)
       await(shinychat::chat_append("chat", stream, session = session))
 
       n_tokens    <- estimate_tokens(chat)
@@ -137,7 +142,18 @@ server_chat <- function(input, output, session, chat, settings,
   })
 
   shiny::observeEvent(input$esc, {
-    if (stream_task$status() == "running") state$interrupt <- TRUE
+    if (stream_task$status() == "running") {
+      state$interrupt <- TRUE
+      if (!is.null(stream_ctrl)) stream_ctrl$cancel()
+    }
+  })
+
+  # shinychat built-in stop button (enable_cancel = TRUE) sends input$chat_cancel
+  shiny::observeEvent(input$chat_cancel, {
+    if (stream_task$status() == "running") {
+      state$interrupt <- TRUE
+      if (!is.null(stream_ctrl)) stream_ctrl$cancel()
+    }
   })
 
   # renderUI for main_output (two-phase: immediate + full)
