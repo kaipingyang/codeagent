@@ -336,6 +336,7 @@ agent_loop <- function(user_input,
     register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn)
   }
   tryCatch(register_web_tools(chat),                          error = function(e) NULL)
+  tryCatch(register_run_r_tool(chat, mode, rules, ask_fn),    error = function(e) NULL)
   tryCatch(register_task_tools(chat),                         error = function(e) NULL)
   tryCatch(register_notebook_tools(chat, mode, rules, ask_fn),error = function(e) NULL)
   tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",

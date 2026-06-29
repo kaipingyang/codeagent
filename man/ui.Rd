@@ -2,10 +2,9 @@
 % Please edit documentation in R/ui.R
 \name{ui}
 \alias{ui}
-\title{Shiny UI}
+\title{Shiny UI — codeagent_app()}
 \description{
-Interactive Shiny application for codeagent.
-Uses \code{shinychat} for streaming output, \code{ExtendedTask} + \code{coro::async}
-for non-blocking streaming, and an ESC interrupt mechanism.
+Three-panel layout: left sidebar (Sessions/Customizations/Settings) +
+chat panel + main output panel.
 }
 \keyword{internal}

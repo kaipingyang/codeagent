@@ -14,11 +14,12 @@ Discovery order (later overrides earlier):
 \item Other attached R packages with inst/skills/
 \item btw built-in skills
 \item btw user dirs (~/.config/btw/skills/, ~/.btw/skills/)
-\item ~/.codeagent/skills/  (codeagent user global)
 \item .btw/skills/, .agents/skills/ (btw project dirs)
-\item .codeagent/skills/  (codeagent project local)
 \item .claude/skills/     (Claude Code compat)
 \item .codex/skills/      (Codex compat)
 }
+
+User-global custom skills: use ~/.btw/skills/ (btw native).
+Project-local custom skills: use .btw/skills/ (btw native).
 }
 \keyword{internal}

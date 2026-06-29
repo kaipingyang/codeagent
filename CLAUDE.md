@@ -156,6 +156,8 @@ codeagent_app(client, theme="default") # Shiny UI
 
 **`tools_r.R`** — Wraps `btw::btw_tools()`. `.BTW_GROUPS` covers all 10 btw 1.2.1 groups: `agent, cran, docs, env, files, git, ide, pkg, sessioninfo, web`. `btw_tool_skill` excluded (handled by skill system).
 
+**`tool_run_r.R`** — `run_r_tool()` wraps `btw::btw_tool_run_r()` (arbitrary R execution, no sandbox) behind the **permission gate** under tool name `"RunR"`. `destructive_hint=TRUE`, never read-only → `default` mode resolves to `"ask"` (user confirms each call), `plan`/`dont_ask` → `deny`, `bypass` → allow. btw excludes `btw_tool_run_r` from default `btw_tools()`, so the gated wrapper is the only execution path. Returns btw's native Content list (plots/messages render in shinychat).
+
 **`tools_agent.R`** — `agent_tool()` uses `btw_tool_agent_subagent` when btw available; falls back to codeagent's own loop. Supports `worktree_isolation=TRUE` (git worktree per sub-agent). Discovers custom agents from `.btw/agent-*.md`, `.claude/agents/`. `codeagent_mcp_server()` wraps `btw::btw_mcp_server()`. `install_codeagent_cli()` installs Rapp-based CLI.
 
 **`compaction.R`** — **Five-level** compaction:
