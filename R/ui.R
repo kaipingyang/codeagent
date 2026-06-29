@@ -82,34 +82,37 @@ codeagent_app <- function(
   # ---------------------------------------------------------------------------
   # UI
   # ---------------------------------------------------------------------------
-  ui <- bslib::page_fillable(
-    padding = 8,
-    head_assets(),
+  ui <- bslib::page_sidebar(
+    fillable = TRUE,
+    padding  = 8,
+    header   = head_assets(),
+    sidebar  = bslib::sidebar(
+      id        = "ca_left_sidebar",
+      width     = 240,
+      resizable = TRUE,
+      padding   = 8,
+      left_sidebar_ui(
+        permission_mode      = permission_mode,
+        btw_available_groups = btw_available_groups,
+        btw_groups_selected  = btw_groups
+      )
+    ),
     bslib::layout_sidebar(
-      sidebar = bslib::sidebar(
-        id        = "ca_left_sidebar",
-        width     = 240,
+      fill     = TRUE,
+      fillable = TRUE,
+      border   = FALSE,
+      sidebar  = bslib::sidebar(
+        id        = "ca_output_sidebar",
+        position  = "right",
+        width     = "45%",
         resizable = TRUE,
-        padding   = 8,
-        left_sidebar_ui(
-          permission_mode      = permission_mode,
-          btw_available_groups = btw_available_groups,
-          btw_groups_selected  = btw_groups
-        )
-      ),
-      bslib::layout_sidebar(
-        border   = FALSE,
-        fillable = TRUE,
-        sidebar  = bslib::sidebar(
-          id        = "ca_chat_sidebar",
-          position  = "left",
-          width     = "50%",
-          resizable = TRUE,
-          padding   = 0,
-          fillable  = TRUE,
-          chat_sidebar_ui(skill_meta)
-        ),
+        fillable  = TRUE,
+        padding   = 0,
         main_output_ui()
+      ),
+      bslib::card(
+        fill = TRUE,
+        chat_sidebar_ui(skill_meta)
       )
     )
   )

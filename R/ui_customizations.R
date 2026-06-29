@@ -101,7 +101,7 @@ modal_skills_ui <- function(skill_list) {
         lapply(skill_list, function(s) {
           htmltools::tags$div(
             class = "list-group-item d-flex align-items-start gap-2 py-2",
-            shiny::icon("bolt", style = "margin-top:2px; opacity:0.5; color:#f59e0b;"),
+            shiny::icon("bolt", style = "margin-top:2px; opacity:0.5; color:var(--bs-warning, #f59e0b);"),
             htmltools::tags$div(
               class = "flex-fill",
               htmltools::tags$code(paste0("/", s$name)),
