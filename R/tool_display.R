@@ -1,12 +1,12 @@
 #' @title Typed Tool-Result Display Contract + Render Dispatcher
 #' @description Rich, interactive tool-card rendering for the right Output panel.
-#'   Defines a typed display contract (`extra$display$ca`) layered on top of the
+#'   Defines a typed display contract (`extra$display$card`) layered on top of the
 #'   existing `{title, markdown, right_output}` keys, a render dispatcher that
 #'   branches on result kind (code/image/table/diff/text/error), and a
 #'   generalized adapter that normalizes any native `ContentToolResult` -- raw
 #'   `btw::btw_tools()` results included -- into the typed contract.
 #'
-#'   Design: the private `ca` sub-list never collides with shinychat's reserved
+#'   Design: the private `card` sub-list never collides with shinychat's reserved
 #'   display keys (title/icon/markdown/html/text), so the in-chat card keeps
 #'   rendering natively while codeagent owns the right-panel rendering.
 #' @name tool_display
@@ -69,7 +69,7 @@ NULL
 #' Build a typed ContentToolResult
 #'
 #' Superset of the legacy `.tool_result()`: in addition to `title`/`markdown`,
-#' carries a typed `ca` payload consumed by [render_tool_output()] and eagerly
+#' carries a typed `card` payload consumed by [render_tool_output()] and eagerly
 #' precomputes `right_output` so the existing server push path keeps working.
 #'
 #' @param text Character. LLM-facing value.
@@ -85,7 +85,7 @@ NULL
 .tool_result2 <- function(text, kind = "text", status = "success",
                           icon = NULL, title = NULL, payload = list(),
                           markdown = NULL) {
-  ca <- list(
+  card <- list(
     kind    = kind,
     status  = status,
     icon    = icon,
@@ -93,16 +93,21 @@ NULL
     payload = payload
   )
 
-  display <- list(ca = ca)
+  display <- list(card = card)
   if (!is.null(title))    display$title    <- htmltools::HTML(as.character(title))
   if (!is.null(icon))     display$icon     <- .icon_tag(icon)
   if (!is.null(markdown)) display$markdown <- markdown
 
-  # Eager precompute of the right-panel tag so server push works unchanged.
-  display$right_output <- tryCatch(
-    render_tool_output(display),
-    error = function(e) NULL
-  )
+  # Render the rich card once, reuse for BOTH the in-chat bubble (display$html,
+  # rendered natively by shinychat inside <shiny-tool-result>) and the right
+  # Output panel (display$right_output, consumed by server_chat.R).
+  rendered <- tryCatch(render_tool_output(display), error = function(e) NULL)
+  if (!is.null(rendered)) {
+    display$html         <- rendered   # in-chat card body (shinychat-native)
+    display$right_output <- rendered   # right Output panel
+    display$full_screen  <- TRUE       # bubble card can expand fullscreen
+    display$open         <- FALSE      # collapsed by default in the chat stream
+  }
 
   ellmer::ContentToolResult(
     value = text,
@@ -116,16 +121,16 @@ NULL
 
 #' Render a typed tool-result display into an htmltools tag
 #'
-#' Branches on `display$ca$kind`. Falls back to `right_output`, then markdown,
+#' Branches on `display$card$kind`. Falls back to `right_output`, then markdown,
 #' then a plain `<pre>` so untyped / raw results still render.
 #'
 #' @param display A `display` list (the `extra$display` of a ContentToolResult).
 #' @return An htmltools tag.
 #' @keywords internal
 render_tool_output <- function(display) {
-  ca <- tryCatch(display$ca, error = function(e) NULL)
+  card <- tryCatch(display$card, error = function(e) NULL)
 
-  if (is.null(ca) || is.null(ca$kind)) {
+  if (is.null(card) || is.null(card$kind)) {
     # Backward-compat fallback paths.
     ro <- tryCatch(display$right_output, error = function(e) NULL)
     if (!is.null(ro)) return(ro)
@@ -139,21 +144,21 @@ render_tool_output <- function(display) {
   }
 
   body <- switch(
-    ca$kind,
-    code  = .render_code(ca$payload),
-    image = .render_image(ca$payload),
-    table = .render_table(ca$payload),
-    diff  = .render_diff(ca$payload),
-    error = .render_error(ca$payload),
-    text  = .render_text(ca$payload),
-    .render_text(ca$payload)  # default
+    card$kind,
+    code  = .render_code(card$payload),
+    image = .render_image(card$payload),
+    table = .render_table(card$payload),
+    diff  = .render_diff(card$payload),
+    error = .render_error(card$payload),
+    text  = .render_text(card$payload),
+    .render_text(card$payload)  # default
   )
 
-  status_class <- paste0("ca-status-", ca$status %||% "success")
+  status_class <- paste0("ca-status-", card$status %||% "success")
   htmltools::tags$div(
     class            = paste("ca-card", status_class),
-    `data-ca-kind`   = ca$kind,
-    `data-ca-status` = ca$status %||% "success",
+    `data-ca-kind`   = card$kind,
+    `data-ca-status` = card$status %||% "success",
     body
   )
 }
@@ -381,7 +386,7 @@ render_tool_output <- function(display) {
 
 #' Normalize any tool result into the typed display contract
 #'
-#' Idempotent: if `result@extra$display$ca` already exists it is returned
+#' Idempotent: if `result@extra$display$card` already exists it is returned
 #' unchanged. Otherwise inspects the result (and btw's `@extra$contents` Content
 #' objects) to classify a kind and build a typed `ContentToolResult` whose
 #' `@value` is preserved for the LLM.
@@ -391,17 +396,17 @@ render_tool_output <- function(display) {
 #' @keywords internal
 .adapt_tool_result <- function(result) {
   # Already typed?
-  has_ca <- tryCatch(!is.null(result@extra$display$ca),
+  has_card <- tryCatch(!is.null(result@extra$display$card),
                      error = function(e) FALSE)
-  if (isTRUE(has_ca)) return(result)
+  if (isTRUE(has_card)) return(result)
 
   tool_name <- tryCatch(result@request@name, error = function(e) NULL) %||% "tool"
   icon      <- .icon_for_tool(tool_name)
   value     <- tryCatch(as.character(result@value), error = function(e) "")
   contents  <- tryCatch(result@extra$contents, error = function(e) NULL)
 
-  # If it has codeagent-legacy display keys but no `ca`, keep them and just
-  # attach a generic text `ca` so the dispatcher has a kind.
+  # If it has codeagent-legacy display keys but no `card`, keep them and just
+  # attach a generic text `card` so the dispatcher has a kind.
   legacy_md <- tryCatch(result@extra$display$markdown, error = function(e) NULL)
   legacy_ro <- tryCatch(result@extra$display$right_output, error = function(e) NULL)
   legacy_ti <- tryCatch(result@extra$display$title, error = function(e) NULL)
