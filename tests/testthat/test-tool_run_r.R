@@ -59,3 +59,30 @@ test_that("RunR executes directly in bypass mode (no ask_fn needed)", {
                       function(x) .tool_val(x), character(1)), collapse = " ")
   expect_false(grepl("Permission denied", txt))
 })
+
+test_that("RunR transforms btw result into codeagent display contract", {
+  skip_if_not_installed("btw")
+  t <- run_r_tool(mode = "bypass")
+  res <- t(code = "1:5", `_intent` = "test")
+  expect_true(S7::S7_inherits(res, ellmer::ContentToolResult))
+  disp <- res@extra$display
+  expect_true(all(c("title", "markdown", "right_output") %in% names(disp)))
+  expect_match(disp$markdown, "```r", fixed = TRUE)
+})
+
+test_that("RunR embeds plot as base64 img in right_output", {
+  skip_if_not_installed("btw")
+  t <- run_r_tool(mode = "bypass")
+  res <- t(code = "plot(1:10)", `_intent` = "test")
+  ro <- as.character(res@extra$display$right_output)
+  expect_true(grepl("data:image", ro, fixed = TRUE))
+  # LLM value notes the plot
+  expect_match(.tool_val(res), "plot")
+})
+
+test_that("RunR captures error text from btw ContentError", {
+  skip_if_not_installed("btw")
+  t <- run_r_tool(mode = "bypass")
+  res <- t(code = "stop('boom')", `_intent` = "test")
+  expect_match(.tool_val(res), "boom")
+})
