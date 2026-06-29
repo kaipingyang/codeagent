@@ -11,7 +11,7 @@ server_sessions <- function(input, output, session, chat, cwd,
                          error = function(e) list())
     if (length(sessions) == 0L)
       return(htmltools::tags$p(
-        style = "color:var(--ca-text-muted); font-size:0.75rem; padding:4px 0;",
+        style = "color:var(--bs-secondary-color, #6c757d); font-size:0.75rem; padding:4px 0;",
         "No saved sessions"))
 
     buttons <- lapply(sessions, function(s) {

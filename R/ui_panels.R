@@ -8,8 +8,8 @@ NULL
 # Head assets
 # ---------------------------------------------------------------------------
 
-head_assets <- function(theme) {
-  base <- htmltools::tagList(
+head_assets <- function() {
+  htmltools::tags$head(
     htmltools::tags$link(
       rel  = "stylesheet",
       href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
@@ -18,17 +18,6 @@ head_assets <- function(theme) {
                          href = "codeagent-www/styles.css"),
     htmltools::tags$script(src = "codeagent-www/voice.js"),
     htmltools::tags$script(src = "codeagent-www/agent.js")
-  )
-
-  if (identical(theme, "default")) {
-    return(htmltools::tags$head(base))
-  }
-
-  htmltools::tags$head(
-    base,
-    htmltools::tags$script(htmltools::HTML(sprintf(
-      'document.documentElement.setAttribute("data-theme", "%s");', theme
-    )))
   )
 }
 
@@ -168,15 +157,7 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
                 selected = btw_groups_selected %||% btw_available_groups,
                 inline   = FALSE)
             )
-          },
-          htmltools::tags$span("Theme", class = "ca-settings-label"),
-          shiny::selectInput("theme_select", NULL,
-            choices  = c("Default" = "default",
-                         "Flatly"  = "flatly",
-                         "Darkly"  = "darkly",
-                         "Glass"   = "glass"),
-            selected = "default",
-            width    = "100%")
+          }
         )
       )
     ),

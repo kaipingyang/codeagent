@@ -68,6 +68,5 @@ cat("Press Ctrl-C to stop.\n\n")
 
 codeagent_app(
   client,
-  pinned_skills = c("plan", "compact"),
-  theme         = "default" # "default" | "flatly" | "darkly" | "glass"
+  pinned_skills = c("plan", "compact")
 )
