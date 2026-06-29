@@ -4,7 +4,13 @@
 \alias{register_builtin_tools}
 \title{Register all built-in tools to an ellmer Chat object}
 \usage{
-register_builtin_tools(chat, mode = "default", rules = list(), ask_fn = NULL)
+register_builtin_tools(
+  chat,
+  mode = "default",
+  rules = list(),
+  ask_fn = NULL,
+  skip_file_tools = FALSE
+)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}

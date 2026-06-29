@@ -10,5 +10,6 @@ web_fetch_tool()
 An \code{ellmer::tool()} object.
 }
 \description{
-Fetches a URL and returns its content as plain text (HTML stripped).
+Primary: Jina Reader (r.jina.ai) — converts any URL to clean Markdown
+without Chrome. Fallback: httr2 direct fetch with HTML stripping.
 }

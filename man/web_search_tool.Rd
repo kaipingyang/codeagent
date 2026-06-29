@@ -10,6 +10,6 @@ web_search_tool()
 An \code{ellmer::tool()} object.
 }
 \description{
-Performs a web search and returns a list of results.
-Requires the \code{httr2} package. Falls back to a simple DuckDuckGo query.
+Primary: DuckDuckGo HTML scraping — real search results, no API key.
+Fallback: DuckDuckGo Instant Answer API for entity queries.
 }
