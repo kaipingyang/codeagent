@@ -74,6 +74,66 @@ NULL
   invisible(NULL)
 }
 
+# Summarise a tool result for the one-line completion notice.
+# Prefers the typed display title; falls back to a char count of the value.
+.repl_tool_summary <- function(result) {
+  disp <- tryCatch(result@extra$display, error = function(e) NULL)
+  title <- tryCatch(
+    disp$toolcard$title %||% gsub("<[^>]+>", "", as.character(disp$title %||% "")),
+    error = function(e) ""
+  )
+  if (!is.null(title) && nzchar(title)) return(trimws(title))
+  val <- tryCatch(as.character(result@value), error = function(e) "")
+  if (length(val) && nzchar(val[[1L]]))
+    return(sprintf("%d chars", nchar(paste(val, collapse = ""))))
+  "done"
+}
+
+# Derive a human-readable tool label. codeagent registers builtins under
+# generic ellmer names (tool_001, ...), so when the name is generic we infer a
+# label from which argument is present (command -> Bash, file_path -> file op).
+.repl_tool_label <- function(name, args) {
+  if (!is.null(name) && nzchar(name) && !grepl("^tool_[0-9]+$", name))
+    return(name)
+  if (is.list(args)) {
+    if (!is.null(args[["command"]]))   return("Bash")
+    if (!is.null(args[["file_path"]])) return("File")
+    if (!is.null(args[["pattern"]]))   return("Search")
+    if (!is.null(args[["path"]]))      return("Path")
+  }
+  name %||% "tool"
+}
+
+# Register tool-visibility callbacks on the Chat (idempotent per chat object).
+# on_tool_request -> print the tool name (so tool_use is visible mid-stream);
+# on_tool_result  -> print a one-line summary.  Mirrors Claude Code's CLI.
+.register_repl_tool_callbacks <- function(chat) {
+  ok_req <- tryCatch({
+    chat$on_tool_request(function(request) {
+      nm   <- tryCatch(request@name, error = function(e) NULL)
+      args <- tryCatch(request@arguments, error = function(e) NULL)
+      label <- .repl_tool_label(nm, args)
+      # Show the most identifying argument inline when cheap to compute.
+      hint <- tryCatch({
+        a <- args[["command"]] %||% args[["file_path"]] %||%
+             args[["pattern"]] %||% args[["path"]] %||% ""
+        a <- as.character(a)[[1L]] %||% ""
+        if (nzchar(a)) paste0(" ", substr(a, 1L, 60L)) else ""
+      }, error = function(e) "")
+      cat(sprintf("\n  \u00b7 %s%s\n", label, hint))
+    })
+    TRUE
+  }, error = function(e) FALSE)
+
+  tryCatch({
+    chat$on_tool_result(function(result) {
+      cat(sprintf("    \u2192 %s\n", .repl_tool_summary(result)))
+    })
+  }, error = function(e) NULL)
+
+  invisible(ok_req)
+}
+
 #' Run the interactive REPL
 #'
 #' @param client A `CodagentClient`.
@@ -110,6 +170,11 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
   if (is.null(session_id))
     session_id <- tryCatch(.generate_uuid_v4(), error = function(e) "repl")
   iteration <- 1L
+
+  # Tool execution visibility: print tool name when a tool is requested, and a
+  # one-line summary when it completes.  Mirrors Claude Code's CLI behaviour
+  # (tool_use pauses text, shows the tool, resumes).  Registered once.
+  .register_repl_tool_callbacks(client$chat)
 
   cat("\n")
   ver <- tryCatch(as.character(utils::packageVersion("codeagent")),
@@ -179,7 +244,9 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
 
     # 1. Compaction + resource management (per turn, like agent_loop)
     tryCatch(compaction_ctrl$maybe_compact(client$chat,
-             settings$model_limit %||% 200000L), error = function(e) NULL)
+             settings$model_limit %||% 200000L,
+             compact_model = settings$small_fast_model %||% .HAIKU_MODEL),
+             error = function(e) NULL)
     tryCatch(resource_state$maybe_replace(client$chat), error = function(e) NULL)
 
     # 2. system-reminder injection (date/iteration/cwd/memory)
@@ -188,7 +255,7 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
     actual_input <- if (nzchar(reminder))
       paste0(user_input, "\n\n", reminder) else user_input
 
-    # 3. Stream / send
+    # 3. Stream / send (with full error recovery: PTL/rate-limit/network/auth)
     ok <- if (isTRUE(stream)) {
       tryCatch({
         s <- client$chat$stream(actual_input)
@@ -196,10 +263,20 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
         # (base for() can't walk a generator -> "invalid for() loop sequence").
         coro::loop(for (chunk in s) cat(chunk))
         cat("\n"); TRUE
-      }, error = function(e) { cat("[error: ", conditionMessage(e), "]\n", sep = ""); FALSE })
+      }, error = function(e) {
+        # Recover via the shared classifier (PTL compact, rate-limit backoff,
+        # network retry, auth surfacing) -- same path agent_loop() uses.
+        recovered <- tryCatch(
+          .handle_agent_error(e, client$chat, actual_input, compaction_ctrl),
+          error = function(e2) paste0("[error] ", conditionMessage(e2))
+        )
+        cat(if (is.character(recovered)) recovered else "[no response]", "\n")
+        TRUE
+      })
     } else {
       resp <- tryCatch(client$chat$chat(actual_input),
-                       error = function(e) paste0("[error] ", conditionMessage(e)))
+                       error = function(e)
+                         .handle_agent_error(e, client$chat, actual_input, compaction_ctrl))
       cat(if (is.character(resp)) resp else "[no response]", "\n"); TRUE
     }
 

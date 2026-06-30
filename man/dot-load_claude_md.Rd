@@ -2,7 +2,7 @@
 % Please edit documentation in R/settings.R
 \name{.load_claude_md}
 \alias{.load_claude_md}
-\title{Load CLAUDE.md from cwd or parent directories}
+\title{Load and merge CLAUDE.md from all levels}
 \usage{
 .load_claude_md(cwd)
 }
@@ -10,9 +10,14 @@
 \item{cwd}{Character. Starting directory.}
 }
 \value{
-Character(1) with file contents, or NULL if not found.
+Character(1) with merged contents, or NULL if none found.
 }
 \description{
-Walks up the directory tree (max 5 levels) looking for a \code{CLAUDE.md} file.
+Mirrors Claude Code's multi-level memory: collect CLAUDE.md from the user
+home (\verb{~/.claude/CLAUDE.md}, \verb{~/.codeagent/CLAUDE.md}) plus every level from
+the working directory up to the filesystem root (max 5 hops), then merge them
+in priority order (user first, then outer-to-inner project dirs) with section
+headers showing each source.  More-specific (deeper) files appear later so
+they visually override.  Duplicate paths are de-duplicated.
 }
 \keyword{internal}
