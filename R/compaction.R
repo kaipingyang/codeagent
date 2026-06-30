@@ -18,6 +18,9 @@ NULL
 
 # Creates a lightweight chat for compaction tasks.
 # Falls back to chat_anthropic when no OpenAI endpoint is configured.
+# The model arg should already be the real endpoint name (resolved by the
+# caller from settings$small_fast_model or .HAIKU_MODEL). We no longer swap
+# .HAIKU_MODEL -> .HAIKU_MODEL_OPENAI_COMPAT here; callers set the model.
 .make_compact_chat <- function(model, system_prompt = NULL) {
   base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")
   sp <- system_prompt %||% paste0(
@@ -26,12 +29,10 @@ NULL
     "and conclusions. Output plain text, no headers."
   )
   if (nzchar(base_url)) {
-    # On Databricks, swap the Anthropic model name for the OpenAI-compat one
-    compat_model <- if (identical(model, .HAIKU_MODEL)) .HAIKU_MODEL_OPENAI_COMPAT else model
     api_key <- Sys.getenv("CODEAGENT_API_KEY", "")
     ellmer::chat_openai_compatible(
       base_url      = base_url,
-      model         = compat_model,
+      model         = model,
       credentials   = function() api_key,
       system_prompt = sp
     )

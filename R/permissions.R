@@ -66,7 +66,7 @@ check_permission <- function(tool_name, mode = "default",
 
   # 2. User-defined rules (evaluated in order, first match wins)
   for (rule in rules) {
-    if (.rule_matches(rule, tool_name)) return(rule$behavior)
+    if (.rule_matches(rule, tool_name, tool_input)) return(rule$behavior)
   }
 
   # 3. accept_edits: file edit tools auto-allowed
@@ -102,18 +102,51 @@ check_permission <- function(tool_name, mode = "default",
 }
 
 # ---------------------------------------------------------------------------
-# Rule matching
+# Rule matching (fine-grained, mirrors Claude Code "Bash(cmd *)" syntax)
 # ---------------------------------------------------------------------------
 
-.rule_matches <- function(rule, tool_name) {
-  pattern <- rule$tool_name %||% "*"
-  if (identical(pattern, "*")) return(TRUE)
-  # Support simple wildcards: "npm test:*"
-  if (grepl("*", pattern, fixed = TRUE)) {
-    regex <- paste0("^", gsub("*", ".*", pattern, fixed = TRUE), "$")
-    return(grepl(regex, tool_name))
-  }
-  identical(pattern, tool_name)
+# Glob-style match: "*" anywhere in pattern -> wildcard. Case-sensitive.
+.glob_match <- function(pattern, text) {
+  if (!nzchar(pattern %||% "")) return(TRUE)
+  if (!grepl("*", pattern, fixed = TRUE)) return(identical(pattern, text))
+  regex <- paste0("^", gsub("*", ".*", pattern, fixed = TRUE), "$")
+  grepl(regex, text, perl = TRUE)
+}
+
+# Map tool name -> the key inside tool_input that represents the "target"
+# (the thing the permission rule's content is matched against).
+.rule_target_arg <- function(tool_name, tool_input) {
+  if (is.null(tool_input)) return(NULL)
+  key <- switch(tool_name,
+    Bash      = "command",
+    Read      = "file_path",
+    Write     = "file_path",
+    Edit      = "file_path",
+    MultiEdit = "file_path",
+    Glob      = "pattern",
+    Grep      = "pattern",
+    NULL
+  )
+  if (is.null(key)) return(NULL)
+  val <- tool_input[[key]]
+  if (is.character(val) && length(val) == 1L) val else NULL
+}
+
+# Check if a PermissionRule matches a given tool call.
+# Step 1: tool_name must match (wildcard OK).
+# Step 2: if rule has rule_content, match it against the relevant tool arg.
+.rule_matches <- function(rule, tool_name, tool_input = NULL) {
+  # Step 1: tool name
+  name_pattern <- rule$tool_name %||% "*"
+  if (!.glob_match(name_pattern, tool_name)) return(FALSE)
+
+  # Step 2: rule_content (fine-grained, e.g. "npm run test *" for Bash)
+  rc <- rule$rule_content
+  if (is.null(rc) || !nzchar(rc)) return(TRUE)   # tool-level rule: name match is enough
+
+  arg <- .rule_target_arg(tool_name, tool_input)
+  if (is.null(arg)) return(FALSE)                  # content rule but no target arg -> no match
+  .glob_match(rc, arg)
 }
 
 # ---------------------------------------------------------------------------

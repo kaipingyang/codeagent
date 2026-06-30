@@ -8,7 +8,7 @@ codeagent_repl(
   client,
   stream = TRUE,
   prompt_str = "› ",
-  con = stdin(),
+  con = NULL,
   session_id = NULL
 )
 }

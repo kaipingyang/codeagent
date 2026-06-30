@@ -107,3 +107,88 @@ test_that("DenialTracker emits warnings at correct thresholds", {
   # Total count is not reset by record_success
   expect_gt(tracker$counts()$total, 0L)
 })
+
+# ---------------------------------------------------------------------------
+# Fine-grained rule_content matching (settings.json permissions.allow/deny)
+# ---------------------------------------------------------------------------
+
+test_that(".glob_match works for exact, wildcard, and empty patterns", {
+  expect_true(codeagent:::.glob_match("npm run test", "npm run test"))
+  expect_false(codeagent:::.glob_match("npm run test", "npm run lint"))
+  expect_true(codeagent:::.glob_match("npm run *", "npm run test"))
+  expect_true(codeagent:::.glob_match("npm run *", "npm run lint --fix"))
+  expect_false(codeagent:::.glob_match("npm run *", "yarn run test"))
+  expect_true(codeagent:::.glob_match("", "anything"))   # empty pattern = allow-all
+  expect_true(codeagent:::.glob_match(NULL, "anything")) # NULL = allow-all
+})
+
+test_that(".rule_matches with rule_content matches Bash command", {
+  rule_allow <- PermissionRule("Bash", "allow", rule_content = "npm run test *")
+  rule_deny  <- PermissionRule("Bash", "deny",  rule_content = "rm -rf *")
+
+  # Matching commands
+  expect_true(codeagent:::.rule_matches(rule_allow, "Bash",
+    tool_input = list(command = "npm run test foo")))
+  expect_true(codeagent:::.rule_matches(rule_deny, "Bash",
+    tool_input = list(command = "rm -rf /tmp/x")))
+
+  # Non-matching commands
+  expect_false(codeagent:::.rule_matches(rule_allow, "Bash",
+    tool_input = list(command = "npm run lint")))
+  expect_false(codeagent:::.rule_matches(rule_deny, "Bash",
+    tool_input = list(command = "ls -la")))
+
+  # Wrong tool name
+  expect_false(codeagent:::.rule_matches(rule_allow, "Write",
+    tool_input = list(command = "npm run test foo")))
+})
+
+test_that(".rule_matches with rule_content matches Read file path", {
+  rule <- PermissionRule("Read", "allow", rule_content = "~/.zshrc")
+  expect_true(codeagent:::.rule_matches(rule, "Read",
+    tool_input = list(file_path = "~/.zshrc")))
+  expect_false(codeagent:::.rule_matches(rule, "Read",
+    tool_input = list(file_path = "~/.bashrc")))
+})
+
+test_that(".rule_matches content rule without tool_input returns FALSE", {
+  rule <- PermissionRule("Bash", "allow", rule_content = "npm run test")
+  expect_false(codeagent:::.rule_matches(rule, "Bash", tool_input = NULL))
+})
+
+test_that(".rule_matches tool-level rule (no rule_content) still matches without input", {
+  rule <- PermissionRule("Write", "allow")  # no rule_content
+  expect_true(codeagent:::.rule_matches(rule, "Write"))
+  expect_true(codeagent:::.rule_matches(rule, "Write", tool_input = list(file_path = "x.R")))
+  expect_false(codeagent:::.rule_matches(rule, "Read"))
+})
+
+test_that("check_permission respects fine-grained Bash allow rule", {
+  rules <- list(PermissionRule("Bash", "allow", rule_content = "npm run test *"))
+  # Matching command -> rule fires -> allow
+  expect_equal(
+    check_permission("Bash", "default", rules = rules,
+                     tool_input = list(command = "npm run test --watch")),
+    "allow"
+  )
+  # Non-matching command -> rule doesn't fire -> falls through to "ask"
+  expect_equal(
+    check_permission("Bash", "default", rules = rules,
+                     tool_input = list(command = "rm -rf .")),
+    "ask"
+  )
+})
+
+test_that("check_permission respects fine-grained Bash deny rule", {
+  rules <- list(PermissionRule("Bash", "deny", rule_content = "curl *"))
+  expect_equal(
+    check_permission("Bash", "bypass", rules = rules,
+                     tool_input = list(command = "curl https://example.com")),
+    "deny"
+  )
+  expect_equal(
+    check_permission("Bash", "bypass", rules = rules,
+                     tool_input = list(command = "ls -la")),
+    "allow"
+  )
+})
