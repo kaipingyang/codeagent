@@ -5,6 +5,7 @@
 #|   the Shiny app, manage skills, and start an MCP server.
 #| launcher:
 #|   default-packages: [base, datasets, utils, stats, methods, codeagent]
+#|   vanilla: true
 
 # Global options ----------------------------------------------------------
 
@@ -49,6 +50,24 @@ ca_make_client <- function(permission_mode = "bypass",
       quit(status = 1)
     }
   )
+}
+
+# Shared REPL launcher for the `chat` and `repl` subcommands.
+ca_start_repl <- function(mode, model, continue, no_stream) {
+  tryCatch({
+    client <- ca_make_client(permission_mode = mode)
+    if (nzchar(model))
+      client <- codeagent::switch_model(client, model)
+    sid <- NULL
+    if (isTRUE(continue)) {
+      sid <- codeagent::restore_session_into_chat(
+        client$chat, session_id = NULL, cwd = getwd())
+      if (!is.null(sid))
+        cat("[continued session ", substr(sid, 1L, 8L), "]\n", sep = "")
+    }
+    codeagent::codeagent_repl(client, stream = !isTRUE(no_stream),
+                              session_id = sid)
+  }, error = ca_error)
 }
 
 # Subcommand dispatch -----------------------------------------------------
@@ -114,9 +133,9 @@ switch(
     }, error = ca_error)
   },
 
-  # repl -- interactive REPL ---------------------------------------------
-  repl = {
-    #| description: Permission mode (default: bypass).
+  # chat -- interactive REPL (friendly alias for `repl`) ----------------
+  chat = {
+    #| description: 'Permission mode (default bypass).'
     #| short: 'm'
     mode <- "bypass"
 
@@ -130,29 +149,35 @@ switch(
     #| description: Disable token streaming (print full responses).
     no_stream <- FALSE
 
-    tryCatch({
-      client <- ca_make_client(permission_mode = mode)
-      if (nzchar(model))
-        client <- codeagent::switch_model(client, model)
-      sid <- NULL
-      if (isTRUE(continue)) {
-        sid <- codeagent::restore_session_into_chat(
-          client$chat, session_id = NULL, cwd = getwd())
-        if (!is.null(sid))
-          cat("[continued session ", substr(sid, 1L, 8L), "]\n", sep = "")
-      }
-      codeagent::codeagent_repl(client, stream = !isTRUE(no_stream),
-                                session_id = sid)
-    }, error = ca_error)
+    ca_start_repl(mode, model, continue, no_stream)
+  },
+
+  # repl -- interactive REPL --------------------------------------------
+  repl = {
+    #| description: 'Permission mode (default bypass).'
+    #| short: 'm'
+    mode <- "bypass"
+
+    #| description: Model override / alias.
+    model <- ""
+
+    #| description: Continue the most recent session (preserve history).
+    #| short: 'c'
+    continue <- FALSE
+
+    #| description: Disable token streaming (print full responses).
+    no_stream <- FALSE
+
+    ca_start_repl(mode, model, continue, no_stream)
   },
 
   # app -- launch Shiny UI -----------------------------------------------
   app = {
-    #| description: Permission mode (default: bypass).
+    #| description: 'Permission mode (default bypass).'
     #| short: 'm'
     mode <- "bypass"
 
-    #| description: UI theme: light, glassmorphism, or dark.
+    #| description: 'UI theme - light, glassmorphism, or dark.'
     #| short: 't'
     theme <- "light"
 
@@ -199,7 +224,7 @@ switch(
         #| short: 'n'
         name <- ""
 
-        #| description: Scope: project or user.
+        #| description: 'Scope - project or user.'
         #| short: 's'
         scope <- "project"
 

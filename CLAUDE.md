@@ -235,5 +235,5 @@ All core subsystems are complete. 281 tests pass.
 - ✅ Shiny app (3 themes, accordion sidebar, tool cards)
 - ✅ Session management (save/load/fork/tag/rename)
 - ✅ codeagent.md multi-client config
-- ✅ Rapp CLI (`exec/codeagent.R`) — `run`(--model真换provider/--continue/--resume/--stream) + `repl`(交互式 REPL：readline loop + /model//compact//clear//help 斜杠命令 + 流式) + app/skills/mcp/info
+- ✅ Rapp CLI (`exec/codeagent.R`) — `run`(--model/--continue/--resume/--stream) + `chat`/`repl`(交互式 REPL：readline loop + /model//compact//clear//help 斜杠命令 + 流式) + app/skills/mcp/info
 - ✅ MCP server (`codeagent_mcp_server()`) + MCP client (`register_mcp_client()`, stdio)
