@@ -22,18 +22,20 @@ codeagent = R-native Claude Code harness。目标对齐 Claude Code 概念图五
 
 ---
 
-## 阶段总览
+## 阶段总览（全部完成 2026-06-30）
 
-| 阶段 | 主题 | 优先级 | 依赖 | 成本 |
-|------|------|--------|------|------|
-| **M1** | 换模型核心（harness 纯函数）| P0 | 无 | 低 |
-| **M2** | Shiny 换模型集成 | P0 | M1 | 低 |
-| **M3** | CLI 补强（--model / --continue / 流式）| P1 | M1 + sessions | 中 |
-| **M4** | CLI 交互式 REPL | P2 | M3 | 中高 |
-| **M5** | 概念图缺口：Hook 事件扩展 | P1 | 无 | 中 |
-| **M6** | 概念图缺口：auto-memory | P2 | 无 | 中 |
-| **M7** | session 持久化升级（record/replay）| P2 | 无 | 低 |
-| **M8** | 概念图缺口：MCP 多 transport / sandbox | P3 | 无 | 高 |
+| 阶段 | 主题 | 优先级 | 状态 |
+|------|------|--------|------|
+| **M1** | 换模型核心（harness 纯函数）| P0 | ✅ |
+| **M2** | Shiny 换模型集成 | P0 | ✅ |
+| **M3** | CLI 补强（--model / --continue / --resume / --stream）| P1 | ✅ |
+| **M4** | CLI 交互式 REPL | P2 | ✅ |
+| **M5** | Hook 事件扩展 7→12 | P1 | ✅ |
+| **M6** | auto-memory | P2 | ✅ |
+| **M7** | session 持久化升级（record/replay）| P2 | ✅ |
+| **M8** | MCP client (stdio) + sandbox 文档 | P3 | ✅ |
+
+**成果**：测试 281 → 449（+168，0 fail）。harness 纯函数无 shiny，CLI/Shiny 薄壳共用。
 
 ---
 

@@ -56,7 +56,7 @@ NULL
 #' @return Invisibly NULL. Loops until `/exit`.
 #' @export
 codeagent_repl <- function(client, stream = TRUE,
-                           prompt_str = "› ", con = stdin()) {
+                           prompt_str = "\u203a ", con = stdin()) {
   if (!inherits(client, "CodagentClient"))
     stop("codeagent_repl() expects a CodagentClient.", call. = FALSE)
 

@@ -70,6 +70,8 @@ NULL
 #' @param rules List. Permission rules (inherited).
 #' @param max_turns Integer. Max turns for sub-agent fallback (default 30).
 #' @param worktree_isolation Logical. Run sub-agent in an isolated git worktree.
+#' @param hooks A [HookRegistry] or NULL. Fires SubagentStart/Stop on the
+#'   codeagent fallback sub-agent.
 #'   Only applies to the fallback implementation; btw subagent handles its
 #'   own isolation.
 #' @return An `ellmer::tool()` object.
@@ -230,7 +232,7 @@ codeagent_mcp_server <- function(tools = NULL, ...) {
   if (!requireNamespace("btw", quietly = TRUE))
     stop("btw package required for MCP server. Install with: install.packages('btw')",
          call. = FALSE)
-  if (is.null(tools)) tools <- btw::btw_mcp_tools()
+  if (is.null(tools)) tools <- btw::btw_tools()
   btw::btw_mcp_server(tools = tools, ...)
 }
 

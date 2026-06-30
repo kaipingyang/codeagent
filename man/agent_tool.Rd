@@ -22,7 +22,10 @@ agent_tool(
 
 \item{max_turns}{Integer. Max turns for sub-agent fallback (default 30).}
 
-\item{worktree_isolation}{Logical. Run sub-agent in an isolated git worktree.
+\item{worktree_isolation}{Logical. Run sub-agent in an isolated git worktree.}
+
+\item{hooks}{A \link{HookRegistry} or NULL. Fires SubagentStart/Stop on the
+codeagent fallback sub-agent.
 Only applies to the fallback implementation; btw subagent handles its
 own isolation.}
 }

@@ -251,29 +251,35 @@ test_that("head_assets includes styles.css, agent.js, and inlined voice JS", {
 })
 
 test_that("sidebar Sessions row uses plain actionButtons (no toolbar)", {
-  src <- paste(readLines(test_path("..", "..", "R", "ui_panels.R")),
-               collapse = "\n")
+  f <- test_path("..", "..", "R", "ui_panels.R")
+  skip_if_not(file.exists(f), "source tree only (skipped in R CMD check)")
+  src <- paste(readLines(f), collapse = "\n")
   expect_true(grepl('actionButton\\("new_session"', src))
   expect_true(grepl('actionButton\\("save_session_btn"', src))
 })
 
 test_that("skills use shinychat native input update", {
-  src <- paste(readLines(test_path("..", "..", "R", "server_skills.R")),
-               collapse = "\n")
+  f <- test_path("..", "..", "R", "server_skills.R")
+  skip_if_not(file.exists(f), "source tree only (skipped in R CMD check)")
+  src <- paste(readLines(f), collapse = "\n")
   expect_true(grepl("shinychat::update_chat_user_input", src, fixed = TRUE))
 })
 
 test_that("styles.css carries no theme variables or data-theme overrides", {
-  css <- paste(readLines(test_path("..", "..", "inst", "www", "styles.css")),
-               collapse = "\n")
+  css_path <- system.file("www", "styles.css", package = "codeagent")
+  if (!nzchar(css_path) || !file.exists(css_path))
+    css_path <- test_path("..", "..", "inst", "www", "styles.css")
+  skip_if_not(file.exists(css_path), "styles.css not found")
+  css <- paste(readLines(css_path), collapse = "\n")
   expect_false(grepl("data-theme", css, fixed = TRUE))
   expect_false(grepl("--ca-accent", css, fixed = TRUE))
   expect_false(grepl("glassmorphism", css, fixed = TRUE))
 })
 
 test_that("server_chat isolates shared state access inside ExtendedTask", {
-  src <- paste(readLines(test_path("..", "..", "R", "server_chat.R")), collapse = "\n")
-
+  f <- test_path("..", "..", "R", "server_chat.R")
+  skip_if_not(file.exists(f), "source tree only (skipped in R CMD check)")
+  src <- paste(readLines(f), collapse = "\n")
   expect_match(src, "shiny::isolate\\(state\\$compaction_ctrl\\$maybe_compact")
   expect_match(src, "shiny::isolate\\(state\\$resource_state\\$maybe_replace")
 })
