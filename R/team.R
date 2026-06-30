@@ -145,5 +145,64 @@ register_team_tool <- function(chat, model = NULL, cwd = getwd()) {
   if (!requireNamespace("mirai", quietly = TRUE)) return(invisible(chat))
   tryCatch(chat$register_tool(team_run_tool(model, cwd)),
            error = function(e) NULL)
+  # Coordinated work-stealing team (shared SQLite board) -- needs DBI/RSQLite.
+  if (requireNamespace("DBI", quietly = TRUE) &&
+      requireNamespace("RSQLite", quietly = TRUE))
+    tryCatch(chat$register_tool(team_coordinate_tool(model, cwd)),
+             error = function(e) NULL)
   invisible(chat)
+}
+
+#' Create the TeamCoordinate tool
+#'
+#' Exposes [team_coordinate()] so the model can run a work-stealing team over a
+#' shared board (uneven task sizes auto-balanced), distinct from TeamRun's fixed
+#' fan-out.
+#'
+#' @param model Character. Default model for team agents.
+#' @param cwd Character. Working directory.
+#' @return An `ellmer::tool()` object.
+#' @keywords internal
+team_coordinate_tool <- function(model = NULL, cwd = getwd()) {
+  force(model); force(cwd)
+  ellmer::tool(
+    fun = function(tasks, n_workers = NULL) {
+      tk <- if (is.character(tasks)) as.list(tasks) else tasks
+      tk <- unlist(lapply(tk, as.character))
+      if (!length(tk))
+        return(.tool_result2("[TeamCoordinate] no tasks provided.", kind = "error",
+                             icon = "people", title = "TeamCoordinate -- empty"))
+      board <- tryCatch(
+        team_coordinate(tk, model = model, n_workers = n_workers, cwd = cwd),
+        error = function(e) NULL)
+      if (is.null(board))
+        return(.tool_result2("[TeamCoordinate] failed.", kind = "error",
+                             icon = "people", title = "TeamCoordinate -- error"))
+      parts <- vapply(seq_len(nrow(board)), function(i)
+        sprintf("### Task #%s (%s)\n%s", board$id[i], board$status[i],
+                as.character(board$result[i])),
+        character(1))
+      combined <- paste(parts, collapse = "\n\n")
+      .tool_result2(combined, kind = "text", icon = "people",
+                    title = sprintf("TeamCoordinate (%d tasks)", nrow(board)),
+                    markdown = combined,
+                    payload = list(text = combined, lang = "markdown"))
+    },
+    description = paste0(
+      "Run a work-stealing team of agents over a shared task board: each worker ",
+      "repeatedly claims the next pending task, completes it, and claims again, ",
+      "until all are done. Use when tasks have UNEVEN sizes (a fast worker takes ",
+      "more) -- unlike TeamRun's fixed one-task-per-worker fan-out. Tasks must be ",
+      "independent."
+    ),
+    arguments = list(
+      tasks = ellmer::type_array(
+        description = "Independent task prompts to distribute across the team.",
+        items = ellmer::type_string("A self-contained task prompt.")),
+      n_workers = ellmer::type_integer(
+        "Max parallel workers (default cgroup-aware).", required = FALSE)
+    ),
+    annotations = ellmer::tool_annotations(
+      title = "TeamCoordinate", read_only_hint = FALSE, open_world_hint = TRUE)
+  )
 }
