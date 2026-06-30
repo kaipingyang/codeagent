@@ -114,6 +114,36 @@ switch(
     }, error = ca_error)
   },
 
+  # repl — interactive REPL ---------------------------------------------
+  repl = {
+    #| description: Permission mode (default: bypass).
+    #| short: 'm'
+    mode <- "bypass"
+
+    #| description: Model override / alias.
+    model <- ""
+
+    #| description: Continue the most recent session (preserve history).
+    #| short: 'c'
+    continue <- FALSE
+
+    #| description: Disable token streaming (print full responses).
+    no_stream <- FALSE
+
+    tryCatch({
+      client <- ca_make_client(permission_mode = mode)
+      if (nzchar(model))
+        client <- codeagent::switch_model(client, model)
+      if (isTRUE(continue)) {
+        restored <- codeagent::restore_session_into_chat(
+          client$chat, session_id = NULL, cwd = getwd())
+        if (!is.null(restored))
+          cat("[continued session ", substr(restored, 1L, 8L), "]\n", sep = "")
+      }
+      codeagent::codeagent_repl(client, stream = !isTRUE(no_stream))
+    }, error = ca_error)
+  },
+
   # app — launch Shiny UI -----------------------------------------------
   app = {
     #| description: Permission mode (default: bypass).
