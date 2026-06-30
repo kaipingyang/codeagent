@@ -10,7 +10,8 @@ agent_tool(
   rules = list(),
   max_turns = 30L,
   worktree_isolation = FALSE,
-  hooks = NULL
+  hooks = NULL,
+  ask_fn = NULL
 )
 }
 \arguments{
@@ -28,6 +29,9 @@ agent_tool(
 codeagent fallback sub-agent.
 Only applies to the fallback implementation; btw subagent handles its
 own isolation.}
+
+\item{ask_fn}{Function or NULL. Parent permission callback. Sub-agents run in
+"bubble" mode, so any "ask" decision is forwarded to this function.}
 }
 \value{
 An \code{ellmer::tool()} object.

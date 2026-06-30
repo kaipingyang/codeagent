@@ -354,7 +354,12 @@ agent_loop <- function(user_input,
 #' @return Invisibly `chat`.
 #' @export
 .register_all_tools <- function(chat, settings, ask_fn = NULL) {
-  mode  <- settings$permission_mode %||% "default"
+  # Live, mutable permission mode shared by every checker. Plan-mode tools flip
+  # `mode_env$mode` mid-conversation and all already-registered checkers observe
+  # it (see .make_permission_checker). Static string still works elsewhere.
+  mode_env      <- new.env(parent = emptyenv())
+  mode_env$mode <- settings$permission_mode %||% "default"
+  mode  <- mode_env             # pass the env as `mode` to permission checkers
   rules <- settings$rules %||% list()
   cwd   <- settings$cwd %||% getwd()
 
@@ -376,11 +381,16 @@ agent_loop <- function(user_input,
   tryCatch(register_task_tools(chat),                         error = function(e) NULL)
   tryCatch(register_notebook_tools(chat, mode, rules, ask_fn),error = function(e) NULL)
   tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",
-                                mode, rules,
-                                worktree_isolation = isTRUE(settings$worktree_isolation)),
+                                mode_env$mode, rules,
+                                worktree_isolation = isTRUE(settings$worktree_isolation),
+                                ask_fn = ask_fn),
                                                               error = function(e) NULL)
   tryCatch(register_r_tools(chat, groups = settings$btw_groups %||% NULL),
                                                               error = function(e) NULL)
+  # Plan-mode tools: let the model enter/exit read-only planning mode. Skip in
+  # bypass (nothing to gate) so the model can't lock itself out.
+  if (!identical(mode_env$mode, "bypass"))
+    tryCatch(register_plan_mode_tools(chat, mode_env), error = function(e) NULL)
   tryCatch({
     st <- .make_skill_tool(cwd)
     if (!is.null(st)) chat$register_tool(st)

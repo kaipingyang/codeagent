@@ -7,6 +7,37 @@
 NULL
 
 # ---------------------------------------------------------------------------
+# Session rewind: truncate in-memory conversation turns
+# ---------------------------------------------------------------------------
+
+#' Rewind a chat to an earlier point in the conversation
+#'
+#' Truncates the chat's in-memory turns to keep only the first `keep_turns`
+#' user/assistant turns (ellmer counts each user and assistant message as a
+#' separate turn, so a "round" is 2 turns).  This is a pure in-memory operation
+#' via `Chat$set_turns()`; persist afterwards with [save_session()] to make the
+#' rewind durable.
+#'
+#' @param chat An `ellmer::Chat` object (modified in place).
+#' @param keep_turns Integer. Number of turns to keep from the start. If `NULL`
+#'   or larger than the current turn count, nothing is truncated.
+#' @return Invisibly the number of turns kept.
+#' @export
+truncate_chat_turns <- function(chat, keep_turns) {
+  turns <- .safe_get_turns(chat)
+  n     <- length(turns)
+  if (n == 0L) return(invisible(0L))
+
+  keep <- if (is.null(keep_turns)) n else as.integer(keep_turns)
+  if (is.na(keep) || keep < 0L) keep <- 0L
+  if (keep >= n) return(invisible(n))   # nothing to truncate
+
+  kept <- if (keep == 0L) list() else turns[seq_len(keep)]
+  tryCatch(chat$set_turns(kept), error = function(e) NULL)
+  invisible(length(kept))
+}
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 

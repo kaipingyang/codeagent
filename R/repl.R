@@ -15,7 +15,7 @@ NULL
 
 # Built-in REPL meta-commands (everything else starting with "/" is a skill).
 .REPL_META_CMDS <- c("exit", "quit", "help", "clear", "compact",
-                     "model", "sessions", "budget")
+                     "model", "sessions", "budget", "rewind")
 
 # Parse one REPL line into an action descriptor (pure, testable).
 # Returns list(action, ...). Actions:
@@ -47,6 +47,7 @@ NULL
     compact  = list(action = "compact"),
     sessions = list(action = "sessions"),
     budget   = list(action = "budget"),
+    rewind   = list(action = "rewind", arg = arg),
     model    = list(action = "model", arg = arg)
   )
 }
@@ -56,6 +57,7 @@ NULL
   "  /model <spec>   switch model (e.g. anthropic/claude-haiku-4-5)",
   "  /compact        force context compaction",
   "  /clear          clear conversation history",
+  "  /rewind [N]     drop the last N exchanges (default 1)",
   "  /sessions       list recent saved sessions",
   "  /budget         show token usage vs limit",
   "  /<skill> [args] invoke a skill (e.g. /plan)",
@@ -132,6 +134,24 @@ NULL
   }, error = function(e) NULL)
 
   invisible(ok_req)
+}
+
+# Extract printable text from a stream="content" chunk. ellmer yields S7
+# Content objects (ContentText / ContentThinking / tool content); for plain
+# text we want @text. Falls back to as.character for raw string chunks.
+.chunk_text <- function(chunk) {
+  if (is.character(chunk)) return(chunk)
+  txt <- tryCatch(chunk@text, error = function(e) NULL)
+  if (!is.null(txt) && is.character(txt)) return(paste(txt, collapse = ""))
+  ""
+}
+
+# Format a thinking/reasoning block for the terminal (ANSI dim).  Only models
+# that emit extended thinking produce these; otherwise this is never called.
+.fmt_thinking <- function(text) {
+  if (is.null(text) || !nzchar(text)) return("")
+  # \033[2m = dim, \033[0m = reset
+  paste0("\033[2m", text, "\033[0m")
 }
 
 #' Run the interactive REPL
@@ -217,6 +237,19 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
         TRUE
       },
       budget = { .repl_budget_line(client$chat, settings); TRUE },
+      rewind = {
+        # Drop the last N exchanges (default 1). One exchange = 2 turns
+        # (user + assistant), so keep = current_turns - 2*N.
+        n_back <- suppressWarnings(as.integer(act$arg))
+        if (is.na(n_back) || n_back < 1L) n_back <- 1L
+        cur  <- length(tryCatch(client$chat$get_turns(), error = function(e) list()))
+        keep <- max(0L, cur - 2L * n_back)
+        kept <- tryCatch(truncate_chat_turns(client$chat, keep),
+                         error = function(e) cur)
+        tryCatch(save_session(client$chat, cwd, session_id), error = function(e) NULL)
+        cat(sprintf("[rewound %d exchange(s); %d turns kept]\n", n_back, kept))
+        TRUE
+      },
       model = {
         if (!nzchar(act$arg)) { cat("Usage: /model <spec>\n") }
         else {
@@ -258,10 +291,19 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
     # 3. Stream / send (with full error recovery: PTL/rate-limit/network/auth)
     ok <- if (isTRUE(stream)) {
       tryCatch({
-        s <- client$chat$stream(actual_input)
-        # ellmer Chat$stream() yields a coro generator; iterate with coro::loop
-        # (base for() can't walk a generator -> "invalid for() loop sequence").
-        coro::loop(for (chunk in s) cat(chunk))
+        # stream="content" yields S7 Content objects (ContentText /
+        # ContentThinking) instead of raw strings, so reasoning blocks can be
+        # rendered distinctly. Models without extended thinking only emit
+        # ContentText -> identical output to before.
+        s <- client$chat$stream(actual_input, stream = "content")
+        coro::loop(for (chunk in s) {
+          if (S7::S7_inherits(chunk, ellmer::ContentThinking)) {
+            th <- tryCatch(chunk@thinking, error = function(e) "")
+            cat(.fmt_thinking(th))
+          } else {
+            cat(.chunk_text(chunk))
+          }
+        })
         cat("\n"); TRUE
       }, error = function(e) {
         # Recover via the shared classifier (PTL compact, rate-limit backoff,
