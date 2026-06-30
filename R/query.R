@@ -239,10 +239,18 @@ agent_loop <- function(user_input,
   # 1. Max turns check
   max_turns <- as.integer(settings$max_turns %||% 100L)
   if (iteration > max_turns) {
+    if (!is.null(hooks)) tryCatch(
+      hooks$run_stop("max_turns", list(iteration = iteration)),
+      error = function(e) NULL)
     return(list(response    = sprintf("[Max turns (%d) reached: stopping agent loop]", max_turns),
                 session_id  = session_id,
                 stop_reason = "max_turns"))
   }
+
+  # 1a. Fire SessionStart hook on the first iteration of a session.
+  if (!is.null(hooks) && iteration <= 1L)
+    tryCatch(hooks$run_session_start(list(cwd = cwd, session_id = session_id)),
+             error = function(e) NULL)
 
   # 1b. Inject system-reminder (dynamic context into user message, not system prompt)
   #     This mirrors Claude Code's <system-reminder> pattern: ephemeral metadata
@@ -258,12 +266,18 @@ agent_loop <- function(user_input,
   if (budget_tracker$should_stop(current_tokens,
                                    settings$model_limit %||% 200000L,
                                    iteration)) {
+    if (!is.null(hooks)) tryCatch(
+      hooks$run_stop("budget_exceeded", list(tokens = current_tokens)),
+      error = function(e) NULL)
     return(list(response    = "[Budget exceeded: stopping agent loop]",
                 session_id  = session_id,
                 stop_reason = "budget_exceeded"))
   }
 
-  # 3. Compaction
+  # 3. Compaction (fire PreCompact hook first)
+  if (!is.null(hooks)) tryCatch(
+    hooks$run_pre_compact("auto", list(tokens = current_tokens)),
+    error = function(e) NULL)
   compaction_ctrl$maybe_compact(chat, settings$model_limit %||% 200000L)
 
   # 4. Resource management
@@ -305,6 +319,11 @@ agent_loop <- function(user_input,
   # 8. Save session
   if (!is.null(session_id))
     tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)
+
+  # 9. Fire Stop hook (normal completion)
+  if (!is.null(hooks)) tryCatch(
+    hooks$run_stop("completed", list(session_id = session_id)),
+    error = function(e) NULL)
 
   list(response = response, session_id = session_id, stop_reason = "completed")
 }

@@ -152,7 +152,7 @@ codeagent_app(client, theme="default") # Shiny UI
 
 **`permissions.R`** — **Seven-mode** gate: `default / plan / accept_edits / bypass / dont_ask / auto / bubble`. `bubble` returns `"ask"` to bubble permission up to parent agent (sub-agent mode). `auto` uses haiku ML classifier. `DenialTracker` emits warnings.
 
-**`hooks.R`** — `HookRegistry` with **7 lifecycle events** via `HookEvent$*`: `PreToolUse`, `PostToolUse`, `PostToolUseFailure`, `PermissionDenied`, `PermissionRequest`, `UserMessage`, `AssistantMessage`. Legacy `register_pre()`/`register_post()` still work.
+**`hooks.R`** — `HookRegistry` with **12 lifecycle events** via `HookEvent$*`: tool events (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`), permission events (`PermissionDenied`, `PermissionRequest`), message events (`UserMessage`, `AssistantMessage`), and lifecycle events (`SessionStart`, `Stop`, `PreCompact`, `SubagentStart`, `SubagentStop`). Mount points: `agent_loop` fires SessionStart(iter 1)/Stop(all terminal returns)/PreCompact(before maybe_compact); `agent_tool` fallback fires SubagentStart/Stop. Legacy `register_pre()`/`register_post()` still work.
 
 **`tools_builtin.R`** — 8 core tools (Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS). All return `ContentToolResult` with `extra$display` (HTML title + markdown) for shinychat tool cards. All have `_intent` parameter for card display.
 
@@ -218,7 +218,7 @@ All core subsystems are complete. 281 tests pass.
 
 - ✅ Agent loop (`agent_loop()`) with max_turns, budget, compaction, hooks
 - ✅ 7-mode permission system (includes `bubble`)
-- ✅ 7-event hook system (`HookEvent$*`)
+- ✅ 12-event hook system (`HookEvent$*`) — tool/permission/message/lifecycle
 - ✅ 5-level compaction (L1-L5)
 - ✅ Skill system (btw-compatible `name/SKILL.md`, dual trigger)
 - ✅ btw integration (10 tool groups + skill + subagent + MCP)

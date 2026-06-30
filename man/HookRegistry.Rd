@@ -74,6 +74,11 @@ Return value ignored (informational only).
 \item \href{#method-HookRegistry-run_permission_request}{\code{HookRegistry$run_permission_request()}}
 \item \href{#method-HookRegistry-run_user_message}{\code{HookRegistry$run_user_message()}}
 \item \href{#method-HookRegistry-run_assistant_message}{\code{HookRegistry$run_assistant_message()}}
+\item \href{#method-HookRegistry-run_session_start}{\code{HookRegistry$run_session_start()}}
+\item \href{#method-HookRegistry-run_stop}{\code{HookRegistry$run_stop()}}
+\item \href{#method-HookRegistry-run_pre_compact}{\code{HookRegistry$run_pre_compact()}}
+\item \href{#method-HookRegistry-run_subagent_start}{\code{HookRegistry$run_subagent_start()}}
+\item \href{#method-HookRegistry-run_subagent_stop}{\code{HookRegistry$run_subagent_stop()}}
 \item \href{#method-HookRegistry-clear}{\code{HookRegistry$clear()}}
 \item \href{#method-HookRegistry-count}{\code{HookRegistry$count()}}
 }
@@ -200,6 +205,65 @@ Fire UserMessage hooks (informational).
 Fire AssistantMessage hooks (informational).
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_assistant_message(message)}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_session_start"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_session_start}{}}}
+\subsection{Method \code{run_session_start()}}{
+Fire SessionStart hooks at the top of a session/turn.
+Callback: \verb{function(context)}. Return value ignored.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_session_start(context = list())}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_stop"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_stop}{}}}
+\subsection{Method \code{run_stop()}}{
+Fire Stop hooks when the agent loop terminates.
+Callback: \verb{function(stop_reason, context)}. Return value ignored.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_stop(stop_reason = "completed", context = list())}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_pre_compact"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_pre_compact}{}}}
+\subsection{Method \code{run_pre_compact()}}{
+Fire PreCompact hooks before context compaction.
+Callback: \verb{function(level, context)}. Return value ignored.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_pre_compact(level = "unknown", context = list())}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_subagent_start"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_subagent_start}{}}}
+\subsection{Method \code{run_subagent_start()}}{
+Fire SubagentStart hooks when a sub-agent is launched.
+Callback: \verb{function(description, context)}. Return value ignored.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_subagent_start(description = "", context = list())}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_subagent_stop"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_subagent_stop}{}}}
+\subsection{Method \code{run_subagent_stop()}}{
+Fire SubagentStop hooks when a sub-agent completes.
+Callback: \verb{function(description, result, context)}. Return ignored.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_subagent_stop(
+  description = "",
+  result = NULL,
+  context = list()
+)}\if{html}{\out{</div>}}
 }
 
 }

@@ -9,7 +9,8 @@ agent_tool(
   mode = "default",
   rules = list(),
   max_turns = 30L,
-  worktree_isolation = FALSE
+  worktree_isolation = FALSE,
+  hooks = NULL
 )
 }
 \arguments{

@@ -30,7 +30,13 @@ HookEvent <- list(
   PERMISSION_DENIED     = "PermissionDenied",
   PERMISSION_REQUEST    = "PermissionRequest",
   USER_MESSAGE          = "UserMessage",
-  ASSISTANT_MESSAGE     = "AssistantMessage"
+  ASSISTANT_MESSAGE     = "AssistantMessage",
+  # Lifecycle events (M5)
+  SESSION_START         = "SessionStart",
+  STOP                  = "Stop",
+  PRE_COMPACT           = "PreCompact",
+  SUBAGENT_START        = "SubagentStart",
+  SUBAGENT_STOP         = "SubagentStop"
 )
 
 # ---------------------------------------------------------------------------
@@ -198,6 +204,46 @@ HookRegistry <- R6::R6Class(
     run_assistant_message = function(message) {
       for (hook in private$hooks[[HookEvent$ASSISTANT_MESSAGE]])
         .run_hook_timed(hook$fn, hook$timeout_ms, message)
+      invisible(NULL)
+    },
+
+    #' @description Fire SessionStart hooks at the top of a session/turn.
+    #'   Callback: `function(context)`. Return value ignored.
+    run_session_start = function(context = list()) {
+      for (hook in private$hooks[[HookEvent$SESSION_START]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire Stop hooks when the agent loop terminates.
+    #'   Callback: `function(stop_reason, context)`. Return value ignored.
+    run_stop = function(stop_reason = "completed", context = list()) {
+      for (hook in private$hooks[[HookEvent$STOP]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, stop_reason, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire PreCompact hooks before context compaction.
+    #'   Callback: `function(level, context)`. Return value ignored.
+    run_pre_compact = function(level = "unknown", context = list()) {
+      for (hook in private$hooks[[HookEvent$PRE_COMPACT]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, level, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire SubagentStart hooks when a sub-agent is launched.
+    #'   Callback: `function(description, context)`. Return value ignored.
+    run_subagent_start = function(description = "", context = list()) {
+      for (hook in private$hooks[[HookEvent$SUBAGENT_START]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, description, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire SubagentStop hooks when a sub-agent completes.
+    #'   Callback: `function(description, result, context)`. Return ignored.
+    run_subagent_stop = function(description = "", result = NULL, context = list()) {
+      for (hook in private$hooks[[HookEvent$SUBAGENT_STOP]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, description, result, context)
       invisible(NULL)
     },
 
