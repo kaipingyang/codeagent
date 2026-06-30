@@ -27,12 +27,14 @@ test_that(".tool_result2 eagerly precomputes a right_output tag", {
   expect_true(inherits(ro, "shiny.tag") || inherits(ro, "shiny.tag.list"))
 })
 
-test_that(".tool_result2 sets in-chat html + collapsed fullscreen flags", {
+test_that(".tool_result2 sets in-chat html, collapsed, no bslib full_screen", {
   r <- codeagent:::.tool_result2("x", kind = "code",
                                  payload = list(text = "x<-1", lang = "r"))
   d <- r@extra$display
   expect_true(inherits(d$html, "shiny.tag") || inherits(d$html, "shiny.tag.list"))
-  expect_true(isTRUE(d$full_screen))
+  # full_screen intentionally NOT set: the card carries its own toolbar; a bslib
+  # full_screen wrapper would intercept the toolbar clicks.
+  expect_false(isTRUE(d$full_screen))
   expect_false(isTRUE(d$open))
   fields <- names(shinychat:::get_tool_result_display(r))
   expect_true("html" %in% fields)
