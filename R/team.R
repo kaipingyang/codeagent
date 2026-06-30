@@ -44,8 +44,13 @@ NULL
 team_run <- function(tasks, model = NULL, n_workers = NULL,
                      permission_mode = "bypass", cwd = getwd()) {
   if (!length(tasks)) return(list())
+  if (!is.character(tasks))
+    cli::cli_abort("{.arg tasks} must be a character vector of task prompts, not {.cls {class(tasks)[1]}}.")
   if (!requireNamespace("mirai", quietly = TRUE))
-    stop("team_run() requires the 'mirai' package.", call. = FALSE)
+    cli::cli_abort(c(
+      "{.fn team_run} requires the {.pkg mirai} package.",
+      "i" = "Install it with {.code install.packages('mirai')}."
+    ))
 
   model     <- model %||% Sys.getenv("CODEAGENT_MODEL", "claude-sonnet-4-6")
   n_workers <- if (is.null(n_workers)) .team_default_workers(length(tasks))

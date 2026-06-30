@@ -82,3 +82,38 @@ test_that("system prompt stays within a reasonable token budget", {
   est_tokens <- nchar(p) / 4
   expect_lt(est_tokens, 4000)
 })
+
+# ---------------------------------------------------------------------------
+# P3 gap-fill: actions / identity interpolation / context_blocks
+# ---------------------------------------------------------------------------
+
+test_that(".prompt_actions covers reversibility and risky-ops guidance", {
+  a <- codeagent:::.prompt_actions()
+  expect_match(a, "# Executing actions with care")
+  expect_match(a, "reversibility")
+  expect_match(a, "rm -rf")
+  expect_match(a, "force-push")
+})
+
+test_that(".prompt_identity interpolates cwd and model", {
+  s <- .mk_settings(model = "MODEL_ABC")
+  id <- codeagent:::.prompt_identity(s, "/some/work/dir")
+  expect_match(id, "/some/work/dir")
+  expect_match(id, "MODEL_ABC")
+})
+
+test_that(".prompt_context_blocks injects CLAUDE.md + permission mode", {
+  s <- .mk_settings(claude_md = "CTX_RULE_123", permission_mode = "plan",
+                    max_turns = 7L)
+  cb <- codeagent:::.prompt_context_blocks(s, getwd())
+  expect_match(cb, "CTX_RULE_123")
+  expect_match(cb, "Permission mode: plan")
+  expect_match(cb, "Max turns: 7")
+})
+
+test_that(".prompt_context_blocks omits CLAUDE.md section when absent", {
+  s <- .mk_settings()  # no claude_md
+  cb <- codeagent:::.prompt_context_blocks(s, tempdir())
+  expect_false(grepl("Project Instructions", cb))
+  expect_match(cb, "Permission mode")
+})

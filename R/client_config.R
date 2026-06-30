@@ -209,9 +209,9 @@ NULL
 use_codeagent_md <- function(path = "codeagent.md", open = interactive()) {
   template <- system.file("templates", "codeagent.md", package = "codeagent")
   if (!nzchar(template) || !file.exists(template))
-    stop("Template not found in codeagent package.", call. = FALSE)
+    cli::cli_abort("codeagent.md template not found in the codeagent package.")
   if (file.exists(path))
-    stop("'", path, "' already exists.", call. = FALSE)
+    cli::cli_abort("{.path {path}} already exists.")
   file.copy(template, path)
   cli::cli_alert_success("Created {.path {path}}")
   if (open && requireNamespace("rstudioapi", quietly = TRUE) &&

@@ -24,6 +24,8 @@ NULL
 #' @return Invisibly the number of turns kept.
 #' @export
 truncate_chat_turns <- function(chat, keep_turns) {
+  if (!inherits(chat, "Chat"))
+    cli::cli_abort("{.arg chat} must be an {.cls ellmer::Chat} object, not {.cls {class(chat)[1]}}.")
   turns <- .safe_get_turns(chat)
   n     <- length(turns)
   if (n == 0L) return(invisible(0L))

@@ -4,7 +4,13 @@
 \alias{register_run_r_tool}
 \title{Register the RunR tool to a Chat}
 \usage{
-register_run_r_tool(chat, mode = "default", rules = list(), ask_fn = NULL)
+register_run_r_tool(
+  chat,
+  mode = "default",
+  rules = list(),
+  ask_fn = NULL,
+  sandbox = NULL
+)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
@@ -15,6 +21,11 @@ register_run_r_tool(chat, mode = "default", rules = list(), ask_fn = NULL)
 
 \item{ask_fn}{Function or NULL. \verb{function(tool_name, input) -> logical}.
 Called when permission resolves to \code{"ask"}.}
+
+\item{sandbox}{List or NULL. Sandbox profile (see \code{\link[=.sandbox_profile]{.sandbox_profile()}}). RunR
+runs in-process so the environment cannot be scrubbed, but when the sandbox
+is enabled, code calling shell/process/env or (when network is disabled)
+network functions is refused.}
 }
 \value{
 Invisibly returns \code{chat}.

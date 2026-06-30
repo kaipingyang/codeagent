@@ -285,3 +285,62 @@ HookRegistry <- R6::R6Class(
     warning("[codeagent] Hook exceeded ", timeout_ms, "ms timeout.", call. = FALSE)
   result
 }
+
+# ---------------------------------------------------------------------------
+# Declarative hooks from settings.json
+# ---------------------------------------------------------------------------
+
+#' Build a HookRegistry from a settings.json `hooks` block
+#'
+#' Parses a declarative hooks specification (as loaded from settings.json) into
+#' a live [HookRegistry]. The expected shape mirrors Claude Code:
+#' ```json
+#' "hooks": {
+#'   "PreToolUse":  [{ "command": "echo pre  >> /tmp/hooks.log" }],
+#'   "PostToolUse": [{ "command": "echo post >> /tmp/hooks.log", "pattern": "Bash" }]
+#' }
+#' ```
+#' Each entry's `command` is run via the shell when the event fires; `pattern`
+#' (optional) limits a tool hook to matching tool names.
+#'
+#' @param settings List from [load_settings()] (uses `settings$hooks`).
+#' @return A [HookRegistry], or NULL if no valid hooks are declared.
+#' @keywords internal
+.hooks_from_settings <- function(settings) {
+  spec <- tryCatch(settings$hooks, error = function(e) NULL)
+  if (!is.list(spec) || !length(spec)) return(NULL)
+
+  reg     <- HookRegistry$new()
+  n_added <- 0L
+  valid   <- unlist(HookEvent, use.names = FALSE)
+
+  for (event in names(spec)) {
+    if (!event %in% valid) next
+    entries <- spec[[event]]
+    # jsonlite may give a data.frame for an array of objects; normalise to list.
+    if (is.data.frame(entries))
+      entries <- lapply(seq_len(nrow(entries)), function(i) as.list(entries[i, , drop = FALSE]))
+    if (!is.list(entries)) next
+
+    for (entry in entries) {
+      cmd <- tryCatch(as.character(entry$command), error = function(e) NULL)
+      if (is.null(cmd) || !length(cmd) || !nzchar(cmd[[1L]])) next
+      pat <- tryCatch(entry$pattern %||% NULL, error = function(e) NULL)
+      command <- cmd[[1L]]
+      # Closure captures the command; runs it (best-effort) when the event fires.
+      fn <- local({
+        cc <- command
+        function(...) {
+          tryCatch(system(cc, ignore.stdout = TRUE, ignore.stderr = TRUE,
+                          wait = TRUE),
+                   error = function(e) NULL)
+          invisible(NULL)
+        }
+      })
+      tryCatch({ reg$register(event, fn, tool_pattern = pat); n_added <- n_added + 1L },
+               error = function(e) NULL)
+    }
+  }
+  if (n_added == 0L) return(NULL)
+  reg
+}

@@ -79,3 +79,54 @@ NULL
   if (!length(vals)) return(character(0))
   paste0(names(vals), "=", vals)
 }
+
+# R functions that reach the network or otherwise escape the sandbox. RunR runs
+# IN-PROCESS, so we cannot scrub the environment (the eval shares this R
+# session); the practical control is to refuse code that calls network /
+# process-spawning / env-mutating functions when the sandbox forbids them.
+.SANDBOX_R_NETWORK_FNS <- c(
+  "httr2::request", "httr::GET", "httr::POST", "download.file", "url\\(",
+  "curl::curl", "curl::curl_fetch", "RCurl::getURL", "readLines\\(url",
+  "socketConnection", "install.packages", "remotes::install",
+  "devtools::install", "pak::pak", "utils::download.file"
+)
+
+# R functions that spawn shells / processes (would bypass Bash sandboxing).
+.SANDBOX_R_SHELL_FNS <- c(
+  "system\\(", "system2\\(", "shell\\(", "processx::", "callr::",
+  "Sys.setenv\\("
+)
+
+#' Decide whether RunR code is blocked by the sandbox
+#'
+#' RunR executes in-process, so environment scrubbing is impossible. Instead,
+#' when the sandbox is enabled we refuse code that calls network functions (if
+#' `allow_network` is FALSE) or that spawns shells / mutates the environment
+#' (always, since those would sidestep the Bash sandbox).
+#'
+#' @param code Character. The R code to run.
+#' @param profile List from [.sandbox_profile()].
+#' @return NULL if allowed, or a character reason string if blocked.
+#' @keywords internal
+.sandbox_block_r_code <- function(code, profile) {
+  if (!isTRUE(profile$enabled)) return(NULL)
+  src <- paste(code, collapse = "\n")
+
+  # Shell / process spawning + env mutation always blocked under sandbox:
+  # these would defeat the Bash-level controls.
+  for (pat in .SANDBOX_R_SHELL_FNS) {
+    if (grepl(pat, src, perl = TRUE))
+      return(paste0("sandbox blocks shell/process/env calls in RunR (matched '",
+                    gsub("\\\\", "", pat), "')"))
+  }
+
+  # Network functions blocked only when network is disabled.
+  if (!isTRUE(profile$allow_network)) {
+    for (pat in .SANDBOX_R_NETWORK_FNS) {
+      if (grepl(pat, src, perl = TRUE))
+        return(paste0("network access disabled by sandbox (matched '",
+                      gsub("\\\\.*", "", pat), "')"))
+    }
+  }
+  NULL
+}
