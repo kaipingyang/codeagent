@@ -48,7 +48,9 @@ Suggests:
     RSQLite,
     S7,
     frontmatter,
-    mirai
+    mirai,
+    parallelly,
+    ragnar
 Config/testthat/edition: 3
 URL: https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues

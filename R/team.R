@@ -13,13 +13,28 @@
 #' @keywords internal
 NULL
 
+# Safe default worker count: respects cgroup / container CPU limits.
+# parallel::detectCores() reports the HOST core count (e.g. 64) and ignores
+# cgroup quotas, which would over-spawn heavy R daemons and risk OOM in a
+# limited container. parallelly::availableCores() reads cgroup v1/v2, Slurm,
+# etc. We cap at that; fall back to a conservative 4 if parallelly is absent.
+.team_default_workers <- function(n_tasks) {
+  cores <- tryCatch(
+    if (requireNamespace("parallelly", quietly = TRUE))
+      parallelly::availableCores() else 4L,
+    error = function(e) 4L
+  )
+  as.integer(max(1L, min(n_tasks, cores)))
+}
+
 #' Run a set of independent tasks as a parallel agent team
 #'
 #' @param tasks Character vector of task prompts (one sub-agent per task).
 #' @param model Character. Model spec each agent uses. Defaults to the
 #'   `CODEAGENT_MODEL` env var or `"claude-sonnet-4-6"`.
-#' @param n_workers Integer. Number of parallel daemons. Defaults to
-#'   `min(length(tasks), 4)`.
+#' @param n_workers Integer or NULL. Number of parallel daemons. Defaults to
+#'   `min(length(tasks), parallelly::availableCores())` so it never exceeds the
+#'   container's cgroup CPU quota (each daemon is a heavy R process).
 #' @param permission_mode Character. Permission mode for each agent (default
 #'   `"bypass"` since parallel agents cannot prompt interactively).
 #' @param cwd Character. Working directory for each agent.
@@ -33,7 +48,8 @@ team_run <- function(tasks, model = NULL, n_workers = NULL,
     stop("team_run() requires the 'mirai' package.", call. = FALSE)
 
   model     <- model %||% Sys.getenv("CODEAGENT_MODEL", "claude-sonnet-4-6")
-  n_workers <- as.integer(n_workers %||% min(length(tasks), 4L))
+  n_workers <- if (is.null(n_workers)) .team_default_workers(length(tasks))
+               else as.integer(min(n_workers, .team_default_workers(length(tasks))))
   base_url  <- Sys.getenv("CODEAGENT_BASE_URL", "")
   api_key   <- Sys.getenv("CODEAGENT_API_KEY", "")
 

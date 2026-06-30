@@ -18,8 +18,9 @@ team_run(
 \item{model}{Character. Model spec each agent uses. Defaults to the
 \code{CODEAGENT_MODEL} env var or \code{"claude-sonnet-4-6"}.}
 
-\item{n_workers}{Integer. Number of parallel daemons. Defaults to
-\code{min(length(tasks), 4)}.}
+\item{n_workers}{Integer or NULL. Number of parallel daemons. Defaults to
+\code{min(length(tasks), parallelly::availableCores())} so it never exceeds the
+container's cgroup CPU quota (each daemon is a heavy R process).}
 
 \item{permission_mode}{Character. Permission mode for each agent (default
 \code{"bypass"} since parallel agents cannot prompt interactively).}

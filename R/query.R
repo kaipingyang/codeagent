@@ -384,6 +384,12 @@ agent_loop <- function(user_input,
                                                               error = function(e) NULL)
   tryCatch(register_team_tool(chat, settings$model %||% NULL, cwd),
                                                               error = function(e) NULL)
+  # Codebase RAG retrieval (opt-in via settings$rag = TRUE or list(enabled=TRUE);
+  # indexing is costly).
+  rag_on <- isTRUE(settings$rag) ||
+            (is.list(settings$rag) && isTRUE(settings$rag$enabled))
+  if (rag_on)
+    tryCatch(register_rag_tool(chat, cwd), error = function(e) NULL)
   tryCatch(register_notebook_tools(chat, mode, rules, ask_fn),error = function(e) NULL)
   tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",
                                 mode_env$mode, rules,

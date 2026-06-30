@@ -138,3 +138,53 @@ test_that(".run_subagent_loop accepts persist/cwd/description args", {
 test_that("codeagent_mcp_server validates transport argument", {
   expect_error(codeagent_mcp_server(transport = "bogus"))
 })
+
+# ---------------------------------------------------------------------------
+# parallelly: cgroup-aware worker cap
+# ---------------------------------------------------------------------------
+
+test_that(".team_default_workers caps at availableCores and #tasks", {
+  n <- codeagent:::.team_default_workers(100L)
+  expect_true(n >= 1L)
+  # Must not exceed the cgroup-aware core count when parallelly is present.
+  if (requireNamespace("parallelly", quietly = TRUE)) {
+    expect_lte(n, parallelly::availableCores())
+  } else {
+    expect_lte(n, 4L)
+  }
+})
+
+test_that(".team_default_workers never exceeds the task count", {
+  expect_equal(codeagent:::.team_default_workers(1L), 1L)
+  expect_lte(codeagent:::.team_default_workers(2L), 2L)
+})
+
+# ---------------------------------------------------------------------------
+# ragnar: codebase RAG (defensive, optional)
+# ---------------------------------------------------------------------------
+
+test_that(".rag_embed_fn returns NULL when ragnar absent, function when present", {
+  if (!requireNamespace("ragnar", quietly = TRUE)) {
+    expect_null(codeagent:::.rag_embed_fn())
+  } else {
+    withr::with_envvar(c(CODEAGENT_BASE_URL = "https://x.example.com"), {
+      fn <- codeagent:::.rag_embed_fn()
+      expect_true(is.function(fn))
+    })
+  }
+})
+
+test_that("register_rag_tool is a no-op (returns chat) when indexing yields nothing", {
+  skip_if_not_installed("ellmer")
+  ch <- ellmer::chat_anthropic(model = "claude-sonnet-4-6")
+  # Point at an empty temp dir so no files match -> tool not registered.
+  empty <- tempfile(); dir.create(empty); on.exit(unlink(empty, recursive = TRUE), add = TRUE)
+  out <- codeagent:::register_rag_tool(ch, cwd = empty)
+  expect_identical(out, ch)
+})
+
+test_that("build_codebase_store returns NULL on empty dir", {
+  skip_if_not_installed("ragnar")
+  empty <- tempfile(); dir.create(empty); on.exit(unlink(empty, recursive = TRUE), add = TRUE)
+  expect_null(build_codebase_store(cwd = empty))
+})
