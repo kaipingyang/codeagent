@@ -69,9 +69,9 @@ NULL
 #' @export
 switch_model <- function(client, model) {
   if (!inherits(client, "CodagentClient"))
-    stop("switch_model() expects a CodagentClient.", call. = FALSE)
+    cli::cli_abort("{.fn switch_model} expects a {.cls CodagentClient}, not {.cls {class(client)[1]}}.")
   if (!is.character(model) || length(model) != 1L || !nzchar(model))
-    stop("model must be a non-empty character spec/alias.", call. = FALSE)
+    cli::cli_abort("{.arg model} must be a non-empty character spec or alias.")
 
   cwd      <- client$settings$cwd %||% getwd()
   new_chat <- .resolve_model_chat(model, cwd)

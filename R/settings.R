@@ -313,7 +313,7 @@ use_codeagent_settings <- function(scope = c("user", "project"),
   scope <- match.arg(scope)
   template <- system.file("templates", "settings.json", package = "codeagent")
   if (!nzchar(template) || !file.exists(template))
-    stop("settings.json template not found in codeagent package.", call. = FALSE)
+    cli::cli_abort("settings.json template not found in the codeagent package.")
 
   dest_dir <- if (identical(scope, "user")) {
     .get_codeagent_dir()
@@ -324,8 +324,10 @@ use_codeagent_settings <- function(scope = c("user", "project"),
   dest <- file.path(dest_dir, "settings.json")
 
   if (file.exists(dest))
-    stop("'", dest, "' already exists.  Edit it directly or delete it first.",
-         call. = FALSE)
+    cli::cli_abort(c(
+      "{.path {dest}} already exists.",
+      "i" = "Edit it directly, or delete it first to regenerate from the template."
+    ))
 
   file.copy(template, dest)
   message("Created: ", dest)

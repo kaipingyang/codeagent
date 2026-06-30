@@ -102,6 +102,19 @@ codeagent_client <- function(
   verify_fn          = NULL,
   mcp_config         = NULL
 ) {
+  # Input validation (user-facing entry point).
+  if (!is.null(chat) && !inherits(chat, "Chat"))
+    cli::cli_abort("{.arg chat} must be an {.cls ellmer::Chat} object or NULL, not {.cls {class(chat)[1]}}.")
+  valid_modes <- unlist(PermissionMode, use.names = FALSE)
+  if (!is.character(permission_mode) || length(permission_mode) != 1L ||
+      !permission_mode %in% valid_modes)
+    cli::cli_abort(c(
+      "{.arg permission_mode} must be one of {.val {valid_modes}}.",
+      "x" = "You supplied {.val {permission_mode}}."
+    ))
+  if (!is.list(rules))
+    cli::cli_abort("{.arg rules} must be a list of {.fn PermissionRule} objects.")
+
   settings <- load_settings(cwd)
   settings$permission_mode     <- permission_mode
   # Merge rules: caller-supplied rules take priority over settings.json rules.
@@ -113,6 +126,10 @@ codeagent_client <- function(
   settings$worktree_isolation  <- isTRUE(worktree_isolation)
   settings$verify_fn           <- verify_fn
   settings$mcp_config          <- mcp_config
+
+  # Declarative hooks from settings.json -> live HookRegistry (M5 closing).
+  settings$hooks_registry      <- tryCatch(.hooks_from_settings(settings),
+                                           error = function(e) NULL)
 
   if (is.null(chat)) {
     chat <- .make_chat(settings, cwd)
@@ -127,6 +144,10 @@ codeagent_client <- function(
 
   ask_fn <- if (interactive()) .console_ask_fn else NULL
   .register_all_tools(chat, settings, ask_fn = ask_fn)
+
+  # Auto-connect MCP servers declared in settings.json (P2 closing). The
+  # mcp_config param still works; this adds servers from the settings file.
+  tryCatch(.mcp_autoconnect(chat, settings), error = function(e) NULL)
 
   .new_client(chat, settings)
 }
@@ -352,7 +373,7 @@ agent_loop <- function(user_input,
 #' @param settings Named list from [load_settings()].
 #' @param ask_fn Function or NULL.
 #' @return Invisibly `chat`.
-#' @export
+#' @keywords internal
 .register_all_tools <- function(chat, settings, ask_fn = NULL) {
   # Live, mutable permission mode shared by every checker. Plan-mode tools flip
   # `mode_env$mode` mid-conversation and all already-registered checkers observe
@@ -375,7 +396,8 @@ agent_loop <- function(user_input,
                            sandbox = settings$sandbox)
   }
   tryCatch(register_web_tools(chat),                          error = function(e) NULL)
-  tryCatch(register_run_r_tool(chat, mode, rules, ask_fn),    error = function(e) NULL)
+  tryCatch(register_run_r_tool(chat, mode, rules, ask_fn,
+                               sandbox = settings$sandbox), error = function(e) NULL)
   tryCatch(register_memory_tool(chat),                        error = function(e) NULL)
   if (!is.null(settings$mcp_config))
     tryCatch(register_mcp_client(chat, settings$mcp_config),  error = function(e) NULL)

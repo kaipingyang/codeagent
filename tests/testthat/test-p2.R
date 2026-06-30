@@ -188,3 +188,81 @@ test_that("build_codebase_store returns NULL on empty dir", {
   empty <- tempfile(); dir.create(empty); on.exit(unlink(empty, recursive = TRUE), add = TRUE)
   expect_null(build_codebase_store(cwd = empty))
 })
+
+# ---------------------------------------------------------------------------
+# RunR sandbox (in-process code-pattern blocking)
+# ---------------------------------------------------------------------------
+
+test_that(".sandbox_block_r_code blocks shell/env calls when enabled", {
+  p <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = TRUE, allow_network = TRUE)))
+  expect_match(codeagent:::.sandbox_block_r_code("system('ls')", p), "shell")
+  expect_match(codeagent:::.sandbox_block_r_code("system2('ls')", p), "shell")
+  expect_match(codeagent:::.sandbox_block_r_code("Sys.setenv(X=1)", p), "shell")
+  # Plain compute is allowed
+  expect_null(codeagent:::.sandbox_block_r_code("1 + 1", p))
+})
+
+test_that(".sandbox_block_r_code blocks network fns only when network disabled", {
+  p_net <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = TRUE, allow_network = TRUE)))
+  expect_null(codeagent:::.sandbox_block_r_code("httr2::request('http://x')", p_net))
+
+  p_block <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = TRUE, allow_network = FALSE)))
+  expect_match(codeagent:::.sandbox_block_r_code("httr2::request('http://x')", p_block), "network")
+  expect_match(codeagent:::.sandbox_block_r_code("download.file('x','y')", p_block), "network")
+  expect_match(codeagent:::.sandbox_block_r_code("install.packages('z')", p_block), "network")
+})
+
+test_that(".sandbox_block_r_code is a no-op when sandbox disabled", {
+  p_off <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = FALSE)))
+  expect_null(codeagent:::.sandbox_block_r_code("system('rm -rf /')", p_off))
+})
+
+test_that("run_r_tool accepts a sandbox argument", {
+  expect_true("sandbox" %in% names(formals(run_r_tool)))
+  expect_true("sandbox" %in% names(formals(register_run_r_tool)))
+})
+
+# ---------------------------------------------------------------------------
+# Declarative hooks from settings.json
+# ---------------------------------------------------------------------------
+
+test_that(".hooks_from_settings returns NULL for empty/invalid spec", {
+  expect_null(codeagent:::.hooks_from_settings(list()))
+  expect_null(codeagent:::.hooks_from_settings(list(hooks = list())))
+  expect_null(codeagent:::.hooks_from_settings(list(hooks = "bad")))
+})
+
+test_that(".hooks_from_settings builds a HookRegistry from a valid spec", {
+  s <- list(hooks = list(
+    PreToolUse  = list(list(command = "true")),
+    PostToolUse = list(list(command = "true", pattern = "Bash"))
+  ))
+  reg <- codeagent:::.hooks_from_settings(s)
+  expect_s3_class(reg, "HookRegistry")
+})
+
+test_that(".hooks_from_settings skips unknown events", {
+  s <- list(hooks = list(BogusEvent = list(list(command = "true"))))
+  expect_null(codeagent:::.hooks_from_settings(s))
+})
+
+# ---------------------------------------------------------------------------
+# MCP auto-connect
+# ---------------------------------------------------------------------------
+
+test_that(".mcp_autoconnect returns 0 when no servers declared", {
+  ch <- ellmer::chat_anthropic(model = "claude-sonnet-4-6")
+  empty <- tempfile(); dir.create(empty); on.exit(unlink(empty, recursive = TRUE), add = TRUE)
+  n <- codeagent:::.mcp_autoconnect(ch, list(cwd = empty))
+  expect_equal(n, 0L)
+})
+
+test_that(".mcp_autoconnect respects disabled_mcp_json_servers filter", {
+  ch <- ellmer::chat_anthropic(model = "claude-sonnet-4-6")
+  s <- list(
+    mcp_servers = list(foo = list(command = "true"), bar = list(command = "true")),
+    disabled_mcp_json_servers = c("foo", "bar")  # all disabled -> nothing to connect
+  )
+  n <- codeagent:::.mcp_autoconnect(ch, s)
+  expect_equal(n, 0L)
+})

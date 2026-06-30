@@ -63,3 +63,54 @@ register_mcp_client <- function(chat, config = NULL) {
   }
   invisible(n)
 }
+
+# ---------------------------------------------------------------------------
+# Auto-connect MCP servers declared in settings.json
+# ---------------------------------------------------------------------------
+
+#' Auto-connect MCP servers from settings / project config
+#'
+#' Connects external MCP servers without an explicit `mcp_config` argument, by
+#' looking (in order) at:
+#' 1. `settings$mcpServers` / `settings$mcp_servers` -- an inline server map in
+#'    settings.json.
+#' 2. a project-level `.mcp.json` / `.codeagent/mcp.json` file.
+#'
+#' `enabled_mcp_json_servers` / `disabled_mcp_json_servers` (Claude Code schema)
+#' filter which named servers are connected. Servers already provided via the
+#' `mcp_config` parameter to [codeagent_client()] are handled separately and not
+#' duplicated here.
+#'
+#' @param chat An `ellmer::Chat` object.
+#' @param settings List from [load_settings()].
+#' @return Invisibly, the number of tools registered.
+#' @keywords internal
+.mcp_autoconnect <- function(chat, settings) {
+  servers <- settings$mcpServers %||% settings$mcp_servers %||% NULL
+
+  # Fall back to a project-level mcp config file.
+  if (is.null(servers)) {
+    cwd <- settings$cwd %||% getwd()
+    for (cand in c(file.path(cwd, ".mcp.json"),
+                   file.path(cwd, ".codeagent", "mcp.json"))) {
+      if (file.exists(cand)) {
+        cfg <- tryCatch(jsonlite::fromJSON(cand, simplifyVector = FALSE),
+                        error = function(e) NULL)
+        servers <- cfg$mcpServers %||% cfg
+        break
+      }
+    }
+  }
+  if (!is.list(servers) || !length(servers)) return(invisible(0L))
+
+  # allow / deny filters (Claude Code schema).
+  enabled  <- settings$enabled_mcp_json_servers  %||% character(0)
+  disabled <- settings$disabled_mcp_json_servers %||% character(0)
+  nms <- names(servers)
+  if (length(enabled))  servers <- servers[nms %in% enabled]
+  if (length(disabled)) servers <- servers[!names(servers) %in% disabled]
+  if (!length(servers)) return(invisible(0L))
+
+  tryCatch(register_mcp_client(chat, list(mcpServers = servers)),
+           error = function(e) invisible(0L))
+}

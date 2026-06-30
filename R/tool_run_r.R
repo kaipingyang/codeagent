@@ -19,14 +19,20 @@ NULL
 #' @param rules List. [PermissionRule()] objects.
 #' @param ask_fn Function or NULL. `function(tool_name, input) -> logical`.
 #'   Called when permission resolves to `"ask"`.
+#' @param sandbox List or NULL. Sandbox profile (see [.sandbox_profile()]). RunR
+#'   runs in-process so the environment cannot be scrubbed, but when the sandbox
+#'   is enabled, code calling shell/process/env or (when network is disabled)
+#'   network functions is refused.
 #' @return An `ellmer::tool()` object, or `NULL` if btw is unavailable.
 #' @export
-run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
+run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
+                       sandbox = NULL) {
   if (!requireNamespace("btw", quietly = TRUE)) {
     warning("[codeagent] btw not available; RunR tool skipped.", call. = FALSE)
     return(NULL)
   }
   checker <- .make_permission_checker("RunR", mode, rules, ask_fn)
+  sb_prof <- .sandbox_profile(list(sandbox = sandbox))
 
   ellmer::tool(
     fun = function(code, `_intent` = NULL) {
@@ -34,6 +40,14 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
         return(.tool_result(
           paste0("[Permission denied] RunR:\n", code),
           title = "RunR -- denied"
+        ))
+      }
+      # Sandbox: refuse network/shell/env code in-process (cannot scrub env).
+      blocked <- .sandbox_block_r_code(code, sb_prof)
+      if (!is.null(blocked)) {
+        return(.tool_result(
+          paste0("[Sandbox blocked] ", blocked, "\n", code),
+          title = "RunR -- sandbox blocked"
         ))
       }
       tryCatch(
@@ -79,8 +93,8 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
 #' @return Invisibly returns `chat`.
 #' @keywords internal
 register_run_r_tool <- function(chat, mode = "default", rules = list(),
-                                ask_fn = NULL) {
-  t <- run_r_tool(mode, rules, ask_fn)
+                                ask_fn = NULL, sandbox = NULL) {
+  t <- run_r_tool(mode, rules, ask_fn, sandbox = sandbox)
   if (!is.null(t)) chat$register_tool(t)
   invisible(chat)
 }

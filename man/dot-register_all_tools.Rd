@@ -19,3 +19,4 @@ Invisibly \code{chat}.
 \description{
 Register all codeagent tools to a Chat object
 }
+\keyword{internal}
