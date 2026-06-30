@@ -18,6 +18,8 @@ test_that(".repl_dispatch classifies lines correctly", {
   expect_identical(d("/help")$action, "help")
   expect_identical(d("/clear")$action, "clear")
   expect_identical(d("/compact")$action, "compact")
+  expect_identical(d("/sessions")$action, "sessions")
+  expect_identical(d("/budget")$action, "budget")
 })
 
 test_that(".repl_dispatch parses /model with arg", {
@@ -26,10 +28,10 @@ test_that(".repl_dispatch parses /model with arg", {
   expect_identical(m$arg, "anthropic/claude-haiku-4-5")
 })
 
-test_that(".repl_dispatch flags unknown slash commands", {
-  u <- codeagent:::.repl_dispatch("/frobnicate")
-  expect_identical(u$action, "unknown")
-  expect_identical(u$cmd, "frobnicate")
+test_that(".repl_dispatch routes non-meta slash commands to skill", {
+  u <- codeagent:::.repl_dispatch("/plan add a feature")
+  expect_identical(u$action, "skill")
+  expect_identical(u$text, "/plan add a feature")
 })
 
 # ---------------------------------------------------------------------------
@@ -71,4 +73,14 @@ test_that("codeagent_repl exits cleanly on EOF (empty connection)", {
   con <- textConnection(character(0))
   on.exit(close(con), add = TRUE)
   expect_silent(invisible(capture.output(codeagent_repl(cli, stream = FALSE, con = con))))
+})
+
+test_that("codeagent_repl /sessions and /budget run without the API", {
+  cli <- .mk_client()
+  con <- textConnection(c("/sessions", "/budget", "/exit"))
+  on.exit(close(con), add = TRUE)
+  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con))
+  # Both meta-commands run without errors and the REPL exits cleanly.
+  expect_true(any(grepl("Bye", out)))
+  expect_false(any(grepl("error", out, ignore.case = TRUE)))
 })

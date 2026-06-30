@@ -4,7 +4,13 @@
 \alias{codeagent_repl}
 \title{Run the interactive REPL}
 \usage{
-codeagent_repl(client, stream = TRUE, prompt_str = "› ", con = stdin())
+codeagent_repl(
+  client,
+  stream = TRUE,
+  prompt_str = "› ",
+  con = stdin(),
+  session_id = NULL
+)
 }
 \arguments{
 \item{client}{A \code{CodagentClient}.}
@@ -14,9 +20,12 @@ codeagent_repl(client, stream = TRUE, prompt_str = "› ", con = stdin())
 \item{prompt_str}{Character. The input prompt shown each turn.}
 
 \item{con}{Connection to read lines from (default stdin; override in tests).}
+
+\item{session_id}{Character or NULL. Session id for auto-save (generated if
+NULL).}
 }
 \value{
-Invisibly NULL. Loops until \verb{/exit}.
+Invisibly the session id. Loops until \verb{/exit} or EOF.
 }
 \description{
 Run the interactive REPL
