@@ -94,6 +94,8 @@ codeagent_app(client)
 
 **Shiny component rule:** Prefer `bslib::toolbar()` for compact action rows and prefer `bslib::show_toast()` over `shiny::showNotification()` for user-facing status feedback. Read `~/.claude/docs/bslib-toolbar-toast.md` and `~/.claude/docs/bslib-toast-vs-notification.md` before introducing new action bars or notifications.
 
+**Shiny state rule:** Use a single `shiny::reactiveValues()` for shared session state (see `ui.R` `state <- reactiveValues(...)`). Do NOT scatter individual `reactiveVal()` objects — consolidate related reactive state into one `reactiveValues` container. When mutable cross-module state is needed (e.g. the active client/chat for model switching), add a slot to the shared `reactiveValues`, not a standalone `reactiveVal`.
+
 ---
 
 ## Architecture
