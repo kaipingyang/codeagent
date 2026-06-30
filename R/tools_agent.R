@@ -78,7 +78,8 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                         mode               = "default",
                         rules              = list(),
                         max_turns          = 30L,
-                        worktree_isolation = FALSE) {
+                        worktree_isolation = FALSE,
+                        hooks              = NULL) {
   # Use btw's subagent when available (preferred: isolated session, resumable)
   if (requireNamespace("btw", quietly = TRUE)) {
     tools <- tryCatch(btw::btw_tools("btw_tool_agent_subagent"),
@@ -89,7 +90,10 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
   # Fallback: codeagent's own simple sub-agent
   ellmer::tool(
     fun = function(description, prompt, subagent_type = NULL) {
-      tryCatch({
+      if (!is.null(hooks)) tryCatch(
+        hooks$run_subagent_start(description, list(model = model)),
+        error = function(e) NULL)
+      result <- tryCatch({
         # Optionally create an isolated worktree
         wt_path <- if (isTRUE(worktree_isolation)) .create_worktree() else NULL
         sub_cwd <- wt_path %||% getwd()
@@ -108,11 +112,15 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         )
         sub_chat <- .make_chat(sub_settings, sub_cwd, system_prompt = system_prompt)
         register_builtin_tools(sub_chat, mode = mode, rules = rules)
-        result <- .run_subagent_loop(sub_chat, prompt, max_turns)
-        truncate_tool_result(result, "default")
+        r <- .run_subagent_loop(sub_chat, prompt, max_turns)
+        truncate_tool_result(r, "default")
       }, error = function(e) {
         paste0("[Error] Agent tool failed: ", conditionMessage(e))
       })
+      if (!is.null(hooks)) tryCatch(
+        hooks$run_subagent_stop(description, result, list(model = model)),
+        error = function(e) NULL)
+      result
     },
     description = paste0(
       "Spawn a sub-agent to handle a complex, multi-step delegated task. ",
