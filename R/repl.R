@@ -85,12 +85,23 @@ NULL
 #' @return Invisibly the session id. Loops until `/exit` or EOF.
 #' @export
 codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
-                           con = stdin(), session_id = NULL) {
+                           con = NULL, session_id = NULL) {
   if (!inherits(client, "CodagentClient"))
     stop("codeagent_repl() expects a CodagentClient.", call. = FALSE)
 
   settings <- client$settings
   cwd      <- settings$cwd %||% getwd()
+
+  # Resolve the input connection. Under Rscript, stdin() is an empty/non-blocking
+  # connection that returns EOF immediately; file("stdin") opens fd 0 (the real
+  # terminal) and blocks for interactive input. Tests pass an explicit con.
+  owns_con <- FALSE
+  if (is.null(con)) {
+    con <- file("stdin")
+    open(con, "r")
+    owns_con <- TRUE
+    on.exit(tryCatch(close(con), error = function(e) NULL), add = TRUE)
+  }
 
   # Per-session harness state -- same objects the Shiny app/agent_loop use, so
   # the REPL benefits from compaction, budget tracking, and hooks.
@@ -181,7 +192,9 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
     ok <- if (isTRUE(stream)) {
       tryCatch({
         s <- client$chat$stream(actual_input)
-        for (chunk in s) cat(chunk)
+        # ellmer Chat$stream() yields a coro generator; iterate with coro::loop
+        # (base for() can't walk a generator -> "invalid for() loop sequence").
+        coro::loop(for (chunk in s) cat(chunk))
         cat("\n"); TRUE
       }, error = function(e) { cat("[error: ", conditionMessage(e), "]\n", sep = ""); FALSE })
     } else {
