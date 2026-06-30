@@ -173,15 +173,6 @@
       if (frame) applyToolcardZoom(frame, zb.getAttribute("data-toolcard-zoom"));
       return;
     }
-    var fb = e.target.closest("[data-toolcard-fullscreen]");
-    if (fb) {
-      var f = fb.closest(".toolcard-img-frame");
-      if (f) {
-        if (f.requestFullscreen) f.requestFullscreen();
-        else f.classList.toggle("toolcard-fullscreen-overlay");
-      }
-      return;
-    }
     var db = e.target.closest("[data-toolcard-download]");
     if (db) {
       var src = db.getAttribute("data-toolcard-src");
