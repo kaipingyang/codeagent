@@ -59,7 +59,10 @@ NULL
   env                = list(), # env block (applied; stored for reference)
 
   # Bash sandbox (best-effort env scrub + network deny; see sandbox.R)
-  sandbox            = list(enabled = FALSE, allow_network = TRUE)
+  sandbox            = list(enabled = FALSE, allow_network = TRUE),
+
+  # Codebase RAG retrieval (opt-in; indexing is costly). See rag.R.
+  rag                = FALSE
 )
 
 # ---------------------------------------------------------------------------
