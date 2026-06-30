@@ -136,15 +136,19 @@ server_chat <- function(input, output, session, chat, settings,
         "Tool output will appear here."
       ))
     }
-    htmltools::tagList(
-      htmltools::tags$div(
-        class = "ca-output-title px-3 py-2",
-        style = "font-size:0.8rem; font-weight:600; border-bottom:1px solid var(--bs-border-color, #dee2e6);",
+    # Wrap in a bslib card(full_screen=TRUE) so the Output panel gets the same
+    # expand-to-fullscreen affordance as the in-chat tool card.
+    bslib::card(
+      full_screen = TRUE,
+      class       = "toolcard-output-card",
+      bslib::card_header(
+        class = "ca-output-title",
+        style = "font-size:0.8rem; font-weight:600;",
         val$title
       ),
-      htmltools::tags$div(
-        class = "ca-output-body p-2",
-        style = "overflow:auto;",
+      bslib::card_body(
+        class   = "ca-output-body",
+        padding = 8,
         val$content
       )
     )
