@@ -9,9 +9,11 @@ servers onto a codeagent Chat, via \code{mcptools::mcp_tools()}. This is the
 client side (consuming external tools); \code{codeagent_mcp_server()} is the
 server side (exposing codeagent's tools).
 
-Transport: mcptools launches stdio MCP servers as child processes
-(\code{command} + \code{args} + \code{env} per the config). HTTP/SSE servers depend on
-mcptools support.
+Transport: mcptools (>= 0.2.1) launches stdio MCP servers as child
+processes (\code{command} + \code{args} + \code{env} per the config) on the \strong{client}
+side. Remote HTTP/SSE \emph{client} connections are not yet supported upstream
+(mcptools \code{mcp_tools()} is stdio-only); codeagent can however \emph{serve} over
+HTTP -- see \code{\link[=codeagent_mcp_server]{codeagent_mcp_server()}} with \code{transport = "http"}.
 
 Config format (JSON file or inline list), e.g.:
 

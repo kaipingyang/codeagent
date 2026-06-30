@@ -4,10 +4,13 @@
 \alias{.cleanup_worktree}
 \title{Remove a git worktree}
 \usage{
-.cleanup_worktree(wt_path)
+.cleanup_worktree(wt_path, base_dir = getwd())
 }
 \arguments{
 \item{wt_path}{Character. Path returned by \code{\link[=.create_worktree]{.create_worktree()}}.}
+
+\item{base_dir}{Character. The repo the worktree belongs to (so \verb{git worktree remove} has repo context even if cwd has changed). Defaults to
+the current directory.}
 }
 \description{
 Remove a git worktree

@@ -9,7 +9,8 @@ register_builtin_tools(
   mode = "default",
   rules = list(),
   ask_fn = NULL,
-  skip_file_tools = FALSE
+  skip_file_tools = FALSE,
+  sandbox = NULL
 )
 }
 \arguments{
@@ -23,6 +24,9 @@ register_builtin_tools(
 
 \item{skip_file_tools}{Logical. Skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
 (register only Bash) when btw file tools handle files (Path A).}
+
+\item{sandbox}{List or NULL. Bash sandbox profile (see \code{\link[=.sandbox_profile]{.sandbox_profile()}});
+passed through to \code{\link[=bash_tool]{bash_tool()}}.}
 }
 \value{
 Invisibly returns \code{chat}.

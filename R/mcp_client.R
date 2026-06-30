@@ -4,9 +4,11 @@
 #'   client side (consuming external tools); `codeagent_mcp_server()` is the
 #'   server side (exposing codeagent's tools).
 #'
-#'   Transport: mcptools launches stdio MCP servers as child processes
-#'   (`command` + `args` + `env` per the config). HTTP/SSE servers depend on
-#'   mcptools support.
+#'   Transport: mcptools (>= 0.2.1) launches stdio MCP servers as child
+#'   processes (`command` + `args` + `env` per the config) on the **client**
+#'   side. Remote HTTP/SSE *client* connections are not yet supported upstream
+#'   (mcptools `mcp_tools()` is stdio-only); codeagent can however *serve* over
+#'   HTTP -- see [codeagent_mcp_server()] with `transport = "http"`.
 #'
 #'   Config format (JSON file or inline list), e.g.:
 #'   ```json

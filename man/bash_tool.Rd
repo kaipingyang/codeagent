@@ -4,7 +4,7 @@
 \alias{bash_tool}
 \title{Create the Bash tool}
 \usage{
-bash_tool(mode = "default", rules = list(), ask_fn = NULL)
+bash_tool(mode = "default", rules = list(), ask_fn = NULL, sandbox = NULL)
 }
 \arguments{
 \item{mode}{Character. Permission mode (see \link{PermissionMode}).}
@@ -13,6 +13,10 @@ bash_tool(mode = "default", rules = list(), ask_fn = NULL)
 
 \item{ask_fn}{Function or NULL. \verb{function(tool_name, input) -> logical}.
 Called when permission is \code{"ask"}.}
+
+\item{sandbox}{List or NULL. Bash sandbox profile (see \code{\link[=.sandbox_profile]{.sandbox_profile()}}):
+\code{list(enabled, allow_network, keep_env)}. When enabled, scrubs the command
+environment and can block network utilities.}
 }
 \value{
 An \code{ellmer::tool()} object.

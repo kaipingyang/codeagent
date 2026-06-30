@@ -88,6 +88,26 @@ NULL
   tryCatch(chat$get_turns(), error = function(e) default)
 }
 
+# Show a transient UI notice. Prefers bslib::show_toast when the installed
+# bslib exports it (newer versions), else falls back to shiny::showNotification.
+# Uses a dynamic lookup so R CMD check does not flag a hard dependency on an
+# API that may be unexported in the installed bslib.
+.ui_toast <- function(message, type = "message") {
+  toast <- tryCatch(
+    get("show_toast", envir = asNamespace("bslib"), inherits = FALSE),
+    error = function(e) NULL
+  )
+  if (is.function(toast)) {
+    ok <- tryCatch({ toast(message, type = type); TRUE }, error = function(e) FALSE)
+    if (isTRUE(ok)) return(invisible(NULL))
+  }
+  sh_type <- switch(type, success = "message", error = "error",
+                    warning = "warning", "message")
+  tryCatch(shiny::showNotification(message, type = sh_type),
+           error = function(e) NULL)
+  invisible(NULL)
+}
+
 # Normalize a file path and check existence.
 # Returns list(path = <path>) on success, list(error = <msg>) on failure.
 .safe_normalize_path <- function(file_path) {

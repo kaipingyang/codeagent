@@ -2,23 +2,37 @@
 % Please edit documentation in R/tools_agent.R
 \name{codeagent_mcp_server}
 \alias{codeagent_mcp_server}
-\title{Exposes codeagent's tool set as an MCP server, powered by btw's
-\code{btw_mcp_server()}. The server runs in a blocking loop and is designed
-for non-interactive use (e.g. Claude Desktop, VS Code MCP config).}
+\title{Exposes codeagent's tool set as an MCP server. By default uses btw's
+\code{btw_mcp_server()} over stdio (for Claude Desktop / VS Code MCP config). With
+\code{transport = "http"} it serves over HTTP via \code{mcptools::mcp_server()} (>= 0.2.1),
+enabling remote MCP clients. The server runs in a blocking loop.}
 \usage{
-codeagent_mcp_server(tools = NULL, ...)
+codeagent_mcp_server(
+  tools = NULL,
+  transport = c("stdio", "http"),
+  host = "127.0.0.1",
+  port = 8000L,
+  ...
+)
 }
 \arguments{
 \item{tools}{Character vector of btw tool groups to expose, or a list of
 \code{ellmer::tool()} objects. Defaults to all btw tools.}
 
-\item{...}{Additional arguments passed to \code{btw::btw_mcp_server()}.}
+\item{transport}{Character. \code{"stdio"} (default) or \code{"http"}.}
+
+\item{host}{Character. Host to bind when \code{transport = "http"}.}
+
+\item{port}{Integer. Port to bind when \code{transport = "http"}.}
+
+\item{...}{Additional arguments passed to the underlying server function.}
 }
 \value{
 Does not return (blocking).
 }
 \description{
-Exposes codeagent's tool set as an MCP server, powered by btw's
-\code{btw_mcp_server()}. The server runs in a blocking loop and is designed
-for non-interactive use (e.g. Claude Desktop, VS Code MCP config).
+Exposes codeagent's tool set as an MCP server. By default uses btw's
+\code{btw_mcp_server()} over stdio (for Claude Desktop / VS Code MCP config). With
+\code{transport = "http"} it serves over HTTP via \code{mcptools::mcp_server()} (>= 0.2.1),
+enabling remote MCP clients. The server runs in a blocking loop.
 }
