@@ -120,12 +120,7 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         # Claude Code's default sub-agent behaviour). The parent ask_fn is
         # passed through so a bubbled "ask" is answered by the parent.
         sub_mode <- "bubble"
-        system_prompt <- paste0(
-          "You are a sub-agent helping with: ", description, "\n",
-          "Complete the task thoroughly and return your findings/results.\n",
-          "Running in sub-agent mode (permission: ", sub_mode, ").",
-          if (!is.null(wt_path)) paste0("\nWorking directory: ", sub_cwd) else ""
-        )
+        system_prompt <- .prompt_subagent(description, sub_mode, wt_path)
         sub_settings <- list(
           model = model, permission_mode = sub_mode,
           cwd = sub_cwd, max_turns = as.integer(max_turns),

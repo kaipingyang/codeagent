@@ -15,6 +15,9 @@
 Character(1). The full system prompt.
 }
 \description{
-Build the codeagent system prompt
+Assembles behavioural guidance (tone, doing-tasks, conventions, tool use,
+R specifics; see \code{prompts.R}) plus project context (CLAUDE.md, skills,
+permission mode). Constant text only -- ephemeral per-turn context lives in
+\code{\link[=.build_system_reminder]{.build_system_reminder()}}.
 }
 \keyword{internal}

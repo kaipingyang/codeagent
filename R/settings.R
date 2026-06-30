@@ -347,46 +347,27 @@ use_codeagent_settings <- function(scope = c("user", "project"),
 
 #' Build the codeagent system prompt
 #'
+#' Assembles behavioural guidance (tone, doing-tasks, conventions, tool use,
+#' R specifics; see `prompts.R`) plus project context (CLAUDE.md, skills,
+#' permission mode). Constant text only -- ephemeral per-turn context lives in
+#' [.build_system_reminder()].
+#'
 #' @param settings List. Output of [load_settings()].
 #' @param cwd Character. Working directory.
 #' @return Character(1). The full system prompt.
 #' @keywords internal
 .build_system_prompt <- function(settings, cwd = getwd()) {
-  parts <- character(0)
-
-  parts <- c(parts, paste0(
-    "You are codeagent, an AI coding assistant for R.\n",
-    "Working directory: ", cwd, "\n",
-    "Date: ", format(Sys.Date()), "\n",
-    "Model: ", settings$model
-  ))
-
-  # CLAUDE.md content
-  if (!is.null(settings$claude_md) && nzchar(settings$claude_md)) {
-    parts <- c(parts, paste0(
-      "\n---\n",
-      "## Project Instructions (CLAUDE.md)\n\n",
-      settings$claude_md
-    ))
-  }
-
-  # Skill list (progressive disclosure: names + descriptions only)
-  skill_hint <- tryCatch(
-    build_skill_hint(cwd = cwd, max_tokens = 1000L),
-    error = function(e) NULL
+  parts <- c(
+    .prompt_identity(settings, cwd),
+    .prompt_tone_and_style(settings),
+    .prompt_doing_tasks(),
+    .prompt_code_conventions(),
+    .prompt_using_tools(settings),
+    .prompt_actions(),
+    .prompt_r_specifics(),
+    .prompt_context_blocks(settings, cwd)
   )
-  if (!is.null(skill_hint) && nzchar(skill_hint)) {
-    parts <- c(parts, paste0("\n---\n", skill_hint))
-  }
-
-  # Permission mode
-  parts <- c(parts, paste0(
-    "\n---\n",
-    "Permission mode: ", settings$permission_mode, "\n",
-    "Max turns: ", settings$max_turns
-  ))
-
-  paste(parts, collapse = "\n")
+  paste(parts[nzchar(parts)], collapse = "\n\n")
 }
 
 # ---------------------------------------------------------------------------
