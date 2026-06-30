@@ -42,21 +42,25 @@ print.CodagentClient <- function(x, ...) {
 #' @keywords internal
 .make_chat <- function(settings, cwd = getwd(), ...) {
   sp <- .build_system_prompt(settings, cwd)
+
+  # effort_level -> ellmer params(reasoning_effort=) when set
+  extra_params <- if (!is.null(settings$effort_level) && nzchar(settings$effort_level)) {
+    list(params = ellmer::params(reasoning_effort = settings$effort_level))
+  } else list()
+
   if (!is.null(settings$base_url) && nzchar(settings$base_url)) {
     api_key_env <- settings$api_key_env %||% "CODEAGENT_API_KEY"
-    ellmer::chat_openai_compatible(
+    do.call(ellmer::chat_openai_compatible, c(list(
       base_url      = settings$base_url,
       model         = settings$model,
       credentials   = function() Sys.getenv(api_key_env),
-      system_prompt = sp,
-      ...
-    )
+      system_prompt = sp
+    ), extra_params, list(...)))
   } else {
-    ellmer::chat_anthropic(
+    do.call(ellmer::chat_anthropic, c(list(
       model         = settings$model,
-      system_prompt = sp,
-      ...
-    )
+      system_prompt = sp
+    ), extra_params, list(...)))
   }
 }
 
@@ -100,7 +104,9 @@ codeagent_client <- function(
 ) {
   settings <- load_settings(cwd)
   settings$permission_mode     <- permission_mode
-  settings$rules               <- rules
+  # Merge rules: caller-supplied rules take priority over settings.json rules.
+  # settings$rules is already parsed from permissions.allow/deny/ask by load_settings().
+  settings$rules               <- c(rules, settings$rules)
   settings$cwd                 <- cwd
   settings$max_turns           <- as.integer(max_turns)
   settings$btw_groups          <- btw_groups
@@ -285,7 +291,8 @@ agent_loop <- function(user_input,
   if (!is.null(hooks)) tryCatch(
     hooks$run_pre_compact("auto", list(tokens = current_tokens)),
     error = function(e) NULL)
-  compaction_ctrl$maybe_compact(chat, settings$model_limit %||% 200000L)
+  compaction_ctrl$maybe_compact(chat, settings$model_limit %||% 200000L,
+                                compact_model = settings$small_fast_model %||% .HAIKU_MODEL)
 
   # 4. Resource management
   resource_state$maybe_replace(chat)

@@ -154,6 +154,11 @@ NULL
   # Resolve alias
   if (!is.null(aliases[[spec]])) spec <- aliases[[spec]]
 
+  # Resolve tier alias (sonnet/opus/haiku) via env vars set by settings.json env block.
+  # Mirrors Claude Code's ANTHROPIC_DEFAULT_SONNET_MODEL / ANTHROPIC_SMALL_FAST_MODEL.
+  tier_map <- .build_tier_models()
+  if (!is.null(tier_map[[spec]])) spec <- tier_map[[spec]]
+
   # "anthropic/model"
   if (grepl("^anthropic/", spec)) {
     model <- sub("^anthropic/", "", spec)
@@ -164,7 +169,6 @@ NULL
   if (grepl("^openai/", spec)) {
     model   <- sub("^openai/", "", spec)
     base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")
-    api_key  <- Sys.getenv("CODEAGENT_API_KEY", "")
     if (nzchar(base_url)) {
       return(ellmer::chat_openai_compatible(
         base_url    = base_url,
