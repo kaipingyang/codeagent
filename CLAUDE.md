@@ -177,6 +177,10 @@ codeagent_app(client, theme="default") # Shiny UI
 
 **`client_config.R`** — `codeagent_client_config(alias=)` reads `codeagent.md` / `.codeagent/config.md`. Supports single client spec (`"openai/model"`) or alias maps with interactive selection. `use_codeagent_md()` creates template.
 
+**`memory.R`** — **auto-memory (M6)**. Persistent agent memory under `~/.codeagent/memory/<slug>.md` (YAML front-matter `name`/`description` + body) + `MEMORY.md` index. `write_memory/list_memories/recall_memories/delete_memory`. The `remember` tool (`register_memory_tool`) lets the LLM persist durable facts; `recall_memories()` is injected into `.build_system_reminder` on iteration 1 (not every turn — model retains it after). Survives across sessions.
+
+**`model_switch.R`** — **lossless model switch (M1)**. `switch_model(client, model)`: Route A swaps ellmer R6 `private$provider` in place (same Chat object → callbacks/stream_controller/closures untouched); Route B (tryCatch fallback) rebuilds via public API. `.resolve_model_chat` reuses `client_config` alias resolution. Shiny uses `.swap_provider` directly (Route A only, to keep Chat identity); CLI uses full `switch_model`. See `references/model-switch-alternatives.md`.
+
 **`settings.R`** — Priority: env vars > `~/.codeagent/settings.json` > `.codeagent/settings.json` > defaults. `.build_system_reminder()` injects ephemeral per-turn context (date/iteration/cwd) into user message (not system prompt) to preserve prompt cache.
 
 **`compaction.R` `.make_compact_chat()`** — When `CODEAGENT_BASE_URL` set, uses `chat_openai_compatible` with `databricks-claude-haiku-4-5`; otherwise `chat_anthropic`.
