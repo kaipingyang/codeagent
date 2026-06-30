@@ -71,12 +71,10 @@ server_sessions <- function(input, output, session, chat, cwd,
                                     type = "warning", duration = 3)
             return()
           }
-          turns <- lapply(msgs, function(m) {
-            tryCatch(ellmer::Turn(m$type, list(ellmer::ContentText(m$text))),
-                     error = function(e) NULL)
-          })
-          turns <- Filter(Negate(is.null), turns)
-          tryCatch(chat$set_turns(turns), error = function(e) NULL)
+          # Lossless history restore (tool calls preserved); UI bubbles still
+          # use the text msgs below. Falls back to text turns for legacy files.
+          tryCatch(restore_session_into_chat(chat, session_id = sid, cwd = cwd),
+                   error = function(e) NULL)
           state$session_id <- sid
           shinychat::chat_clear("chat", session)
           lapply(msgs, function(m) {

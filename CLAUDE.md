@@ -183,7 +183,7 @@ codeagent_app(client, theme="default") # Shiny UI
 
 **`ui.R`** — `codeagent_app(client, pinned_skills, theme, port, launch.browser)`. Three accordion panels: Sessions (1st, open), Skills (2nd, searchable + scrollable + install), Settings (permission mode + btw tool groups + theme toggle). Themes: `"default"` (pure bslib), `"flatly"` (Bootswatch), `"darkly"` (Bootswatch), `"glass"` (custom visual layer). Tools stream via `stream="content"` → shinychat renders tool cards automatically.
 
-**`sessions.R / mutations.R`** — Sessions stored as JSONL under `~/.codeagent/projects/<hash>/`. Session titles fall back to first user message (not UUID). `fork_session()` implemented.
+**`sessions.R / mutations.R`** — Sessions stored as JSONL under `~/.codeagent/projects/<hash>/`. Session titles fall back to first user message (not UUID). `fork_session()` implemented. **Lossless persistence (M7)**: `save_session` writes a `chat-state` line (`contents_record` → gzip → base64, JSON-safe) preserving tool requests/results; per-message text lines remain for UI display + legacy fallback. `restore_session_into_chat(chat, session_id, cwd)` prefers the lossless state (tool calls intact), falls back to text turns for pre-M7 sessions. `session_id = NULL` → continue most recent (CLI `--continue`). Shiny session-load + CLI `--continue`/`--resume` both use it.
 
 ### Key design decisions
 
