@@ -11,7 +11,7 @@ server_right <- function(input, output, session, cwd, state) {
     rootFolder = cwd
   )
 
-  # Click file → render preview to Output tab
+  # Click file -> render preview to Output tab
   shiny::observeEvent(selected_paths(), {
     paths <- selected_paths()
     if (length(paths) == 0L) return()

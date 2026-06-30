@@ -63,7 +63,7 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
       if (!checker(list(command = command))) {
         return(.tool_result2(paste0("[Permission denied] Bash: ", command),
                              kind = "error", status = "denied",
-                             icon = "terminal", title = "Bash — denied",
+                             icon = "terminal", title = "Bash -- denied",
                              payload = list(message = paste0("Permission denied: ", command))))
       }
       # Fire-and-forget: do not capture output, do not block.
@@ -93,7 +93,7 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
           result <- paste0(result, "\n[exit status: ", status, "]")
         result <- truncate_tool_result(result, "Bash")
         label  <- substr(command, 1L, 80L)
-        if (nchar(command) > 80L) label <- paste0(label, "…")
+        if (nchar(command) > 80L) label <- paste0(label, "...")
         .tool_result2(result,
                       kind     = "text",
                       icon     = "terminal",
@@ -109,7 +109,7 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
       "Execute a shell (bash) command. Use for file operations, running tests, ",
       "installing packages, git commands, etc. ",
       "Prefer over chained R calls when shell utilities are more appropriate. ",
-      "NEVER use 'Rscript -e ...' to run R code — shell quote nesting will always fail. ",
+      "NEVER use 'Rscript -e ...' to run R code -- shell quote nesting will always fail. ",
       "To run R code: ALWAYS use the Write tool to save code to /tmp/script.R first, ",
       "then run 'Rscript /tmp/script.R' with this tool."
     ),
@@ -712,6 +712,8 @@ ls_tool <- function() {
 #' @param mode Character. Permission mode.
 #' @param rules List. Permission rules.
 #' @param ask_fn Function or NULL. Called when permission is `"ask"`.
+#' @param skip_file_tools Logical. Skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
+#'   (register only Bash) when btw file tools handle files (Path A).
 #' @return Invisibly returns `chat`.
 #' @export
 register_builtin_tools <- function(chat, mode = "default",

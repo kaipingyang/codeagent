@@ -129,7 +129,7 @@ SkillMeta <- function(name, description = "", argument_hint = "",
 # ---------------------------------------------------------------------------
 
 #' Pre-tool hook definition
-#' @param fn Function. `function(tool_name, tool_input)` → list with
+#' @param fn Function. `function(tool_name, tool_input)` -> list with
 #'   `action` (`"allow"`, `"deny"`, `"updated_input"`) and optional fields.
 #' @param tool_pattern Character or NULL. Regex pattern to match tool names.
 #'   `NULL` matches all tools.
@@ -142,7 +142,7 @@ PreToolHook <- function(fn, tool_pattern = NULL, timeout_ms = 2000L) {
 }
 
 #' Post-tool hook definition
-#' @param fn Function. `function(tool_name, tool_input, tool_output)` → list
+#' @param fn Function. `function(tool_name, tool_input, tool_output)` -> list
 #'   with `action` (`"allow"`, `"updated_output"`) and optional fields.
 #' @param tool_pattern Character or NULL. Regex pattern to match tool names.
 #' @param timeout_ms Integer. Timeout in milliseconds (default 2000).

@@ -282,7 +282,7 @@ ptl_fallback <- function(chat, drop_turns = 3L) {
 }
 
 # ---------------------------------------------------------------------------
-# L5: Context Collapse (read-time projection — replace large tool values inline)
+# L5: Context Collapse (read-time projection -- replace large tool values inline)
 # ---------------------------------------------------------------------------
 
 #' L5: Context collapse via read-time projection

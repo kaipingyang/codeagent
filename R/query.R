@@ -61,7 +61,7 @@ print.CodagentClient <- function(x, ...) {
 }
 
 # ---------------------------------------------------------------------------
-# codeagent_client() — the primary configuration entry point
+# codeagent_client() -- the primary configuration entry point
 # ---------------------------------------------------------------------------
 
 #' Create a codeagent client from any ellmer Chat
@@ -70,7 +70,7 @@ print.CodagentClient <- function(x, ...) {
 #' skill tool) and rebuilds the system prompt. The returned `CodagentClient`
 #' is the single object passed to [codeagent()] and [codeagent_app()].
 #'
-#' @param chat An `ellmer::Chat` object — any backend supported by ellmer:
+#' @param chat An `ellmer::Chat` object -- any backend supported by ellmer:
 #'   `chat_openai_compatible()`, `chat_anthropic()`, `chat_ollama()`, etc.
 #'   If NULL, a chat is auto-built from `CODEAGENT_BASE_URL`/`CODEAGENT_MODEL`
 #'   env vars (or Anthropic defaults).
@@ -80,6 +80,11 @@ print.CodagentClient <- function(x, ...) {
 #' @param max_turns Integer. Maximum agentic loop turns.
 #' @param btw_groups Character vector or NULL. btw tool groups to register
 #'   (e.g. `c("docs","git","pkg")`). NULL = all available groups.
+#' @param worktree_isolation Logical. Run sub-agents in isolated git worktrees.
+#' @param verify_fn Function or NULL. Optional output verifier; re-enters the
+#'   loop when it reports failures (e.g. [verify_r_tests()]).
+#' @param mcp_config MCP client config (JSON path or inline list) to connect
+#'   external MCP servers; see [register_mcp_client()]. NULL disables.
 #' @return Object of class `CodagentClient` with slots `$chat` and `$settings`.
 #' @export
 codeagent_client <- function(
@@ -121,7 +126,7 @@ codeagent_client <- function(
 }
 
 # ---------------------------------------------------------------------------
-# codeagent() — one-shot query
+# codeagent() -- one-shot query
 # ---------------------------------------------------------------------------
 
 #' Run a one-shot codeagent query
@@ -193,7 +198,7 @@ codeagent <- function(client_or_prompt,
 }
 
 # ---------------------------------------------------------------------------
-# agent_loop() — used by the Shiny app
+# agent_loop() -- used by the Shiny app
 # ---------------------------------------------------------------------------
 
 #' Main agentic query loop
@@ -300,7 +305,7 @@ agent_loop <- function(user_input,
   # 7. Fire AssistantMessage hook
   if (!is.null(hooks)) tryCatch(hooks$run_assistant_message(response), error = function(e) NULL)
 
-  # 7b. Verification loop — run verify_fn and re-enter if it reports failures
+  # 7b. Verification loop -- run verify_fn and re-enter if it reports failures
   verify_fn <- settings$verify_fn
   if (!is.null(verify_fn) && is.function(verify_fn)) {
     verify_result <- tryCatch(verify_fn(response, chat, cwd), error = function(e) {
@@ -346,7 +351,7 @@ agent_loop <- function(user_input,
   rules <- settings$rules %||% list()
   cwd   <- settings$cwd %||% getwd()
 
-  # Core tools — skip built-in file tools if Path A (btw files) is enabled
+  # Core tools -- skip built-in file tools if Path A (btw files) is enabled
   if (isTRUE(getOption("codeagent.use_btw_files", FALSE))) {
     # Path A: register only Bash (+ non-file builtins); btw handles files
     register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn,

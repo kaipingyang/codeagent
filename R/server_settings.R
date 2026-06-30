@@ -29,10 +29,10 @@ server_settings <- function(input, output, session, chat, settings, cwd,
 
     htmltools::tags$div(
       class = "ca-customizations",
-      make_row("✨", "Skills",  n_skills),
-      make_row("🔧", "Tools",   n_tools),
-      make_row("🪝", "Hooks",   n_hooks),
-      make_row("🔌", "MCP",     NULL)
+      make_row("\u2728", "Skills",  n_skills),
+      make_row("\U0001f527", "Tools",   n_tools),
+      make_row("\U0001fa9d", "Hooks",   n_hooks),
+      make_row("\U0001f50c", "MCP",     NULL)
     )
   })
 
@@ -47,7 +47,7 @@ server_settings <- function(input, output, session, chat, settings, cwd,
       error = function(e) NULL)
   }, ignoreInit = TRUE)
 
-  # Model switch — Route A (in-place provider swap) keeps the SAME Chat object,
+  # Model switch -- Route A (in-place provider swap) keeps the SAME Chat object,
   # so the chat captured by every other server module stays valid. We swap the
   # provider directly rather than calling switch_model() (which may return a NEW
   # client via Route B) to guarantee the Chat identity is preserved in Shiny.
@@ -57,7 +57,7 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     if (identical(new_spec, settings$model)) return()
 
     if (!is.null(stream_task) && stream_task$status() == "running") {
-      tryCatch(bslib::show_toast("Streaming in progress — cannot switch model now.",
+      tryCatch(bslib::show_toast("Streaming in progress -- cannot switch model now.",
                                  type = "warning"),
                error = function(e) shiny::showNotification(
                  "Streaming in progress; cannot switch model.", type = "warning"))
@@ -79,7 +79,7 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     })
 
     if (ok) {
-      tryCatch(bslib::show_toast(sprintf("Switched to %s — history preserved.",
+      tryCatch(bslib::show_toast(sprintf("Switched to %s -- history preserved.",
                                          settings$model), type = "success"),
                error = function(e) shiny::showNotification(
                  sprintf("Switched to %s.", settings$model), type = "message"))

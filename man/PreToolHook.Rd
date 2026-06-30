@@ -7,7 +7,7 @@
 PreToolHook(fn, tool_pattern = NULL, timeout_ms = 2000L)
 }
 \arguments{
-\item{fn}{Function. \verb{function(tool_name, tool_input)} → list with
+\item{fn}{Function. \verb{function(tool_name, tool_input)} -> list with
 \code{action} (\code{"allow"}, \code{"deny"}, \code{"updated_input"}) and optional fields.}
 
 \item{tool_pattern}{Character or NULL. Regex pattern to match tool names.

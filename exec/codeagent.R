@@ -56,7 +56,7 @@ ca_make_client <- function(permission_mode = "bypass",
 switch(
   cmd <- "",
 
-  # run — one-shot query -----------------------------------------------
+  # run -- one-shot query -----------------------------------------------
   run = {
     #| description: The prompt to send to the agent.
     `prompt...` <- c()
@@ -114,7 +114,7 @@ switch(
     }, error = ca_error)
   },
 
-  # repl — interactive REPL ---------------------------------------------
+  # repl -- interactive REPL ---------------------------------------------
   repl = {
     #| description: Permission mode (default: bypass).
     #| short: 'm'
@@ -144,7 +144,7 @@ switch(
     }, error = ca_error)
   },
 
-  # app — launch Shiny UI -----------------------------------------------
+  # app -- launch Shiny UI -----------------------------------------------
   app = {
     #| description: Permission mode (default: bypass).
     #| short: 'm'
@@ -169,7 +169,7 @@ switch(
     }, error = ca_error)
   },
 
-  # skills — skill management -------------------------------------------
+  # skills -- skill management -------------------------------------------
   skills = {
     switch(
       skills_cmd <- "",
@@ -182,7 +182,7 @@ switch(
             cat("No skills installed.\n")
           } else {
             for (m in metas) {
-              cat(sprintf("  /%s — %s\n", m$name, m$description %||% ""))
+              cat(sprintf("  /%s -- %s\n", m$name, m$description %||% ""))
             }
           }
         }, error = ca_error)
@@ -218,7 +218,7 @@ switch(
     if (skills_cmd == "") ca_self_help("skills")
   },
 
-  # mcp — start MCP server ----------------------------------------------
+  # mcp -- start MCP server ----------------------------------------------
   mcp = {
     #| description: btw tool groups to expose (comma-separated, default all).
     groups <- ""
@@ -231,7 +231,7 @@ switch(
     }, error = ca_error)
   },
 
-  # info — show current configuration -----------------------------------
+  # info -- show current configuration -----------------------------------
   info = {
     #| description: Output as JSON.
     json <- FALSE

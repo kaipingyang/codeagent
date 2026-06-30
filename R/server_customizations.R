@@ -1,5 +1,5 @@
 #' @title Customizations Server Logic
-#' @description Handles Customizations panel row clicks → show modal.
+#' @description Handles Customizations panel row clicks -> show modal.
 #'   Each category is independent: data loading + modal dispatch are isolated.
 #' @name server_customizations
 #' @keywords internal
@@ -7,9 +7,8 @@ NULL
 
 server_customizations <- function(input, output, session, chat, settings, cwd, hooks = NULL) {
 
-  `%||%` <- codeagent:::`%||%`
 
-  # ── Count badges ──────────────────────────────────────────────────────────
+  # -- Count badges ----------------------------------------------------------
 
   n_skills <- shiny::reactive({
     tryCatch(length(list_skills_meta(cwd)), error = function(e) 0L)
@@ -47,7 +46,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   output$ca_open_hooks_badge     <- shiny::renderUI(.count_badge(n_hooks()))
   output$ca_open_mcp_badge       <- shiny::renderUI(.count_badge(n_mcp()))
 
-  # ── Agents modal ──────────────────────────────────────────────────────────
+  # -- Agents modal ----------------------------------------------------------
 
   shiny::observeEvent(input$ca_open_agents, {
     agent_list <- tryCatch({
@@ -72,7 +71,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
     shiny::showModal(modal_agents_ui(agent_list))
   })
 
-  # ── Skills modal ──────────────────────────────────────────────────────────
+  # -- Skills modal ----------------------------------------------------------
 
   shiny::observeEvent(input$ca_open_skills, {
     skill_list <- tryCatch(list_skills_meta(cwd), error = function(e) list())
@@ -118,7 +117,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
     })
   })
 
-  # ── Instructions modal ────────────────────────────────────────────────────
+  # -- Instructions modal ----------------------------------------------------
 
   shiny::observeEvent(input$ca_open_instructions, {
     files <- tryCatch({
@@ -134,7 +133,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
     shiny::showModal(modal_instructions_ui(files))
   })
 
-  # ── Hooks modal ───────────────────────────────────────────────────────────
+  # -- Hooks modal -----------------------------------------------------------
 
   shiny::observeEvent(input$ca_open_hooks, {
     hook_list <- tryCatch({
@@ -147,7 +146,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
     shiny::showModal(modal_hooks_ui(hook_list))
   })
 
-  # ── MCP modal ─────────────────────────────────────────────────────────────
+  # -- MCP modal -------------------------------------------------------------
 
   shiny::observeEvent(input$ca_open_mcp, {
     mcp_list <- tryCatch({
@@ -167,7 +166,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
     shiny::showModal(modal_mcp_ui(mcp_list))
   })
 
-  # ── Plugins modal ─────────────────────────────────────────────────────────
+  # -- Plugins modal ---------------------------------------------------------
 
   shiny::observeEvent(input$ca_open_plugins, {
     shiny::showModal(modal_plugins_ui(list()))

@@ -141,12 +141,12 @@ NULL
 #' Parse a client spec string ("provider/model") into chat factory args
 #'
 #' Supports:
-#' - `"openai/model-name"` → `chat_openai_compatible()` using `CODEAGENT_BASE_URL`
-#' - `"anthropic/model-name"` → `chat_anthropic(model = "model-name")`
-#' - `"alias"` → looked up in `aliases` named list
+#' - `"openai/model-name"` -> `chat_openai_compatible()` using `CODEAGENT_BASE_URL`
+#' - `"anthropic/model-name"` -> `chat_anthropic(model = "model-name")`
+#' - `"alias"` -> looked up in `aliases` named list
 #'
 #' @param spec Character. Client spec string or alias key.
-#' @param aliases Named list. Alias → spec mapping.
+#' @param aliases Named list. Alias -> spec mapping.
 #' @param cwd Character. Working directory (for settings).
 #' @return An `ellmer::Chat` object.
 #' @keywords internal
@@ -160,7 +160,7 @@ NULL
     return(ellmer::chat_anthropic(model = model))
   }
 
-  # "openai/model" — use CODEAGENT_BASE_URL
+  # "openai/model" -- use CODEAGENT_BASE_URL
   if (grepl("^openai/", spec)) {
     model   <- sub("^openai/", "", spec)
     base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")
@@ -184,7 +184,7 @@ NULL
     ))
   }
 
-  # Plain model name — use settings auto-detect
+  # Plain model name -- use settings auto-detect
   settings <- load_settings(cwd)
   settings$model <- spec
   .make_chat(settings, cwd)

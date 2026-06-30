@@ -170,7 +170,7 @@ register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
     tryCatch({
       ns <- getNamespace("btw")
       # btw_agent_tool() discovers agents from .btw/, .claude/agents/, etc.
-      # btw_tools() doesn't list them by default — use btw_agent_tool() per path
+      # btw_tools() doesn't list them by default -- use btw_agent_tool() per path
       agent_dirs <- c(
         file.path(getwd(), ".btw"),
         file.path(getwd(), ".claude", "agents"),

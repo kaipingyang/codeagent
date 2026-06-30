@@ -81,7 +81,7 @@ save_session <- function(chat, cwd = getwd(),
       auto_unbox = TRUE))
   }
 
-  # Turn lines (text-level — drives UI display, titles, and legacy fallback)
+  # Turn lines (text-level -- drives UI display, titles, and legacy fallback)
   for (turn in turns) {
     role     <- tryCatch(turn@role, error = function(e) "unknown")
     contents <- tryCatch(turn@contents, error = function(e) list())
@@ -395,7 +395,7 @@ migrate_sessions <- function(directory = NULL) {
   mtime <- as.numeric(fi$mtime) * 1000
 
   # Read all lines: first line is the header; later lines may contain
-  # appended mutations (custom-title, tag) — scan from the end for the
+  # appended mutations (custom-title, tag) -- scan from the end for the
   # most-recent custom-title entry (most-recent-wins semantics).
   all_lines <- tryCatch(readLines(path, warn = FALSE), error = function(e) character(0))
   if (length(all_lines) == 0L) return(NULL)

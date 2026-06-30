@@ -17,7 +17,7 @@ codeagent_client(
 )
 }
 \arguments{
-\item{chat}{An \code{ellmer::Chat} object — any backend supported by ellmer:
+\item{chat}{An \code{ellmer::Chat} object -- any backend supported by ellmer:
 \code{chat_openai_compatible()}, \code{chat_anthropic()}, \code{chat_ollama()}, etc.
 If NULL, a chat is auto-built from \code{CODEAGENT_BASE_URL}/\code{CODEAGENT_MODEL}
 env vars (or Anthropic defaults).}
@@ -32,6 +32,14 @@ env vars (or Anthropic defaults).}
 
 \item{btw_groups}{Character vector or NULL. btw tool groups to register
 (e.g. \code{c("docs","git","pkg")}). NULL = all available groups.}
+
+\item{worktree_isolation}{Logical. Run sub-agents in isolated git worktrees.}
+
+\item{verify_fn}{Function or NULL. Optional output verifier; re-enters the
+loop when it reports failures (e.g. \code{\link[=verify_r_tests]{verify_r_tests()}}).}
+
+\item{mcp_config}{MCP client config (JSON path or inline list) to connect
+external MCP servers; see \code{\link[=register_mcp_client]{register_mcp_client()}}. NULL disables.}
 }
 \value{
 Object of class \code{CodagentClient} with slots \verb{$chat} and \verb{$settings}.

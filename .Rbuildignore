@@ -1,0 +1,12 @@
+^CLAUDE\.md$
+^AGENTS\.md$
+^references$
+^image$
+^LICENSE\.note$
+^\.btw$
+^.*\.Rproj$
+^\.Rproj\.user$
+^\.git$
+^\.gitignore$
+^\.Renviron$
+^.*\.code-workspace$

@@ -2,7 +2,7 @@
 % Please edit documentation in R/ui.R
 \name{ui}
 \alias{ui}
-\title{Shiny UI — codeagent_app()}
+\title{Shiny UI -- codeagent_app()}
 \description{
 Three-panel layout: left sidebar (Sessions/Customizations/Settings) +
 chat panel + main output panel.

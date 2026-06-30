@@ -17,7 +17,7 @@ NULL
 
 #' Create the WebFetch tool
 #'
-#' Primary: Jina Reader (r.jina.ai) — converts any URL to clean Markdown
+#' Primary: Jina Reader (r.jina.ai) -- converts any URL to clean Markdown
 #' without Chrome. Fallback: httr2 direct fetch with HTML stripping.
 #'
 #' @return An `ellmer::tool()` object.
@@ -76,7 +76,7 @@ web_fetch_tool <- function() {
             value = msg,
             extra = list(display = list(
               title    = htmltools::HTML(sprintf(
-                "WebFetch <code>%s</code> — HTTP %d",
+                "WebFetch <code>%s</code> -- HTTP %d",
                 htmltools::htmlEscape(.url_host(url)), status
               )),
               markdown = msg
@@ -108,7 +108,7 @@ web_fetch_tool <- function() {
           value = msg,
           extra = list(display = list(
             title    = htmltools::HTML(sprintf(
-              "WebFetch <code>%s</code> — error",
+              "WebFetch <code>%s</code> -- error",
               htmltools::htmlEscape(.url_host(url))
             )),
             markdown = msg
@@ -140,7 +140,7 @@ web_fetch_tool <- function() {
 
 #' Create the WebSearch tool
 #'
-#' Primary: DuckDuckGo HTML scraping — real search results, no API key.
+#' Primary: DuckDuckGo HTML scraping -- real search results, no API key.
 #' Fallback: DuckDuckGo Instant Answer API for entity queries.
 #'
 #' @return An `ellmer::tool()` object.
@@ -159,7 +159,7 @@ web_search_tool <- function() {
     },
     description = paste0(
       "Search the web for a query and return a list of results with titles and URLs. ",
-      "Uses DuckDuckGo HTML search — no API key required, supports general queries. ",
+      "Uses DuckDuckGo HTML search -- no API key required, supports general queries. ",
       "Results include title + URL; use WebFetch to read a specific page."
     ),
     arguments = list(
@@ -305,7 +305,7 @@ web_search_tool <- function() {
         value = msg,
         extra = list(display = list(
           title    = htmltools::HTML(sprintf(
-            "WebSearch <em>%s</em> — no results",
+            "WebSearch <em>%s</em> -- no results",
             htmltools::htmlEscape(query)
           )),
           markdown = msg
@@ -332,7 +332,7 @@ web_search_tool <- function() {
       value = msg,
       extra = list(display = list(
         title    = htmltools::HTML(sprintf(
-          "WebSearch <em>%s</em> — error",
+          "WebSearch <em>%s</em> -- error",
           htmltools::htmlEscape(query)
         )),
         markdown = msg

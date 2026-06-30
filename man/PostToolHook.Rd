@@ -7,7 +7,7 @@
 PostToolHook(fn, tool_pattern = NULL, timeout_ms = 2000L)
 }
 \arguments{
-\item{fn}{Function. \verb{function(tool_name, tool_input, tool_output)} → list
+\item{fn}{Function. \verb{function(tool_name, tool_input, tool_output)} -> list
 with \code{action} (\code{"allow"}, \code{"updated_output"}) and optional fields.}
 
 \item{tool_pattern}{Character or NULL. Regex pattern to match tool names.}

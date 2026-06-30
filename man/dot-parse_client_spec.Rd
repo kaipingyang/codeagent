@@ -9,7 +9,7 @@
 \arguments{
 \item{spec}{Character. Client spec string or alias key.}
 
-\item{aliases}{Named list. Alias → spec mapping.}
+\item{aliases}{Named list. Alias -> spec mapping.}
 
 \item{cwd}{Character. Working directory (for settings).}
 }
@@ -19,9 +19,9 @@ An \code{ellmer::Chat} object.
 \description{
 Supports:
 \itemize{
-\item \code{"openai/model-name"} → \code{chat_openai_compatible()} using \code{CODEAGENT_BASE_URL}
-\item \code{"anthropic/model-name"} → \code{chat_anthropic(model = "model-name")}
-\item \code{"alias"} → looked up in \code{aliases} named list
+\item \code{"openai/model-name"} -> \code{chat_openai_compatible()} using \code{CODEAGENT_BASE_URL}
+\item \code{"anthropic/model-name"} -> \code{chat_anthropic(model = "model-name")}
+\item \code{"alias"} -> looked up in \code{aliases} named list
 }
 }
 \keyword{internal}

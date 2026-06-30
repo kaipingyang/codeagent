@@ -18,7 +18,7 @@ NULL
   max_output_tokens = 8192L,
   thinking        = FALSE,
   stream          = TRUE,
-  base_url        = NULL,      # non-NULL → OpenAI-compatible endpoint
+  base_url        = NULL,      # non-NULL -> OpenAI-compatible endpoint
   api_key_env     = NULL       # env var name for the API key (default auto-detect)
 )
 

@@ -46,7 +46,7 @@ server_sessions <- function(input, output, session, chat, cwd,
       save_session(chat, cwd, sid)
       state$session_id <- sid
       shiny::showNotification(
-        paste0("Session saved: ", substr(sid, 1L, 8L), "…"),
+        paste0("Session saved: ", substr(sid, 1L, 8L), "..."),
         type = "message", duration = 3)
     }, error = function(e) {
       shiny::showNotification(
@@ -85,7 +85,7 @@ server_sessions <- function(input, output, session, chat, cwd,
               session = session)
           })
           shiny::showNotification(
-            paste0("Session loaded: ", substr(sid, 1L, 8L), "…"),
+            paste0("Session loaded: ", substr(sid, 1L, 8L), "..."),
             type = "message", duration = 3)
         }, ignoreNULL = TRUE, ignoreInit = TRUE)
       })
