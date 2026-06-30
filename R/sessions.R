@@ -70,7 +70,18 @@ save_session <- function(chat, cwd = getwd(),
   if (!is.null(title)) header$customTitle <- title
   lines <- c(lines, jsonlite::toJSON(header, auto_unbox = TRUE))
 
-  # Turn lines
+  # Lossless chat-state line (contents_record -> gzip -> base64). Preserves tool
+  # requests/results that the per-message text lines below flatten away. Read
+  # back by restore_session_into_chat() for true history restoration.
+  state_str <- tryCatch(.session_state_encode(chat), error = function(e) NULL)
+  if (!is.null(state_str)) {
+    lines <- c(lines, jsonlite::toJSON(
+      list(type = "chat-state", sessionId = session_id,
+           timestamp = now, state = state_str),
+      auto_unbox = TRUE))
+  }
+
+  # Turn lines (text-level — drives UI display, titles, and legacy fallback)
   for (turn in turns) {
     role     <- tryCatch(turn@role, error = function(e) "unknown")
     contents <- tryCatch(turn@contents, error = function(e) list())
@@ -91,6 +102,53 @@ save_session <- function(chat, cwd = getwd(),
 
   writeLines(lines, file_path)
   session_id
+}
+
+# ---------------------------------------------------------------------------
+# Lossless chat-state codec (contents_record + gzip + base64)
+# Mirrors shinychat's client_state pattern: serializeJSON is lossless where
+# toJSON is not, so tool requests/results survive a round trip.
+# ---------------------------------------------------------------------------
+
+.session_state_encode <- function(chat) {
+  turns    <- chat$get_turns()
+  recorded <- lapply(turns, ellmer::contents_record)
+  json     <- jsonlite::serializeJSON(recorded)
+  base64enc::base64encode(memCompress(charToRaw(json), "gzip"))
+}
+
+.session_state_decode <- function(state_str, tools = list()) {
+  raw  <- base64enc::base64decode(state_str)
+  json <- rawToChar(memDecompress(raw, "gzip"))
+  recorded <- jsonlite::unserializeJSON(json)
+  lapply(recorded, ellmer::contents_replay, tools = tools)
+}
+
+#' Read a session's lossless chat-state (if present)
+#'
+#' Scans the session file for a `chat-state` line and decodes it into ellmer
+#' turns. Returns `NULL` if the session predates lossless state (legacy
+#' text-only sessions) so callers can fall back to text restoration.
+#'
+#' @param session_id Character. Session UUID.
+#' @param cwd Character. Project directory.
+#' @param tools List of `ellmer::tool()` objects to rebind on replay.
+#' @return List of ellmer turns, or `NULL`.
+#' @keywords internal
+.read_session_state <- function(session_id, cwd = getwd(), tools = list()) {
+  path <- .find_session_path(session_id, cwd)
+  if (is.null(path)) return(NULL)
+  lines <- tryCatch(readLines(path, warn = FALSE), error = function(e) character(0))
+  for (ln in lines) {
+    ln <- trimws(ln)
+    if (!nzchar(ln)) next
+    entry <- tryCatch(jsonlite::fromJSON(ln, simplifyVector = FALSE),
+                      error = function(e) NULL)
+    if (is.null(entry) || !identical(entry[["type"]], "chat-state")) next
+    return(tryCatch(.session_state_decode(entry[["state"]], tools = tools),
+                    error = function(e) NULL))
+  }
+  NULL
 }
 
 # ---------------------------------------------------------------------------
@@ -225,9 +283,19 @@ restore_session_into_chat <- function(chat, session_id = NULL, cwd = getwd()) {
     if (length(sl) == 0L) return(invisible(NULL))
     session_id <- sl[[1L]]$session_id
   }
+
+  # Prefer lossless chat-state (preserves tool calls); fall back to text turns.
+  tools <- tryCatch(chat$get_tools(), error = function(e) list())
+  state_turns <- tryCatch(.read_session_state(session_id, cwd, tools = tools),
+                          error = function(e) NULL)
+  if (!is.null(state_turns) && length(state_turns) > 0L) {
+    tryCatch(chat$set_turns(state_turns), error = function(e) NULL)
+    return(invisible(session_id))
+  }
+
+  # Legacy fallback: text-only restoration.
   msgs <- tryCatch(get_session_messages(session_id, cwd), error = function(e) list())
   if (length(msgs) == 0L) return(invisible(NULL))
-
   turns <- lapply(msgs, function(m) {
     tryCatch(ellmer::Turn(m$type, list(ellmer::ContentText(m$text))),
              error = function(e) NULL)
