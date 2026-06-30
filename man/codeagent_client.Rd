@@ -12,7 +12,8 @@ codeagent_client(
   max_turns = 100L,
   btw_groups = NULL,
   worktree_isolation = FALSE,
-  verify_fn = NULL
+  verify_fn = NULL,
+  mcp_config = NULL
 )
 }
 \arguments{

@@ -90,7 +90,8 @@ codeagent_client <- function(
   max_turns          = 100L,
   btw_groups         = NULL,
   worktree_isolation = FALSE,
-  verify_fn          = NULL
+  verify_fn          = NULL,
+  mcp_config         = NULL
 ) {
   settings <- load_settings(cwd)
   settings$permission_mode     <- permission_mode
@@ -100,6 +101,7 @@ codeagent_client <- function(
   settings$btw_groups          <- btw_groups
   settings$worktree_isolation  <- isTRUE(worktree_isolation)
   settings$verify_fn           <- verify_fn
+  settings$mcp_config          <- mcp_config
 
   if (is.null(chat)) {
     chat <- .make_chat(settings, cwd)
@@ -357,6 +359,8 @@ agent_loop <- function(user_input,
   tryCatch(register_web_tools(chat),                          error = function(e) NULL)
   tryCatch(register_run_r_tool(chat, mode, rules, ask_fn),    error = function(e) NULL)
   tryCatch(register_memory_tool(chat),                        error = function(e) NULL)
+  if (!is.null(settings$mcp_config))
+    tryCatch(register_mcp_client(chat, settings$mcp_config),  error = function(e) NULL)
   tryCatch(register_task_tools(chat),                         error = function(e) NULL)
   tryCatch(register_notebook_tools(chat, mode, rules, ask_fn),error = function(e) NULL)
   tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",
