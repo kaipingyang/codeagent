@@ -134,13 +134,15 @@ switch(
       client <- ca_make_client(permission_mode = mode)
       if (nzchar(model))
         client <- codeagent::switch_model(client, model)
+      sid <- NULL
       if (isTRUE(continue)) {
-        restored <- codeagent::restore_session_into_chat(
+        sid <- codeagent::restore_session_into_chat(
           client$chat, session_id = NULL, cwd = getwd())
-        if (!is.null(restored))
-          cat("[continued session ", substr(restored, 1L, 8L), "]\n", sep = "")
+        if (!is.null(sid))
+          cat("[continued session ", substr(sid, 1L, 8L), "]\n", sep = "")
       }
-      codeagent::codeagent_repl(client, stream = !isTRUE(no_stream))
+      codeagent::codeagent_repl(client, stream = !isTRUE(no_stream),
+                                session_id = sid)
     }, error = ca_error)
   },
 
