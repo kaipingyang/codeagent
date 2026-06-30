@@ -214,6 +214,12 @@ save_user_settings <- function(settings) {
   # Working directory (in case cwd changes)
   lines <- c(lines, sprintf("Working directory: %s", cwd))
 
+  # Auto-memory recall (first iteration only; the model retains it thereafter).
+  if (as.integer(iteration) <= 1L) {
+    recall <- tryCatch(recall_memories(), error = function(e) "")
+    if (nzchar(recall)) lines <- c(lines, "", recall)
+  }
+
   if (length(lines) == 0L) return("")
   paste0("<system-reminder>\n", paste(lines, collapse = "\n"), "\n</system-reminder>")
 }
