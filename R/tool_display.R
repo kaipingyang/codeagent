@@ -101,11 +101,17 @@ NULL
   # Render the rich card once, reuse for BOTH the in-chat bubble (display$html,
   # rendered natively by shinychat inside <shiny-tool-result>) and the right
   # Output panel (display$right_output, consumed by server_chat.R).
+  #
+  # NOTE: do NOT set display$full_screen here. The rich card already carries its
+  # own toolbar (zoom/fullscreen/download); wrapping the bubble in a bslib
+  # full_screen card adds a second, conflicting fullscreen affordance and its
+  # web-component intercepts clicks so the toolbar buttons stop responding. The
+  # right Output panel applies full_screen itself (server_chat.R) where there is
+  # no such toolbar conflict.
   rendered <- tryCatch(render_tool_output(display), error = function(e) NULL)
   if (!is.null(rendered)) {
     display$html         <- rendered   # in-chat card body (shinychat-native)
     display$right_output <- rendered   # right Output panel
-    display$full_screen  <- TRUE       # bubble card can expand fullscreen
     display$open         <- FALSE      # collapsed by default in the chat stream
   }
 
