@@ -74,6 +74,8 @@ NULL
 #'   codeagent fallback sub-agent.
 #'   Only applies to the fallback implementation; btw subagent handles its
 #'   own isolation.
+#' @param ask_fn Function or NULL. Parent permission callback. Sub-agents run in
+#'   "bubble" mode, so any "ask" decision is forwarded to this function.
 #' @return An `ellmer::tool()` object.
 #' @export
 agent_tool <- function(model              = "claude-sonnet-4-6",
@@ -81,7 +83,8 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                         rules              = list(),
                         max_turns          = 30L,
                         worktree_isolation = FALSE,
-                        hooks              = NULL) {
+                        hooks              = NULL,
+                        ask_fn             = NULL) {
   # Use btw's subagent when available (preferred: isolated session, resumable)
   if (requireNamespace("btw", quietly = TRUE)) {
     tools <- tryCatch(btw::btw_tools("btw_tool_agent_subagent"),
@@ -101,19 +104,25 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         sub_cwd <- wt_path %||% getwd()
         on.exit(.cleanup_worktree(wt_path), add = TRUE)
 
+        # Sub-agents run in "bubble" mode: permission decisions bubble up to
+        # the parent's ask_fn rather than being resolved locally (mirrors
+        # Claude Code's default sub-agent behaviour). The parent ask_fn is
+        # passed through so a bubbled "ask" is answered by the parent.
+        sub_mode <- "bubble"
         system_prompt <- paste0(
           "You are a sub-agent helping with: ", description, "\n",
           "Complete the task thoroughly and return your findings/results.\n",
-          "Running in sub-agent mode (permission: ", mode, ").",
+          "Running in sub-agent mode (permission: ", sub_mode, ").",
           if (!is.null(wt_path)) paste0("\nWorking directory: ", sub_cwd) else ""
         )
         sub_settings <- list(
-          model = model, permission_mode = mode,
+          model = model, permission_mode = sub_mode,
           cwd = sub_cwd, max_turns = as.integer(max_turns),
           base_url = Sys.getenv("CODEAGENT_BASE_URL", "")
         )
         sub_chat <- .make_chat(sub_settings, sub_cwd, system_prompt = system_prompt)
-        register_builtin_tools(sub_chat, mode = mode, rules = rules)
+        register_builtin_tools(sub_chat, mode = sub_mode, rules = rules,
+                               ask_fn = ask_fn)
         r <- .run_subagent_loop(sub_chat, prompt, max_turns)
         truncate_tool_result(r, "default")
       }, error = function(e) {
@@ -157,13 +166,17 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
 #' @param rules List. Permission rules.
 #' @param max_turns Integer. Max turns per sub-agent.
 #' @param worktree_isolation Logical. Run sub-agents in isolated git worktrees.
+#' @param ask_fn Function or NULL. Parent permission callback forwarded to the
+#'   sub-agent (which runs in "bubble" mode).
 #' @return Invisibly returns `chat`.
 #' @export
 register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
                                   mode = "default", rules = list(),
                                   max_turns = 30L,
-                                  worktree_isolation = FALSE) {
-  chat$register_tool(agent_tool(model, mode, rules, max_turns, worktree_isolation))
+                                  worktree_isolation = FALSE,
+                                  ask_fn = NULL) {
+  chat$register_tool(agent_tool(model, mode, rules, max_turns,
+                                worktree_isolation, ask_fn = ask_fn))
 
   # Register custom btw agent tools from discovered .md files
   if (requireNamespace("btw", quietly = TRUE)) {

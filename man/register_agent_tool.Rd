@@ -10,7 +10,8 @@ register_agent_tool(
   mode = "default",
   rules = list(),
   max_turns = 30L,
-  worktree_isolation = FALSE
+  worktree_isolation = FALSE,
+  ask_fn = NULL
 )
 }
 \arguments{
@@ -25,6 +26,9 @@ register_agent_tool(
 \item{max_turns}{Integer. Max turns per sub-agent.}
 
 \item{worktree_isolation}{Logical. Run sub-agents in isolated git worktrees.}
+
+\item{ask_fn}{Function or NULL. Parent permission callback forwarded to the
+sub-agent (which runs in "bubble" mode).}
 }
 \value{
 Invisibly returns \code{chat}.

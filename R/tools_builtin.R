@@ -31,8 +31,14 @@ NULL
 # Build the on_request callback used inside tools
 .make_permission_checker <- function(tool_name, mode, rules,
                                       ask_fn = NULL) {
+  # `mode` may be a static string (legacy) or a "mode environment" holding a
+  # live `$mode` slot. The latter lets plan-mode tools flip the active mode
+  # mid-conversation and have every already-registered checker observe it.
+  resolve_mode <- function() {
+    if (is.environment(mode)) mode$mode %||% "default" else mode
+  }
   function(tool_input) {
-    decision <- check_permission(tool_name, mode, rules, tool_input)
+    decision <- check_permission(tool_name, resolve_mode(), rules, tool_input)
     if (decision == "allow") return(TRUE)
     if (decision == "deny")  return(FALSE)
     # decision == "ask": call ask_fn if provided
