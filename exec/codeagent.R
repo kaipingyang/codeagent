@@ -65,20 +65,52 @@ switch(
     #| short: 'm'
     mode <- "bypass"
 
-    #| description: Model override (uses CODEAGENT_MODEL env var by default).
+    #| description: Model override / alias (e.g. anthropic/claude-haiku-4-5).
     model <- ""
+
+    #| description: Continue the most recent session (preserve history).
+    #| short: 'c'
+    continue <- FALSE
+
+    #| description: Resume a specific session by id (preserve history).
+    resume <- ""
+
+    #| description: Stream the response token-by-token to stdout.
+    #| short: 's'
+    stream <- FALSE
 
     prompt_str <- paste(`prompt...`, collapse = " ")
     if (!nzchar(prompt_str)) {
-      cat("Usage: codeagent run <prompt>\n", file = stderr())
+      cat("Usage: codeagent run <prompt> [--model spec] [--continue|--resume id] [--stream]\n",
+          file = stderr())
       quit(status = 1)
     }
 
     tryCatch({
       client <- ca_make_client(permission_mode = mode)
-      if (nzchar(model)) client$settings$model <- model
-      resp <- codeagent(client, prompt_str)
-      ca_output(resp)
+
+      # Lossless model switch (real provider swap, not just a settings field).
+      if (nzchar(model))
+        client <- codeagent::switch_model(client, model)
+
+      # Restore prior history for --continue / --resume.
+      if (isTRUE(continue) || nzchar(resume)) {
+        sid <- if (nzchar(resume)) resume else NULL
+        restored <- codeagent::restore_session_into_chat(
+          client$chat, session_id = sid, cwd = getwd())
+        if (is.null(restored))
+          cat("[info] no prior session to continue; starting fresh.\n", file = stderr())
+      }
+
+      if (isTRUE(stream)) {
+        # Token streaming to stdout.
+        s <- client$chat$stream(prompt_str)
+        for (chunk in s) cat(chunk)
+        cat("\n")
+      } else {
+        resp <- codeagent(client, prompt_str)
+        ca_output(resp)
+      }
     }, error = ca_error)
   },
 
