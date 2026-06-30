@@ -289,7 +289,7 @@ agent_loop <- function(user_input,
   # 1b. Inject system-reminder (dynamic context into user message, not system prompt)
   #     This mirrors Claude Code's <system-reminder> pattern: ephemeral metadata
   #     injected at message time so it doesn't invalidate the prompt cache.
-  reminder <- .build_system_reminder(settings, iteration, cwd)
+  reminder <- .build_system_reminder(settings, iteration, cwd, query = user_input)
   actual_input <- if (nzchar(reminder))
     paste0(user_input, "\n\n", reminder)
   else

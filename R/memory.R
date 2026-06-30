@@ -121,6 +121,62 @@ delete_memory <- function(slug) {
   invisible(NULL)
 }
 
+#' Recall only the memories relevant to a query (haiku-selected)
+#'
+#' Improves on [recall_memories()] (which concatenates everything) by asking a
+#' small/fast model to pick the memories relevant to the current user query --
+#' Claude Code's sideQuery memory-selection pattern. Falls back to the full
+#' concatenation when there is no query, the fast model is unavailable, or
+#' selection fails, so behaviour never regresses.
+#'
+#' @param query Character or NULL. The current user message. NULL -> full recall.
+#' @param max_memories Integer. Max memories to include after selection.
+#' @param model Character. Small/fast model for selection (default `.HAIKU_MODEL`).
+#' @return Character. A recall block, or "" if there are no memories.
+#' @keywords internal
+recall_memories_relevant <- function(query = NULL, max_memories = 5L,
+                                     model = .HAIKU_MODEL) {
+  mems <- list_memories()
+  if (length(mems) == 0L) return("")
+  # No query, or few enough memories that selection isn't worth a model call.
+  if (is.null(query) || !nzchar(query) || length(mems) <= max_memories)
+    return(recall_memories())
+
+  # Build a compact catalogue the selector ranks by index.
+  catalogue <- vapply(seq_along(mems), function(i) {
+    m <- mems[[i]]
+    head <- if (nzchar(m$description)) m$description else m$slug
+    sprintf("[%d] %s", i, head)
+  }, character(1))
+
+  sel <- tryCatch({
+    chat <- .make_compact_chat(model, system_prompt = paste0(
+      "You select relevant memories. Given a user query and a numbered list of ",
+      "memory descriptions, return ONLY the indices (comma-separated, e.g. ",
+      "'1,4,5') of the at most ", max_memories, " memories most relevant to the ",
+      "query. If none are relevant, return 'none'. Output nothing else."))
+    resp <- chat$chat(paste0(
+      "Query: ", query, "\n\nMemories:\n", paste(catalogue, collapse = "\n")))
+    trimws(tolower(resp))
+  }, error = function(e) NULL)
+
+  # Selection failed -> fall back to full recall (no regression).
+  if (is.null(sel)) return(recall_memories())
+  if (identical(sel, "none")) return("")
+
+  idx <- suppressWarnings(as.integer(unlist(strsplit(sel, "[^0-9]+"))))
+  idx <- idx[!is.na(idx) & idx >= 1L & idx <= length(mems)]
+  idx <- utils::head(unique(idx), max_memories)
+  if (!length(idx)) return(recall_memories())
+
+  parts <- vapply(mems[idx], function(m) {
+    head <- if (nzchar(m$description)) m$description else m$slug
+    sprintf("- %s: %s", head, substr(m$content, 1L, 200L))
+  }, character(1))
+  paste0("Persistent memory (relevant to this request):\n",
+         paste(parts, collapse = "\n"))
+}
+
 # ---------------------------------------------------------------------------
 # remember tool -- LLM-invoked memory write
 # ---------------------------------------------------------------------------
