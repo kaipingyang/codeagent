@@ -213,3 +213,42 @@ test_that("use_codeagent_settings creates file at user scope", {
   raw <- paste(readLines(dest, warn = FALSE), collapse = "\n")
   expect_false(grepl("dapi", raw, ignore.case = TRUE))
 })
+
+# ---------------------------------------------------------------------------
+# .load_claude_md multi-level merge
+# ---------------------------------------------------------------------------
+
+test_that(".load_claude_md merges project-level files outer-to-inner", {
+  root  <- tempfile("camd_"); dir.create(root)
+  inner <- file.path(root, "sub", "deep")
+  dir.create(inner, recursive = TRUE)
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+
+  writeLines("OUTER_RULE", file.path(root, "CLAUDE.md"))
+  writeLines("INNER_RULE", file.path(inner, "CLAUDE.md"))
+
+  merged <- codeagent:::.load_claude_md(inner)
+  expect_true(grepl("OUTER_RULE", merged))
+  expect_true(grepl("INNER_RULE", merged))
+  # Inner (more specific) appears after outer
+  expect_lt(regexpr("OUTER_RULE", merged), regexpr("INNER_RULE", merged))
+  # Source markers present
+  expect_true(grepl("<!-- source:", merged))
+})
+
+test_that(".load_claude_md returns NULL when no files exist", {
+  empty <- tempfile("camd_empty_"); dir.create(empty)
+  on.exit(unlink(empty, recursive = TRUE), add = TRUE)
+  # Note: may still pick up ~/.claude/CLAUDE.md if present; test only that a
+  # tree with no project CLAUDE.md does not error.
+  expect_silent(codeagent:::.load_claude_md(empty))
+})
+
+test_that(".load_claude_md de-duplicates identical paths", {
+  root <- tempfile("camd_dup_"); dir.create(root)
+  on.exit(unlink(root, recursive = TRUE), add = TRUE)
+  writeLines("ONLY_ONCE", file.path(root, "CLAUDE.md"))
+  merged <- codeagent:::.load_claude_md(root)
+  # "ONLY_ONCE" should appear exactly once even though walk-up may revisit
+  expect_equal(lengths(regmatches(merged, gregexpr("ONLY_ONCE", merged))), 1L)
+})

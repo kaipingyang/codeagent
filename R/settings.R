@@ -202,27 +202,56 @@ load_settings <- function(cwd = getwd()) {
 # CLAUDE.md loading
 # ---------------------------------------------------------------------------
 
-#' Load CLAUDE.md from cwd or parent directories
+#' Load and merge CLAUDE.md from all levels
 #'
-#' Walks up the directory tree (max 5 levels) looking for a `CLAUDE.md` file.
+#' Mirrors Claude Code's multi-level memory: collect CLAUDE.md from the user
+#' home (`~/.claude/CLAUDE.md`, `~/.codeagent/CLAUDE.md`) plus every level from
+#' the working directory up to the filesystem root (max 5 hops), then merge them
+#' in priority order (user first, then outer-to-inner project dirs) with section
+#' headers showing each source.  More-specific (deeper) files appear later so
+#' they visually override.  Duplicate paths are de-duplicated.
 #'
 #' @param cwd Character. Starting directory.
-#' @return Character(1) with file contents, or NULL if not found.
+#' @return Character(1) with merged contents, or NULL if none found.
 #' @keywords internal
 .load_claude_md <- function(cwd) {
+  candidates <- character(0)
+
+  # User-level memory (lowest priority; appears first)
+  home <- path.expand("~")
+  candidates <- c(candidates,
+                  file.path(home, ".claude",    "CLAUDE.md"),
+                  file.path(home, ".codeagent", "CLAUDE.md"))
+
+  # Project-level: walk up from cwd to root, collect deepest-last so that
+  # more-specific dirs override.  Build outer->inner by reversing the walk.
+  walk <- character(0)
   path <- cwd
   for (i in seq_len(5L)) {
-    candidate <- file.path(path, "CLAUDE.md")
-    if (file.exists(candidate)) {
-      lines <- tryCatch(readLines(candidate, warn = FALSE),
-                        error = function(e) NULL)
-      if (!is.null(lines)) return(paste(lines, collapse = "\n"))
-    }
+    walk <- c(walk, file.path(path, "CLAUDE.md"))
     parent <- dirname(path)
     if (parent == path) break
     path <- parent
   }
-  NULL
+  candidates <- c(candidates, rev(walk))   # outermost first, cwd last
+
+  # Read existing, de-duplicated by normalized path, preserving order.
+  seen  <- character(0)
+  parts <- character(0)
+  for (cand in candidates) {
+    if (!file.exists(cand)) next
+    norm <- tryCatch(normalizePath(cand, mustWork = FALSE), error = function(e) cand)
+    if (norm %in% seen) next
+    seen <- c(seen, norm)
+    lines <- tryCatch(readLines(cand, warn = FALSE), error = function(e) NULL)
+    if (is.null(lines) || !length(lines)) next
+    body <- paste(lines, collapse = "\n")
+    if (!nzchar(trimws(body))) next
+    parts <- c(parts, sprintf("<!-- source: %s -->\n%s", norm, body))
+  }
+
+  if (!length(parts)) return(NULL)
+  paste(parts, collapse = "\n\n")
 }
 
 # ---------------------------------------------------------------------------

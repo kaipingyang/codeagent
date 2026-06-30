@@ -84,3 +84,19 @@ test_that("codeagent_repl /sessions and /budget run without the API", {
   expect_true(any(grepl("Bye", out)))
   expect_false(any(grepl("error", out, ignore.case = TRUE)))
 })
+
+# ---------------------------------------------------------------------------
+# Tool visibility callbacks
+# ---------------------------------------------------------------------------
+
+test_that(".register_repl_tool_callbacks registers without error", {
+  ch <- chat_anthropic(model = "claude-sonnet-4-6")
+  expect_no_error(codeagent:::.register_repl_tool_callbacks(ch))
+})
+
+test_that(".repl_tool_summary falls back to char count when no display title", {
+  # Build a minimal ContentToolResult with a value and no display title.
+  res <- ellmer::ContentToolResult(value = "hello world")
+  s <- codeagent:::.repl_tool_summary(res)
+  expect_true(is.character(s) && nzchar(s))
+})
