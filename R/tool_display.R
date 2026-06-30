@@ -102,16 +102,16 @@ NULL
   # rendered natively by shinychat inside <shiny-tool-result>) and the right
   # Output panel (display$right_output, consumed by server_chat.R).
   #
-  # NOTE: do NOT set display$full_screen here. The rich card already carries its
-  # own toolbar (zoom/fullscreen/download); wrapping the bubble in a bslib
-  # full_screen card adds a second, conflicting fullscreen affordance and its
-  # web-component intercepts clicks so the toolbar buttons stop responding. The
-  # right Output panel applies full_screen itself (server_chat.R) where there is
-  # no such toolbar conflict.
+  # full_screen=TRUE gives the whole card a single expand affordance (shinychat
+  # for the bubble, bslib card for the panel). The in-card toolbar only carries
+  # zoom/download (NO separate fullscreen button) so there is exactly one
+  # fullscreen control and no event conflict. All toolbar buttons are
+  # type="button" + document-delegated, so they survive card re-render/expand.
   rendered <- tryCatch(render_tool_output(display), error = function(e) NULL)
   if (!is.null(rendered)) {
     display$html         <- rendered   # in-chat card body (shinychat-native)
     display$right_output <- rendered   # right Output panel
+    display$full_screen  <- TRUE       # single expand affordance per card
     display$open         <- FALSE      # collapsed by default in the chat stream
   }
 
@@ -186,6 +186,7 @@ render_tool_output <- function(display) {
     extra_actions,
     if (!is.null(copy_target))
       htmltools::tags$button(
+        type             = "button",
         class            = "toolcard-copy-btn",
         `data-toolcard-copy`   = copy_target,
         title            = "Copy",
@@ -245,15 +246,17 @@ render_tool_output <- function(display) {
       class = "toolcard-img-frame",
       htmltools::tags$div(
         class = "toolcard-zoom-toolbar",
-        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-zoom` = "out",
+        htmltools::tags$button(type = "button", class = "toolcard-icon-btn",
+                               `data-toolcard-zoom` = "out",
                                title = "Zoom out", .icon_tag("zoom-out")),
-        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-zoom` = "fit",
+        htmltools::tags$button(type = "button", class = "toolcard-icon-btn",
+                               `data-toolcard-zoom` = "fit",
                                title = "Fit", .icon_tag("aspect-ratio")),
-        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-zoom` = "in",
+        htmltools::tags$button(type = "button", class = "toolcard-icon-btn",
+                               `data-toolcard-zoom` = "in",
                                title = "Zoom in", .icon_tag("zoom-in")),
-        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-fullscreen` = "1",
-                               title = "Fullscreen", .icon_tag("arrows-fullscreen")),
-        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-download` = "1",
+        htmltools::tags$button(type = "button", class = "toolcard-icon-btn",
+                               `data-toolcard-download` = "1",
                                `data-toolcard-src` = src,
                                title = "Download", .icon_tag("download"))
       ),
