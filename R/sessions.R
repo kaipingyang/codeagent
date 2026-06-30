@@ -204,6 +204,41 @@ get_session_messages <- function(session_id, directory = NULL,
 }
 
 # ---------------------------------------------------------------------------
+# Restore a session's history into a Chat (harness, shared by CLI + Shiny)
+# ---------------------------------------------------------------------------
+
+#' Restore a saved session's messages into a Chat object
+#'
+#' Loads a session's messages and replays them as ellmer turns via
+#' `chat$set_turns()`. Currently text-level (tool-call turns are flattened to
+#' text); M7 will upgrade this to lossless `contents_record/replay`.
+#'
+#' @param chat An `ellmer::Chat` to populate.
+#' @param session_id Character. Session UUID. If `NULL`, the most recent
+#'   session under `cwd` is used (for `--continue`).
+#' @param cwd Character. Project directory for session lookup.
+#' @return Invisibly, the resolved session id (or `NULL` if none found).
+#' @export
+restore_session_into_chat <- function(chat, session_id = NULL, cwd = getwd()) {
+  if (is.null(session_id)) {
+    sl <- tryCatch(list_sessions(cwd, limit = 1L), error = function(e) list())
+    if (length(sl) == 0L) return(invisible(NULL))
+    session_id <- sl[[1L]]$session_id
+  }
+  msgs <- tryCatch(get_session_messages(session_id, cwd), error = function(e) list())
+  if (length(msgs) == 0L) return(invisible(NULL))
+
+  turns <- lapply(msgs, function(m) {
+    tryCatch(ellmer::Turn(m$type, list(ellmer::ContentText(m$text))),
+             error = function(e) NULL)
+  })
+  turns <- Filter(Negate(is.null), turns)
+  tryCatch(chat$set_turns(turns), error = function(e) NULL)
+  invisible(session_id)
+}
+
+
+# ---------------------------------------------------------------------------
 # Internal helpers
 # ---------------------------------------------------------------------------
 
