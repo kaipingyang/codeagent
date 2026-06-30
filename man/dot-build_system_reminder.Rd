@@ -4,7 +4,7 @@
 \alias{.build_system_reminder}
 \title{Build a system-reminder block for dynamic per-turn context injection}
 \usage{
-.build_system_reminder(settings, iteration = 1L, cwd = getwd())
+.build_system_reminder(settings, iteration = 1L, cwd = getwd(), query = NULL)
 }
 \arguments{
 \item{settings}{List. Output of \code{\link[=load_settings]{load_settings()}}.}

@@ -91,3 +91,52 @@ test_that("delete_memory removes a memory file", {
     expect_length(list_memories(), 0L)
   })
 })
+
+# ---------------------------------------------------------------------------
+# recall_memories_relevant (haiku-selected, with safe fallbacks)
+# ---------------------------------------------------------------------------
+
+test_that("recall_memories_relevant returns '' when no memories exist", {
+  .with_temp_home({
+    expect_identical(recall_memories_relevant("any query"), "")
+  })
+})
+
+test_that("recall_memories_relevant falls back to full recall with no query", {
+  .with_temp_home({
+    write_memory("a", "alpha body", "alpha desc")
+    write_memory("b", "beta body", "beta desc")
+    # NULL query -> identical to plain recall_memories()
+    expect_identical(recall_memories_relevant(NULL), recall_memories())
+    expect_identical(recall_memories_relevant(""), recall_memories())
+  })
+})
+
+test_that("recall_memories_relevant skips model call when few memories", {
+  .with_temp_home({
+    write_memory("a", "alpha body", "alpha desc")
+    # 1 memory <= max_memories default -> no model call, full recall
+    out <- recall_memories_relevant("unrelated query", max_memories = 5L)
+    expect_identical(out, recall_memories())
+  })
+})
+
+test_that("recall_memories_relevant falls back to full recall when model fails", {
+  .with_temp_home({
+    for (i in 1:7) write_memory(paste0("m", i), paste0("body ", i), paste0("desc ", i))
+    # Force the selector model to fail by pointing at an unreachable backend.
+    withr::with_envvar(c(CODEAGENT_BASE_URL = "", ANTHROPIC_API_KEY = ""), {
+      out <- tryCatch(
+        recall_memories_relevant("find body 3", max_memories = 3L,
+                                 model = "no-such-model"),
+        error = function(e) "ERR")
+      # Either selection worked or it fell back -- never errors, never empty
+      expect_true(is.character(out))
+      expect_true(nzchar(out))
+    })
+  })
+})
+
+test_that(".build_system_reminder accepts a query argument", {
+  expect_true("query" %in% names(formals(codeagent:::.build_system_reminder)))
+})

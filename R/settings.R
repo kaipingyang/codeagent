@@ -387,7 +387,8 @@ use_codeagent_settings <- function(scope = c("user", "project"),
 #' @param cwd Character. Working directory.
 #' @return Character(1). The reminder block, or `""` if nothing to inject.
 #' @keywords internal
-.build_system_reminder <- function(settings, iteration = 1L, cwd = getwd()) {
+.build_system_reminder <- function(settings, iteration = 1L, cwd = getwd(),
+                                   query = NULL) {
   lines <- character(0)
 
   # Current date/time (changes each turn, so must NOT be in system prompt)
@@ -400,8 +401,13 @@ use_codeagent_settings <- function(scope = c("user", "project"),
   lines <- c(lines, sprintf("Working directory: %s", cwd))
 
   # Auto-memory recall (first iteration only; the model retains it thereafter).
+  # When a query is available, select only relevant memories via the small/fast
+  # model (haiku); otherwise fall back to the full concatenation.
   if (as.integer(iteration) <= 1L) {
-    recall <- tryCatch(recall_memories(), error = function(e) "")
+    recall <- tryCatch(
+      recall_memories_relevant(query,
+        model = settings$small_fast_model %||% .HAIKU_MODEL),
+      error = function(e) tryCatch(recall_memories(), error = function(e2) ""))
     if (nzchar(recall)) lines <- c(lines, "", recall)
   }
 

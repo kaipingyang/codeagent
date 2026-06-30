@@ -283,7 +283,8 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
     tryCatch(resource_state$maybe_replace(client$chat), error = function(e) NULL)
 
     # 2. system-reminder injection (date/iteration/cwd/memory)
-    reminder <- tryCatch(.build_system_reminder(settings, iteration, cwd),
+    reminder <- tryCatch(.build_system_reminder(settings, iteration, cwd,
+                                                query = user_input),
                          error = function(e) "")
     actual_input <- if (nzchar(reminder))
       paste0(user_input, "\n\n", reminder) else user_input
