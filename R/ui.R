@@ -79,6 +79,16 @@ codeagent_app <- function(
     else character(0)
   }, error = function(e) character(0))
 
+  # Model choices for the Settings panel: codeagent.md aliases + current model.
+  cur_model     <- settings$model %||% tryCatch(chat_obj$get_model(), error = function(e) NULL)
+  model_choices <- tryCatch({
+    aliases <- .read_codeagent_config(cwd)
+    ch <- character(0)
+    if (length(aliases)) ch <- stats::setNames(unlist(aliases), names(aliases))
+    if (!is.null(cur_model) && !(cur_model %in% ch)) ch <- c(stats::setNames(cur_model, cur_model), ch)
+    ch
+  }, error = function(e) if (!is.null(cur_model)) stats::setNames(cur_model, cur_model) else character(0))
+
   # ---------------------------------------------------------------------------
   # UI
   # ---------------------------------------------------------------------------
@@ -95,7 +105,9 @@ codeagent_app <- function(
         left_sidebar_ui(
           permission_mode      = permission_mode,
           btw_available_groups = btw_available_groups,
-          btw_groups_selected  = btw_groups
+          btw_groups_selected  = btw_groups,
+          model_choices        = model_choices,
+          current_model        = cur_model
         )
       )
     ),
@@ -152,9 +164,10 @@ codeagent_app <- function(
                     stream_task = stream_task)
 
     server_settings(input, output, session,
-                    chat     = chat_obj,
-                    settings = settings,
-                    cwd      = cwd)
+                    chat        = chat_obj,
+                    settings    = settings,
+                    cwd         = cwd,
+                    stream_task = stream_task)
 
     server_customizations(input, output, session,
                           chat     = chat_obj,

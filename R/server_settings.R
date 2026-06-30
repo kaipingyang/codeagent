@@ -3,7 +3,8 @@
 #' @keywords internal
 NULL
 
-server_settings <- function(input, output, session, chat, settings, cwd, hooks = NULL) {
+server_settings <- function(input, output, session, chat, settings, cwd,
+                            hooks = NULL, stream_task = NULL) {
 
   # Live Customizations counts (Copilot style)
   output$customizations_counts <- shiny::renderUI({
@@ -45,4 +46,43 @@ server_settings <- function(input, output, session, chat, settings, cwd, hooks =
       register_r_tools(chat, groups = input$btw_groups_input),
       error = function(e) NULL)
   }, ignoreInit = TRUE)
+
+  # Model switch — Route A (in-place provider swap) keeps the SAME Chat object,
+  # so the chat captured by every other server module stays valid. We swap the
+  # provider directly rather than calling switch_model() (which may return a NEW
+  # client via Route B) to guarantee the Chat identity is preserved in Shiny.
+  shiny::observeEvent(input$model_select, ignoreInit = TRUE, {
+    new_spec <- input$model_select
+    if (is.null(new_spec) || !nzchar(new_spec)) return()
+    if (identical(new_spec, settings$model)) return()
+
+    if (!is.null(stream_task) && stream_task$status() == "running") {
+      tryCatch(bslib::show_toast("Streaming in progress — cannot switch model now.",
+                                 type = "warning"),
+               error = function(e) shiny::showNotification(
+                 "Streaming in progress; cannot switch model.", type = "warning"))
+      return()
+    }
+
+    ok <- tryCatch({
+      new_chat <- .resolve_model_chat(new_spec, cwd)
+      if (!.swap_provider(chat, new_chat))
+        stop("in-place provider swap unavailable")
+      settings$model <<- tryCatch(new_chat$get_model(), error = function(e) new_spec)
+      TRUE
+    }, error = function(e) {
+      tryCatch(bslib::show_toast(paste0("Model switch failed: ", conditionMessage(e)),
+                                 type = "error"),
+               error = function(e2) shiny::showNotification(
+                 paste0("Model switch failed: ", conditionMessage(e)), type = "error"))
+      FALSE
+    })
+
+    if (ok) {
+      tryCatch(bslib::show_toast(sprintf("Switched to %s — history preserved.",
+                                         settings$model), type = "success"),
+               error = function(e) shiny::showNotification(
+                 sprintf("Switched to %s.", settings$model), type = "message"))
+    }
+  })
 }
