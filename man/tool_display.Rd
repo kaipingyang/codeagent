@@ -5,7 +5,7 @@
 \title{Typed Tool-Result Display Contract + Render Dispatcher}
 \description{
 Rich, interactive tool-card rendering for the right Output panel.
-Defines a typed display contract (\code{extra$display$card}) layered on top of the
+Defines a typed display contract (\code{extra$display$toolcard}) layered on top of the
 existing \verb{\{title, markdown, right_output\}} keys, a render dispatcher that
 branches on result kind (code/image/table/diff/text/error), and a
 generalized adapter that normalizes any native \code{ContentToolResult} -- raw

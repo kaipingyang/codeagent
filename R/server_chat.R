@@ -18,7 +18,7 @@ server_chat <- function(input, output, session, chat, settings,
   .push_output <- function(result, immediate = TRUE) {
     display <- tryCatch(result@extra$display, error = function(e) NULL)
     title   <- tryCatch(
-      gsub("<[^>]+>", "", as.character(display$title %||% display$card$title %||% "Output")),
+      gsub("<[^>]+>", "", as.character(display$title %||% display$toolcard$title %||% "Output")),
       error = function(e) "Output"
     )
     content <- tryCatch(render_tool_output(display), error = function(e) NULL)

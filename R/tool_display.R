@@ -1,6 +1,6 @@
 #' @title Typed Tool-Result Display Contract + Render Dispatcher
 #' @description Rich, interactive tool-card rendering for the right Output panel.
-#'   Defines a typed display contract (`extra$display$card`) layered on top of the
+#'   Defines a typed display contract (`extra$display$toolcard`) layered on top of the
 #'   existing `{title, markdown, right_output}` keys, a render dispatcher that
 #'   branches on result kind (code/image/table/diff/text/error), and a
 #'   generalized adapter that normalizes any native `ContentToolResult` -- raw
@@ -85,7 +85,7 @@ NULL
 .tool_result2 <- function(text, kind = "text", status = "success",
                           icon = NULL, title = NULL, payload = list(),
                           markdown = NULL) {
-  card <- list(
+  toolcard <- list(
     kind    = kind,
     status  = status,
     icon    = icon,
@@ -93,7 +93,7 @@ NULL
     payload = payload
   )
 
-  display <- list(card = card)
+  display <- list(toolcard = toolcard)
   if (!is.null(title))    display$title    <- htmltools::HTML(as.character(title))
   if (!is.null(icon))     display$icon     <- .icon_tag(icon)
   if (!is.null(markdown)) display$markdown <- markdown
@@ -121,16 +121,16 @@ NULL
 
 #' Render a typed tool-result display into an htmltools tag
 #'
-#' Branches on `display$card$kind`. Falls back to `right_output`, then markdown,
+#' Branches on `display$toolcard$kind`. Falls back to `right_output`, then markdown,
 #' then a plain `<pre>` so untyped / raw results still render.
 #'
 #' @param display A `display` list (the `extra$display` of a ContentToolResult).
 #' @return An htmltools tag.
 #' @keywords internal
 render_tool_output <- function(display) {
-  card <- tryCatch(display$card, error = function(e) NULL)
+  toolcard <- tryCatch(display$toolcard, error = function(e) NULL)
 
-  if (is.null(card) || is.null(card$kind)) {
+  if (is.null(toolcard) || is.null(toolcard$kind)) {
     # Backward-compat fallback paths.
     ro <- tryCatch(display$right_output, error = function(e) NULL)
     if (!is.null(ro)) return(ro)
@@ -144,21 +144,21 @@ render_tool_output <- function(display) {
   }
 
   body <- switch(
-    card$kind,
-    code  = .render_code(card$payload),
-    image = .render_image(card$payload),
-    table = .render_table(card$payload),
-    diff  = .render_diff(card$payload),
-    error = .render_error(card$payload),
-    text  = .render_text(card$payload),
-    .render_text(card$payload)  # default
+    toolcard$kind,
+    code  = .render_code(toolcard$payload),
+    image = .render_image(toolcard$payload),
+    table = .render_table(toolcard$payload),
+    diff  = .render_diff(toolcard$payload),
+    error = .render_error(toolcard$payload),
+    text  = .render_text(toolcard$payload),
+    .render_text(toolcard$payload)  # default
   )
 
-  status_class <- paste0("ca-status-", card$status %||% "success")
+  status_class <- paste0("toolcard-status-", toolcard$status %||% "success")
   htmltools::tags$div(
-    class            = paste("ca-card", status_class),
-    `data-ca-kind`   = card$kind,
-    `data-ca-status` = card$status %||% "success",
+    class            = paste("toolcard", status_class),
+    `data-toolcard-kind`   = toolcard$kind,
+    `data-toolcard-status` = toolcard$status %||% "success",
     body
   )
 }
@@ -171,17 +171,17 @@ render_tool_output <- function(display) {
 .card_header <- function(icon, title, copy_target = NULL, lang = NULL,
                          extra_actions = NULL) {
   htmltools::tags$div(
-    class = "ca-card-header",
+    class = "toolcard-header",
     if (!is.null(icon)) .icon_tag(icon),
-    htmltools::tags$span(class = "ca-card-title", title %||% ""),
+    htmltools::tags$span(class = "toolcard-title", title %||% ""),
     if (!is.null(lang))
-      htmltools::tags$span(class = "ca-lang-badge", lang),
-    htmltools::tags$span(class = "ca-card-spacer"),
+      htmltools::tags$span(class = "toolcard-lang-badge", lang),
+    htmltools::tags$span(class = "toolcard-spacer"),
     extra_actions,
     if (!is.null(copy_target))
       htmltools::tags$button(
-        class            = "ca-copy-btn",
-        `data-ca-copy`   = copy_target,
+        class            = "toolcard-copy-btn",
+        `data-toolcard-copy`   = copy_target,
         title            = "Copy",
         .icon_tag("clipboard")
       )
@@ -190,28 +190,28 @@ render_tool_output <- function(display) {
 
 .render_code <- function(p) {
   lang     <- p$lang %||% "text"
-  cid      <- paste0("cacode_", .rand_id())
+  cid      <- paste0("tccode_", .rand_id())
   htmltools::tagList(
     .card_header(p$icon %||% "file-text", p$filename %||% "Code",
                  copy_target = paste0("#", cid), lang = lang),
     htmltools::tags$pre(
-      class = "ca-pre",
+      class = "toolcard-pre",
       htmltools::tags$code(id = cid, class = paste0("language-", lang),
                            p$text %||% "")
     ),
     if (!is.null(p$output) && nzchar(p$output))
-      htmltools::tags$pre(class = "ca-pre ca-pre-output", p$output)
+      htmltools::tags$pre(class = "toolcard-pre toolcard-pre-output", p$output)
   )
 }
 
 .render_text <- function(p) {
   lang <- p$lang %||% NULL
-  tid  <- paste0("catext_", .rand_id())
+  tid  <- paste0("tctext_", .rand_id())
   htmltools::tagList(
     .card_header(p$icon %||% "text-left", p$title %||% "Output",
                  copy_target = paste0("#", tid)),
     htmltools::tags$pre(
-      class = "ca-pre",
+      class = "toolcard-pre",
       htmltools::tags$code(id = tid,
                            class = if (!is.null(lang)) paste0("language-", lang) else NULL,
                            p$text %||% "")
@@ -223,10 +223,10 @@ render_tool_output <- function(display) {
   htmltools::tagList(
     .card_header(p$icon %||% "exclamation-triangle", p$title %||% "Error"),
     htmltools::tags$div(
-      class = "ca-error-box",
-      htmltools::tags$div(class = "ca-error-msg", p$message %||% "Error"),
+      class = "toolcard-error-box",
+      htmltools::tags$div(class = "toolcard-error-msg", p$message %||% "Error"),
       if (!is.null(p$detail) && nzchar(p$detail))
-        htmltools::tags$pre(class = "ca-pre ca-pre-output", p$detail)
+        htmltools::tags$pre(class = "toolcard-pre toolcard-pre-output", p$detail)
     )
   )
 }
@@ -236,35 +236,35 @@ render_tool_output <- function(display) {
   frames <- lapply(images, function(im) {
     src <- paste0("data:", im$mime %||% "image/png", ";base64,", im$b64 %||% "")
     htmltools::tags$div(
-      class = "ca-img-frame",
+      class = "toolcard-img-frame",
       htmltools::tags$div(
-        class = "ca-zoom-toolbar",
-        htmltools::tags$button(class = "ca-icon-btn", `data-ca-zoom` = "out",
+        class = "toolcard-zoom-toolbar",
+        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-zoom` = "out",
                                title = "Zoom out", .icon_tag("zoom-out")),
-        htmltools::tags$button(class = "ca-icon-btn", `data-ca-zoom` = "fit",
+        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-zoom` = "fit",
                                title = "Fit", .icon_tag("aspect-ratio")),
-        htmltools::tags$button(class = "ca-icon-btn", `data-ca-zoom` = "in",
+        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-zoom` = "in",
                                title = "Zoom in", .icon_tag("zoom-in")),
-        htmltools::tags$button(class = "ca-icon-btn", `data-ca-fullscreen` = "1",
+        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-fullscreen` = "1",
                                title = "Fullscreen", .icon_tag("arrows-fullscreen")),
-        htmltools::tags$button(class = "ca-icon-btn", `data-ca-download` = "1",
-                               `data-ca-src` = src,
+        htmltools::tags$button(class = "toolcard-icon-btn", `data-toolcard-download` = "1",
+                               `data-toolcard-src` = src,
                                title = "Download", .icon_tag("download"))
       ),
       htmltools::tags$div(
-        class = "ca-img-scroll",
-        htmltools::tags$img(class = "ca-zoomable", src = src)
+        class = "toolcard-img-scroll",
+        htmltools::tags$img(class = "toolcard-zoomable", src = src)
       )
     )
   })
   htmltools::tagList(
     .card_header(p$icon %||% "image", p$title %||% "Plot"),
     if (!is.null(p$code) && nzchar(p$code))
-      htmltools::tags$pre(class = "ca-pre",
+      htmltools::tags$pre(class = "toolcard-pre",
         htmltools::tags$code(class = "language-r", p$code)),
     frames,
     if (!is.null(p$output) && nzchar(p$output))
-      htmltools::tags$pre(class = "ca-pre ca-pre-output", p$output)
+      htmltools::tags$pre(class = "toolcard-pre toolcard-pre-output", p$output)
   )
 }
 
@@ -284,11 +284,11 @@ render_tool_output <- function(display) {
   } else if (!is.null(df) && is.data.frame(df)) {
     .html_table(df)
   } else {
-    htmltools::tags$pre(class = "ca-pre", p$text %||% "(no table)")
+    htmltools::tags$pre(class = "toolcard-pre", p$text %||% "(no table)")
   }
   htmltools::tagList(
     .card_header(p$icon %||% "table", p$title %||% "Table"),
-    htmltools::tags$div(class = "ca-table-wrap", body)
+    htmltools::tags$div(class = "toolcard-table-wrap", body)
   )
 }
 
@@ -302,15 +302,15 @@ render_tool_output <- function(display) {
     lines <- .line_diff(old %||% "", new %||% "")
     rows  <- lapply(lines, function(ln) {
       cls <- switch(ln$type,
-                    add = "ca-diff-add", del = "ca-diff-del", "ca-diff-ctx")
+                    add = "toolcard-diff-add", del = "toolcard-diff-del", "toolcard-diff-ctx")
       sign <- switch(ln$type, add = "+", del = "-", " ")
-      htmltools::tags$div(class = paste("ca-diff-line", cls),
+      htmltools::tags$div(class = paste("toolcard-diff-line", cls),
                           paste0(sign, " ", ln$text))
     })
     return(htmltools::tagList(
       .card_header(p$icon %||% "pencil",
                    sprintf("%s %s", verb, basename(path))),
-      htmltools::tags$div(class = "ca-diff", rows)
+      htmltools::tags$div(class = "toolcard-diff", rows)
     ))
   }
 
@@ -318,10 +318,10 @@ render_tool_output <- function(display) {
   htmltools::tagList(
     .card_header(p$icon %||% "file-earmark-plus",
                  sprintf("%s %s", verb, basename(path))),
-    htmltools::tags$div(class = "ca-diff-chip",
+    htmltools::tags$div(class = "toolcard-diff-chip",
       sprintf("%s: %s", verb, path)),
     if (!is.null(new) && nzchar(new))
-      htmltools::tags$pre(class = "ca-pre", htmltools::tags$code(new))
+      htmltools::tags$pre(class = "toolcard-pre", htmltools::tags$code(new))
   )
 }
 
@@ -343,7 +343,7 @@ render_tool_output <- function(display) {
     htmltools::tags$tr(lapply(df[i, , drop = FALSE],
       function(v) htmltools::tags$td(format(v))))
   })
-  htmltools::tags$table(class = "ca-html-table",
+  htmltools::tags$table(class = "toolcard-html-table",
     htmltools::tags$thead(hdr), htmltools::tags$tbody(rows))
 }
 
@@ -386,7 +386,7 @@ render_tool_output <- function(display) {
 
 #' Normalize any tool result into the typed display contract
 #'
-#' Idempotent: if `result@extra$display$card` already exists it is returned
+#' Idempotent: if `result@extra$display$toolcard` already exists it is returned
 #' unchanged. Otherwise inspects the result (and btw's `@extra$contents` Content
 #' objects) to classify a kind and build a typed `ContentToolResult` whose
 #' `@value` is preserved for the LLM.
@@ -396,9 +396,9 @@ render_tool_output <- function(display) {
 #' @keywords internal
 .adapt_tool_result <- function(result) {
   # Already typed?
-  has_card <- tryCatch(!is.null(result@extra$display$card),
+  has_toolcard <- tryCatch(!is.null(result@extra$display$toolcard),
                      error = function(e) FALSE)
-  if (isTRUE(has_card)) return(result)
+  if (isTRUE(has_toolcard)) return(result)
 
   tool_name <- tryCatch(result@request@name, error = function(e) NULL) %||% "tool"
   icon      <- .icon_for_tool(tool_name)
