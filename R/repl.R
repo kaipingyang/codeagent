@@ -100,10 +100,16 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
     session_id <- tryCatch(.generate_uuid_v4(), error = function(e) "repl")
   iteration <- 1L
 
-  cat("codeagent REPL. Type /help for commands, /exit to quit.\n")
-  cat(sprintf("  model: %s | mode: %s\n",
-              settings$model %||% "(auto)",
-              settings$permission_mode %||% "default"))
+  cat("\n")
+  ver <- tryCatch(as.character(utils::packageVersion("codeagent")),
+                  error = function(e) "0.1.0")
+  bar <- paste(rep("-", 40L), collapse = "")
+  cat(bar, "\n")
+  cat(sprintf("  codeagent %s\n", ver))
+  cat(sprintf("  model: %s\n", settings$model %||% "(auto)"))
+  cat(sprintf("  mode:  %s\n", settings$permission_mode %||% "default"))
+  cat("  /help for commands, /exit to quit\n")
+  cat(bar, "\n\n")
 
   repeat {
     cat(prompt_str)
