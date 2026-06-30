@@ -56,7 +56,7 @@ NULL
 }
 
 # ---------------------------------------------------------------------------
-# Skill discovery — list all skills (Level 1: metadata only)
+# Skill discovery -- list all skills (Level 1: metadata only)
 # ---------------------------------------------------------------------------
 
 # In-memory cache: key = cwd, value = list(sig, metas)
@@ -95,7 +95,7 @@ list_skills_meta <- function(cwd = getwd()) {
 
   metas <- list()
 
-  # Primary: btw backend covers — btw built-ins, attached packages (incl.
+  # Primary: btw backend covers -- btw built-ins, attached packages (incl.
   # codeagent when installed), btw user dirs, btw project dirs.
   btw_covered <- character(0)
   if (requireNamespace("btw", quietly = TRUE)) {
@@ -130,7 +130,7 @@ list_skills_meta <- function(cwd = getwd()) {
     for (subdir in subdirs) {
       skill_md <- file.path(subdir, "SKILL.md")
       if (!file.exists(skill_md)) next
-      if (skill_md %in% btw_covered) next  # already loaded by btw — skip
+      if (skill_md %in% btw_covered) next  # already loaded by btw -- skip
       meta <- .parse_skill_md(skill_md)
       if (!is.null(meta)) metas[[meta$name]] <- meta
     }
@@ -141,7 +141,7 @@ list_skills_meta <- function(cwd = getwd()) {
 }
 
 # ---------------------------------------------------------------------------
-# Skill loading — full content on demand (Level 2)
+# Skill loading -- full content on demand (Level 2)
 # ---------------------------------------------------------------------------
 
 #' Load a skill's full prompt
@@ -181,13 +181,13 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
 }
 
 # ---------------------------------------------------------------------------
-# Skill tool — LLM semantic auto-trigger
+# Skill tool -- LLM semantic auto-trigger
 # ---------------------------------------------------------------------------
 
 #' Create the skill tool for LLM auto-triggering
 #'
 #' Registers an ellmer tool that allows the LLM to semantically match user
-#' intent to skills and load them automatically — even without explicit
+#' intent to skills and load them automatically -- even without explicit
 #' `/name` syntax from the user.
 #'
 #' @param cwd Character. Project working directory.
@@ -231,7 +231,7 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
     },
     description = paste0(
       "Load specialized skill instructions. ",
-      "Call this tool when the user's request SEMANTICALLY matches a skill — ",
+      "Call this tool when the user's request SEMANTICALLY matches a skill -- ",
       "even if they did not use /name syntax. ",
       "Match by intent, not just keywords.\n\n",
       "Available skills:\n", skill_list, "\n\n",
@@ -291,7 +291,7 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
   hint <- paste0(
     "## Skills\n\n",
     "You have access to specialized skills. ",
-    "Call the `use_skill` tool when a user request semantically matches a skill — ",
+    "Call the `use_skill` tool when a user request semantically matches a skill -- ",
     "even without explicit /name syntax. Users may also type /name to invoke directly.\n\n",
     "<available_skills>\n", skill_xml, "\n</available_skills>"
   )

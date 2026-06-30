@@ -20,6 +20,9 @@ register_builtin_tools(
 \item{rules}{List. Permission rules.}
 
 \item{ask_fn}{Function or NULL. Called when permission is \code{"ask"}.}
+
+\item{skip_file_tools}{Logical. Skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
+(register only Bash) when btw file tools handle files (Path A).}
 }
 \value{
 Invisibly returns \code{chat}.

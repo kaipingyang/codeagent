@@ -14,7 +14,7 @@ An \code{ellmer::tool()} object, or \code{NULL} if no skills exist.
 }
 \description{
 Registers an ellmer tool that allows the LLM to semantically match user
-intent to skills and load them automatically — even without explicit
+intent to skills and load them automatically -- even without explicit
 \verb{/name} syntax from the user.
 }
 \keyword{internal}

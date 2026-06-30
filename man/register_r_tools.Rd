@@ -23,7 +23,7 @@ If \code{btw} is not installed a warning is emitted and nothing is registered.
 }
 \details{
 The \code{files} group (\verb{btw_tool_files_*}) is included by default and provides
-hashline-validated precise editing — superior to codeagent's own file tools
+hashline-validated precise editing -- superior to codeagent's own file tools
 for read/write/edit operations. codeagent's built-in tools remain for
 permission-gated Bash and legacy compatibility.
 

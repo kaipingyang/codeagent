@@ -7,7 +7,7 @@ NULL
 server_chat <- function(input, output, session, chat, settings,
                          state, cwd) {
 
-  # Tool result store (button_id → ContentToolResult)
+  # Tool result store (button_id -> ContentToolResult)
   tool_results <- new.env(hash = TRUE, parent = emptyenv())
 
   # Stream controller for cancellation (ESC / stop button)
@@ -52,12 +52,12 @@ server_chat <- function(input, output, session, chat, settings,
     tool_results[[button_id]] <- result
     .push_output(result, immediate = TRUE)
 
-    # Bind tool card click → select this result
+    # Bind tool card click -> select this result
     session$sendCustomMessage("bind_tool_card",
                               list(button_id = button_id))
   })
 
-  # Tool card click → re-render stored result
+  # Tool card click -> re-render stored result
   shiny::observeEvent(input$select_tool_output, {
     bid    <- input$select_tool_output
     result <- tool_results[[bid]]

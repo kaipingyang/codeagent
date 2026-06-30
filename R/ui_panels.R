@@ -14,7 +14,7 @@ head_assets <- function() {
       rel  = "stylesheet",
       href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
     ),
-    # Prism.js — syntax highlighting for code/diff tool cards
+    # Prism.js -- syntax highlighting for code/diff tool cards
     htmltools::tags$link(
       rel  = "stylesheet",
       href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
@@ -35,7 +35,7 @@ head_assets <- function() {
 }
 
 # ---------------------------------------------------------------------------
-# Skill picker footer — shared by both chat sidebar variants
+# Skill picker footer -- shared by both chat sidebar variants
 # ---------------------------------------------------------------------------
 
 .skill_picker_footer <- function(skill_meta) {
@@ -95,7 +95,7 @@ head_assets <- function() {
 }
 
 # ---------------------------------------------------------------------------
-# Left sidebar: Sessions + Settings (Skills panel removed — now in footer)
+# Left sidebar: Sessions + Settings (Skills panel removed -- now in footer)
 # ---------------------------------------------------------------------------
 
 left_sidebar_ui <- function(permission_mode, btw_available_groups,
@@ -183,7 +183,7 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
 
     htmltools::tags$div(
       class = "ca-footer mt-auto",
-      "codeagent v0.1.0 · ESC to interrupt"
+      "codeagent v0.1.0 - ESC to interrupt"
     )
   )
 }
@@ -192,7 +192,7 @@ left_sidebar_ui_default <- left_sidebar_ui
 
 
 # ---------------------------------------------------------------------------
-# Chat sidebar — chat_ui with skill picker + file/voice footer
+# Chat sidebar -- chat_ui with skill picker + file/voice footer
 # ---------------------------------------------------------------------------
 
 chat_codeagent_ui <- function(skill_meta) {
@@ -200,7 +200,7 @@ chat_codeagent_ui <- function(skill_meta) {
     "chat",
     fill          = TRUE,
     enable_cancel = TRUE,
-    placeholder   = "Ask codeagent… (/ for skills, ESC to interrupt)",
+    placeholder   = "Ask codeagent... (/ for skills, ESC to interrupt)",
     footer        = .skill_picker_footer(skill_meta)
   )
 }

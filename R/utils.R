@@ -98,7 +98,7 @@ NULL
 }
 
 # ---------------------------------------------------------------------------
-# MCP server helpers (mcptools integration) — preserved from ClaudeAgentSDK
+# MCP server helpers (mcptools integration) -- preserved from ClaudeAgentSDK
 # ---------------------------------------------------------------------------
 
 #' Create an R-based MCP server entry

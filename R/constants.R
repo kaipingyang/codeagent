@@ -44,7 +44,7 @@ NULL
 # L2: maximum tokens for the summary section
 .COMPACT_L2_MAX_TOKENS <- 40000L
 
-# L3: circuit breaker — silence after this many consecutive failures
+# L3: circuit breaker -- silence after this many consecutive failures
 .COMPACT_CIRCUIT_BREAKER_LIMIT <- 3L
 
 # L3: maximum chars fed to the full-compact haiku agent

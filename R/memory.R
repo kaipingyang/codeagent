@@ -122,7 +122,7 @@ delete_memory <- function(slug) {
 }
 
 # ---------------------------------------------------------------------------
-# remember tool — LLM-invoked memory write
+# remember tool -- LLM-invoked memory write
 # ---------------------------------------------------------------------------
 
 #' Create the `remember` tool

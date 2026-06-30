@@ -4,7 +4,7 @@
 \alias{server_customizations}
 \title{Customizations Server Logic}
 \description{
-Handles Customizations panel row clicks → show modal.
+Handles Customizations panel row clicks -> show modal.
 Each category is independent: data loading + modal dispatch are isolated.
 }
 \keyword{internal}

@@ -10,6 +10,6 @@ web_search_tool()
 An \code{ellmer::tool()} object.
 }
 \description{
-Primary: DuckDuckGo HTML scraping — real search results, no API key.
+Primary: DuckDuckGo HTML scraping -- real search results, no API key.
 Fallback: DuckDuckGo Instant Answer API for entity queries.
 }

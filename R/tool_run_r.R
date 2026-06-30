@@ -33,7 +33,7 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
       if (!checker(list(code = code))) {
         return(.tool_result(
           paste0("[Permission denied] RunR:\n", code),
-          title = "RunR — denied"
+          title = "RunR -- denied"
         ))
       }
       tryCatch(
@@ -43,7 +43,7 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
         },
         error = function(e) {
           .tool_result(paste0("[Error] ", conditionMessage(e)),
-                       title = "RunR — error")
+                       title = "RunR -- error")
         }
       )
     },
@@ -54,7 +54,7 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
       "at the first error. Use for data inspection, quick computations, ",
       "plotting, and exercising package functions. ",
       "DANGER: code runs unsandboxed in the global environment and can read or ",
-      "write files, access the network, and mutate state — every call is ",
+      "write files, access the network, and mutate state -- every call is ",
       "permission-gated and may require user confirmation."
     ),
     arguments = list(
@@ -91,7 +91,7 @@ register_run_r_tool <- function(chat, mode = "default", rules = list(),
 # btw_tool_run_r() returns an S7 BtwRunToolResult whose @extra$contents holds a
 # list of Content objects (ContentSource = the code, ContentOutput = printed
 # output, ContentImageInline = base64 plots). btw's own @extra$display uses
-# {open, copy_code} — NOT codeagent's {title, markdown, right_output}. Without
+# {open, copy_code} -- NOT codeagent's {title, markdown, right_output}. Without
 # translation the right-panel push and plot rendering both fail.
 # ---------------------------------------------------------------------------
 
@@ -119,7 +119,7 @@ register_run_r_tool <- function(chat, mode = "default", rules = list(),
       txt <- tryCatch(ct@text, error = function(e) "")
       if (nzchar(txt)) text_parts <- c(text_parts, txt)
     }
-    # ContentSource (the echoed code) is skipped — already have `code`.
+    # ContentSource (the echoed code) is skipped -- already have `code`.
   }
 
   output_text <- paste(text_parts, collapse = "\n")

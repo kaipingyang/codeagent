@@ -30,7 +30,7 @@ NULL
 #' If `btw` is not installed a warning is emitted and nothing is registered.
 #'
 #' The `files` group (`btw_tool_files_*`) is included by default and provides
-#' hashline-validated precise editing — superior to codeagent's own file tools
+#' hashline-validated precise editing -- superior to codeagent's own file tools
 #' for read/write/edit operations. codeagent's built-in tools remain for
 #' permission-gated Bash and legacy compatibility.
 #'
@@ -54,7 +54,7 @@ register_r_tools <- function(chat, groups = NULL) {
 
   all_tools <- btw::btw_tools()
 
-  # Always exclude btw_tool_skill — handled by codeagent's skill system
+  # Always exclude btw_tool_skill -- handled by codeagent's skill system
   all_tools <- Filter(function(t) !identical(t@name, "btw_tool_skill"), all_tools)
 
   # Filter by group if requested

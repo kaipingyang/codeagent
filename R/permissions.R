@@ -76,7 +76,7 @@ check_permission <- function(tool_name, mode = "default",
   # 4. bypass: everything allowed
   if (identical(mode, "bypass")) return("allow")
 
-  # 5. bubble: sub-agent mode — permission bubbles up to parent; return "ask"
+  # 5. bubble: sub-agent mode -- permission bubbles up to parent; return "ask"
   #    so the parent agent's ask_fn handles it (not auto-denied like dont_ask)
   if (identical(mode, "bubble")) return("ask")
 

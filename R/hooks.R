@@ -83,7 +83,7 @@ HookRegistry <- R6::R6Class(
   cloneable = FALSE,
 
   private = list(
-    hooks = NULL   # named list of event → list of (pattern, fn, timeout_ms)
+    hooks = NULL   # named list of event -> list of (pattern, fn, timeout_ms)
   ),
 
   public = list(

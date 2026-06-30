@@ -5,15 +5,14 @@ NULL
 
 server_skills <- function(input, output, session, cwd, pinned_skills) {
 
-  `%||%` <- codeagent:::`%||%`
 
   # Server file browser
   roots <- c(home = path.expand("~"), cwd = cwd)
   shinyFiles::shinyFileChoose(input, "ca_server_btn", roots = roots, session = session)
   shiny::observe({
-    req(input$ca_server_btn)
+    shiny::req(input$ca_server_btn)
     fi <- shinyFiles::parseFilePaths(roots, input$ca_server_btn)
-    req(nrow(fi) > 0)
+    shiny::req(nrow(fi) > 0)
     current <- shiny::isolate(input$chat_user_input) %||% ""
     shinychat::update_chat_user_input(
       "chat",
@@ -31,7 +30,7 @@ server_skills <- function(input, output, session, cwd, pinned_skills) {
 
   # Skill picker -> fill chat textarea
   shiny::observeEvent(input$skill_picker, ignoreInit = TRUE, {
-    req(nzchar(input$skill_picker))
+    shiny::req(nzchar(input$skill_picker))
     shinychat::update_chat_user_input(
       "chat",
       value   = paste0("/", input$skill_picker, " "),
@@ -43,8 +42,8 @@ server_skills <- function(input, output, session, cwd, pinned_skills) {
 
   # Voice -> append to chat textarea
   shiny::observeEvent(input$ca_voice_text, {
-    req(input$ca_voice_text$final)
-    req(nzchar(input$ca_voice_text$text))
+    shiny::req(input$ca_voice_text$final)
+    shiny::req(nzchar(input$ca_voice_text$text))
     current <- shiny::isolate(input$chat_user_input) %||% ""
     shinychat::update_chat_user_input(
       "chat",

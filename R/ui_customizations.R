@@ -6,7 +6,7 @@
 NULL
 
 # ---------------------------------------------------------------------------
-# Customizations sidebar row — shared clickable row in left panel
+# Customizations sidebar row -- shared clickable row in left panel
 # ---------------------------------------------------------------------------
 
 customization_row_ui <- function(input_id, icon_name, label, count = NULL) {

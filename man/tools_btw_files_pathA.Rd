@@ -2,7 +2,7 @@
 % Please edit documentation in R/tools_btw_files_pathA.R
 \name{tools_btw_files_pathA}
 \alias{tools_btw_files_pathA}
-\title{Path A — btw File Tools with Permission Gate (EXPERIMENTAL)}
+\title{Path A -- btw File Tools with Permission Gate (EXPERIMENTAL)}
 \description{
 Wraps btw's file tools (files_read, files_write, files_edit,
 files_replace, files_list, files_search) with codeagent's permission

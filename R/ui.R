@@ -1,4 +1,4 @@
-#' @title Shiny UI — codeagent_app()
+#' @title Shiny UI -- codeagent_app()
 #' @description Three-panel layout: left sidebar (Sessions/Customizations/Settings) +
 #'   chat panel + main output panel.
 #' @name ui

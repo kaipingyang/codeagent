@@ -24,5 +24,5 @@ btw's superior equivalents. Write tools get the permission gate; read
 tools are registered directly.
 }
 \details{
-\strong{Experimental — not loaded by default.}
+\strong{Experimental -- not loaded by default.}
 }

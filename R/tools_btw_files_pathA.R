@@ -1,4 +1,4 @@
-#' @title Path A — btw File Tools with Permission Gate (EXPERIMENTAL)
+#' @title Path A -- btw File Tools with Permission Gate (EXPERIMENTAL)
 #' @description Wraps btw's file tools (files_read, files_write, files_edit,
 #'   files_replace, files_list, files_search) with codeagent's permission
 #'   system, replacing codeagent's own Read/Write/Edit/Glob/Grep/LS tools.
@@ -55,14 +55,14 @@ NULL
   ellmer::tool(
     fun = function(...) {
       args <- list(...)
-      # _intent is purely display — never pass to underlying fn for permission check
+      # _intent is purely display -- never pass to underlying fn for permission check
       check_args <- args[names(args) != "_intent"]
       if (!checker(check_args))
         return(ellmer::ContentToolResult(
           value = paste0("[Permission denied] ", tool_name),
           extra = list(display = list(
             title = htmltools::HTML(sprintf(
-              "<code>%s</code> — permission denied (%s mode)",
+              "<code>%s</code> -- permission denied (%s mode)",
               htmltools::htmlEscape(tool_name), mode
             ))
           ))
@@ -99,7 +99,7 @@ NULL
 #' btw's superior equivalents. Write tools get the permission gate; read
 #' tools are registered directly.
 #'
-#' **Experimental — not loaded by default.**
+#' **Experimental -- not loaded by default.**
 #'
 #' @param chat An `ellmer::Chat` object.
 #' @param mode Character. Permission mode.
