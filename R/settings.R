@@ -56,7 +56,10 @@ NULL
   # Misc (placeholder / stored)
   hooks              = list(),
   api_key_helper     = NULL,   # apiKeyHelper (placeholder)
-  env                = list()  # env block (applied; stored for reference)
+  env                = list(), # env block (applied; stored for reference)
+
+  # Bash sandbox (best-effort env scrub + network deny; see sandbox.R)
+  sandbox            = list(enabled = FALSE, allow_network = TRUE)
 )
 
 # ---------------------------------------------------------------------------

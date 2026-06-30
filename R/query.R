@@ -367,11 +367,12 @@ agent_loop <- function(user_input,
   if (isTRUE(getOption("codeagent.use_btw_files", FALSE))) {
     # Path A: register only Bash (+ non-file builtins); btw handles files
     register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn,
-                           skip_file_tools = TRUE)
+                           skip_file_tools = TRUE, sandbox = settings$sandbox)
     tryCatch(register_btw_file_tools(chat, mode, rules, ask_fn),
              error = function(e) NULL)
   } else {
-    register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn)
+    register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn,
+                           sandbox = settings$sandbox)
   }
   tryCatch(register_web_tools(chat),                          error = function(e) NULL)
   tryCatch(register_run_r_tool(chat, mode, rules, ask_fn),    error = function(e) NULL)
@@ -379,6 +380,10 @@ agent_loop <- function(user_input,
   if (!is.null(settings$mcp_config))
     tryCatch(register_mcp_client(chat, settings$mcp_config),  error = function(e) NULL)
   tryCatch(register_task_tools(chat),                         error = function(e) NULL)
+  tryCatch(register_todo_tool(chat, settings$session_id %||% "default"),
+                                                              error = function(e) NULL)
+  tryCatch(register_team_tool(chat, settings$model %||% NULL, cwd),
+                                                              error = function(e) NULL)
   tryCatch(register_notebook_tools(chat, mode, rules, ask_fn),error = function(e) NULL)
   tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",
                                 mode_env$mode, rules,

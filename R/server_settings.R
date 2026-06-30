@@ -57,10 +57,7 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     if (identical(new_spec, settings$model)) return()
 
     if (!is.null(stream_task) && stream_task$status() == "running") {
-      tryCatch(bslib::show_toast("Streaming in progress -- cannot switch model now.",
-                                 type = "warning"),
-               error = function(e) shiny::showNotification(
-                 "Streaming in progress; cannot switch model.", type = "warning"))
+      .ui_toast("Streaming in progress -- cannot switch model now.", "warning")
       return()
     }
 
@@ -71,18 +68,13 @@ server_settings <- function(input, output, session, chat, settings, cwd,
       settings$model <<- tryCatch(new_chat$get_model(), error = function(e) new_spec)
       TRUE
     }, error = function(e) {
-      tryCatch(bslib::show_toast(paste0("Model switch failed: ", conditionMessage(e)),
-                                 type = "error"),
-               error = function(e2) shiny::showNotification(
-                 paste0("Model switch failed: ", conditionMessage(e)), type = "error"))
+      .ui_toast(paste0("Model switch failed: ", conditionMessage(e)), "error")
       FALSE
     })
 
     if (ok) {
-      tryCatch(bslib::show_toast(sprintf("Switched to %s -- history preserved.",
-                                         settings$model), type = "success"),
-               error = function(e) shiny::showNotification(
-                 sprintf("Switched to %s.", settings$model), type = "message"))
+      .ui_toast(sprintf("Switched to %s -- history preserved.", settings$model),
+                "success")
     }
   })
 }

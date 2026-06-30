@@ -57,10 +57,15 @@ NULL
 #' @param rules List. [PermissionRule()] objects.
 #' @param ask_fn Function or NULL. `function(tool_name, input) -> logical`.
 #'   Called when permission is `"ask"`.
+#' @param sandbox List or NULL. Bash sandbox profile (see [.sandbox_profile()]):
+#'   `list(enabled, allow_network, keep_env)`. When enabled, scrubs the command
+#'   environment and can block network utilities.
 #' @return An `ellmer::tool()` object.
 #' @export
-bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
-  checker <- .make_permission_checker("Bash", mode, rules, ask_fn)
+bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
+                      sandbox = NULL) {
+  checker  <- .make_permission_checker("Bash", mode, rules, ask_fn)
+  sb_prof  <- .sandbox_profile(list(sandbox = sandbox))
 
   ellmer::tool(
     fun = function(command, timeout = .BASH_TIMEOUT_DEFAULT,
@@ -72,11 +77,21 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
                              icon = "terminal", title = "Bash -- denied",
                              payload = list(message = paste0("Permission denied: ", command))))
       }
+      # Sandbox: refuse network commands when network is disabled.
+      blocked <- .sandbox_block_reason(command, sb_prof)
+      if (!is.null(blocked)) {
+        return(.tool_result2(paste0("[Sandbox blocked] ", blocked, ": ", command),
+                             kind = "error", status = "denied",
+                             icon = "shield", title = "Bash -- sandbox blocked",
+                             payload = list(message = blocked)))
+      }
+      sb_env <- .sandbox_env(sb_prof)   # NULL = inherit; character() = scrubbed
       # Fire-and-forget: do not capture output, do not block.
       if (isTRUE(run_in_background)) {
         tmp <- tempfile(fileext = ".sh")
         writeLines(command, tmp)
-        system2("bash", tmp, wait = FALSE, stdout = FALSE, stderr = FALSE)
+        system2("bash", tmp, wait = FALSE, stdout = FALSE, stderr = FALSE,
+                env = sb_env %||% character())
         return(.tool_result2(paste0("[Background: command started]\nCommand: ", command),
                              kind = "text", icon = "terminal",
                              title = sprintf("Bash (bg) <code>%s</code>",
@@ -91,7 +106,8 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
         out <- system2(
           "bash", tmp,
           stdout = TRUE, stderr = TRUE,
-          timeout = as.numeric(timeout)
+          timeout = as.numeric(timeout),
+          env = sb_env %||% character()
         )
         status <- attr(out, "status") %||% 0L
         result <- paste(out, collapse = "\n")
@@ -720,12 +736,15 @@ ls_tool <- function() {
 #' @param ask_fn Function or NULL. Called when permission is `"ask"`.
 #' @param skip_file_tools Logical. Skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
 #'   (register only Bash) when btw file tools handle files (Path A).
+#' @param sandbox List or NULL. Bash sandbox profile (see [.sandbox_profile()]);
+#'   passed through to [bash_tool()].
 #' @return Invisibly returns `chat`.
 #' @export
 register_builtin_tools <- function(chat, mode = "default",
                                     rules = list(), ask_fn = NULL,
-                                    skip_file_tools = FALSE) {
-  chat$register_tool(bash_tool(mode, rules, ask_fn))
+                                    skip_file_tools = FALSE,
+                                    sandbox = NULL) {
+  chat$register_tool(bash_tool(mode, rules, ask_fn, sandbox = sandbox))
   if (!isTRUE(skip_file_tools)) {
     chat$register_tool(read_tool(mode, rules))
     chat$register_tool(write_tool(mode, rules, ask_fn))

@@ -44,13 +44,22 @@ NULL
 
 #' Remove a git worktree
 #' @param wt_path Character. Path returned by [.create_worktree()].
+#' @param base_dir Character. The repo the worktree belongs to (so `git
+#'   worktree remove` has repo context even if cwd has changed). Defaults to
+#'   the current directory.
 #' @keywords internal
-.cleanup_worktree <- function(wt_path) {
-  if (is.null(wt_path) || !dir.exists(wt_path)) return(invisible(NULL))
+.cleanup_worktree <- function(wt_path, base_dir = getwd()) {
+  if (is.null(wt_path)) return(invisible(NULL))
   tryCatch({
-    system2("git", c("worktree", "remove", "--force", wt_path),
+    # Run with explicit repo context (-C base_dir) so removal works regardless
+    # of the caller's current working directory.
+    system2("git", c("-C", base_dir, "worktree", "remove", "--force", wt_path),
             stdout = FALSE, stderr = FALSE)
-    if (dir.exists(wt_path)) unlink(wt_path, recursive = TRUE)
+    # Prune any dangling worktree admin entries.
+    system2("git", c("-C", base_dir, "worktree", "prune"),
+            stdout = FALSE, stderr = FALSE)
+    # Belt-and-braces: remove the directory if git left it behind.
+    if (dir.exists(wt_path)) unlink(wt_path, recursive = TRUE, force = TRUE)
   }, error = function(e) NULL)
   invisible(NULL)
 }
@@ -99,10 +108,12 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         hooks$run_subagent_start(description, list(model = model)),
         error = function(e) NULL)
       result <- tryCatch({
-        # Optionally create an isolated worktree
-        wt_path <- if (isTRUE(worktree_isolation)) .create_worktree() else NULL
-        sub_cwd <- wt_path %||% getwd()
-        on.exit(.cleanup_worktree(wt_path), add = TRUE)
+        # Optionally create an isolated worktree. Capture the repo dir BEFORE
+        # the sub-agent may change cwd, so cleanup always has repo context.
+        repo_dir <- getwd()
+        wt_path <- if (isTRUE(worktree_isolation)) .create_worktree(repo_dir) else NULL
+        sub_cwd <- wt_path %||% repo_dir
+        on.exit(.cleanup_worktree(wt_path, repo_dir), add = TRUE)
 
         # Sub-agents run in "bubble" mode: permission decisions bubble up to
         # the parent's ask_fn rather than being resolved locally (mirrors
@@ -123,7 +134,11 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         sub_chat <- .make_chat(sub_settings, sub_cwd, system_prompt = system_prompt)
         register_builtin_tools(sub_chat, mode = sub_mode, rules = rules,
                                ask_fn = ask_fn)
-        r <- .run_subagent_loop(sub_chat, prompt, max_turns)
+        # Persist the sub-agent's conversation as a sidechain session so its
+        # history is not ephemeral (stored under the parent project dir).
+        r <- .run_subagent_loop(sub_chat, prompt, max_turns,
+                                persist = TRUE, cwd = repo_dir,
+                                description = description)
         truncate_tool_result(r, "default")
       }, error = function(e) {
         paste0("[Error] Agent tool failed: ", conditionMessage(e))
@@ -232,18 +247,38 @@ install_codeagent_cli <- function(destdir = NULL) {
   invisible(result)
 }
 #'
-#' Exposes codeagent's tool set as an MCP server, powered by btw's
-#' `btw_mcp_server()`. The server runs in a blocking loop and is designed
-#' for non-interactive use (e.g. Claude Desktop, VS Code MCP config).
+#' Exposes codeagent's tool set as an MCP server. By default uses btw's
+#' `btw_mcp_server()` over stdio (for Claude Desktop / VS Code MCP config). With
+#' `transport = "http"` it serves over HTTP via `mcptools::mcp_server()` (>= 0.2.1),
+#' enabling remote MCP clients. The server runs in a blocking loop.
 #'
 #' @param tools Character vector of btw tool groups to expose, or a list of
 #'   `ellmer::tool()` objects. Defaults to all btw tools.
-#' @param ... Additional arguments passed to `btw::btw_mcp_server()`.
+#' @param transport Character. `"stdio"` (default) or `"http"`.
+#' @param host Character. Host to bind when `transport = "http"`.
+#' @param port Integer. Port to bind when `transport = "http"`.
+#' @param ... Additional arguments passed to the underlying server function.
 #' @return Does not return (blocking).
 #' @export
-codeagent_mcp_server <- function(tools = NULL, ...) {
+codeagent_mcp_server <- function(tools = NULL,
+                                 transport = c("stdio", "http"),
+                                 host = "127.0.0.1", port = 8000L, ...) {
+  transport <- match.arg(transport)
+
+  if (identical(transport, "http")) {
+    if (!requireNamespace("mcptools", quietly = TRUE) ||
+        utils::packageVersion("mcptools") < "0.2.1")
+      stop("HTTP MCP server requires mcptools (>= 0.2.1). ",
+           "Install with: install.packages('mcptools')", call. = FALSE)
+    if (is.null(tools) && requireNamespace("btw", quietly = TRUE))
+      tools <- btw::btw_tools()
+    return(mcptools::mcp_server(tools = tools, type = "http",
+                                host = host, port = port, ...))
+  }
+
+  # Default: stdio via btw
   if (!requireNamespace("btw", quietly = TRUE))
-    stop("btw package required for MCP server. Install with: install.packages('btw')",
+    stop("btw package required for stdio MCP server. Install with: install.packages('btw')",
          call. = FALSE)
   if (is.null(tools)) tools <- btw::btw_tools()
   btw::btw_mcp_server(tools = tools, ...)
@@ -253,11 +288,34 @@ codeagent_mcp_server <- function(tools = NULL, ...) {
 # Internal: simple sub-agent loop (btw fallback)
 # ---------------------------------------------------------------------------
 
-.run_subagent_loop <- function(sub_chat, prompt, max_turns = 30L) {
+#' Run a sub-agent's conversation loop, optionally persisting its session
+#'
+#' When `persist = TRUE` the sub-agent's full conversation is saved to a
+#' "sidechain" JSONL under the project's session directory (id prefixed with
+#' `subagent-`), so sub-agent history survives instead of being ephemeral.
+#'
+#' @param sub_chat An `ellmer::Chat` for the sub-agent.
+#' @param prompt Character. The task prompt.
+#' @param max_turns Integer. Max turns (currently single-shot chat).
+#' @param persist Logical. Save the sub-agent session to disk.
+#' @param cwd Character. Project dir for session storage.
+#' @param description Character. Used as the sidechain session title.
+#' @return Character. The sub-agent's text response.
+#' @keywords internal
+.run_subagent_loop <- function(sub_chat, prompt, max_turns = 30L,
+                                persist = FALSE, cwd = getwd(),
+                                description = NULL) {
   response <- tryCatch(
     sub_chat$chat(prompt),
     error = function(e) paste0("[Error in sub-agent] ", conditionMessage(e))
   )
+  if (isTRUE(persist)) {
+    sid <- paste0("subagent-", substr(tryCatch(.generate_uuid_v4(),
+                  error = function(e) "x"), 1L, 8L))
+    tryCatch(save_session(sub_chat, cwd, sid,
+                          title = description %||% "sub-agent"),
+             error = function(e) NULL)
+  }
   if (is.character(response)) return(response)
   "[Sub-agent completed with no text output]"
 }
