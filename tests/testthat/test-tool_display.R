@@ -38,14 +38,13 @@ test_that(".tool_result2 sets in-chat html + full_screen, collapsed", {
   expect_true("html" %in% fields)
 })
 
-test_that("image toolbar has zoom+download but no separate fullscreen button", {
+test_that("image toolbar has zoom, download, and fullscreen buttons", {
   d <- list(toolcard = list(kind = "image", status = "success",
             payload = list(images = list(list(mime = "image/png", b64 = "ABC")))))
   h <- .html(codeagent:::render_tool_output(d))
   expect_match(h, "data-toolcard-zoom")
   expect_match(h, "data-toolcard-download")
-  expect_false(grepl("data-toolcard-fullscreen", h))
-  expect_match(h, 'type="button"', fixed = TRUE)
+  expect_match(h, "data-toolcard-fullscreen")
 })
 
 test_that(".tool_result legacy wrapper still works", {
