@@ -99,7 +99,8 @@ head_assets <- function() {
 # ---------------------------------------------------------------------------
 
 left_sidebar_ui <- function(permission_mode, btw_available_groups,
-                             btw_groups_selected) {
+                             btw_groups_selected,
+                             model_choices = NULL, current_model = NULL) {
   htmltools::tagList(
     # Token budget bar
     htmltools::tags$div(
@@ -152,6 +153,15 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
         value = "Settings",
         htmltools::tags$div(
           class = "ca-settings",
+          if (length(model_choices) > 0L) {
+            htmltools::tagList(
+              htmltools::tags$span("Model", class = "ca-settings-label"),
+              shiny::selectInput("model_select", NULL,
+                choices  = model_choices,
+                selected = current_model,
+                width    = "100%")
+            )
+          },
           htmltools::tags$span("Permission mode", class = "ca-settings-label"),
           shiny::selectInput("perm_mode", NULL,
             choices  = unlist(PermissionMode),
