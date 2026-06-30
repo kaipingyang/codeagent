@@ -164,6 +164,8 @@ codeagent_app(client, theme="default") # Shiny UI
 
 **`tools_agent.R`** — `agent_tool()` uses `btw_tool_agent_subagent` when btw available; falls back to codeagent's own loop. Supports `worktree_isolation=TRUE` (git worktree per sub-agent). Discovers custom agents from `.btw/agent-*.md`, `.claude/agents/`. `codeagent_mcp_server()` wraps `btw::btw_mcp_server()`. `install_codeagent_cli()` installs Rapp-based CLI.
 
+**`mcp_client.R`** — **MCP client (M8)**. `register_mcp_client(chat, config)` wraps `mcptools::mcp_tools()` to connect EXTERNAL MCP servers (stdio transport via processx child process) and register their tools onto the Chat. Config = JSON path or inline list (`mcpServers: {name: {command, args, env}}`). `codeagent_client(mcp_config=)` opts in. Complements `codeagent_mcp_server()` (server side). Graceful: missing mcptools/bad config → 0 tools, no crash. Sandbox (fs/network isolation) NOT implemented — see `references/sandbox-limitations.md` (権限门控 + Hook 策略 is the security model; OS/container sandbox is host-layer responsibility).
+
 **`compaction.R`** — **Five-level** compaction:
 - L1 `snip_old_tools`: replace large old tool results with placeholder
 - L2 `session_memory_compact`: summarise early turns via compact model
@@ -234,4 +236,4 @@ All core subsystems are complete. 281 tests pass.
 - ✅ Session management (save/load/fork/tag/rename)
 - ✅ codeagent.md multi-client config
 - ✅ Rapp CLI (`exec/codeagent.R`) — `run`(--model真换provider/--continue/--resume/--stream) + `repl`(交互式 REPL：readline loop + /model//compact//clear//help 斜杠命令 + 流式) + app/skills/mcp/info
-- ✅ MCP server (`codeagent_mcp_server()`)
+- ✅ MCP server (`codeagent_mcp_server()`) + MCP client (`register_mcp_client()`, stdio)
