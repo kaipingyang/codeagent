@@ -93,8 +93,8 @@
         var cards = document.querySelectorAll("shiny-tool-result");
         for (var i = cards.length - 1; i >= 0; i--) {
           var card = cards[i];
-          if (!card.getAttribute("data-ca-bid")) {
-            card.setAttribute("data-ca-bid", msg.button_id);
+          if (!card.getAttribute("data-toolcard-bid")) {
+            card.setAttribute("data-toolcard-bid", msg.button_id);
             card.style.cursor = "pointer";
             (function (c, bid) {
               c.addEventListener("click", function () {
@@ -128,18 +128,18 @@
 
   // Copy to clipboard
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest("[data-ca-copy]");
+    var btn = e.target.closest("[data-toolcard-copy]");
     if (!btn) return;
-    var sel = btn.getAttribute("data-ca-copy");
+    var sel = btn.getAttribute("data-toolcard-copy");
     var node = sel ? document.querySelector(sel) : null;
     var text = node ? node.textContent : "";
     if (!text) return;
     var done = function () {
       var old = btn.getAttribute("title");
-      btn.classList.add("ca-copied");
+      btn.classList.add("toolcard-copied");
       btn.setAttribute("title", "Copied");
       setTimeout(function () {
-        btn.classList.remove("ca-copied");
+        btn.classList.remove("toolcard-copied");
         btn.setAttribute("title", old || "Copy");
       }, 1200);
     };
@@ -154,37 +154,37 @@
   });
 
   // Image zoom (CSS transform on raster PNG)
-  function applyCaZoom(frame, mode) {
-    var img = frame.querySelector(".ca-zoomable");
+  function applyToolcardZoom(frame, mode) {
+    var img = frame.querySelector(".toolcard-zoomable");
     if (!img) return;
-    var scale = parseFloat(frame.getAttribute("data-ca-scale") || "1");
+    var scale = parseFloat(frame.getAttribute("data-toolcard-scale") || "1");
     if (mode === "in")  scale = Math.min(8, scale * 1.25);
     if (mode === "out") scale = Math.max(0.25, scale / 1.25);
     if (mode === "fit") scale = 1;
-    frame.setAttribute("data-ca-scale", scale);
+    frame.setAttribute("data-toolcard-scale", scale);
     img.style.transform = "scale(" + scale + ")";
     img.style.transformOrigin = "top left";
   }
 
   document.addEventListener("click", function (e) {
-    var zb = e.target.closest("[data-ca-zoom]");
+    var zb = e.target.closest("[data-toolcard-zoom]");
     if (zb) {
-      var frame = zb.closest(".ca-img-frame");
-      if (frame) applyCaZoom(frame, zb.getAttribute("data-ca-zoom"));
+      var frame = zb.closest(".toolcard-img-frame");
+      if (frame) applyToolcardZoom(frame, zb.getAttribute("data-toolcard-zoom"));
       return;
     }
-    var fb = e.target.closest("[data-ca-fullscreen]");
+    var fb = e.target.closest("[data-toolcard-fullscreen]");
     if (fb) {
-      var f = fb.closest(".ca-img-frame");
+      var f = fb.closest(".toolcard-img-frame");
       if (f) {
         if (f.requestFullscreen) f.requestFullscreen();
-        else f.classList.toggle("ca-fullscreen-overlay");
+        else f.classList.toggle("toolcard-fullscreen-overlay");
       }
       return;
     }
-    var db = e.target.closest("[data-ca-download]");
+    var db = e.target.closest("[data-toolcard-download]");
     if (db) {
-      var src = db.getAttribute("data-ca-src");
+      var src = db.getAttribute("data-toolcard-src");
       if (src) {
         var a = document.createElement("a");
         a.href = src; a.download = "plot.png";
