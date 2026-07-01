@@ -146,10 +146,11 @@ switch(
     #| short: 'c'
     continue <- FALSE
 
-    #| description: Disable token streaming (print full responses).
-    no_stream <- FALSE
+    #| description: 'Stream tokens as they arrive (default: spinner + full response).'
+    #| short: 's'
+    stream <- FALSE
 
-    ca_start_repl(mode, model, continue, no_stream)
+    ca_start_repl(mode, model, continue, no_stream = !isTRUE(stream))
   },
 
   # repl -- interactive REPL --------------------------------------------
@@ -165,10 +166,11 @@ switch(
     #| short: 'c'
     continue <- FALSE
 
-    #| description: Disable token streaming (print full responses).
-    no_stream <- FALSE
+    #| description: 'Stream tokens as they arrive (default: spinner + full response).'
+    #| short: 's'
+    stream <- FALSE
 
-    ca_start_repl(mode, model, continue, no_stream)
+    ca_start_repl(mode, model, continue, no_stream = !isTRUE(stream))
   },
 
   # app -- launch Shiny UI -----------------------------------------------
