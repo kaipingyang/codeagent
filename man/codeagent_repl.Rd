@@ -9,7 +9,8 @@ codeagent_repl(
   stream = TRUE,
   prompt_str = "› ",
   con = NULL,
-  session_id = NULL
+  session_id = NULL,
+  quiet = FALSE
 )
 }
 \arguments{
@@ -23,6 +24,10 @@ codeagent_repl(
 
 \item{session_id}{Character or NULL. Session id for auto-save (generated if
 NULL).}
+
+\item{quiet}{Logical. Suppress the startup banner and settings warnings
+(used in tests and non-interactive contexts where the output would be
+noise).}
 }
 \value{
 Invisibly the session id. Loops until \verb{/exit} or EOF.
