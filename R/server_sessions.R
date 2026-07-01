@@ -25,11 +25,12 @@ server_sessions <- function(input, output, session, chat, cwd,
     htmltools::tagList(buttons)
   })
 
-  # New session
+  # New session: clear in-memory state + assign a fresh session_id.
+  # The current session file is kept in history (auto-save already wrote it).
   shiny::observeEvent(input$new_session, {
     if (!is.null(stream_task) && stream_task$status() == "running") return()
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
-    state$session_id  <- NULL
+    state$session_id  <- tryCatch(.generate_uuid_v4(), error = function(e) "default")
     state$iteration   <- 0L
     state$main_output <- NULL
     state$compaction_ctrl$reset_failures()
@@ -38,21 +39,22 @@ server_sessions <- function(input, output, session, chat, cwd,
     shinychat::chat_clear("chat", session)
   })
 
-  # Save session
-  shiny::observeEvent(input$save_session_btn, {
+  # Delete session: remove the current session file and start fresh.
+  shiny::observeEvent(input$delete_session_btn, {
+    if (!is.null(stream_task) && stream_task$status() == "running") return()
     sid <- state$session_id
-    if (is.null(sid)) sid <- .generate_uuid_v4()
-    tryCatch({
-      save_session(chat, cwd, sid)
-      state$session_id <- sid
-      shiny::showNotification(
-        paste0("Session saved: ", substr(sid, 1L, 8L), "..."),
-        type = "message", duration = 3)
-    }, error = function(e) {
-      shiny::showNotification(
-        paste0("Save failed: ", conditionMessage(e)),
-        type = "error", duration = 5)
-    })
+    if (!is.null(sid)) {
+      tryCatch(delete_session(sid, directory = cwd), error = function(e) NULL)
+    }
+    tryCatch(chat$set_turns(list()), error = function(e) NULL)
+    state$session_id  <- tryCatch(.generate_uuid_v4(), error = function(e) "default")
+    state$iteration   <- 0L
+    state$main_output <- NULL
+    state$compaction_ctrl$reset_failures()
+    state$resource_state$reset()
+    state$budget_tracker$reset()
+    shinychat::chat_clear("chat", session)
+    .ui_toast("Session deleted.", "message")
   })
 
   # Session load buttons

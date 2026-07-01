@@ -141,10 +141,11 @@ codeagent_app <- function(
 
     # Shared reactive state (single reactiveValues, no scattered reactiveVal)
     state <- shiny::reactiveValues(
-      session_id      = NULL,
+      session_id      = tryCatch(.generate_uuid_v4(), error = function(e) "default"),
       iteration       = 0L,
       interrupt       = FALSE,
       main_output     = NULL,
+      settings_changed = 0L,
       compaction_ctrl = CompactionController$new(),
       budget_tracker  = BudgetTracker$new(),
       resource_state  = ContentReplacementState$new()
