@@ -94,7 +94,9 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                         worktree_isolation = FALSE,
                         hooks              = NULL,
                         ask_fn             = NULL) {
-  # Use btw's subagent when available (preferred: isolated session, resumable)
+  # Use btw's subagent when available (preferred: isolated session, resumable).
+  # btw.client option is set by .register_all_tools() to our gateway chat
+  # so subagent_resolve_client() picks it up at execution time.
   if (requireNamespace("btw", quietly = TRUE)) {
     tools <- tryCatch(btw::btw_tools("btw_tool_agent_subagent"),
                       error = function(e) list())

@@ -384,6 +384,19 @@ agent_loop <- function(user_input,
   rules <- settings$rules %||% list()
   cwd   <- settings$cwd %||% getwd()
 
+  # Set btw.client so btw's subagent tool uses our gateway (Databricks /
+  # OpenAI-compatible) instead of falling back to chat_anthropic() which
+  # requires ANTHROPIC_API_KEY.  We build a fresh chat for subagents and
+  # store it in the btw.client option; this persists for the session lifetime
+  # so subagent_resolve_client() finds it at tool execution time.
+  if (requireNamespace("btw", quietly = TRUE) && is.null(getOption("btw.client"))) {
+    sub_settings <- list(model       = settings$model %||% "claude-sonnet-4-6",
+                         base_url    = Sys.getenv("CODEAGENT_BASE_URL", ""),
+                         api_key_env = "CODEAGENT_API_KEY")
+    btw_chat <- tryCatch(.make_chat(sub_settings, cwd), error = function(e) NULL)
+    if (!is.null(btw_chat)) options(btw.client = btw_chat)
+  }
+
   # Core tools -- skip built-in file tools if Path A (btw files) is enabled
   if (isTRUE(getOption("codeagent.use_btw_files", FALSE))) {
     # Path A: register only Bash (+ non-file builtins); btw handles files
