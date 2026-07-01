@@ -50,7 +50,8 @@ Suggests:
     frontmatter,
     mirai,
     parallelly,
-    ragnar
+    ragnar,
+    callr
 Config/testthat/edition: 3
 URL: https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues

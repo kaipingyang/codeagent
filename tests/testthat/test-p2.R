@@ -266,3 +266,45 @@ test_that(".mcp_autoconnect respects disabled_mcp_json_servers filter", {
   n <- codeagent:::.mcp_autoconnect(ch, s)
   expect_equal(n, 0L)
 })
+
+# ---------------------------------------------------------------------------
+# RunR true isolation (callr subprocess with scrubbed env)
+# ---------------------------------------------------------------------------
+
+test_that(".runr_sandboxed_exec scrubs secrets from the child process", {
+  skip_if_not_installed("callr")
+  withr::with_envvar(c(CODEAGENT_API_KEY = "SECRET_LEAK_TOKEN_abc"), {
+    prof <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = TRUE, allow_network = TRUE)))
+    r <- codeagent:::.runr_sandboxed_exec('Sys.getenv("CODEAGENT_API_KEY")', prof)
+    val <- tryCatch(as.character(r@value), error = function(e) as.character(r))
+    expect_false(grepl("SECRET_LEAK_TOKEN", val))
+  })
+})
+
+test_that(".runr_sandboxed_exec still runs plain computation", {
+  skip_if_not_installed("callr")
+  prof <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = TRUE, allow_network = TRUE)))
+  r <- codeagent:::.runr_sandboxed_exec("sum(1:10)", prof)
+  val <- tryCatch(as.character(r@value), error = function(e) as.character(r))
+  expect_match(val, "55")
+})
+
+test_that(".runr_sandboxed_exec enforces a timeout", {
+  skip_if_not_installed("callr")
+  prof <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = TRUE, allow_network = TRUE)))
+  r <- codeagent:::.runr_sandboxed_exec("Sys.sleep(30)", prof, timeout = 2)
+  val <- tryCatch(as.character(r@value), error = function(e) as.character(r))
+  expect_match(val, "timed out", ignore.case = TRUE)
+})
+
+test_that(".runr_sandboxed_exec resists regex-bypass secret reads", {
+  skip_if_not_installed("callr")
+  withr::with_envvar(c(CODEAGENT_API_KEY = "SECRET_BYPASS_xyz"), {
+    prof <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = TRUE, allow_network = TRUE)))
+    # Construct the call dynamically to dodge any pattern matcher.
+    code <- 'do.call(get(paste0("Sys",".getenv")), list("CODEAGENT_API_KEY"))'
+    r <- codeagent:::.runr_sandboxed_exec(code, prof)
+    val <- tryCatch(as.character(r@value), error = function(e) as.character(r))
+    expect_false(grepl("SECRET_BYPASS", val))
+  })
+})
