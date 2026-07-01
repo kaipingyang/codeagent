@@ -138,6 +138,19 @@ load_settings <- function(cwd = getwd()) {
   # Derive PermissionRule list from permissions.allow / .deny / .ask
   settings$rules <- .permissions_to_rules(settings$permissions)
 
+  # apiKeyHelper: run the declared command to obtain the API key when the
+  # env var is not already set (mirrors Claude Code's apiKeyHelper behaviour).
+  # The helper's stdout is trimmed and injected as CODEAGENT_API_KEY so all
+  # downstream consumers (ellmer credentials callback) see it.
+  if (!nzchar(Sys.getenv("CODEAGENT_API_KEY", "")) &&
+      !is.null(settings$api_key_helper) && nzchar(settings$api_key_helper)) {
+    key <- tryCatch(
+      trimws(system(settings$api_key_helper, intern = TRUE, ignore.stderr = TRUE)),
+      error = function(e) character(0))
+    if (length(key) && nzchar(key[[1L]]))
+      Sys.setenv(CODEAGENT_API_KEY = key[[1L]])
+  }
+
   # CLAUDE.md (loaded as context, not merged as settings)
   settings$claude_md <- .load_claude_md(cwd)
 
@@ -413,4 +426,64 @@ use_codeagent_settings <- function(scope = c("user", "project"),
 
   if (length(lines) == 0L) return("")
   paste0("<system-reminder>\n", paste(lines, collapse = "\n"), "\n</system-reminder>")
+}
+
+# ---------------------------------------------------------------------------
+# Settings completeness check (called at REPL startup)
+# ---------------------------------------------------------------------------
+
+#' Check settings completeness and emit cli diagnostics
+#'
+#' Verifies that the critical settings (backend URL and API key) are present
+#' after all sources have been merged and `apiKeyHelper` has been run.
+#' Emits `cli_alert_warning` + actionable hints for each gap. Intended to run
+#' once at `codeagent_repl()` startup so users see the problem immediately
+#' rather than getting an opaque HTTP 401 on their first message.
+#'
+#' @param settings List from [load_settings()].
+#' @return Invisibly, a character vector of issue descriptions (empty = clean).
+#' @keywords internal
+.check_settings_completeness <- function(settings) {
+  issues <- character(0)
+
+  # 1. API key
+  api_key <- Sys.getenv("CODEAGENT_API_KEY", "")
+  if (!nzchar(api_key)) {
+    issues <- c(issues, "api_key")
+    cli::cli_alert_warning(
+      "CODEAGENT_API_KEY is not set -- requests will fail with HTTP 401.")
+    cli::cli_bullets(c(
+      "i" = "Add to {.file ~/.Renviron}: {.code CODEAGENT_API_KEY=<token>}",
+      "i" = paste0("Or set {.code apiKeyHelper} in ",
+                   "{.file ~/.codeagent/settings.json} to a shell command that ",
+                   "prints the key, e.g. {.code \"cat ~/.secret/api_key\"}")
+    ))
+  }
+
+  # 2. Base URL (required for OpenAI-compatible gateways; not needed for Anthropic direct)
+  base_url <- settings$base_url %||% Sys.getenv("CODEAGENT_BASE_URL", "")
+  if (!nzchar(base_url) && !nzchar(Sys.getenv("ANTHROPIC_API_KEY", ""))) {
+    issues <- c(issues, "base_url")
+    cli::cli_alert_warning(
+      "Neither CODEAGENT_BASE_URL nor ANTHROPIC_API_KEY is set.")
+    cli::cli_bullets(c(
+      "i" = paste0("For Databricks/OpenAI-compatible gateways, set ",
+                   "{.code CODEAGENT_BASE_URL} in {.file ~/.Renviron} or ",
+                   "the {.code env} block of {.file ~/.codeagent/settings.json}"),
+      "i" = "For direct Anthropic API, set {.code ANTHROPIC_API_KEY}"
+    ))
+  }
+
+  # 3. Model
+  if (!nzchar(settings$model %||% "")) {
+    issues <- c(issues, "model")
+    cli::cli_alert_warning("No model is configured.")
+    cli::cli_bullets(c(
+      "i" = paste0("Set {.code CODEAGENT_MODEL} or add ",
+                   "{.code \"model\": \"your-model\"} to settings.json")
+    ))
+  }
+
+  if (length(issues)) cat("\n")
+  invisible(issues)
 }

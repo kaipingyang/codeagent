@@ -52,7 +52,7 @@ test_that("codeagent_repl runs /help, /clear, /exit without hitting the API", {
   cli <- .mk_client()
   con <- textConnection(c("/help", "/clear", "/exit"))
   on.exit(close(con), add = TRUE)
-  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con))
+  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con, quiet = TRUE))
   expect_true(any(grepl("Commands:", out)))
   expect_true(any(grepl("history cleared", out)))
   expect_true(any(grepl("Bye", out)))
@@ -63,7 +63,7 @@ test_that("codeagent_repl /model switches the model in place", {
   cli <- .mk_client()
   con <- textConnection(c("/model anthropic/claude-haiku-4-5", "/exit"))
   on.exit(close(con), add = TRUE)
-  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con))
+  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con, quiet = TRUE))
   expect_true(any(grepl("model:", out)))
   expect_identical(cli$chat$get_model(), "claude-haiku-4-5")  # Route A: same obj
 })
@@ -72,14 +72,14 @@ test_that("codeagent_repl exits cleanly on EOF (empty connection)", {
   cli <- .mk_client()
   con <- textConnection(character(0))
   on.exit(close(con), add = TRUE)
-  expect_silent(invisible(capture.output(codeagent_repl(cli, stream = FALSE, con = con))))
+  expect_silent(invisible(capture.output(codeagent_repl(cli, stream = FALSE, con = con, quiet = TRUE))))
 })
 
 test_that("codeagent_repl /sessions and /budget run without the API", {
   cli <- .mk_client()
   con <- textConnection(c("/sessions", "/budget", "/exit"))
   on.exit(close(con), add = TRUE)
-  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con))
+  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con, quiet = TRUE))
   # Both meta-commands run without errors and the REPL exits cleanly.
   expect_true(any(grepl("Bye", out)))
   expect_false(any(grepl("error", out, ignore.case = TRUE)))

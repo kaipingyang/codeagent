@@ -162,10 +162,13 @@ NULL
 #' @param con Connection to read lines from (default stdin; override in tests).
 #' @param session_id Character or NULL. Session id for auto-save (generated if
 #'   NULL).
+#' @param quiet Logical. Suppress the startup banner and settings warnings
+#'   (used in tests and non-interactive contexts where the output would be
+#'   noise).
 #' @return Invisibly the session id. Loops until `/exit` or EOF.
 #' @export
 codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
-                           con = NULL, session_id = NULL) {
+                           con = NULL, session_id = NULL, quiet = FALSE) {
   if (!inherits(client, "CodagentClient"))
     stop("codeagent_repl() expects a CodagentClient.", call. = FALSE)
 
@@ -199,13 +202,28 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
   cat("\n")
   ver <- tryCatch(as.character(utils::packageVersion("codeagent")),
                   error = function(e) "0.1.0")
-  bar <- paste(rep("-", 40L), collapse = "")
-  cat(bar, "\n")
-  cat(sprintf("  codeagent %s\n", ver))
-  cat(sprintf("  model: %s\n", settings$model %||% "(auto)"))
-  cat(sprintf("  mode:  %s\n", settings$permission_mode %||% "default"))
-  cat("  /help for commands, /exit to quit\n")
-  cat(bar, "\n\n")
+  sid8 <- substr(session_id, 1L, 8L)
+  model_str <- settings$model %||% "(auto)"
+  mode_str  <- settings$permission_mode %||% "default"
+
+  if (!isTRUE(quiet)) {
+    # cli-based banner: clean, themed, matches the cli ecosystem
+    cli::cli_rule(
+      left  = paste0("{.pkg codeagent} ", ver),
+      right = "chat mode"
+    )
+    cli::cli_bullets(c(
+      " " = paste0("model: {.val ", model_str, "}   ",
+                   "mode: {.val ", mode_str, "}   ",
+                   "session: {.val ", sid8, "}"),
+      " " = "type {.code /help} for commands, {.code /exit} to quit"
+    ))
+    cat("\n")
+
+    # Settings completeness check: emit actionable warnings for missing config
+    # (API key, base URL) so users see them before the first request fails.
+    tryCatch(.check_settings_completeness(settings), error = function(e) NULL)
+  }
 
   repeat {
     cat(prompt_str)
