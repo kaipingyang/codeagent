@@ -13,6 +13,44 @@ server_chat <- function(input, output, session, chat, settings,
   # Stream controller for cancellation (ESC / stop button)
   stream_ctrl <- tryCatch(ellmer::stream_controller(), error = function(e) NULL)
 
+  # Send the slash-command list to the browser once on startup so the
+  # autocomplete dropdown (agent.js) can filter candidates client-side.
+  shiny::observe({
+    # Local commands (always available, no args or fixed args)
+    local_cmds <- list(
+      list(name = "model",   description = "Switch model",        has_args = FALSE, type = "command"),
+      list(name = "compact", description = "Compact context",     has_args = FALSE, type = "command"),
+      list(name = "clear",   description = "Clear chat history",  has_args = FALSE, type = "command"),
+      list(name = "rewind",  description = "Rewind N exchanges",  has_args = TRUE,  type = "command")
+    )
+    # Skills (loaded from disk; have args)
+    skill_cmds <- tryCatch({
+      metas <- list_skills_meta(cwd)
+      lapply(names(metas), function(nm) {
+        m <- metas[[nm]]
+        list(name = nm,
+             description = m$description %||% "",
+             has_args = nzchar(m$argument_hint %||% ""),
+             type = "skill")
+      })
+    }, error = function(e) list())
+    all_cmds <- c(local_cmds, skill_cmds)
+    session$sendCustomMessage("ca_slash_commands", all_cmds)
+  }) |> shiny::bindEvent(session$clientData$url_hostname, once = TRUE)
+
+  # ca_slash_select: JS dropdown picked a command; fill and optionally submit.
+  shiny::observeEvent(input$ca_slash_select, {
+    sel <- input$ca_slash_select
+    val    <- sel$value  %||% ""
+    submit <- isTRUE(sel$submit)
+    focus  <- isTRUE(sel$focus)
+    tryCatch(
+      shinychat::update_chat_user_input("chat", value = val,
+                                        submit = submit, focus = focus,
+                                        session = session),
+      error = function(e) NULL)
+  })
+
   # Push a tool result into the right Output panel via the typed dispatcher.
   # Returns the (possibly adapted) result so callers can store it.
   .push_output <- function(result, immediate = TRUE) {
