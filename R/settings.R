@@ -148,38 +148,23 @@ load_settings <- function(cwd = getwd()) {
     helper_cmd <- settings$apiKeyHelper %||% settings$api_key_helper %||% NULL
     key <- NULL
     if (!is.null(helper_cmd) && nzchar(helper_cmd)) {
-      # Run the user-configured helper command.
+      # Run the user-configured helper command and use its stdout as the key.
       key <- tryCatch(
         trimws(system(helper_cmd, intern = TRUE, ignore.stderr = TRUE)),
         error = function(e) character(0))
     } else {
-      # Built-in fallback 1: check sibling env vars already set in this session.
-      # Claude Code stores the token as ANTHROPIC_AUTH_TOKEN (injected into the
-      # session via ~/.claude/settings.json env block). Map it to CODEAGENT_API_KEY
-      # so users who already have Claude Code configured need zero extra setup.
-      for (src in c("ANTHROPIC_AUTH_TOKEN", "ANTHROPIC_API_KEY",
-                    "DATABRICKS_TOKEN", "CODEAGENT_TOKEN")) {
-        v <- Sys.getenv(src, "")
-        if (nzchar(v)) { key <- v; break }
-      }
-      # Built-in fallback 2: read CODEAGENT_API_KEY from ~/.Renviron directly.
-      # --vanilla Rscript skips .Renviron; we read it ourselves.
-      if (is.null(key) || !nzchar(key %||% "")) {
-        renviron <- path.expand("~/.Renviron")
-        if (file.exists(renviron)) {
-          lines <- tryCatch(readLines(renviron, warn = FALSE), error = function(e) character(0))
-          # Also check ANTHROPIC_AUTH_TOKEN in .Renviron for users who only have Claude Code set up
-          for (var in c("CODEAGENT_API_KEY", "ANTHROPIC_AUTH_TOKEN",
-                        "ANTHROPIC_API_KEY", "DATABRICKS_TOKEN")) {
-            rx <- grep(paste0("^", var, "[[:space:]]*="), lines, value = TRUE)
-            if (length(rx)) {
-              parts <- strsplit(rx[[1L]], "=", fixed = TRUE)[[1L]]
-              if (length(parts) >= 2L) {
-                raw  <- trimws(paste(parts[-1L], collapse = "="))
-                key  <- gsub('["\']', "", raw)
-                if (nzchar(key)) break
-              }
-            }
+      # Built-in fallback: read CODEAGENT_API_KEY from ~/.Renviron directly.
+      # --vanilla Rscript skips .Renviron; we read it ourselves so users only
+      # need to set CODEAGENT_API_KEY in ~/.Renviron and nothing else.
+      renviron <- path.expand("~/.Renviron")
+      if (file.exists(renviron)) {
+        lines <- tryCatch(readLines(renviron, warn = FALSE), error = function(e) character(0))
+        rx <- grep("^CODEAGENT_API_KEY[[:space:]]*=", lines, value = TRUE)
+        if (length(rx)) {
+          parts <- strsplit(rx[[1L]], "=", fixed = TRUE)[[1L]]
+          if (length(parts) >= 2L) {
+            raw <- trimws(paste(parts[-1L], collapse = "="))
+            key <- gsub('["\']', "", raw)
           }
         }
       }
@@ -499,9 +484,7 @@ use_codeagent_settings <- function(scope = c("user", "project"),
 
   # 2. Base URL (required for OpenAI-compatible gateways; not needed for Anthropic direct)
   base_url <- settings$base_url %||% Sys.getenv("CODEAGENT_BASE_URL", "")
-  anthropic_key <- Sys.getenv("ANTHROPIC_API_KEY", "") %||%
-                   Sys.getenv("ANTHROPIC_AUTH_TOKEN", "")
-  if (!nzchar(base_url) && !nzchar(anthropic_key)) {
+  if (!nzchar(base_url) && !nzchar(Sys.getenv("ANTHROPIC_API_KEY", ""))) {
     issues <- c(issues, "base_url")
     cli::cli_alert_warning(
       "Neither CODEAGENT_BASE_URL nor ANTHROPIC_API_KEY is set.")
