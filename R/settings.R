@@ -140,13 +140,36 @@ load_settings <- function(cwd = getwd()) {
 
   # apiKeyHelper: run the declared command to obtain the API key when the
   # env var is not already set (mirrors Claude Code's apiKeyHelper behaviour).
-  # The helper's stdout is trimmed and injected as CODEAGENT_API_KEY so all
-  # downstream consumers (ellmer credentials callback) see it.
-  if (!nzchar(Sys.getenv("CODEAGENT_API_KEY", "")) &&
-      !is.null(settings$api_key_helper) && nzchar(settings$api_key_helper)) {
-    key <- tryCatch(
-      trimws(system(settings$api_key_helper, intern = TRUE, ignore.stderr = TRUE)),
-      error = function(e) character(0))
+  # The JSON field name is camelCase ("apiKeyHelper") matching Claude Code;
+  # .CODEAGENT_DEFAULTS uses snake_case ("api_key_helper"). Accept both.
+  # Fallback: if no helper is configured, try reading ~/.Renviron directly so
+  # the REPL works under --vanilla without any explicit configuration.
+  if (!nzchar(Sys.getenv("CODEAGENT_API_KEY", ""))) {
+    helper_cmd <- settings$apiKeyHelper %||% settings$api_key_helper %||% NULL
+    key <- NULL
+    if (!is.null(helper_cmd) && nzchar(helper_cmd)) {
+      # Run the user-configured helper command.
+      key <- tryCatch(
+        trimws(system(helper_cmd, intern = TRUE, ignore.stderr = TRUE)),
+        error = function(e) character(0))
+    } else {
+      # Built-in fallback: read CODEAGENT_API_KEY from ~/.Renviron directly.
+      # This lets `codeagent chat` work out of the box without any setup --
+      # the key lives in .Renviron and --vanilla just skips loading it.
+      renviron <- path.expand("~/.Renviron")
+      if (file.exists(renviron)) {
+        lines <- tryCatch(readLines(renviron, warn = FALSE), error = function(e) character(0))
+        rx <- grep("^CODEAGENT_API_KEY[[:space:]]*=", lines, value = TRUE)
+        if (length(rx)) {
+          # Split on first "=" and strip surrounding quotes/whitespace.
+          parts <- strsplit(rx[[1L]], "=", fixed = TRUE)[[1L]]
+          if (length(parts) >= 2L) {
+            raw <- trimws(paste(parts[-1L], collapse = "="))
+            key <- gsub('["\']', "", raw)  # strip surrounding quotes
+          }
+        }
+      }
+    }
     if (length(key) && nzchar(key[[1L]]))
       Sys.setenv(CODEAGENT_API_KEY = key[[1L]])
   }
