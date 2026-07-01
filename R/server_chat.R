@@ -98,9 +98,9 @@ server_chat <- function(input, output, session, chat, settings,
 
       shiny::isolate(state$iteration <- state$iteration + 1L)
 
+      # Auto-save every turn (session_id is always set from startup).
       sid <- shiny::isolate(state$session_id)
-      if (!is.null(sid))
-        tryCatch(save_session(chat, cwd, sid), error = function(e) NULL)
+      tryCatch(save_session(chat, cwd, sid), error = function(e) NULL)
 
       "done"
     })()

@@ -255,7 +255,7 @@ test_that("sidebar Sessions row uses plain actionButtons (no toolbar)", {
   skip_if_not(file.exists(f), "source tree only (skipped in R CMD check)")
   src <- paste(readLines(f), collapse = "\n")
   expect_true(grepl('actionButton\\("new_session"', src))
-  expect_true(grepl('actionButton\\("save_session_btn"', src))
+  expect_true(grepl('actionButton\\("delete_session_btn"', src))
 })
 
 test_that("skills use shinychat native input update", {

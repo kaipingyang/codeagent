@@ -129,8 +129,8 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
           class = "d-flex gap-2 mb-2",
           shiny::actionButton("new_session", "New",
             class = "btn-outline-secondary btn-sm flex-fill"),
-          shiny::actionButton("save_session_btn", "Save",
-            class = "btn-outline-secondary btn-sm flex-fill")
+          shiny::actionButton("delete_session_btn", "Delete",
+            class = "btn-outline-danger btn-sm flex-fill")
         ),
         shiny::uiOutput("session_list_ui")
       ),
