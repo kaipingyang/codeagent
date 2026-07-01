@@ -2,7 +2,7 @@
 % Please edit documentation in R/skills.R
 \name{.preprocess_input}
 \alias{.preprocess_input}
-\title{Pre-process user input for skill invocation}
+\title{Pre-process a chat input to detect slash commands}
 \usage{
 .preprocess_input(input, cwd = getwd())
 }
@@ -12,7 +12,12 @@
 \item{cwd}{Character. Working directory.}
 }
 \value{
-Named list with \code{type} (\code{"skill"} or \code{"normal"}).
+Named list:
+\itemize{
+\item \code{type = "normal"}: plain text, send to LLM.
+\item \code{type = "command"}: built-in local command (not sent to LLM).
+\item \code{type = "skill"}: skill invocation (load prompt, then send to LLM).
+}
 }
 \description{
 Detects \verb{/skillname [args]} patterns.

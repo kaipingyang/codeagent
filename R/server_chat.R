@@ -74,7 +74,7 @@ server_chat <- function(input, output, session, chat, settings,
     actual_input <- if (identical(parsed$type, "skill"))
       tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd),
                error = function(e) user_input)
-    else user_input
+    else user_input  # "normal" or anything else -> send as-is
 
     shiny::isolate(state$compaction_ctrl$maybe_compact(
       chat,
@@ -109,6 +109,16 @@ server_chat <- function(input, output, session, chat, settings,
   shiny::observeEvent(input$chat_user_input, {
     if (stream_task$status() == "running") return()
     state$interrupt <- FALSE
+
+    # Pre-process: local commands are handled here (not sent to LLM).
+    parsed <- tryCatch(.preprocess_input(input$chat_user_input, cwd),
+                       error = function(e) list(type = "normal"))
+
+    if (identical(parsed$type, "command")) {
+      .handle_chat_command(parsed, chat, settings, state, session, cwd)
+      return()
+    }
+
     stream_task$invoke(input$chat_user_input)
   })
 
@@ -155,4 +165,80 @@ server_chat <- function(input, output, session, chat, settings,
   })
 
   invisible(stream_task)
+}
+
+# ---------------------------------------------------------------------------
+# Local command handler (Shiny equivalent of REPL meta-commands)
+# ---------------------------------------------------------------------------
+
+# Execute a local command parsed by .preprocess_input(type="command").
+# Mirrors the REPL's built-in command switch so both UIs behave identically.
+# Appends a feedback message to the chat so the user sees the result inline.
+.handle_chat_command <- function(parsed, chat, settings, state, session, cwd) {
+  name <- parsed$name %||% ""
+  args <- parsed$args %||% ""
+
+  feedback <- switch(name,
+
+    model = {
+      if (!nzchar(args)) {
+        # No arg: show current model and available tiers
+        cur   <- tryCatch(chat$get_model(), error = function(e) settings$model %||% "?")
+        tiers <- settings$tier_models %||% list()
+        tier_lines <- if (length(tiers))
+          paste(vapply(names(tiers), function(nm)
+            sprintf("- `%s` -> %s%s", nm, tiers[[nm]],
+                    if (identical(tiers[[nm]], cur)) " *(active)*" else ""),
+            character(1)), collapse = "\n")
+        else ""
+        paste0("**Current model:** `", cur, "`",
+               if (nzchar(tier_lines)) paste0("\n\nAvailable tiers:\n", tier_lines) else "",
+               "\n\nUsage: `/model <tier-or-endpoint>`")
+      } else {
+        new_chat <- tryCatch(
+          codeagent:::.resolve_model_chat(args, cwd),
+          error = function(e) NULL)
+        if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
+          new_model <- tryCatch(chat$get_model(), error = function(e) args)
+          state$settings_changed <- state$settings_changed + 1L
+          paste0("OK Switched to `", new_model, "`")
+        } else {
+          paste0("ERR Could not switch to `", args, "` -- check the model spec.")
+        }
+      }
+    },
+
+    compact = {
+      tryCatch({
+        full_compact(chat)
+        "OK Context compacted."
+      }, error = function(e) paste0("ERR Compact failed: ", conditionMessage(e)))
+    },
+
+    clear = {
+      tryCatch(chat$set_turns(list()), error = function(e) NULL)
+      "OK History cleared."
+    },
+
+    rewind = {
+      n_back <- suppressWarnings(as.integer(args))
+      if (is.na(n_back) || n_back < 1L) n_back <- 1L
+      cur  <- length(tryCatch(chat$get_turns(), error = function(e) list()))
+      keep <- max(0L, cur - 2L * n_back)
+      kept <- tryCatch(truncate_chat_turns(chat, keep), error = function(e) cur)
+      sprintf("<<< Rewound %d exchange(s); %d turns kept.", n_back, kept)
+    },
+
+    # Unknown local command -- show help
+    paste0("Unknown command: `/", name, "`.\n\n",
+           "Built-in commands: `/model`, `/compact`, `/clear`, `/rewind [N]`")
+  )
+
+  tryCatch(
+    shinychat::chat_append("chat",
+      ellmer::Turn("assistant", list(ellmer::ContentText(feedback))),
+      session = session),
+    error = function(e) NULL)
+
+  invisible(NULL)
 }
