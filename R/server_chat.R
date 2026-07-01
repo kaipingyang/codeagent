@@ -164,6 +164,24 @@ server_chat <- function(input, output, session, chat, settings,
     )
   })
 
+  # /model modal confirm: fires from a plain observer (not async) -- safe.
+  # Reuses the same .resolve_model_chat + .swap_provider path as Settings picker.
+  shiny::observeEvent(input$ca_model_pick_confirm, {
+    shiny::removeModal()
+    new_spec <- input$ca_model_pick %||% ""
+    if (!nzchar(new_spec)) return()
+    new_chat <- tryCatch(
+      codeagent:::.resolve_model_chat(new_spec, cwd),
+      error = function(e) NULL)
+    if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
+      new_model <- tryCatch(chat$get_model(), error = function(e) new_spec)
+      state$settings_changed <- state$settings_changed + 1L
+      .ui_toast(sprintf("Switched to %s -- history preserved.", new_model), "success")
+    } else {
+      .ui_toast(paste0("Could not switch to ", new_spec), "warning")
+    }
+  })
+
   invisible(stream_task)
 }
 
@@ -181,19 +199,25 @@ server_chat <- function(input, output, session, chat, settings,
   feedback <- switch(name,
 
     model = {
+      cur   <- tryCatch(chat$get_model(), error = function(e) settings$model %||% "?")
+      tiers <- settings$tier_models %||% list()
       if (!nzchar(args)) {
-        # No arg: show current model and available tiers
-        cur   <- tryCatch(chat$get_model(), error = function(e) settings$model %||% "?")
-        tiers <- settings$tier_models %||% list()
-        tier_lines <- if (length(tiers))
-          paste(vapply(names(tiers), function(nm)
-            sprintf("- `%s` -> %s%s", nm, tiers[[nm]],
-                    if (identical(tiers[[nm]], cur)) " *(active)*" else ""),
-            character(1)), collapse = "\n")
-        else ""
-        paste0("**Current model:** `", cur, "`",
-               if (nzchar(tier_lines)) paste0("\n\nAvailable tiers:\n", tier_lines) else "",
-               "\n\nUsage: `/model <tier-or-endpoint>`")
+        # No arg: open modal picker. Direct switch with arg still works in text.
+        choices <- if (length(tiers)) stats::setNames(unlist(tiers), names(tiers))
+                   else c(cur)
+        shiny::showModal(shiny::modalDialog(
+          title = "Switch model",
+          shiny::radioButtons("ca_model_pick", NULL,
+            choices  = choices,
+            selected = if (cur %in% unlist(tiers)) cur else unlist(tiers)[1L] %||% cur),
+          footer = shiny::tagList(
+            shiny::modalButton("Cancel"),
+            shiny::actionButton("ca_model_pick_confirm", "Switch",
+                                class = "btn-primary")
+          ),
+          easyClose = TRUE
+        ))
+        NULL   # no chat feedback until the modal confirm observer fires
       } else {
         new_chat <- tryCatch(
           codeagent:::.resolve_model_chat(args, cwd),
@@ -234,11 +258,14 @@ server_chat <- function(input, output, session, chat, settings,
            "Built-in commands: `/model`, `/compact`, `/clear`, `/rewind [N]`")
   )
 
-  tryCatch(
-    shinychat::chat_append("chat",
-      ellmer::Turn("assistant", list(ellmer::ContentText(feedback))),
-      session = session),
-    error = function(e) NULL)
+  # Append feedback to chat (NULL means the command handled its own UI, e.g. modal).
+  if (!is.null(feedback) && nzchar(feedback)) {
+    tryCatch(
+      shinychat::chat_append("chat",
+        ellmer::Turn("assistant", list(ellmer::ContentText(feedback))),
+        session = session),
+      error = function(e) NULL)
+  }
 
   invisible(NULL)
 }
