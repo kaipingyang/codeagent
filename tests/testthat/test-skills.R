@@ -151,11 +151,18 @@ test_that(".strip_frontmatter returns lines unchanged if no front matter", {
 # .preprocess_input
 # ---------------------------------------------------------------------------
 
-test_that(".preprocess_input detects skill in clean input", {
+test_that(".preprocess_input: local command returns type='command'", {
   r <- codeagent:::.preprocess_input("/compact some args")
-  expect_equal(r$type, "skill")
+  expect_equal(r$type, "command")  # compact is a local command
   expect_equal(r$name, "compact")
   expect_equal(r$args, "some args")
+})
+
+test_that(".preprocess_input detects skill in clean input", {
+  r <- codeagent:::.preprocess_input("/plan refactor utils")
+  expect_equal(r$type, "skill")    # plan is a skill (sent to LLM)
+  expect_equal(r$name, "plan")
+  expect_equal(r$args, "refactor utils")
 })
 
 test_that(".preprocess_input handles leading/trailing whitespace correctly", {
@@ -178,7 +185,22 @@ test_that(".preprocess_input: non-skill input returns normal type", {
 
 test_that(".preprocess_input: /skill with no args has empty args string", {
   r <- codeagent:::.preprocess_input("/compact")
-  expect_equal(r$type, "skill")
+  expect_equal(r$type, "command")  # compact is a local command
   expect_equal(r$name, "compact")
   expect_equal(r$args, "")
+})
+
+test_that(".preprocess_input: all local commands return type='command'", {
+  for (cmd in c("model", "compact", "clear", "rewind")) {
+    r <- codeagent:::.preprocess_input(paste0("/", cmd))
+    expect_equal(r$type, "command", info = paste("command:", cmd))
+    expect_equal(r$name, cmd, info = paste("name:", cmd))
+  }
+})
+
+test_that(".preprocess_input: unknown slash word returns type='skill'", {
+  r <- codeagent:::.preprocess_input("/plan refactor this")
+  expect_equal(r$type, "skill")
+  r2 <- codeagent:::.preprocess_input("/verify")
+  expect_equal(r2$type, "skill")
 })

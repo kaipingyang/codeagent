@@ -307,11 +307,21 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
 
 #' Pre-process user input for skill invocation
 #'
+# Built-in local commands: handled client-side (not sent to LLM). Must match
+# the REPL meta-commands in .REPL_META_CMDS so both paths behave identically.
+.LOCAL_COMMANDS <- c("model", "compact", "clear", "rewind",
+                     "help", "exit", "quit", "sessions", "budget")
+
+#' Pre-process a chat input to detect slash commands
+#'
 #' Detects `/skillname [args]` patterns.
 #'
 #' @param input Character(1). Raw user input.
 #' @param cwd Character. Working directory.
-#' @return Named list with `type` (`"skill"` or `"normal"`).
+#' @return Named list:
+#'   - `type = "normal"`: plain text, send to LLM.
+#'   - `type = "command"`: built-in local command (not sent to LLM).
+#'   - `type = "skill"`: skill invocation (load prompt, then send to LLM).
 #' @keywords internal
 .preprocess_input <- function(input, cwd = getwd()) {
   trimmed  <- trimws(input)
@@ -319,7 +329,10 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
   captures <- regmatches(trimmed, m)[[1L]]
   if (length(captures) < 3L)
     return(list(type = "normal", input = input))
-  list(type = "skill", name = captures[2L], args = trimws(captures[3L]))
+  name <- captures[2L]
+  args <- trimws(captures[3L])
+  type <- if (name %in% .LOCAL_COMMANDS) "command" else "skill"
+  list(type = type, name = name, args = args)
 }
 
 # ---------------------------------------------------------------------------
