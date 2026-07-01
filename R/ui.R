@@ -164,6 +164,30 @@ codeagent_app <- function(
                     state       = state,
                     stream_task = stream_task)
 
+    # Auto-continue: restore the most recent session on startup so users
+    # pick up where they left off (mirrors `codeagent chat --continue`).
+    shiny::observe({
+      shiny::req(TRUE)   # run once at startup
+      sid <- tryCatch(
+        restore_session_into_chat(chat_obj, session_id = NULL, cwd = cwd),
+        error = function(e) NULL)
+      if (!is.null(sid)) {
+        state$session_id <- sid
+        # Replay messages into the chat UI
+        msgs <- tryCatch(get_session_messages(sid, cwd), error = function(e) list())
+        shinychat::chat_clear("chat", session)
+        lapply(msgs, function(m) {
+          tryCatch(
+            shinychat::chat_append_message(
+              "chat",
+              list(role = m$type, content = m$text),
+              chunk   = FALSE,
+              session = session),
+            error = function(e) NULL)
+        })
+      }
+    }) |> shiny::bindEvent(session$clientData$url_hostname, once = TRUE)
+
     server_settings(input, output, session,
                     chat        = chat_obj,
                     settings    = settings,
