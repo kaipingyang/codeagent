@@ -337,18 +337,22 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
         # rendered distinctly. Models without extended thinking only emit
         # ContentText -> identical output to before.
         s <- client$chat$stream(actual_input, stream = "content")
+        first_chunk <- TRUE
         coro::loop(for (chunk in s) {
           if (S7::S7_inherits(chunk, ellmer::ContentThinking)) {
             th <- tryCatch(chunk@thinking, error = function(e) "")
             cat(.fmt_thinking(th))
+            first_chunk <- FALSE
           } else {
-            cat(.chunk_text(chunk))
+            txt <- .chunk_text(chunk)
+            if (nzchar(txt)) {
+              cat(txt)
+              first_chunk <- FALSE
+            }
           }
         })
         cat("\n"); TRUE
       }, error = function(e) {
-        # Recover via the shared classifier (PTL compact, rate-limit backoff,
-        # network retry, auth surfacing) -- same path agent_loop() uses.
         recovered <- tryCatch(
           .handle_agent_error(e, client$chat, actual_input, compaction_ctrl),
           error = function(e2) paste0("[error] ", conditionMessage(e2))
@@ -357,9 +361,18 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
         TRUE
       })
     } else {
-      resp <- tryCatch(client$chat$chat(actual_input),
-                       error = function(e)
-                         .handle_agent_error(e, client$chat, actual_input, compaction_ctrl))
+      # Non-streaming: spinner while waiting for the response.
+      resp <- NULL
+      tryCatch({
+        sp <- cli::cli_progress_step("Thinking...", spinner = TRUE)
+        resp <- tryCatch(client$chat$chat(actual_input),
+                         error = function(e)
+                           .handle_agent_error(e, client$chat, actual_input, compaction_ctrl))
+        cli::cli_progress_done(id = sp)
+      }, error = function(e)
+        resp <<- tryCatch(client$chat$chat(actual_input),
+                          error = function(e2)
+                            .handle_agent_error(e2, client$chat, actual_input, compaction_ctrl)))
       cat(if (is.character(resp)) resp else "[no response]", "\n"); TRUE
     }
 
