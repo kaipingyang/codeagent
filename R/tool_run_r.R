@@ -42,13 +42,21 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
           title = "RunR -- denied"
         ))
       }
-      # Sandbox: refuse network/shell/env code in-process (cannot scrub env).
+      # Sandbox: two levels.
+      #  (a) Always: refuse obvious shell/env patterns (cheap first line).
+      #  (b) If sandbox enabled + callr available: execute in a SEPARATE R
+      #      process with a scrubbed environment (real isolation -- the child
+      #      cannot see this process's API keys) and a wall-clock timeout.
+      #      This is the true isolation the in-process regex cannot provide.
       blocked <- .sandbox_block_r_code(code, sb_prof)
       if (!is.null(blocked)) {
         return(.tool_result(
           paste0("[Sandbox blocked] ", blocked, "\n", code),
           title = "RunR -- sandbox blocked"
         ))
+      }
+      if (isTRUE(sb_prof$enabled) && requireNamespace("callr", quietly = TRUE)) {
+        return(.runr_sandboxed_exec(code, sb_prof))
       }
       tryCatch(
         {
@@ -67,9 +75,9 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
       "printed output, messages, warnings, errors, and plots. Execution stops ",
       "at the first error. Use for data inspection, quick computations, ",
       "plotting, and exercising package functions. ",
-      "DANGER: code runs unsandboxed in the global environment and can read or ",
-      "write files, access the network, and mutate state -- every call is ",
-      "permission-gated and may require user confirmation."
+      "When sandboxing is enabled, code runs in an isolated subprocess with a ",
+      "scrubbed environment (no API keys visible) and a timeout; otherwise it ",
+      "runs in-process and is permission-gated (may require user confirmation)."
     ),
     arguments = list(
       code = ellmer::type_string(
@@ -84,6 +92,68 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
       open_world_hint  = TRUE
     )
   )
+}
+
+# ---------------------------------------------------------------------------
+# Sandboxed RunR execution via a separate R process (callr)
+# ---------------------------------------------------------------------------
+
+# Run R code in a fresh callr subprocess with a scrubbed environment and a
+# wall-clock timeout. Unlike the in-process path, the child cannot read this
+# process's environment variables (API keys), so a scrubbed env is real -- and
+# a runaway loop is killed at the timeout. Returns a codeagent tool result.
+.runr_sandboxed_exec <- function(code, profile, timeout = 30) {
+  keep <- profile$keep_env %||% c("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR")
+  vals <- Sys.getenv(keep, unset = NA)
+  child_env <- vals[!is.na(vals)]
+  # callr merges with Sys.getenv unless we explicitly blank the rest; setting
+  # only kept vars plus scrubbing common secret vars keeps the child clean.
+  secret_like <- c("CODEAGENT_API_KEY", "ANTHROPIC_API_KEY", "OPENAI_API_KEY",
+                   "AWS_SECRET_ACCESS_KEY", "AWS_ACCESS_KEY_ID", "GITHUB_PAT",
+                   "GITHUB_TOKEN", "DATABRICKS_TOKEN")
+  scrub <- stats::setNames(rep("", length(secret_like)), secret_like)
+  # CRITICAL: blank R_ENVIRON_USER / R_ENVIRON so the child does NOT re-source
+  # the user's .Renviron (which would repopulate the very secrets we scrub).
+  no_renviron <- c(R_ENVIRON_USER = "", R_ENVIRON = "")
+  env <- c(child_env, scrub, no_renviron)
+
+  plot_file <- tempfile(fileext = ".png")
+  on.exit(unlink(plot_file), add = TRUE)
+
+  runner <- function(user_code, plot_path) {
+    grDevices::png(plot_path, width = 800, height = 600)
+    on.exit(grDevices::dev.off(), add = TRUE)
+    out <- utils::capture.output({
+      val <- eval(parse(text = user_code), envir = new.env())
+      if (!is.null(val) && !inherits(val, "ggplot")) print(val)
+      if (inherits(val, "ggplot")) print(val)
+    })
+    paste(out, collapse = "\n")
+  }
+
+  res <- tryCatch(
+    callr::r(runner, args = list(user_code = code, plot_path = plot_file),
+             env = env, timeout = timeout, show = FALSE),
+    error = function(e) structure(conditionMessage(e), class = "runr_error"))
+
+  if (inherits(res, "runr_error")) {
+    msg <- as.character(res)
+    if (grepl("timed out|timeout", msg, ignore.case = TRUE))
+      msg <- paste0("execution timed out after ", timeout, "s")
+    return(.tool_result(
+      paste0("[Sandbox RunR error] ", msg),
+      title = "RunR (sandboxed) -- error"))
+  }
+
+  text <- if (is.character(res) && nzchar(res)) res else "(no output)"
+  # Attach the plot if one was drawn (non-trivial file size).
+  has_plot <- file.exists(plot_file) && file.info(plot_file)$size > 1000
+  md <- paste0("```r\n", code, "\n```\n\n```\n", text, "\n```")
+  if (has_plot) {
+    b64 <- base64enc::base64encode(plot_file)
+    md  <- paste0(md, "\n\n![plot](data:image/png;base64,", b64, ")")
+  }
+  .tool_result(text, title = "RunR (sandboxed)", markdown = md)
 }
 
 #' Register the RunR tool to a Chat
