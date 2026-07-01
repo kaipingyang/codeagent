@@ -10,3 +10,5 @@
 ^\.gitignore$
 ^\.Renviron$
 ^.*\.code-workspace$
+^\.codegraph$
+^\.codeagent$
