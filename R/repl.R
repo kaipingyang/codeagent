@@ -207,17 +207,26 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
   mode_str  <- settings$permission_mode %||% "default"
 
   if (!isTRUE(quiet)) {
-    # cli-based banner: clean, themed, matches the cli ecosystem
-    cli::cli_rule(
-      left  = paste0("{.pkg codeagent} ", ver),
-      right = "chat mode"
-    )
-    cli::cli_bullets(c(
-      " " = paste0("model: {.val ", model_str, "}   ",
-                   "mode: {.val ", mode_str, "}   ",
-                   "session: {.val ", sid8, "}"),
-      " " = "type {.code /help} for commands, {.code /exit} to quit"
-    ))
+    # Codex-style box banner via cli::boxx (round corners, key info aligned).
+    branch <- tryCatch(
+      trimws(system("git rev-parse --abbrev-ref HEAD 2>/dev/null", intern = TRUE,
+                    ignore.stderr = TRUE)),
+      error = function(e) "")
+    short_cwd <- if (nchar(cwd) > 48)
+      paste0("...", substr(cwd, nchar(cwd) - 44L, nchar(cwd))) else cwd
+    dir_str <- if (nzchar(branch)) paste0(short_cwd, "  (", branch, ")")
+               else short_cwd
+    effort_str <- settings$effort_level %||% settings$effortLevel %||% ""
+    model_line <- paste0("model:     ", model_str,
+                         if (nzchar(effort_str)) paste0("  ", effort_str) else "",
+                         "   /model to change")
+    cli::cat_boxx(c(
+      paste0(">_ codeagent ", ver),
+      "",
+      model_line,
+      paste0("mode:      ", mode_str, "      session: ", sid8),
+      paste0("directory: ", dir_str)
+    ), padding = c(0L, 1L, 0L, 1L), border_style = "round")
     cat("\n")
 
     # Settings completeness check: emit actionable warnings for missing config
