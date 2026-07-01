@@ -54,7 +54,7 @@ NULL
 
 .repl_help <- paste(
   "Commands:",
-  "  /model <spec>   switch model (e.g. anthropic/claude-haiku-4-5)",
+  "  /model [spec]   show current model & tiers; /model <name> to switch",
   "  /compact        force context compaction",
   "  /clear          clear conversation history",
   "  /rewind [N]     drop the last N exchanges (default 1)",
@@ -278,12 +278,25 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
         TRUE
       },
       model = {
-        if (!nzchar(act$arg)) { cat("Usage: /model <spec>\n") }
-        else {
+        if (!nzchar(act$arg)) {
+          # No arg: show current model and available tiers
+          cur <- settings$model %||% "(auto)"
+          cat(sprintf("Current model: %s\n", cur))
+          tiers <- tryCatch(settings$tier_models, error = function(e) list())
+          if (length(tiers)) {
+            cat("Available tiers (use /model <name>):\n")
+            for (nm in names(tiers))
+              cat(sprintf("  %-10s -> %s%s\n", nm, tiers[[nm]],
+                          if (identical(tiers[[nm]], cur)) "  (active)" else ""))
+          }
+          cat("Usage: /model <tier-or-endpoint>  e.g. /model sonnet\n")
+        } else {
           client <- tryCatch(switch_model(client, act$arg), error = function(e) {
             cat("[model switch failed: ", conditionMessage(e), "]\n", sep = ""); client
           })
           cat("[model: ", client$settings$model %||% act$arg, "]\n", sep = "")
+          # Keep settings in sync so banner + next turn see new model
+          settings <- client$settings
         }
         TRUE
       },
