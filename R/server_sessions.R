@@ -79,9 +79,8 @@ server_sessions <- function(input, output, session, chat, cwd,
           }
           state$session_id <- sid
           shinychat::chat_clear("chat", session)
-          # Replay from restored turns (includes tool calls) rather than the
-          # text-only get_session_messages path which dropped tool content.
-          .replay_turns_to_ui(chat$get_turns(), session, state)
+          # Replay via contents_shinychat -- native tool card rendering.
+          .replay_turns_to_ui(chat, session)
           shiny::showNotification(
             paste0("Session loaded: ", substr(sid, 1L, 8L), "..."),
             type = "message", duration = 3)
@@ -92,74 +91,53 @@ server_sessions <- function(input, output, session, chat, cwd,
 }
 
 # ---------------------------------------------------------------------------
-# Turn-based UI replay  (preserves tool call cards)
+# Turn-based UI replay via contents_shinychat (native tool card rendering)
 # ---------------------------------------------------------------------------
 
-# Replay a list of ellmer Turns back into the shinychat UI so that both
-# text messages and tool call cards are shown -- unlike get_session_messages
-# which only extracted plain text and silently dropped all tool content.
+# Replay an ellmer Chat into the shinychat UI using shinychat's own
+# contents_shinychat() S7 generic. This handles all content types natively:
+#   ContentText        -> markdown text bubble
+#   ContentToolRequest -> <shiny-tool-request> native card
+#   ContentToolResult  -> <shiny-tool-result> native card
+#   ContentThinking    -> collapsible thinking panel
 #
-# For each Turn:
-#   user/assistant text -> chat_append_message (markdown rendered)
-#   ContentToolResult   -> .adapt_tool_result + push to Output panel
-#                          + chat_append_message with tool card summary
-.replay_turns_to_ui <- function(turns, session, state) {
-  if (!length(turns)) return(invisible(NULL))
-  for (turn in turns) {
-    role <- tryCatch(turn@role, error = function(e) "assistant")
+# For assistant turns with mixed content (text + tool cards), we send each
+# block using the chunk="start" / chunk=TRUE / chunk="end" protocol so
+# shinychat groups them into a single message bubble.
+.replay_turns_to_ui <- function(chat, session) {
+  items <- tryCatch(
+    shinychat::contents_shinychat(chat),
+    error = function(e) list())
+  if (!length(items)) return(invisible(NULL))
+
+  for (item in items) {
+    role    <- item$role %||% "assistant"
+    content <- item$content
     if (!role %in% c("user", "assistant")) next
-    contents <- tryCatch(turn@contents, error = function(e) list())
-    # Collect text parts and tool results separately.
-    text_parts   <- character(0)
-    tool_results <- list()
-    for (ct in contents) {
-      cls <- class(ct)[1L]
-      if (grepl("ContentText|ContentThinking", cls, fixed = FALSE)) {
-        txt <- tryCatch(ct@text %||% ct@thinking %||% "", error = function(e) "")
-        if (nzchar(txt)) text_parts <- c(text_parts, txt)
-      } else if (grepl("ContentToolResult", cls, fixed = FALSE)) {
-        tool_results <- c(tool_results, list(ct))
-      }
-    }
-    # Append text part.
-    combined_text <- paste(text_parts, collapse = "\n\n")
-    if (nzchar(combined_text)) {
-      md_html <- tryCatch(
-        htmltools::HTML(commonmark::markdown_html(combined_text)),
-        error = function(e) htmltools::HTML(combined_text))
+
+    # Scalar content (single text block)
+    if (!is.list(content)) {
       tryCatch(
         shinychat::chat_append_message("chat",
-          list(role = role, content = md_html),
+          list(role = role, content = content),
           chunk = FALSE, session = session),
         error = function(e) NULL)
+      next
     }
-    # Append tool result cards.
-    for (res in tool_results) {
-      adapted <- tryCatch(.adapt_tool_result(res), error = function(e) res)
-      # Push to Output panel (same as the live path).
-      display  <- tryCatch(adapted@extra$display, error = function(e) NULL)
-      if (!is.null(display)) {
-        title   <- tryCatch(
-          gsub("<[^>]+>", "", as.character(display$title %||%
-            display$toolcard$title %||% "Tool")),
-          error = function(e) "Tool")
-        content <- tryCatch(render_tool_output(display), error = function(e) NULL)
-        if (!is.null(content))
-          state$main_output <- list(title = title, content = content)
-      }
-      # Append a summary card in the chat bubble.
-      tool_name <- tryCatch(res@request@name %||% "tool", error = function(e) "tool")
-      val       <- tryCatch(as.character(adapted@value), error = function(e) "")
-      summary   <- if (nzchar(val)) substr(val, 1L, 200L) else "(done)"
-      card_html <- htmltools::HTML(paste0(
-        "<div class='ca-tool-replay'>",
-        "<span class='ca-tool-name'><code>", htmltools::htmlEscape(tool_name), "</code></span> ",
-        "<span class='ca-tool-summary'>", htmltools::htmlEscape(summary), "</span>",
-        "</div>"))
+
+    # List content (multiple blocks: text + tool cards mixed).
+    # Use chunk="start" / chunk=TRUE / chunk="end" so shinychat groups them.
+    n <- length(content)
+    for (j in seq_len(n)) {
+      block     <- content[[j]]
+      chunk_arg <- if (j == 1L && n > 1L) "start"
+                   else if (j == n && n > 1L) "end"
+                   else if (n == 1L) FALSE
+                   else TRUE
       tryCatch(
         shinychat::chat_append_message("chat",
-          list(role = "assistant", content = card_html),
-          chunk = FALSE, session = session),
+          list(role = role, content = block),
+          chunk = chunk_arg, session = session),
         error = function(e) NULL)
     }
   }
