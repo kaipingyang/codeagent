@@ -48,20 +48,66 @@ print.CodagentClient <- function(x, ...) {
     list(params = ellmer::params(reasoning_effort = settings$effort_level))
   } else list()
 
-  if (!is.null(settings$base_url) && nzchar(settings$base_url)) {
-    api_key_env <- settings$api_key_env %||% "CODEAGENT_API_KEY"
-    do.call(ellmer::chat_openai_compatible, c(list(
-      base_url      = settings$base_url,
-      model         = settings$model,
-      credentials   = function() Sys.getenv(api_key_env),
-      system_prompt = sp
-    ), extra_params, list(...)))
-  } else {
-    do.call(ellmer::chat_anthropic, c(list(
-      model         = settings$model,
-      system_prompt = sp
-    ), extra_params, list(...)))
-  }
+  # Resolve the ellmer chat factory to use.
+  # Priority: explicit settings$provider > base_url presence > default "anthropic"
+  # Strip leading "chat_" if user typed the full function name for convenience.
+  raw_prov <- settings$provider %||% NULL
+  if (!is.null(raw_prov)) raw_prov <- sub("^chat_", "", trimws(raw_prov))
+  provider <- raw_prov %||%
+    if (!is.null(settings$base_url) && nzchar(settings$base_url))
+      "openai_compatible" else "anthropic"
+
+  api_key_env <- settings$api_key_env %||% "CODEAGENT_API_KEY"
+  creds <- function() Sys.getenv(api_key_env)
+  bu    <- settings$base_url %||% ""
+  model <- settings$model
+
+  chat_args <- switch(
+    provider,
+    # ---- OpenAI-compatible: Databricks / Azure / vLLM / any custom endpoint ----
+    openai_compatible = c(list(base_url=bu, model=model, credentials=creds, system_prompt=sp), extra_params),
+    openai            = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    vllm              = c(list(base_url=if(nzchar(bu)) bu else NULL, model=model, system_prompt=sp), extra_params),
+    lmstudio          = c(list(base_url=if(nzchar(bu)) bu else NULL, model=model, system_prompt=sp), extra_params),
+    # ---- Anthropic ----
+    anthropic         = c(list(model=model, system_prompt=sp), extra_params),
+    claude            = c(list(model=model, system_prompt=sp), extra_params),
+    # ---- Local ----
+    ollama            = c(list(base_url=if(nzchar(bu)) bu else NULL, model=model, system_prompt=sp), extra_params),
+    # ---- Hosted vendors ----
+    databricks        = c(list(workspace=if(nzchar(bu)) bu else NULL, model=model, system_prompt=sp), extra_params),
+    deepseek          = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    google_gemini     = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    google_vertex     = c(list(model=model, system_prompt=sp), extra_params),
+    groq              = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    github            = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    aws_bedrock       = c(list(model=model, system_prompt=sp), extra_params),
+    azure_openai      = c(list(base_url=if(nzchar(bu)) bu else NULL, model=model, credentials=creds, system_prompt=sp), extra_params),
+    mistral           = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    perplexity        = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    portkey           = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    posit             = c(list(model=model, system_prompt=sp), extra_params),
+    huggingface       = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    groq              = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    cloudflare        = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    snowflake         = c(list(model=model, system_prompt=sp), extra_params),
+    openrouter        = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
+    {
+      cli::cli_abort(c(
+        "Unknown provider {.val {provider}}.",
+        "i" = "Valid values: openai_compatible, anthropic, ollama, databricks, deepseek, google_gemini, groq, openai, github, vllm, lmstudio, azure_openai, aws_bedrock, mistral, perplexity, posit, ...",
+        "i" = "Or pass a {.cls Chat} object directly to {.fn codeagent_client}."
+      ))
+    }
+  )
+
+  fn_name <- paste0("chat_", provider)
+  fn <- tryCatch(get(fn_name, envir = asNamespace("ellmer"), inherits = FALSE),
+                 error = function(e) NULL)
+  if (is.null(fn))
+    cli::cli_abort("ellmer does not export {.fn {fn_name}}. Check provider spelling.")
+
+  do.call(fn, c(chat_args, list(...)))
 }
 
 # ---------------------------------------------------------------------------

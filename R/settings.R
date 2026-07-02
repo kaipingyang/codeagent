@@ -17,6 +17,11 @@ NULL
 .CODEAGENT_DEFAULTS <- list(
   # Core model / backend
   model             = "claude-sonnet-4-6",
+  provider          = NULL,      # ellmer chat_* factory: "openai_compatible",
+                                  # "anthropic", "ollama", "databricks", "deepseek",
+                                  # "google_gemini", "groq", "openai", "github",
+                                  # "vllm", "lmstudio", ...
+                                  # NULL -> auto-detect from base_url
   base_url          = NULL,      # non-NULL -> OpenAI-compatible endpoint
   api_key_env       = NULL,      # env var name for the API key (auto-detect)
   small_fast_model  = NULL,      # set by CODEAGENT_SMALL_FAST_MODEL; NULL -> .HAIKU_MODEL
