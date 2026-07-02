@@ -16,6 +16,7 @@ NULL
 #' @export
 read_tool <- function(mode = "default", rules = list()) {
   ellmer::tool(
+    name = "Read",
     fun = function(file_path, offset = NULL, limit = NULL, `_intent` = NULL) {
       r <- .safe_normalize_path(file_path)
       if (!is.null(r$error)) return(r$error)
@@ -88,6 +89,7 @@ write_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
   checker <- .make_permission_checker("Write", mode, rules, ask_fn)
 
   ellmer::tool(
+    name = "Write",
     fun = function(file_path, content, `_intent` = NULL) {
       if (!checker(list(file_path = file_path))) {
         ellmer::tool_reject(paste0("Permission denied for Write: ", file_path))
@@ -145,6 +147,7 @@ edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
   checker <- .make_permission_checker("Edit", mode, rules, ask_fn)
 
   ellmer::tool(
+    name = "Edit",
     fun = function(file_path, old_string, new_string, replace_all = FALSE, `_intent` = NULL) {
       if (!checker(list(file_path = file_path))) {
         ellmer::tool_reject(paste0("Permission denied for Edit: ", file_path))
@@ -226,6 +229,7 @@ multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
   checker <- .make_permission_checker("MultiEdit", mode, rules, ask_fn)
 
   ellmer::tool(
+    name = "MultiEdit",
     fun = function(file_path, edits, `_intent` = NULL) {
       if (!checker(list(file_path = file_path))) {
         ellmer::tool_reject(paste0("Permission denied for MultiEdit: ", file_path))

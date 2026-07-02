@@ -27,6 +27,7 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
   sb_prof  <- .sandbox_profile(list(sandbox = sandbox))
 
   ellmer::tool(
+    name = "Bash",
     fun = function(command, timeout = .BASH_TIMEOUT_DEFAULT,
                    description = NULL, run_in_background = FALSE,
                    `_intent` = NULL) {
