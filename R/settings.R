@@ -224,10 +224,15 @@ load_settings <- function(cwd = getwd()) {
 
   # Project-level: walk up from cwd to root, collect deepest-last so that
   # more-specific dirs override.  Build outer->inner by reversing the walk.
+  # Check all conventional agent-instruction file names (Claude Code / btw /
+  # Agents.md / llms.txt) so codeagent works regardless of which convention
+  # the project uses. Mirrors side's context_files list.
+  agent_filenames <- c("CLAUDE.md", "btw.md", "AGENTS.md", "llms.txt")
   walk <- character(0)
   path <- cwd
   for (i in seq_len(5L)) {
-    walk <- c(walk, file.path(path, "CLAUDE.md"))
+    for (fname in agent_filenames)
+      walk <- c(walk, file.path(path, fname))
     parent <- dirname(path)
     if (parent == path) break
     path <- parent
