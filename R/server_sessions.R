@@ -80,9 +80,15 @@ server_sessions <- function(input, output, session, chat, cwd,
           state$session_id <- sid
           shinychat::chat_clear("chat", session)
           lapply(msgs, function(m) {
+            # Render stored text as markdown so history shows rich content
+            # (bold, code, links) rather than raw markup. shinychat does NOT
+            # markdown-render plain character content passed to chat_append_message.
+            md_html <- tryCatch(
+              htmltools::HTML(commonmark::markdown_html(m$text %||% "")),
+              error = function(e) htmltools::HTML(m$text %||% ""))
             shinychat::chat_append_message(
               "chat",
-              list(role = m$type, content = m$text),
+              list(role = m$type, content = md_html),
               chunk   = FALSE,
               session = session)
           })
