@@ -173,14 +173,17 @@ codeagent_app <- function(
         error = function(e) NULL)
       if (!is.null(sid)) {
         state$session_id <- sid
-        # Replay messages into the chat UI
+        # Replay messages into the chat UI with markdown rendered
         msgs <- tryCatch(get_session_messages(sid, cwd), error = function(e) list())
         shinychat::chat_clear("chat", session)
         lapply(msgs, function(m) {
+          md_html <- tryCatch(
+            htmltools::HTML(commonmark::markdown_html(m$text %||% "")),
+            error = function(e) htmltools::HTML(m$text %||% ""))
           tryCatch(
             shinychat::chat_append_message(
               "chat",
-              list(role = m$type, content = m$text),
+              list(role = m$type, content = md_html),
               chunk   = FALSE,
               session = session),
             error = function(e) NULL)

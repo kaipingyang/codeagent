@@ -214,15 +214,25 @@ render_tool_output <- function(display) {
 .render_text <- function(p) {
   lang <- p$lang %||% NULL
   tid  <- paste0("tctext_", .rand_id())
-  htmltools::tagList(
-    .card_header(p$icon %||% "text-left", p$title %||% "Output",
-                 copy_target = paste0("#", tid)),
+  # With a language hint -> syntax-highlighted <pre><code>.
+  # Without -> render as markdown so rich content (tables, bold, links)
+  # displays properly rather than appearing as raw markup in a <pre>.
+  content <- if (!is.null(lang)) {
     htmltools::tags$pre(
       class = "toolcard-pre",
       htmltools::tags$code(id = tid,
-                           class = if (!is.null(lang)) paste0("language-", lang) else NULL,
-                           p$text %||% "")
-    )
+                           class = paste0("language-", lang),
+                           p$text %||% ""))
+  } else {
+    md <- tryCatch(
+      commonmark::markdown_html(p$text %||% ""),
+      error = function(e) paste0("<pre>", htmltools::htmlEscape(p$text %||% ""), "</pre>"))
+    htmltools::div(id = tid, class = "toolcard-md", htmltools::HTML(md))
+  }
+  htmltools::tagList(
+    .card_header(p$icon %||% "text-left", p$title %||% "Output",
+                 copy_target = paste0("#", tid)),
+    content
   )
 }
 
