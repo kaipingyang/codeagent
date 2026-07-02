@@ -52,17 +52,19 @@ team_run <- function(tasks, model = NULL, n_workers = NULL,
       "i" = "Install it with {.code install.packages('mirai')}."
     ))
 
+  if (!requireNamespace("mirai", quietly = TRUE) && !requireNamespace("crew", quietly = TRUE))
+    cli::cli_abort(c(
+      "{.fn team_run} requires {.pkg crew} or {.pkg mirai}.",
+      "i" = "Install with {.code install.packages('crew')}."
+    ))
+
   model     <- model %||% Sys.getenv("CODEAGENT_MODEL", "claude-sonnet-4-6")
   n_workers <- if (is.null(n_workers)) .team_default_workers(length(tasks))
                else as.integer(min(n_workers, .team_default_workers(length(tasks))))
   base_url  <- Sys.getenv("CODEAGENT_BASE_URL", "")
   api_key   <- Sys.getenv("CODEAGENT_API_KEY", "")
 
-  # Spin up daemons, ensure they are torn down on exit.
-  mirai::daemons(n_workers)
-  on.exit(mirai::daemons(0L), add = TRUE)
-
-  # Worker function: build a fresh client in the daemon and run one query.
+  # Worker function: build a fresh client and run one query.
   run_one <- function(task, model, base_url, api_key, permission_mode, cwd) {
     Sys.setenv(CODEAGENT_BASE_URL = base_url, CODEAGENT_API_KEY = api_key,
                CODEAGENT_MODEL = model)
@@ -73,9 +75,33 @@ team_run <- function(tasks, model = NULL, n_workers = NULL,
     }, error = function(e) paste0("[Error] ", conditionMessage(e)))
   }
 
+  # Prefer crew (more mature worker pool with health monitoring) over raw mirai.
+  if (requireNamespace("crew", quietly = TRUE)) {
+    controller <- crew::crew_controller_local(workers = n_workers)
+    controller$start()
+    on.exit(controller$terminate(), add = TRUE)
+
+    for (i in seq_along(tasks)) {
+      controller$push(
+        command = run_one(task, model, base_url, api_key, permission_mode, cwd),
+        data = list(task = tasks[[i]], model = model, base_url = base_url,
+                    api_key = api_key, permission_mode = permission_mode, cwd = cwd),
+        name = paste0("task_", i)
+      )
+    }
+    controller$wait(mode = "all")
+    collected <- controller$pop(scale = FALSE)
+    results_list <- if (nrow(collected) > 0)
+      as.list(collected$result) else
+      as.list(rep("[Error] No results", length(tasks)))
+    return(results_list)
+  }
+
+  # Fallback: mirai (still works, less observability).
+  mirai::daemons(n_workers)
+  on.exit(mirai::daemons(0L), add = TRUE)
   m <- mirai::mirai_map(
-    tasks,
-    run_one,
+    tasks, run_one,
     model = model, base_url = base_url, api_key = api_key,
     permission_mode = permission_mode, cwd = cwd
   )

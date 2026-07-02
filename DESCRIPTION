@@ -52,7 +52,8 @@ Suggests:
     mirai,
     parallelly,
     ragnar,
-    callr
+    callr,
+    crew
 Config/testthat/edition: 3
 Remotes:
     tidyverse/ellmer

@@ -36,8 +36,8 @@ test_that("RunR denies execution when ask_fn returns FALSE", {
   skip_if_not_installed("btw")
   deny_fn <- function(tool_name, input) FALSE
   t <- run_r_tool(mode = "default", ask_fn = deny_fn)
-  res <- t(code = "stop('should not run')", `_intent` = "test")
-  expect_match(.tool_val(res), "Permission denied")
+  expect_error(t(code = "stop('should not run')", `_intent` = "test"),
+               class = "ellmer_tool_reject")
 })
 
 test_that("RunR executes when ask_fn returns TRUE", {

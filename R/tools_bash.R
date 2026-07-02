@@ -70,18 +70,12 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
                    description = NULL, run_in_background = FALSE,
                    `_intent` = NULL) {
       if (!checker(list(command = command))) {
-        return(.tool_result2(paste0("[Permission denied] Bash: ", command),
-                             kind = "error", status = "denied",
-                             icon = "terminal", title = "Bash -- denied",
-                             payload = list(message = paste0("Permission denied: ", command))))
+        ellmer::tool_reject(paste0("Permission denied for Bash command: ", command))
       }
       # Sandbox: refuse network commands when network is disabled.
       blocked <- .sandbox_block_reason(command, sb_prof)
       if (!is.null(blocked)) {
-        return(.tool_result2(paste0("[Sandbox blocked] ", blocked, ": ", command),
-                             kind = "error", status = "denied",
-                             icon = "shield", title = "Bash -- sandbox blocked",
-                             payload = list(message = blocked)))
+        ellmer::tool_reject(paste0("Sandbox blocked: ", blocked, ". Command: ", command))
       }
       sb_env <- .sandbox_env(sb_prof)   # NULL = inherit; character() = scrubbed
       # Fire-and-forget: do not capture output, do not block.

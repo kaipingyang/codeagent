@@ -90,7 +90,7 @@ write_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
   ellmer::tool(
     fun = function(file_path, content, `_intent` = NULL) {
       if (!checker(list(file_path = file_path))) {
-        return(paste0("[Permission denied] Write: ", file_path))
+        ellmer::tool_reject(paste0("Permission denied for Write: ", file_path))
       }
       tryCatch({
         dir.create(dirname(file_path), showWarnings = FALSE, recursive = TRUE)
@@ -147,7 +147,7 @@ edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
   ellmer::tool(
     fun = function(file_path, old_string, new_string, replace_all = FALSE, `_intent` = NULL) {
       if (!checker(list(file_path = file_path))) {
-        return(paste0("[Permission denied] Edit: ", file_path))
+        ellmer::tool_reject(paste0("Permission denied for Edit: ", file_path))
       }
       r <- .safe_normalize_path(file_path)
       if (!is.null(r$error)) return(r$error)
@@ -228,7 +228,7 @@ multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
   ellmer::tool(
     fun = function(file_path, edits, `_intent` = NULL) {
       if (!checker(list(file_path = file_path))) {
-        return(paste0("[Permission denied] MultiEdit: ", file_path))
+        ellmer::tool_reject(paste0("Permission denied for MultiEdit: ", file_path))
       }
       r <- .safe_normalize_path(file_path)
       if (!is.null(r$error)) return(r$error)

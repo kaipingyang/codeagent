@@ -164,6 +164,7 @@ server_chat <- function(input, output, session, chat, settings,
     if (stream_task$status() == "running") {
       state$interrupt <- TRUE
       if (!is.null(stream_ctrl)) stream_ctrl$cancel()
+      tryCatch(.patch_interrupted_chat(chat), error = function(e) NULL)
     }
   })
 
@@ -172,6 +173,7 @@ server_chat <- function(input, output, session, chat, settings,
     if (stream_task$status() == "running") {
       state$interrupt <- TRUE
       if (!is.null(stream_ctrl)) stream_ctrl$cancel()
+      tryCatch(.patch_interrupted_chat(chat), error = function(e) NULL)
     }
   })
 
@@ -316,5 +318,51 @@ server_chat <- function(input, output, session, chat, settings,
       error = function(e) NULL)
   }
 
+  invisible(NULL)
+}
+
+# ---------------------------------------------------------------------------
+# Interrupted chat repair  (ported from side::patch_interrupted_chat)
+# ---------------------------------------------------------------------------
+
+# When streaming is cancelled, a ContentToolRequest may exist in the turns
+# without a matching ContentToolResult. This leaves the chat in an invalid
+# state -- the next API call will error because the model expects results for
+# every request it issued. Replace orphaned requests with a ContentText
+# explaining the interruption so the conversation can continue cleanly.
+.patch_interrupted_chat <- function(chat) {
+  turns <- tryCatch(chat$get_turns(), error = function(e) list())
+  if (!length(turns)) return(invisible(NULL))
+
+  request_ids <- character(0)
+  result_ids  <- character(0)
+  for (turn in turns) {
+    contents <- tryCatch(turn@contents, error = function(e) list())
+    for (ct in contents) {
+      cls <- class(ct)[1L]
+      if (grepl("ContentToolRequest", cls, fixed = FALSE))
+        request_ids <- c(request_ids, tryCatch(ct@id, error = function(e) ""))
+      if (grepl("ContentToolResult", cls, fixed = FALSE))
+        result_ids <- c(result_ids,
+          tryCatch(ct@request@id, error = function(e) ""))
+    }
+  }
+  orphan_ids <- request_ids[!request_ids %in% result_ids]
+  if (!length(orphan_ids)) return(invisible(NULL))
+
+  new_turns <- lapply(turns, function(turn) {
+    contents <- tryCatch(turn@contents, error = function(e) list())
+    new_contents <- lapply(contents, function(ct) {
+      cls <- class(ct)[1L]
+      if (!grepl("ContentToolRequest", cls, fixed = FALSE)) return(ct)
+      id <- tryCatch(ct@id, error = function(e) "")
+      if (!id %in% orphan_ids) return(ct)
+      name <- tryCatch(ct@name, error = function(e) "tool")
+      ellmer::ContentText(paste0("_Tool call to `", name, "` interrupted._"))
+    })
+    tryCatch(turn@contents <- new_contents, error = function(e) NULL)
+    turn
+  })
+  tryCatch(chat$set_turns(new_turns), error = function(e) NULL)
   invisible(NULL)
 }

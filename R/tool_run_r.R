@@ -37,10 +37,7 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
   ellmer::tool(
     fun = function(code, `_intent` = NULL) {
       if (!checker(list(code = code))) {
-        return(.tool_result(
-          paste0("[Permission denied] RunR:\n", code),
-          title = "RunR -- denied"
-        ))
+        ellmer::tool_reject(paste0("Permission denied for RunR. Code:\n", code))
       }
       # Sandbox: two levels.
       #  (a) Always: refuse obvious shell/env patterns (cheap first line).
@@ -50,10 +47,7 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
       #      This is the true isolation the in-process regex cannot provide.
       blocked <- .sandbox_block_r_code(code, sb_prof)
       if (!is.null(blocked)) {
-        return(.tool_result(
-          paste0("[Sandbox blocked] ", blocked, "\n", code),
-          title = "RunR -- sandbox blocked"
-        ))
+        ellmer::tool_reject(paste0("Sandbox blocked: ", blocked))
       }
       if (isTRUE(sb_prof$enabled) && requireNamespace("callr", quietly = TRUE)) {
         return(.runr_sandboxed_exec(code, sb_prof))
