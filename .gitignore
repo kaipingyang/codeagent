@@ -24,3 +24,5 @@ renv/local/
 # OS
 .DS_Store
 Thumbs.db
+.vitals/
+inst/evals/.vitals/
