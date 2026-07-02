@@ -5,6 +5,27 @@ command-line coding agent, built on `ellmer` and `btw`. It provides the agent
 harness (loop, tools, permissions, compaction, hooks, skills) plus a CLI REPL
 and a `shiny` user interface.
 
+## Security & testing improvements (post-0.1.0 additions)
+
+* **keyring integration** (`R/keyring.R`): Optional API key storage via the OS
+  credential store (`keyring` package). `setup.R` offers the keyring as an
+  alternative to `~/.Renviron` when the backend is available. Includes
+  `.keyring_available()` (session-cached probe), `.keyring_store_key()` with
+  graceful fallback to `~/.Renviron`, and `.keyring_get_key()`.
+  On headless/server environments the keyring backend probe returns `FALSE` and
+  all functions degrade silently to the existing `~/.Renviron` path.
+
+* **webfakes agent integration tests** (`tests/testthat/test-webfakes-agent.R`):
+  12 tests that mock the LLM API endpoint with `webfakes`, exercising the full
+  agent loop — tool dispatch (Read, Write, Bash), permission gate (bypass vs
+  plan), error recovery (HTTP 500), and skill invocation — without hitting a
+  real LLM.
+
+* **Explicit tool names**: `bash_tool()`, `read_tool()`, `write_tool()`,
+  `edit_tool()`, `multi_edit_tool()`, `glob_tool()`, `grep_tool()`, `ls_tool()`
+  now pass `name=` to `ellmer::tool()` so the model can refer to tools by their
+  canonical names (Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS).
+
 ## Agent harness
 
 * Agentic loop (`agent_loop()`) with max-turns, token budget, verification, and

@@ -196,13 +196,21 @@ use_codeagent_setup <- function(scope = c("user", "project")) {
   writeLines(jsonlite::toJSON(new_settings, auto_unbox=TRUE, pretty=TRUE), dest)
   cli::cli_alert_success("Settings written to {.file {dest}}")
 
-  # ---- Step 5: persist API key to .Renviron --------------------------------
+  # ---- Step 5: persist API key ------------------------------------------------
   if (save_key && !is.null(key_env) && nzchar(key_val)) {
-    persist_sel <- utils::menu(
-      c("Just for this R session (already active)",
-        "Save to ~/.Renviron (persists across sessions)"),
+    keyring_ok <- .keyring_available()
+    persist_choices <- c(
+      "Just for this R session (already active)",
+      if (keyring_ok) "OS keyring (secure, no plaintext on disk)" else NULL,
+      "Save to ~/.Renviron (plaintext, persists across sessions)"
+    )
+    persist_sel <- utils::menu(persist_choices,
       title = sprintf("Store %s API key...", info$label))
-    if (persist_sel == 2) {
+    if (persist_sel == 0) {
+      # cancelled — nothing
+    } else if (keyring_ok && persist_sel == 2) {
+      .keyring_store_key(key_env, key_val, backend = "keyring")
+    } else if (persist_sel == length(persist_choices)) {
       .append_renviron(key_env, key_val)
     }
   }

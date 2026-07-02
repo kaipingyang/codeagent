@@ -54,7 +54,9 @@ Suggests:
     ragnar,
     callr,
     crew,
-    vitals
+    vitals,
+    keyring,
+    webfakes
 Config/testthat/edition: 3
 Remotes:
     tidyverse/ellmer

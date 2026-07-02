@@ -10,6 +10,7 @@ NULL
 #' @export
 glob_tool <- function() {
   ellmer::tool(
+    name = "Glob",
     fun = function(pattern, path = NULL, `_intent` = NULL) {
       base <- if (!is.null(path)) path else getwd()
       tryCatch({
@@ -70,6 +71,7 @@ glob_tool <- function() {
 #' @export
 grep_tool <- function() {
   ellmer::tool(
+    name = "Grep",
     fun = function(pattern, path = NULL, glob = NULL,
                    output_mode = "content", `-i` = FALSE, `-n` = TRUE,
                    head_limit = 250L, offset = 0L, multiline = FALSE,
@@ -189,6 +191,7 @@ grep_tool <- function() {
 #' @export
 ls_tool <- function() {
   ellmer::tool(
+    name = "LS",
     fun = function(path = ".", ignore_patterns = NULL, `_intent` = NULL) {
       base <- normalizePath(path, mustWork = FALSE)
       if (!dir.exists(base))
