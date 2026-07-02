@@ -174,8 +174,8 @@ codeagent_app <- function(
       if (!is.null(sid)) {
         state$session_id <- sid
         shinychat::chat_clear("chat", session)
-        # Replay via turns (preserves tool call cards, not just plain text).
-        .replay_turns_to_ui(chat_obj$get_turns(), session, state)
+        # Replay via contents_shinychat -- native tool card rendering.
+        .replay_turns_to_ui(chat_obj, session)
       }
     }) |> shiny::bindEvent(session$clientData$url_hostname, once = TRUE)
 
