@@ -465,6 +465,10 @@ agent_loop <- function(user_input,
                                                               error = function(e) NULL)
   tryCatch(register_team_tool(chat, settings$model %||% NULL, cwd),
                                                               error = function(e) NULL)
+  # Data exploration tool (opt-in via settings$explore_data = TRUE; default TRUE
+  # since ExploreData is read-only and does not modify any data).
+  if (!isFALSE(settings$explore_data))
+    tryCatch(register_explore_data_tool(chat), error = function(e) NULL)
   # Codebase RAG retrieval (opt-in via settings$rag = TRUE or list(enabled=TRUE);
   # indexing is costly).
   rag_on <- isTRUE(settings$rag) ||

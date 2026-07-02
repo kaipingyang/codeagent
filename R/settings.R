@@ -72,7 +72,11 @@ NULL
   # R session environment context injection (gander-inspired).
   # When TRUE, the first system-reminder includes ls() + data.frame schemas
   # from .GlobalEnv so the agent knows what objects exist without a tool call.
-  inject_r_env       = FALSE
+  inject_r_env       = FALSE,
+
+  # Data exploration tool (ExploreData). TRUE = always register (default);
+  # FALSE = opt-out (batch/non-interactive contexts).
+  explore_data       = TRUE
 )
 
 # ---------------------------------------------------------------------------
