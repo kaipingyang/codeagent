@@ -28,6 +28,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Rules
 
+**每次改完代码必须重装包：**
+```r
+pak::local_install(".", ask = FALSE, upgrade = FALSE)
+```
+这确保 `codeagent chat` / `codeagent_app()` 等用安装版运行的入口点使用最新代码。`devtools::load_all()` 只在当前 R session 里生效，launcher（`--vanilla`）和 CLI 用的是已装的包。
+
 **改代码必须同步更新测试和 example：**
 - 新增/修改函数 → 对应 `tests/testthat/test-*.R` 补测试
 - 修改公开 API（签名/行为）→ 对应 `inst/examples/demo_*.R` 或 `test_databricks.R` 更新
