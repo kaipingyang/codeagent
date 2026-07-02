@@ -40,16 +40,49 @@ NULL
 
 #' Start a WEAR loop data exploration session
 #'
-#' Launches an interactive exploration session with Databot-style WEAR loop
-#' (Write/Execute/Analyze/Regroup). The agent generates code, executes it
-#' via the ExploreData tool, analyzes results, and proposes next steps.
+#' Launches an **interactive** data exploration session using the
+#' Write/Execute/Analyze/Regroup (WEAR) loop pattern. This is a **dedicated
+#' exploration mode** — it is separate from a normal `codeagent_app()` or
+#' `codeagent_repl()` session. The difference:
 #'
-#' @param data Named list or environment of data.frames to explore.
-#'   Defaults to objects in `.GlobalEnv`.
-#' @param client A `CodagentClient`. If NULL, built from settings.
-#' @param mode Character. `"repl"` (default) for CLI, `"shiny"` for app.
+#' | Normal session | WEAR session (`wear_explore()`) |
+#' |---|---|
+#' | No data registered by default | `data=` argument registers named data.frames |
+#' | No `GenerateReport` tool | `/report` exports session to `.qmd` |
+#' | No WEAR system prompt | Agent instructed to end each turn with **Next steps** |
+#' | General-purpose tools | `ExploreData` tool added (read-only, sandboxed) |
+#'
+#' The `ExploreData` and `GenerateReport` tools are **not** registered in the
+#' standard agent loop (`codeagent_app()`) — use `wear_explore()` to enter
+#' exploration mode explicitly.
+#'
+#' @param data Named list, environment, or `NULL`. Data.frames to make
+#'   available for exploration. If `NULL`, uses objects in `.GlobalEnv`.
+#'   A named list is converted to an environment automatically.
+#' @param client A `CodagentClient` (from [codeagent_client()]). If `NULL`,
+#'   one is built from `~/.codeagent/settings.json` with `permission_mode =
+#'   "bypass"`.
+#' @param mode Character. `"repl"` (default) starts an interactive CLI session;
+#'   `"shiny"` launches the Shiny app.
 #' @param ... Passed to [codeagent_repl()] or [codeagent_app()].
-#' @return Invisibly the client.
+#' @return Invisibly the `CodagentClient` (useful for post-session inspection
+#'   or calling [generate_wear_report()] manually).
+#' @seealso [generate_wear_report()] to export the session to a Quarto document.
+#' @examples
+#' \dontrun{
+#' # Explore mtcars from the CLI (requires a configured LLM client)
+#' wear_explore(data = list(mtcars = mtcars))
+#'
+#' # Shiny UI with multiple data.frames
+#' wear_explore(
+#'   data = list(sales = sales_df, products = products_df),
+#'   mode = "shiny"
+#' )
+#'
+#' # Capture the client to export the report afterwards
+#' client <- wear_explore(data = list(mtcars = mtcars))
+#' generate_wear_report(client, title = "Motor Trend Analysis")
+#' }
 #' @export
 wear_explore <- function(data = NULL, client = NULL, mode = c("repl", "shiny"), ...) {
   mode <- match.arg(mode)
@@ -97,13 +130,40 @@ wear_explore <- function(data = NULL, client = NULL, mode = c("repl", "shiny"), 
 
 #' Export the current WEAR exploration session to a Quarto document
 #'
-#' Generates a reproducible `.qmd` file containing the conversation history:
-#' questions, generated code, outputs, and analysis notes.
+#' Generates a reproducible `.qmd` file from the conversation history of a
+#' [wear_explore()] session. Each user message becomes a `##` section heading;
+#' assistant text is written as prose; code from `ExploreData` tool results is
+#' written as `\`\`\`{r}` chunks.
 #'
-#' @param client A `CodagentClient` with the exploration session history.
-#' @param path Character. Output path for the `.qmd` file.
-#' @param title Character. Document title.
-#' @return Invisibly the path to the generated file.
+#' The `.qmd` has `eval: false` by default so it renders without re-running the
+#' LLM queries. Set `eval: true` in the YAML front-matter to make it fully
+#' reproducible.
+#'
+#' This function is also registered as the `GenerateReport` tool inside a
+#' [wear_explore()] session, so the agent can call it when the user types
+#' `/report`.
+#'
+#' @param client A `CodagentClient` whose `chat` has been used in a
+#'   [wear_explore()] session.
+#' @param path Character. Output file path (default: `exploration-YYYYMMDD.qmd`
+#'   in the current directory).
+#' @param title Character. Quarto document title.
+#' @return Invisibly the path to the generated `.qmd` file.
+#' @seealso [wear_explore()] to start a WEAR exploration session.
+#' @examples
+#' \dontrun{
+#' # After a wear_explore() session:
+#' client <- wear_explore(data = list(mtcars = mtcars))
+#'
+#' # Export to a named file
+#' path <- generate_wear_report(client,
+#'   path  = "mtcars-analysis.qmd",
+#'   title = "Motor Trend Analysis")
+#'
+#' # Render with quarto CLI
+#' system(paste("quarto render", path))
+#' # Or: quarto::quarto_render(path)  # if quarto R package is installed
+#' }
 #' @export
 generate_wear_report <- function(client,
                                   path  = paste0("exploration-",
