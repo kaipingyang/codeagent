@@ -112,7 +112,10 @@ NULL
     display$html         <- rendered   # in-chat card body (shinychat-native)
     display$right_output <- rendered   # right Output panel
     display$full_screen  <- TRUE       # single expand affordance per card
-    display$open         <- FALSE      # collapsed by default in the chat stream
+    # Auto-expand: errors always open; long text output opens so user sees it
+    # without an extra click (mirrors side's tool-shell.R display$open logic).
+    display$open <- identical(status, "error") ||
+                    (nchar(text %||% "") > 500L)
   }
 
   ellmer::ContentToolResult(

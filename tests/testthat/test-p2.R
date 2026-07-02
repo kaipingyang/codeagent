@@ -94,9 +94,8 @@ test_that(".sandbox_env returns NULL when disabled, scrubbed vector when enabled
 test_that("bash_tool blocks network command under sandbox", {
   t <- bash_tool(mode = "bypass",
                  sandbox = list(enabled = TRUE, allow_network = FALSE))
-  res <- t(command = "curl http://example.com")
-  val <- tryCatch(as.character(res@value), error = function(e) "")
-  expect_true(grepl("[Ss]andbox", val))
+  # tool_reject() throws ellmer_tool_reject -- the semantically correct signal
+  expect_error(t(command = "curl http://example.com"), class = "ellmer_tool_reject")
 })
 
 # ---------------------------------------------------------------------------
