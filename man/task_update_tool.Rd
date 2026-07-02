@@ -4,7 +4,10 @@
 \alias{task_update_tool}
 \title{Create the TaskUpdate tool}
 \usage{
-task_update_tool()
+task_update_tool(store)
+}
+\arguments{
+\item{store}{Environment. Per-session task store from \code{.new_task_store()}.}
 }
 \value{
 An \code{ellmer::tool()} object.
@@ -12,3 +15,4 @@ An \code{ellmer::tool()} object.
 \description{
 Create the TaskUpdate tool
 }
+\keyword{internal}

@@ -147,3 +147,67 @@ NULL
     if (!is.null(wt_path)) paste0("\nWorking directory: ", wt_path) else ""
   )
 }
+
+# ---------------------------------------------------------------------------
+# System prompt builder  (moved from settings.R -- belongs with prompt logic)
+# ---------------------------------------------------------------------------
+
+#' Build the codeagent system prompt
+#'
+#' Assembles behavioural guidance (tone, doing-tasks, conventions, tool use,
+#' R specifics) plus project context (CLAUDE.md, skills, permission mode).
+#' Constant text only -- ephemeral per-turn context lives in
+#' [.build_system_reminder()].
+#'
+#' @param settings List. Output of [load_settings()].
+#' @param cwd Character. Working directory.
+#' @return Character(1). The full system prompt.
+#' @keywords internal
+.build_system_prompt <- function(settings, cwd = getwd()) {
+  parts <- c(
+    .prompt_identity(settings, cwd),
+    .prompt_tone_and_style(settings),
+    .prompt_doing_tasks(),
+    .prompt_code_conventions(),
+    .prompt_using_tools(settings),
+    .prompt_actions(),
+    .prompt_r_specifics(),
+    .prompt_context_blocks(settings, cwd)
+  )
+  paste(parts[nzchar(parts)], collapse = "\n\n")
+}
+
+# ---------------------------------------------------------------------------
+# System-reminder builder (moved from settings.R -- belongs with prompt logic)
+# ---------------------------------------------------------------------------
+
+#' Build a system-reminder block for dynamic per-turn context injection
+#'
+#' Mirrors Claude Code's `<system-reminder>` pattern: ephemeral context
+#' appended to the user message (not the system prompt) to preserve caching.
+#'
+#' @param settings List. Output of [load_settings()].
+#' @param iteration Integer. Current agent loop iteration.
+#' @param cwd Character. Working directory.
+#' @param query Character or NULL. Current user input for memory relevance.
+#' @return Character(1). The reminder block, or `""` if nothing to inject.
+#' @keywords internal
+.build_system_reminder <- function(settings, iteration = 1L, cwd = getwd(),
+                                   query = NULL) {
+  lines <- character(0)
+  lines <- c(lines, sprintf("Current date/time: %s",
+                             format(Sys.time(), "%Y-%m-%d %H:%M %Z")))
+  lines <- c(lines, sprintf("Agent loop iteration: %d", as.integer(iteration)))
+  lines <- c(lines, sprintf("Working directory: %s", cwd))
+
+  if (as.integer(iteration) <= 1L) {
+    recall <- tryCatch(
+      recall_memories_relevant(query,
+        model = settings$small_fast_model %||% .HAIKU_MODEL),
+      error = function(e) tryCatch(recall_memories(), error = function(e2) ""))
+    if (nzchar(recall)) lines <- c(lines, "", recall)
+  }
+
+  if (length(lines) == 0L) return("")
+  paste0("<system-reminder>\n", paste(lines, collapse = "\n"), "\n</system-reminder>")
+}

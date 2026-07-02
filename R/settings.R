@@ -198,48 +198,6 @@ load_settings <- function(cwd = getwd()) {
 }
 
 # ---------------------------------------------------------------------------
-# permissions.{allow,deny,ask} -> PermissionRule list
-# ---------------------------------------------------------------------------
-
-# Parse a Claude Code-style pattern string like "Bash(npm run test *)" into
-# (tool_name, rule_content).  No parentheses -> tool_name only.
-.parse_permission_pattern <- function(pattern) {
-  pattern <- trimws(pattern %||% "")
-  if (!nzchar(pattern)) return(NULL)
-  m <- regexec("^([A-Za-z_][A-Za-z0-9_]*)\\((.*)\\)$", pattern)
-  caps <- regmatches(pattern, m)[[1L]]
-  if (length(caps) == 3L) {
-    list(tool_name = caps[[2L]], rule_content = caps[[3L]])
-  } else {
-    list(tool_name = pattern, rule_content = NULL)
-  }
-}
-
-# Convert settings$permissions lists into PermissionRule objects.
-# jsonlite simplifyVector=TRUE: non-empty array -> character vector,
-# empty array -> list() of length 0.  Handle both shapes.
-.permissions_to_rules <- function(perms) {
-  if (!is.list(perms)) return(list())
-  rules <- list()
-  for (behavior in c("allow", "deny", "ask")) {
-    patterns <- perms[[behavior]]
-    if (!length(patterns)) next
-    if (is.character(patterns)) patterns <- as.list(patterns)
-    for (p in patterns) {
-      parsed <- tryCatch(.parse_permission_pattern(p), error = function(e) NULL)
-      if (is.null(parsed)) next
-      rule <- tryCatch(
-        PermissionRule(parsed$tool_name, behavior = behavior,
-                       source = "settings", rule_content = parsed$rule_content),
-        error = function(e) NULL
-      )
-      if (!is.null(rule)) rules <- c(rules, list(rule))
-    }
-  }
-  rules
-}
-
-# ---------------------------------------------------------------------------
 # CLAUDE.md loading
 # ---------------------------------------------------------------------------
 
@@ -376,78 +334,6 @@ use_codeagent_settings <- function(scope = c("user", "project"),
     rstudioapi::navigateToFile(dest)
 
   invisible(dest)
-}
-
-# ---------------------------------------------------------------------------
-# System prompt builder
-# ---------------------------------------------------------------------------
-
-#' Build the codeagent system prompt
-#'
-#' Assembles behavioural guidance (tone, doing-tasks, conventions, tool use,
-#' R specifics; see `prompts.R`) plus project context (CLAUDE.md, skills,
-#' permission mode). Constant text only -- ephemeral per-turn context lives in
-#' [.build_system_reminder()].
-#'
-#' @param settings List. Output of [load_settings()].
-#' @param cwd Character. Working directory.
-#' @return Character(1). The full system prompt.
-#' @keywords internal
-.build_system_prompt <- function(settings, cwd = getwd()) {
-  parts <- c(
-    .prompt_identity(settings, cwd),
-    .prompt_tone_and_style(settings),
-    .prompt_doing_tasks(),
-    .prompt_code_conventions(),
-    .prompt_using_tools(settings),
-    .prompt_actions(),
-    .prompt_r_specifics(),
-    .prompt_context_blocks(settings, cwd)
-  )
-  paste(parts[nzchar(parts)], collapse = "\n\n")
-}
-
-# ---------------------------------------------------------------------------
-# System-reminder builder (dynamic, injected per-turn into user message)
-# ---------------------------------------------------------------------------
-
-#' Build a system-reminder block for dynamic per-turn context injection
-#'
-#' Mirrors Claude Code's `<system-reminder>` pattern: ephemeral context that
-#' is appended to the user message rather than the system prompt, so it
-#' doesn't break prompt caching.
-#'
-#' @param settings List. Output of [load_settings()].
-#' @param iteration Integer. Current agent loop iteration.
-#' @param cwd Character. Working directory.
-#' @return Character(1). The reminder block, or `""` if nothing to inject.
-#' @keywords internal
-.build_system_reminder <- function(settings, iteration = 1L, cwd = getwd(),
-                                   query = NULL) {
-  lines <- character(0)
-
-  # Current date/time (changes each turn, so must NOT be in system prompt)
-  lines <- c(lines, sprintf("Current date/time: %s", format(Sys.time(), "%Y-%m-%d %H:%M %Z")))
-
-  # Iteration count
-  lines <- c(lines, sprintf("Agent loop iteration: %d", as.integer(iteration)))
-
-  # Working directory (in case cwd changes)
-  lines <- c(lines, sprintf("Working directory: %s", cwd))
-
-  # Auto-memory recall (first iteration only; the model retains it thereafter).
-  # When a query is available, select only relevant memories via the small/fast
-  # model (haiku); otherwise fall back to the full concatenation.
-  if (as.integer(iteration) <= 1L) {
-    recall <- tryCatch(
-      recall_memories_relevant(query,
-        model = settings$small_fast_model %||% .HAIKU_MODEL),
-      error = function(e) tryCatch(recall_memories(), error = function(e2) ""))
-    if (nzchar(recall)) lines <- c(lines, "", recall)
-  }
-
-  if (length(lines) == 0L) return("")
-  paste0("<system-reminder>\n", paste(lines, collapse = "\n"), "\n</system-reminder>")
 }
 
 # ---------------------------------------------------------------------------

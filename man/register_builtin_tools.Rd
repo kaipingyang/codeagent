@@ -2,7 +2,7 @@
 % Please edit documentation in R/tools_builtin.R
 \name{register_builtin_tools}
 \alias{register_builtin_tools}
-\title{Register all built-in tools to an ellmer Chat object}
+\title{Register all built-in codeagent tools to a Chat}
 \usage{
 register_builtin_tools(
   chat,
@@ -16,11 +16,12 @@ register_builtin_tools(
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
 
-\item{mode}{Character. Permission mode.}
+\item{mode}{Character. Permission mode (see \link{PermissionMode}).}
 
-\item{rules}{List. Permission rules.}
+\item{rules}{List. \code{\link[=PermissionRule]{PermissionRule()}} objects.}
 
-\item{ask_fn}{Function or NULL. Called when permission is \code{"ask"}.}
+\item{ask_fn}{Function or NULL. \verb{function(tool_name, input) -> logical}.
+Called when permission is \code{"ask"}.}
 
 \item{skip_file_tools}{Logical. Skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
 (register only Bash) when btw file tools handle files (Path A).}
@@ -32,5 +33,5 @@ passed through to \code{\link[=bash_tool]{bash_tool()}}.}
 Invisibly returns \code{chat}.
 }
 \description{
-Register all built-in tools to an ellmer Chat object
+Register all built-in codeagent tools to a Chat
 }

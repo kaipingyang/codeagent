@@ -87,3 +87,32 @@ register_r_tools <- function(chat, groups = NULL) {
   }
   invisible(length(all_tools))
 }
+
+#' R package test verification function
+#'
+#' Runs `devtools::test()` and returns pass/fail. Use as `verify_fn` in
+#' [codeagent_client()] to automatically re-prompt when tests fail.
+#'
+#' @return A function suitable for `verify_fn`.
+#' @export
+verify_r_tests <- function() {
+  function(response, chat, cwd) {
+    if (!requireNamespace("devtools", quietly = TRUE))
+      return(list(passed = TRUE))
+    result <- tryCatch({
+      withr::with_dir(cwd, {
+        res <- devtools::test(reporter = "silent")
+        failures <- sum(vapply(res, function(r) r$failed + r$error, integer(1)))
+        list(
+          passed  = failures == 0L,
+          message = if (failures > 0L)
+            sprintf("%d test(s) failed. Run devtools::test() for details.", failures)
+          else ""
+        )
+      })
+    }, error = function(e) {
+      list(passed = FALSE, message = conditionMessage(e))
+    })
+    result
+  }
+}

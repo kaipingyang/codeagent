@@ -5,6 +5,7 @@
 \title{Task Management Tools}
 \description{
 TaskCreate, TaskGet, TaskUpdate, TaskList tools for codeagent.
-Tasks are stored in a session-scoped environment (in-memory, not persisted).
+Tasks are stored in a per-session environment (created fresh per
+\code{register_task_tools()} call) so concurrent agents do not share state.
 }
 \keyword{internal}

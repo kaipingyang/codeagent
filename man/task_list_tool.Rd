@@ -4,7 +4,10 @@
 \alias{task_list_tool}
 \title{Create the TaskList tool}
 \usage{
-task_list_tool()
+task_list_tool(store)
+}
+\arguments{
+\item{store}{Environment. Per-session task store from \code{.new_task_store()}.}
 }
 \value{
 An \code{ellmer::tool()} object.
@@ -12,3 +15,4 @@ An \code{ellmer::tool()} object.
 \description{
 Create the TaskList tool
 }
+\keyword{internal}

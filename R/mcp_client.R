@@ -114,3 +114,39 @@ register_mcp_client <- function(chat, config = NULL) {
   tryCatch(register_mcp_client(chat, list(mcpServers = servers)),
            error = function(e) invisible(0L))
 }
+
+#' Create an R-based MCP server entry
+#'
+#' Builds an `mcp_servers` list entry that launches an R subprocess running
+#' `mcptools::mcp_server()` over stdio.
+#'
+#' @param tools_script Character(1) or NULL. Path to an `.R` script that yields
+#'   a `list()` of `ellmer::tool()` objects.
+#' @param session_tools Logical. Whether to expose built-in mcptools session
+#'   management tools. Default `FALSE`.
+#' @param rscript Character(1). Path to the `Rscript` binary.
+#' @return A named list with `type`, `command`, and `args`.
+#' @export
+r_mcp_server <- function(
+    tools_script  = NULL,
+    session_tools = FALSE,
+    rscript       = file.path(
+      R.home("bin"),
+      if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"
+    )) {
+  if (!file.exists(rscript)) {
+    fallback <- unname(Sys.which("Rscript"))
+    if (!nzchar(fallback))
+      cli::cli_abort("Cannot locate Rscript binary. Pass {.arg rscript} explicitly.")
+    rscript <- fallback
+  }
+  st_str <- if (isTRUE(session_tools)) "TRUE" else "FALSE"
+  rcode  <- if (is.null(tools_script)) {
+    sprintf("mcptools::mcp_server(session_tools = %s)", st_str)
+  } else {
+    ts <- normalizePath(tools_script, mustWork = FALSE)
+    ts <- gsub("'", "\\'", ts, fixed = TRUE)
+    sprintf("mcptools::mcp_server(tools = '%s', session_tools = %s)", ts, st_str)
+  }
+  list(type = "stdio", command = rscript, args = c("-e", rcode))
+}

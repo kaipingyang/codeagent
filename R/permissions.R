@@ -236,3 +236,46 @@ DenialTracker <- R6::R6Class(
     }
   )
 )
+
+# ---------------------------------------------------------------------------
+# Permission rule parsing from settings.json declarations
+# (moved from settings.R -- belongs with the permission system)
+# ---------------------------------------------------------------------------
+
+# Parse a Claude Code-style pattern string like "Bash(npm run test *)" into
+# (tool_name, rule_content).  No parentheses -> tool_name only.
+.parse_permission_pattern <- function(pattern) {
+  pattern <- trimws(pattern %||% "")
+  if (!nzchar(pattern)) return(NULL)
+  m <- regexec("^([A-Za-z_][A-Za-z0-9_]*)\\((.*)\\)$", pattern)
+  caps <- regmatches(pattern, m)[[1L]]
+  if (length(caps) == 3L) {
+    list(tool_name = caps[[2L]], rule_content = caps[[3L]])
+  } else {
+    list(tool_name = pattern, rule_content = NULL)
+  }
+}
+
+# Convert settings$permissions lists into PermissionRule objects.
+# jsonlite simplifyVector=TRUE: non-empty array -> character vector,
+# empty array -> list() of length 0.  Handle both shapes.
+.permissions_to_rules <- function(perms) {
+  if (!is.list(perms)) return(list())
+  rules <- list()
+  for (behavior in c("allow", "deny", "ask")) {
+    patterns <- perms[[behavior]]
+    if (!length(patterns)) next
+    if (is.character(patterns)) patterns <- as.list(patterns)
+    for (p in patterns) {
+      parsed <- tryCatch(.parse_permission_pattern(p), error = function(e) NULL)
+      if (is.null(parsed)) next
+      rule <- tryCatch(
+        PermissionRule(parsed$tool_name, behavior = behavior,
+                       source = "settings", rule_content = parsed$rule_content),
+        error = function(e) NULL
+      )
+      if (!is.null(rule)) rules <- c(rules, list(rule))
+    }
+  }
+  rules
+}
