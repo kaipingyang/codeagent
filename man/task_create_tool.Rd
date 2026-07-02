@@ -4,7 +4,10 @@
 \alias{task_create_tool}
 \title{Create the TaskCreate tool}
 \usage{
-task_create_tool()
+task_create_tool(store)
+}
+\arguments{
+\item{store}{Environment. Per-session task store from \code{.new_task_store()}.}
 }
 \value{
 An \code{ellmer::tool()} object.
@@ -12,3 +15,4 @@ An \code{ellmer::tool()} object.
 \description{
 Create the TaskCreate tool
 }
+\keyword{internal}

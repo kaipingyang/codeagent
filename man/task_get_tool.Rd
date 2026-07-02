@@ -4,7 +4,10 @@
 \alias{task_get_tool}
 \title{Create the TaskGet tool}
 \usage{
-task_get_tool()
+task_get_tool(store)
+}
+\arguments{
+\item{store}{Environment. Per-session task store from \code{.new_task_store()}.}
 }
 \value{
 An \code{ellmer::tool()} object.
@@ -12,3 +15,4 @@ An \code{ellmer::tool()} object.
 \description{
 Create the TaskGet tool
 }
+\keyword{internal}

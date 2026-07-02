@@ -2,10 +2,16 @@
 % Please edit documentation in R/tools_builtin.R
 \name{tools_builtin}
 \alias{tools_builtin}
-\title{Built-in Tools}
+\title{Built-in Tools Registration}
 \description{
-Core tool implementations for codeagent:
-Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS.
-Each tool is an \code{ellmer::tool()} object with permission-aware execution.
+Registers all core codeagent tools (Bash, Read, Write, Edit,
+MultiEdit, Glob, Grep, LS) onto an ellmer Chat. Individual tool factories
+live in dedicated files: \link{tools_bash}, \link{tools_fs}, \link{tools_search}.
+
+Shared helpers used by all tool files:
+\itemize{
+\item \code{.tool_result()} -- legacy ContentToolResult builder
+\item \code{.make_permission_checker()} -- live-mode permission closure factory
+}
 }
 \keyword{internal}

@@ -1,36 +1,45 @@
 #' @title Task Management Tools
 #' @description TaskCreate, TaskGet, TaskUpdate, TaskList tools for codeagent.
-#'   Tasks are stored in a session-scoped environment (in-memory, not persisted).
+#'   Tasks are stored in a per-session environment (created fresh per
+#'   `register_task_tools()` call) so concurrent agents do not share state.
 #' @name tools_task
 #' @keywords internal
 NULL
 
 # ---------------------------------------------------------------------------
-# In-process task store (per R session)
+# Per-session task store factory
 # ---------------------------------------------------------------------------
 
-.task_store <- new.env(parent = emptyenv())
-.task_store$tasks    <- list()
-.task_store$next_id  <- 1L
+# Create a fresh, isolated task store environment.  Called once per
+# codeagent_client() / register_task_tools() invocation so that parallel
+# agents (team.R) each get their own store rather than sharing a single
+# package-level global environment.
+.new_task_store <- function() {
+  store <- new.env(parent = emptyenv())
+  store$tasks   <- list()
+  store$next_id <- 1L
+  store
+}
 
-.task_new_id <- function() {
-  id <- as.character(.task_store$next_id)
-  .task_store$next_id <- .task_store$next_id + 1L
+# Accessors -- all take an explicit store argument.
+.task_new_id <- function(store) {
+  id <- as.character(store$next_id)
+  store$next_id <- store$next_id + 1L
   id
 }
 
-.task_get <- function(id) .task_store$tasks[[id]]
+.task_get <- function(id, store) store$tasks[[id]]
 
-.task_set <- function(id, task) {
-  .task_store$tasks[[id]] <- task
+.task_set <- function(id, task, store) {
+  store$tasks[[id]] <- task
   invisible(NULL)
 }
 
-.task_list_all <- function() .task_store$tasks
+.task_list_all <- function(store) store$tasks
 
-.task_reset <- function() {
-  .task_store$tasks   <- list()
-  .task_store$next_id <- 1L
+.task_reset <- function(store) {
+  store$tasks   <- list()
+  store$next_id <- 1L
 }
 
 # ---------------------------------------------------------------------------
@@ -39,12 +48,14 @@ NULL
 
 #' Create the TaskCreate tool
 #'
+#' @param store Environment. Per-session task store from `.new_task_store()`.
 #' @return An `ellmer::tool()` object.
-#' @export
-task_create_tool <- function() {
+#' @keywords internal
+task_create_tool <- function(store) {
+  force(store)
   ellmer::tool(
     fun = function(subject, description, active_form = NULL) {
-      id   <- .task_new_id()
+      id   <- .task_new_id(store)
       task <- list(
         id          = id,
         subject     = subject,
@@ -56,7 +67,7 @@ task_create_tool <- function() {
         blocked_by  = character(0),
         created_at  = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
       )
-      .task_set(id, task)
+      .task_set(id, task, store)
       paste0("Created task #", id, ": ", subject)
     },
     description = "Create a new pending task in the task list.",
@@ -83,20 +94,22 @@ task_create_tool <- function() {
 
 #' Create the TaskGet tool
 #'
+#' @param store Environment. Per-session task store from `.new_task_store()`.
 #' @return An `ellmer::tool()` object.
-#' @export
-task_get_tool <- function() {
+#' @keywords internal
+task_get_tool <- function(store) {
+  force(store)
   ellmer::tool(
     fun = function(task_id) {
-      task <- .task_get(as.character(task_id))
+      task <- .task_get(as.character(task_id), store)
       if (is.null(task)) return(paste0("[Error] Task not found: #", task_id))
       lines <- c(
         paste0("Task #", task$id, ": ", task$subject),
         paste0("Status: ", task$status),
         paste0("Description: ", task$description)
       )
-      if (!is.null(task$owner))     lines <- c(lines, paste0("Owner: ", task$owner))
-      if (length(task$blocks) > 0)  lines <- c(lines, paste0("Blocks: #",   paste(task$blocks,     collapse = ", #")))
+      if (!is.null(task$owner))        lines <- c(lines, paste0("Owner: ", task$owner))
+      if (length(task$blocks) > 0)     lines <- c(lines, paste0("Blocks: #",   paste(task$blocks,     collapse = ", #")))
       if (length(task$blocked_by) > 0) lines <- c(lines, paste0("BlockedBy: #", paste(task$blocked_by, collapse = ", #")))
       paste(lines, collapse = "\n")
     },
@@ -117,15 +130,17 @@ task_get_tool <- function() {
 
 #' Create the TaskUpdate tool
 #'
+#' @param store Environment. Per-session task store from `.new_task_store()`.
 #' @return An `ellmer::tool()` object.
-#' @export
-task_update_tool <- function() {
+#' @keywords internal
+task_update_tool <- function(store) {
+  force(store)
   ellmer::tool(
     fun = function(task_id, status = NULL, subject = NULL,
                    description = NULL, owner = NULL,
                    add_blocks = NULL, add_blocked_by = NULL) {
       id   <- as.character(task_id)
-      task <- .task_get(id)
+      task <- .task_get(id, store)
       if (is.null(task)) return(paste0("[Error] Task not found: #", task_id))
 
       if (!is.null(status))      task$status      <- status
@@ -133,19 +148,17 @@ task_update_tool <- function() {
       if (!is.null(description)) task$description  <- description
       if (!is.null(owner))       task$owner        <- owner
 
-      if (!is.null(add_blocks)) {
+      if (!is.null(add_blocks))
         task$blocks <- unique(c(task$blocks, as.character(add_blocks)))
-      }
-      if (!is.null(add_blocked_by)) {
+      if (!is.null(add_blocked_by))
         task$blocked_by <- unique(c(task$blocked_by, as.character(add_blocked_by)))
-      }
 
       if (identical(status, "deleted")) {
-        .task_store$tasks[[id]] <- NULL
+        store$tasks[[id]] <- NULL
         return(paste0("Deleted task #", task_id))
       }
 
-      .task_set(id, task)
+      .task_set(id, task, store)
       paste0("Updated task #", id, " (", task$subject, "): status=", task$status)
     },
     description = paste0(
@@ -184,13 +197,15 @@ task_update_tool <- function() {
 
 #' Create the TaskList tool
 #'
+#' @param store Environment. Per-session task store from `.new_task_store()`.
 #' @return An `ellmer::tool()` object.
-#' @export
-task_list_tool <- function() {
+#' @keywords internal
+task_list_tool <- function(store) {
+  force(store)
   ellmer::tool(
     fun = function() {
-      tasks <- .task_list_all()
-      tasks <- tasks[!vapply(tasks, is.null, logical(1))]  # remove deleted
+      tasks <- .task_list_all(store)
+      tasks <- tasks[!vapply(tasks, is.null, logical(1))]
       if (length(tasks) == 0L) return("No tasks.")
       lines <- vapply(tasks, function(t) {
         blocked <- if (length(t$blocked_by) > 0)
@@ -215,13 +230,18 @@ task_list_tool <- function() {
 
 #' Register task management tools to an ellmer Chat object
 #'
+#' Creates a fresh per-session task store and registers TaskCreate, TaskGet,
+#' TaskUpdate, TaskList tools. Each call gets an isolated store so parallel
+#' agents do not collide on task IDs.
+#'
 #' @param chat An `ellmer::Chat` object.
 #' @return Invisibly returns `chat`.
 #' @export
 register_task_tools <- function(chat) {
-  chat$register_tool(task_create_tool())
-  chat$register_tool(task_get_tool())
-  chat$register_tool(task_update_tool())
-  chat$register_tool(task_list_tool())
+  store <- .new_task_store()
+  chat$register_tool(task_create_tool(store))
+  chat$register_tool(task_get_tool(store))
+  chat$register_tool(task_update_tool(store))
+  chat$register_tool(task_list_tool(store))
   invisible(chat)
 }
