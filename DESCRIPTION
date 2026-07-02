@@ -16,7 +16,7 @@ Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Imports:
-    ellmer (>= 0.3.0),
+    ellmer (>= 0.4.1),
     R6,
     jsonlite,
     httr2,

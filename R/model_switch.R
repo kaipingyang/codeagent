@@ -36,10 +36,12 @@ NULL
 
 #' Swap a Chat's provider in place (Route A)
 #'
-#' Replaces the ellmer Chat's internal R6 `private$provider` with the provider
-#' from `new_chat`. Turns, tools, and system prompt live on the Chat object and
-#' are therefore preserved. Returns TRUE on success, FALSE if the private field
-#' is inaccessible (e.g. an ellmer version that locked it down).
+#' When the new model uses the same provider class (e.g. both OpenAI-compatible),
+#' uses the public `set_model()` API added in ellmer 0.4.2. For cross-provider
+#' switches (e.g. OpenAI-compat -> Anthropic) falls back to replacing the private
+#' R6 `private$provider` field -- still necessary until ellmer adds
+#' `set_provider()` (see https://github.com/tidyverse/ellmer/issues/1042).
+#' Returns TRUE on success, FALSE if inaccessible.
 #'
 #' @param chat An `ellmer::Chat` to mutate.
 #' @param new_chat An `ellmer::Chat` whose provider to adopt.
@@ -47,6 +49,22 @@ NULL
 #' @keywords internal
 .swap_provider <- function(chat, new_chat) {
   tryCatch({
+    cur_class <- class(chat$get_provider())[1L]
+    new_class <- class(new_chat$get_provider())[1L]
+
+    # Same provider class: use the public set_model() API (ellmer >= 0.4.2).
+    # This avoids touching private internals for the common same-vendor case.
+    if (identical(cur_class, new_class) &&
+        is.function(tryCatch(chat$set_model, error = function(e) NULL))) {
+      new_model <- tryCatch(new_chat$get_model(), error = function(e) NULL)
+      if (!is.null(new_model)) {
+        chat$set_model(new_model)
+        return(TRUE)
+      }
+    }
+
+    # Cross-provider: replace the private$provider field in place.
+    # Necessary until ellmer gains a public set_provider() method.
     priv <- chat$.__enclos_env__$private
     if (is.null(priv) || is.null(priv$provider))
       return(FALSE)

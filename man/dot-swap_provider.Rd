@@ -15,9 +15,11 @@
 Logical. TRUE if swapped in place.
 }
 \description{
-Replaces the ellmer Chat's internal R6 \code{private$provider} with the provider
-from \code{new_chat}. Turns, tools, and system prompt live on the Chat object and
-are therefore preserved. Returns TRUE on success, FALSE if the private field
-is inaccessible (e.g. an ellmer version that locked it down).
+When the new model uses the same provider class (e.g. both OpenAI-compatible),
+uses the public \code{set_model()} API added in ellmer 0.4.2. For cross-provider
+switches (e.g. OpenAI-compat -> Anthropic) falls back to replacing the private
+R6 \code{private$provider} field -- still necessary until ellmer adds
+\code{set_provider()} (see https://github.com/tidyverse/ellmer/issues/1042).
+Returns TRUE on success, FALSE if inaccessible.
 }
 \keyword{internal}
