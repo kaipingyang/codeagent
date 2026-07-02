@@ -1,0 +1,75 @@
+---
+title: "Data exploration with codeagent"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Data exploration with codeagent}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+## Overview
+
+codeagent includes a dedicated data exploration mode inspired by
+[querychat](https://github.com/posit-dev/querychat). The agent can answer
+natural-language questions about data.frames in your R session without
+writing raw SQL or dplyr code yourself.
+
+## Quick start
+
+```{r}
+library(codeagent)
+
+# Register the ExploreData tool on a client
+client <- codeagent_client(
+  permission_mode = "bypass",
+  btw_groups = NULL  # disable btw for a focused data session
+)
+register_explore_data_tool(client$chat)
+
+# Now ask questions in the chat
+codeagent(client, "How many rows are in mtcars and what are the columns?")
+codeagent(client, "What is the average mpg for each number of cylinders?")
+codeagent(client, "Which cars have mpg > 25? Show name and mpg.")
+```
+
+## Using /explore in the Shiny app
+
+Type `/explore mtcars` in the chat to enter data exploration mode:
+
+```
+/explore mtcars What is the relationship between weight and mpg?
+```
+
+The agent will:
+1. Get the schema of `mtcars`
+2. Write dplyr code to answer your question
+3. Execute it in a sandboxed environment (read-only, never modifies data)
+4. Display results as an interactive table
+
+## Environment context injection
+
+Enable automatic schema injection so the agent always knows what
+data.frames are in your session:
+
+```json
+// ~/.codeagent/settings.json
+{
+  "inject_r_env": true
+}
+```
+
+With this setting, the system-reminder includes a summary of all objects
+in `.GlobalEnv` on the first turn -- no tool call needed to discover them.
+
+## Security
+
+The `ExploreData` tool:
+- Executes code in a **sub-environment** of `.GlobalEnv` (cannot modify globals)
+- Is marked `read_only_hint = TRUE` (auto-allowed in `default` permission mode)
+- Does not have access to the file system or network
+
+For full RunR capabilities (file I/O, network), use the standard RunR tool.

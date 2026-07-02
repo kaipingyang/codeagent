@@ -1,0 +1,81 @@
+---
+title: "Skills and slash commands"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Skills and slash commands}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+## What are skills?
+
+Skills are reusable prompt templates that the agent can invoke on demand.
+Type `/skillname` in the chat to activate a skill, or the agent will
+auto-trigger matching skills based on your request.
+
+## Built-in skills
+
+codeagent ships with skills for common R package development tasks:
+
+| Skill | Description |
+|-------|-------------|
+| `/plan` | Enter read-only planning mode |
+| `/verify` | Run tests and check the package |
+| `/compact` | Compact the context window |
+| `/roxygen` | Generate roxygen2 documentation |
+| `/testthat` | Write unit tests |
+| `/document` | Run `devtools::document()` |
+| `/lint` | Style and lint R code |
+| `/news` | Update NEWS.md |
+| `/explore` | Explore a data.frame |
+
+## Using skills from the chat
+
+```
+# In the Shiny app or REPL:
+/plan add a new summarise_by_group() function
+/roxygen summarise_by_group
+/testthat summarise_by_group
+```
+
+## Creating custom skills
+
+Skills are `name/SKILL.md` directories in any of the search paths:
+
+```
+~/.codeagent/skills/my-skill/SKILL.md
+.codeagent/skills/my-skill/SKILL.md    # project-local
+.btw/skills/my-skill/SKILL.md
+.claude/skills/my-skill/SKILL.md
+```
+
+**SKILL.md format**:
+
+```markdown
+---
+name: my-skill
+description: Short description shown in skill picker
+argument-hint: "<what to type after /my-skill>"
+allowed-tools:
+  - Read
+  - Bash
+---
+
+Skill body — instructions for the agent.
+
+Use $ARGUMENTS to insert the user-supplied arguments.
+```
+
+## Skill discovery
+
+```{r}
+# List all available skills
+list_skills_meta()
+
+# Load a skill prompt programmatically
+load_skill_prompt("plan", args = "add feature X", cwd = getwd())
+```

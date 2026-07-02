@@ -5,5 +5,7 @@
 \title{Bash Tool}
 \description{
 Execute shell commands with permission gating and optional sandboxing.
+Shared helpers (\code{.tool_result}, \code{.make_permission_checker}) live in
+\code{tools_builtin.R} and are available to all tool files.
 }
 \keyword{internal}

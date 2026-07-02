@@ -67,7 +67,12 @@ NULL
   sandbox            = list(enabled = FALSE, allow_network = TRUE),
 
   # Codebase RAG retrieval (opt-in; indexing is costly). See rag.R.
-  rag                = FALSE
+  rag                = FALSE,
+
+  # R session environment context injection (gander-inspired).
+  # When TRUE, the first system-reminder includes ls() + data.frame schemas
+  # from .GlobalEnv so the agent knows what objects exist without a tool call.
+  inject_r_env       = FALSE
 )
 
 # ---------------------------------------------------------------------------
