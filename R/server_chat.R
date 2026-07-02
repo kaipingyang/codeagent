@@ -240,9 +240,16 @@ server_chat <- function(input, output, session, chat, settings,
       cur   <- tryCatch(chat$get_model(), error = function(e) settings$model %||% "?")
       tiers <- settings$tier_models %||% list()
       if (!nzchar(args)) {
-        # No arg: open modal picker. Direct switch with arg still works in text.
-        choices <- if (length(tiers)) stats::setNames(unlist(tiers), names(tiers))
-                   else c(cur)
+        # No arg: open modal picker.
+        # Labels show "tier (endpoint)" so user knows what they're picking.
+        if (length(tiers)) {
+          choices <- stats::setNames(
+            unlist(tiers),
+            vapply(names(tiers), function(nm)
+              sprintf("%s  (%s)", nm, tiers[[nm]]), character(1)))
+        } else {
+          choices <- stats::setNames(cur, cur)
+        }
         shiny::showModal(shiny::modalDialog(
           title = "Switch model",
           shiny::radioButtons("ca_model_pick", NULL,
@@ -255,7 +262,11 @@ server_chat <- function(input, output, session, chat, settings,
           ),
           easyClose = TRUE
         ))
-        NULL   # no chat feedback until the modal confirm observer fires
+        # CRITICAL: shinychat shows a pending bubble + disables input whenever
+        # a user message is submitted (JS-side, before the server responds).
+        # For local commands we must send a chat_append_message to clear it --
+        # "message" action is the only thing that sets inputDisabled=false.
+        sprintf("**/model** -- pick a model in the popup to switch.")
       } else {
         new_chat <- tryCatch(
           codeagent:::.resolve_model_chat(args, cwd),
