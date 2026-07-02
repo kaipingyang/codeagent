@@ -1,0 +1,152 @@
+url: https://github.com/kaipingyang/codeagent
+template:
+  bootstrap: 5
+
+home:
+  title: codeagent — R-native coding agent
+  description: >
+    An R-native agentic coding assistant built on ellmer and btw. Full-featured
+    harness with streaming, tool execution, permissions, compaction, skills,
+    multi-agent coordination, a CLI REPL, and a Shiny app.
+
+navbar:
+  structure:
+    left:  [intro, reference, articles, news]
+    right: [github]
+
+reference:
+  - title: "Core Client"
+    desc: "Create and run the agent."
+    contents:
+      - codeagent_client
+      - codeagent_client_config
+      - codeagent
+      - agent_loop
+      - use_codeagent_settings
+      - use_codeagent_setup
+
+  - title: "Shiny App"
+    desc: "Interactive chat interface."
+    contents:
+      - codeagent_app
+
+  - title: "IDE Addins"
+    desc: "RStudio / Positron keyboard-shortcut integration."
+    contents:
+      - codeagent_addin
+      - codeagent_addin_selection
+
+  - title: "CLI"
+    desc: "Terminal REPL and command-line interface."
+    contents:
+      - codeagent_repl
+      - install_codeagent_cli
+
+  - title: "Tools"
+    desc: "Built-in tool factories registered on the Chat."
+    contents:
+      - bash_tool
+      - read_tool
+      - write_tool
+      - edit_tool
+      - multi_edit_tool
+      - glob_tool
+      - grep_tool
+      - ls_tool
+      - run_r_tool
+      - explore_data_tool
+      - register_builtin_tools
+      - register_explore_data_tool
+
+  - title: "Permissions"
+    desc: "Seven-mode permission gate and rule system."
+    contents:
+      - check_permission
+      - PermissionMode
+      - PermissionRule
+
+  - title: "Session Management"
+    desc: "Save, load, and navigate conversation history."
+    contents:
+      - list_sessions
+      - save_session
+      - restore_session_into_chat
+      - get_session_messages
+      - fork_session
+      - rename_session
+      - tag_session
+      - truncate_chat_turns
+
+  - title: "Memory"
+    desc: "Persistent cross-session memory."
+    contents:
+      - write_memory
+      - list_memories
+      - recall_memories
+      - recall_memories_relevant
+      - delete_memory
+      - read_todos
+
+  - title: "Multi-Agent Teams"
+    desc: "Parallel agent coordination."
+    contents:
+      - team_run
+      - team_coordinate
+      - board_create
+      - board_add_task
+      - board_claim
+      - board_complete
+      - board_status
+      - board_send_message
+      - board_messages
+
+  - title: "Skills"
+    desc: "Skill discovery and loading."
+    contents:
+      - list_skills_meta
+      - load_skill_prompt
+      - build_skill_hint
+
+  - title: "MCP"
+    desc: "Model Context Protocol client and server."
+    contents:
+      - codeagent_mcp_server
+      - register_mcp_client
+      - r_mcp_server
+
+  - title: "RAG"
+    desc: "Codebase semantic retrieval."
+    contents:
+      - build_codebase_store
+      - register_rag_tool
+
+  - title: "Hooks"
+    desc: "Lifecycle event hooks."
+    contents:
+      - HookRegistry
+      - HookEvent
+
+  - title: "Utilities"
+    desc: "Miscellaneous helpers."
+    contents:
+      - switch_model
+      - verify_r_tests
+      - use_codeagent_md
+
+articles:
+  - title: "Getting Started"
+    navbar: ~
+    contents:
+      - getting-started
+
+  - title: "Configuration"
+    navbar: "Configuration"
+    contents:
+      - permissions
+      - skills-usage
+
+  - title: "Advanced"
+    navbar: "Advanced"
+    contents:
+      - team-coordination
+      - data-exploration

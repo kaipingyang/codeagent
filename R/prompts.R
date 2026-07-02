@@ -201,13 +201,59 @@ NULL
   lines <- c(lines, sprintf("Working directory: %s", cwd))
 
   if (as.integer(iteration) <= 1L) {
+    # Auto-memory recall: select only relevant memories for this query.
     recall <- tryCatch(
       recall_memories_relevant(query,
         model = settings$small_fast_model %||% .HAIKU_MODEL),
       error = function(e) tryCatch(recall_memories(), error = function(e2) ""))
     if (nzchar(recall)) lines <- c(lines, "", recall)
+
+    # R session environment context (gander-inspired ambient injection).
+    # Proactively shows the agent what objects exist so it doesn't waste a
+    # tool call asking. Opt-in: settings$inject_r_env = TRUE (default FALSE).
+    if (isTRUE(settings$inject_r_env)) {
+      env_ctx <- tryCatch(.r_env_context(), error = function(e) "")
+      if (nzchar(env_ctx)) lines <- c(lines, "", env_ctx)
+    }
   }
 
   if (length(lines) == 0L) return("")
   paste0("<system-reminder>\n", paste(lines, collapse = "\n"), "\n</system-reminder>")
+}
+
+# ---------------------------------------------------------------------------
+# R session environment context (ambient injection, gander-inspired)
+# ---------------------------------------------------------------------------
+
+# Summarise the current R session environment for the system-reminder.
+# Shows variable names + types, and column schemas for data.frames.
+# Kept intentionally brief to not bloat the context window.
+.r_env_context <- function(max_objects = 20L, max_df_cols = 10L) {
+  objs <- tryCatch(ls(envir = .GlobalEnv), error = function(e) character(0))
+  if (!length(objs)) return("")
+  objs <- utils::head(objs, max_objects)
+
+  parts <- vapply(objs, function(nm) {
+    val <- tryCatch(get(nm, envir = .GlobalEnv, inherits = FALSE),
+                   error = function(e) NULL)
+    if (is.null(val)) return(NULL)
+    cls <- paste(class(val), collapse = "/")
+    if (is.data.frame(val)) {
+      nrow_v <- nrow(val); ncol_v <- ncol(val)
+      cols <- utils::head(names(val), max_df_cols)
+      types <- vapply(cols, function(cn)
+        paste0(cn, ":", class(val[[cn]])[1L]), character(1))
+      extra <- if (ncol_v > max_df_cols) sprintf("+%d", ncol_v - max_df_cols) else ""
+      sprintf("%s [%s %dx%d: %s%s]", nm, cls, nrow_v, ncol_v,
+              paste(types, collapse=", "), extra)
+    } else {
+      len <- tryCatch(length(val), error = function(e) NA_integer_)
+      sprintf("%s [%s len=%s]", nm, cls,
+              if (is.na(len)) "?" else as.character(len))
+    }
+  }, character(1))
+  parts <- parts[!vapply(parts, is.null, logical(1))]
+  if (!length(parts)) return("")
+  paste0("R session objects (GlobalEnv):\n",
+         paste(paste0("  ", parts), collapse = "\n"))
 }

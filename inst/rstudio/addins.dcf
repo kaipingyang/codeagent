@@ -1,0 +1,9 @@
+Name: codeagent - Chat
+Description: Open the codeagent chat interface
+Binding: codeagent_addin
+Interactive: true
+
+Name: codeagent - Ask about selection
+Description: Send selected code to codeagent for explanation or assistance
+Binding: codeagent_addin_selection
+Interactive: true

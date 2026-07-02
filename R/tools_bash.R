@@ -1,49 +1,10 @@
 #' @title Bash Tool
 #' @description Execute shell commands with permission gating and optional sandboxing.
+#'   Shared helpers (`.tool_result`, `.make_permission_checker`) live in
+#'   `tools_builtin.R` and are available to all tool files.
 #' @name tools_bash
 #' @keywords internal
 NULL
-
-# ---------------------------------------------------------------------------
-# Tool factory helpers
-# ---------------------------------------------------------------------------
-
-# Wrap a tool result string in ContentToolResult with display metadata.
-# title: HTML string shown in the shinychat tool card header.
-# text:  plain-text value seen by the LLM.
-# markdown: optional richer representation shown to the user.
-# right_output: optional htmltools tag pushed to the right Output panel.
-.tool_result <- function(text, title = NULL, markdown = NULL,
-                          right_output = NULL) {
-  display <- list()
-  if (!is.null(title))        display$title        <- htmltools::HTML(title)
-  if (!is.null(markdown))     display$markdown     <- markdown
-  if (!is.null(right_output)) display$right_output <- right_output
-  if (length(display) == 0L)  display <- NULL
-  ellmer::ContentToolResult(
-    value = text,
-    extra = if (!is.null(display)) list(display = display) else list()
-  )
-}
-
-# Build the on_request callback used inside tools
-.make_permission_checker <- function(tool_name, mode, rules,
-                                      ask_fn = NULL) {
-  # `mode` may be a static string (legacy) or a "mode environment" holding a
-  # live `$mode` slot. The latter lets plan-mode tools flip the active mode
-  # mid-conversation and have every already-registered checker observe it.
-  resolve_mode <- function() {
-    if (is.environment(mode)) mode$mode %||% "default" else mode
-  }
-  function(tool_input) {
-    decision <- check_permission(tool_name, resolve_mode(), rules, tool_input)
-    if (decision == "allow") return(TRUE)
-    if (decision == "deny")  return(FALSE)
-    # decision == "ask": call ask_fn if provided
-    if (!is.null(ask_fn)) return(isTRUE(ask_fn(tool_name, tool_input)))
-    FALSE  # default deny if no ask_fn
-  }
-}
 
 # ---------------------------------------------------------------------------
 # Bash tool
