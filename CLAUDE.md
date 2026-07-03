@@ -37,10 +37,16 @@ codegraph sync   # 更新符号索引，让 kiro/AI 工具看到最新代码
 ```
 这确保 `codeagent chat` / `codeagent_app()` 等用安装版运行的入口点使用最新代码。`devtools::load_all()` 只在当前 R session 里生效，launcher（`--vanilla`）和 CLI 用的是已装的包。codegraph 不会自动同步，手动 sync 后 kiro 的 codegraph 审核才能看到新符号。
 
+**新增功能必须同步更新 README.md：**
+- 新导出函数/新 feature → 在 README 对应 section 补一行
+- 重要行为变更 → 更新 README 相应描述
+- README 79 commits 不更新已是教训：每次 commit 前检查 README 是否需要同步
+
 **改代码必须同步更新测试和 example：**
 - 新增/修改函数 → 对应 `tests/testthat/test-*.R` 补测试
 - 修改公开 API（签名/行为）→ 对应 `inst/examples/demo_*.R` 或 `test_databricks.R` 更新
 - 新功能 → 加进 `inst/examples/test_databricks.R` 的 section
+- **新增任何导出函数，必须同时：① 确认是否需接入 `.register_all_tools()`/调用链；② 同步写 `test-*.R` 覆盖主路径和降级路径。**
 
 **工具函数用闭包工厂模式：**
 ```r
@@ -61,6 +67,12 @@ my_tool <- function(con, mode = "bypass") {
 ```
 
 ---
+
+**依赖包版本（当前已装）：**
+- `ellmer` 0.4.1.9000（dev，需 `Remotes: tidyverse/ellmer`，CRAN 0.4.1 缺 `set_model()`）
+- `btw` 1.3.0.9000（dev，含 `btw_tool_files_patch` 原子多文件编辑）
+- `shinychat` 0.4.0.9000（dev，monorepo，安装路径：`pak::pak("posit-dev/shinychat/pkg-r")`，注意不是 `pak::pak("posit-dev/shinychat")`）
+- `mcptools` 0.2.1（CRAN）
 
 ```r
 # Document + rebuild NAMESPACE
