@@ -117,6 +117,23 @@ codeagent_app(client)
 
 **Shiny state rule:** Use a single `shiny::reactiveValues()` for shared session state (see `ui.R` `state <- reactiveValues(...)`). Do NOT scatter individual `reactiveVal()` objects — consolidate related reactive state into one `reactiveValues` container. When mutable cross-module state is needed (e.g. the active client/chat for model switching), add a slot to the shared `reactiveValues`, not a standalone `reactiveVal`.
 
+**Shiny promise-in-observer rule (CRITICAL):** Never let a `promise(...)` call be the **last expression** in an `observeEvent` / `observe` body. If it is, Shiny treats the observer as an *async observer* and holds the reactive flush open until the promise settles — so any UI invalidations triggered inside the observer (e.g. writing `state$pending_approval`) are never flushed to the browser until the promise resolves. For "pause and wait for user interaction" patterns:
+```r
+# WRONG — flush stalls, UI never updates until promise resolves
+observeEvent(input$btn, {
+  promise(function(resolve, reject) { state$pending <- list(resolve = resolve) })
+})
+
+# CORRECT — assign to throwaway var, end with invisible(NULL)
+observeEvent(input$btn, {
+  .pr <- promise(function(resolve, reject) { state$pending <- list(resolve = resolve) })
+  invisible(NULL)   # observer completes synchronously; UI flushes immediately
+})
+```
+The `resolve` function stored in `state$pending` is called later from an Allow/Deny observer (which has the correct reactive domain). Never use `later::run_now()` to "pump" the event loop inside a Shiny observer — the reactive graph is non-reentrant and will block. Never use `promises::then()` for UI updates in Shiny — `then()` callbacks run in the `later` queue with NULL reactive domain and cannot write to `reactiveValues`.
+
+**Shiny async tool approval pattern:** For approval/question bars (tool gate UI in Shiny), use `chat_ui(footer = tagList(uiOutput("ca_approval_ui"), uiOutput("ca_question_ui")))` — the `footer=` slot is rendered above the input box. Bars use `border-top` only (no coloured backgrounds). Reference implementation: `inst/examples/test_shiny_ask_fn.R`.
+
 ---
 
 ## Architecture
