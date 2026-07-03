@@ -104,8 +104,15 @@ server_chat <- function(input, output, session, chat, settings,
 
     coro::async(function() {
       if (!is.null(stream_ctrl)) stream_ctrl$reset()
-      stream <- chat$stream_async(actual_input, stream = "content",
-                                  controller = stream_ctrl)
+      # Splice list contents so user_turn() receives each element as a separate
+      # positional argument (text string + ContentImage/ContentPDF/...).
+      # chat$stream_async(list(...)) passes the list as ONE arg → user_turn errors.
+      # chat$stream_async(!!!list(...)) splices → user_turn("text", img, ...) ✓
+      stream <- if (is.list(actual_input)) {
+        chat$stream_async(!!!actual_input, stream = "content", controller = stream_ctrl)
+      } else {
+        chat$stream_async(actual_input, stream = "content", controller = stream_ctrl)
+      }
       await(shinychat::chat_append("chat", stream, session = session))
 
       n_tokens    <- estimate_tokens(chat)
