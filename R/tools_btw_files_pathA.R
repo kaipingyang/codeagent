@@ -1,21 +1,29 @@
 #' @title Path A -- btw File Tools with Permission Gate (EXPERIMENTAL)
-#' @description Wraps btw's file tools (files_read, files_write, files_edit,
-#'   files_replace, files_list, files_search) with codeagent's permission
-#'   system, replacing codeagent's own Read/Write/Edit/Glob/Grep/LS tools.
+#' @description Wraps btw's file tools with codeagent's permission system.
 #'
-#'   **Not loaded by default.** Opt in:
+#'   **Design rationale -- two parallel edit paths:**
+#'
+#'   | Path | Tools | Scope | Strength |
+#'   |------|-------|-------|----------|
+#'   | **Default** (codeagent) | Read/Write/Edit/MultiEdit/Glob/Grep/LS | Any absolute path | Full filesystem access |
+#'   | **Path A** (btw, this file) | files_read/write/edit/replace/patch/list/search | Project cwd only | Hash-anchored edits, atomic patch |
+#'
+#'   The cwd restriction in Path A is **intentional and desirable** for
+#'   security-conscious environments: the agent cannot accidentally (or
+#'   maliciously) modify files outside the project directory. The default path
+#'   is more powerful but riskier; use it when you need to read system paths,
+#'   other projects, `/tmp`, etc.
+#'
+#'   Use both: Path A is opt-in via `enable_btw_file_tools()`, and
+#'   coexists with the default tools. The LLM chooses the right tool for each
+#'   task: btw tools for project-local edits (safer, hash-verified), default
+#'   tools for absolute paths.
+#'
+#'   **Not loaded by default.** Opt in with:
 #'   ```r
-#'   source(system.file("pathA/tools_btw_files.R", package = "codeagent"))
-#'   client <- codeagent_client(chat, use_btw_files = TRUE)
+#'   enable_btw_file_tools()          # sets options(codeagent.use_btw_files = TRUE)
+#'   client <- codeagent_client(chat) # both tool sets registered
 #'   ```
-#'
-#'   Benefits over codeagent's own file tools:
-#'   - btw `files_edit`: hashline-anchored edits reject stale changes
-#'   - btw `files_read`: returns hashline annotations for precise editing
-#'   - Unified permission gate on all write operations
-#'
-#'   Limitation: btw tools enforce paths relative to cwd; absolute paths
-#'   outside cwd are rejected by btw's `check_path_within_current_wd()`.
 #'
 #' @name tools_btw_files_pathA
 #' @keywords internal

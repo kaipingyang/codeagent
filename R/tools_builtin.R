@@ -56,8 +56,10 @@ NULL
 #' @param rules List. [PermissionRule()] objects.
 #' @param ask_fn Function or NULL. `function(tool_name, input) -> logical`.
 #'   Called when permission is `"ask"`.
-#' @param skip_file_tools Logical. Skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
-#'   (register only Bash) when btw file tools handle files (Path A).
+#' @param skip_file_tools Logical. If `TRUE`, skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
+#'   and register only Bash. Advanced use: set this if you want btw file tools to be
+#'   the *only* file tools (no absolute-path fallback). Default `FALSE` means both
+#'   codeagent and btw file tools coexist when Path A is enabled.
 #' @param sandbox List or NULL. Bash sandbox profile (see [.sandbox_profile()]);
 #'   passed through to [bash_tool()].
 #' @return Invisibly returns `chat`.

@@ -198,10 +198,11 @@ left_sidebar_ui_default <- left_sidebar_ui
 chat_codeagent_ui <- function(skill_meta) {
   shinychat::chat_ui(
     "chat",
-    fill          = TRUE,
-    enable_cancel = TRUE,
-    placeholder   = "Ask codeagent... (/ for skills, ESC to interrupt)",
-    footer        = .skill_picker_footer(skill_meta)
+    fill             = TRUE,
+    enable_cancel    = TRUE,
+    placeholder      = "Ask codeagent... (/ for skills, ESC to interrupt)",
+    allow_attachments = TRUE,
+    footer           = .skill_picker_footer(skill_meta)
   )
 }
 

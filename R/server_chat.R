@@ -105,14 +105,28 @@ server_chat <- function(input, output, session, chat, settings,
   })
 
   # ------------------------------------------------------------------
-  # Streaming task (ExtendedTask + coro::async)
   # ------------------------------------------------------------------
-    stream_task <- shiny::ExtendedTask$new(function(user_input) {
-    parsed <- .preprocess_input(user_input, cwd)
-    actual_input <- if (identical(parsed$type, "skill"))
-      tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd),
-               error = function(e) user_input)
-    else user_input  # "normal" or anything else -> send as-is
+  # Streaming task (ExtendedTask + coro::async)
+  # user_contents: character scalar OR list (text + ContentImage/ContentPDF)
+  # ------------------------------------------------------------------
+    stream_task <- shiny::ExtendedTask$new(function(user_contents) {
+    # Extract text for skill-prompt injection; keep full contents for LLM
+    text_part <- if (is.character(user_contents)) user_contents
+                 else if (is.list(user_contents) && is.character(user_contents[[1]]))
+                   user_contents[[1]]
+                 else as.character(user_contents)
+
+    parsed <- .preprocess_input(text_part, cwd)
+    # For skill trigger: replace text part with skill prompt; keep attachments
+    actual_input <- if (identical(parsed$type, "skill")) {
+      sp <- tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd),
+                     error = function(e) text_part)
+      if (is.list(user_contents) && length(user_contents) > 1)
+        c(list(sp), user_contents[-1L])   # skill text + original attachments
+      else sp
+    } else {
+      user_contents  # "normal" or anything else -> send as-is (text or contents list)
+    }
 
     shiny::isolate(state$compaction_ctrl$maybe_compact(
       chat,
@@ -148,8 +162,24 @@ server_chat <- function(input, output, session, chat, settings,
     if (stream_task$status() == "running") return()
     state$interrupt <- FALSE
 
+    # user_input_contents() normalises plain text OR {text, attachments} payloads
+    # (shinychat dev allow_attachments=TRUE). Returns character scalar or list of
+    # contents (text + ContentImage/ContentPDF etc).
+    raw_input  <- input$chat_user_input
+    user_contents <- tryCatch(
+      shinychat:::user_input_contents(raw_input),
+      error = function(e) raw_input
+    )
+    # Extract plain-text portion for slash-command detection
+    text_part <- if (is.character(user_contents)) user_contents
+                 else if (is.list(user_contents) && length(user_contents) > 0 &&
+                            is.character(user_contents[[1]]))
+                   user_contents[[1]]
+                 else if (is.list(raw_input)) raw_input[["text"]] %||% ""
+                 else as.character(raw_input)
+
     # Pre-process: local commands are handled here (not sent to LLM).
-    parsed <- tryCatch(.preprocess_input(input$chat_user_input, cwd),
+    parsed <- tryCatch(.preprocess_input(text_part, cwd),
                        error = function(e) list(type = "normal"))
 
     if (identical(parsed$type, "command")) {
@@ -157,7 +187,8 @@ server_chat <- function(input, output, session, chat, settings,
       return()
     }
 
-    stream_task$invoke(input$chat_user_input)
+    # Pass full contents (text + any attachments) to the stream task
+    stream_task$invoke(user_contents)
   })
 
   shiny::observeEvent(input$esc, {
