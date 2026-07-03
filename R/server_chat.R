@@ -5,7 +5,7 @@
 NULL
 
 server_chat <- function(input, output, session, chat, settings,
-                         state, cwd) {
+                         state, cwd, chat_server_mod = NULL) {
 
   # Tool result store (button_id -> ContentToolResult)
   tool_results <- new.env(hash = TRUE, parent = emptyenv())
@@ -13,43 +13,11 @@ server_chat <- function(input, output, session, chat, settings,
   # Stream controller for cancellation (ESC / stop button)
   stream_ctrl <- tryCatch(ellmer::stream_controller(), error = function(e) NULL)
 
-  # Send the slash-command list to the browser once on startup so the
-  # autocomplete dropdown (agent.js) can filter candidates client-side.
-  shiny::observe({
-    # Local commands (always available, no args or fixed args)
-    local_cmds <- list(
-      list(name = "model",   description = "Switch model",        has_args = FALSE, type = "command"),
-      list(name = "compact", description = "Compact context",     has_args = FALSE, type = "command"),
-      list(name = "clear",   description = "Clear chat history",  has_args = FALSE, type = "command"),
-      list(name = "rewind",  description = "Rewind N exchanges",  has_args = TRUE,  type = "command")
-    )
-    # Skills (loaded from disk; have args)
-    skill_cmds <- tryCatch({
-      metas <- list_skills_meta(cwd)
-      lapply(names(metas), function(nm) {
-        m <- metas[[nm]]
-        list(name = nm,
-             description = m$description %||% "",
-             has_args = nzchar(m$argument_hint %||% ""),
-             type = "skill")
-      })
-    }, error = function(e) list())
-    all_cmds <- c(local_cmds, skill_cmds)
-    session$sendCustomMessage("ca_slash_commands", all_cmds)
-  }) |> shiny::bindEvent(session$clientData$url_hostname, once = TRUE)
-
-  # ca_slash_select: JS dropdown picked a command; fill and optionally submit.
-  shiny::observeEvent(input$ca_slash_select, {
-    sel <- input$ca_slash_select
-    val    <- sel$value  %||% ""
-    submit <- isTRUE(sel$submit)
-    focus  <- isTRUE(sel$focus)
-    tryCatch(
-      shinychat::update_chat_user_input("chat", value = val,
-                                        submit = submit, focus = focus,
-                                        session = session),
-      error = function(e) NULL)
-  })
+  # Register slash commands via shinychat's native $slash_command() API.
+  # This replaces the old ca_slash_commands / agent.js dropdown.
+  if (!is.null(chat_server_mod)) {
+    .register_slash_commands(chat_server_mod, chat, settings, state, session, cwd)
+  }
 
   # Push a tool result into the right Output panel via the typed dispatcher.
   # Returns the (possibly adapted) result so callers can store it.
@@ -395,5 +363,111 @@ server_chat <- function(input, output, session, chat, settings,
     turn
   })
   tryCatch(chat$set_turns(new_turns), error = function(e) NULL)
+  invisible(NULL)
+}
+
+# ---------------------------------------------------------------------------
+# Slash command registration (shinychat native API)
+# ---------------------------------------------------------------------------
+
+# Register all slash commands on a chat_server() module via $slash_command().
+# Called once from server_chat() when chat_server_mod is available.
+# Replaces the old ca_slash_commands sendCustomMessage + agent.js dropdown.
+.register_slash_commands <- function(mod, chat, settings, state, session, cwd) {
+  force(mod); force(chat); force(settings); force(state); force(session); force(cwd)
+
+  # /model — open model picker modal (no args) or switch directly (with args)
+  mod$slash_command("model", "Switch model", function(content) {
+    args <- if (missing(content)) "" else trimws(content@user_text)
+    cur  <- tryCatch(chat$get_model(), error = function(e) settings$model %||% "?")
+    if (!nzchar(args)) {
+      tiers <- settings$tier_models %||% list()
+      choices <- if (length(tiers)) {
+        stats::setNames(unlist(tiers),
+          vapply(names(tiers), function(nm)
+            sprintf("%s  (%s)", nm, tiers[[nm]]), character(1)))
+      } else stats::setNames(cur, cur)
+      shiny::showModal(shiny::modalDialog(
+        title = "Switch model",
+        shiny::radioButtons("ca_model_pick", NULL,
+          choices  = choices,
+          selected = if (cur %in% unlist(tiers)) cur else unlist(tiers)[1L] %||% cur),
+        footer = shiny::tagList(
+          shiny::modalButton("Cancel"),
+          shiny::actionButton("ca_model_pick_confirm", "Switch", class = "btn-primary")
+        ),
+        easyClose = TRUE
+      ))
+      mod$append(sprintf("**/model** — pick a model in the popup to switch."),
+                 role = "assistant")
+    } else {
+      new_chat <- tryCatch(codeagent:::.resolve_model_chat(args, cwd), error = function(e) NULL)
+      if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
+        new_model <- tryCatch(chat$get_model(), error = function(e) args)
+        state$settings_changed <- state$settings_changed + 1L
+        mod$append(paste0("OK Switched to `", new_model, "`"), role = "assistant")
+      } else {
+        mod$append(paste0("ERR Could not switch to `", args, "`"), role = "assistant")
+      }
+    }
+  })
+
+  # /compact — compact context
+  mod$slash_command("compact", "Compact the context", function() {
+    tryCatch({
+      full_compact(chat)
+      mod$append("OK Context compacted.", role = "assistant")
+    }, error = function(e)
+      mod$append(paste0("ERR Compact failed: ", conditionMessage(e)), role = "assistant"))
+  })
+
+  # /clear — clear UI + client history
+  mod$slash_command("clear", "Clear chat history", function() {
+    tryCatch(chat$set_turns(list()), error = function(e) NULL)
+    mod$clear(
+      messages       = list(list(role = "assistant", content = "OK History cleared.")),
+      client_history = "keep"   # already cleared above
+    )
+  })
+
+  # /rewind [N] — rewind N exchanges
+  mod$slash_command("rewind", "Rewind N exchanges", function(content) {
+    args   <- trimws(content@user_text)
+    n_back <- suppressWarnings(as.integer(args))
+    if (is.na(n_back) || n_back < 1L) n_back <- 1L
+    cur    <- length(tryCatch(chat$get_turns(), error = function(e) list()))
+    keep   <- max(0L, cur - 2L * n_back)
+    kept   <- tryCatch(truncate_chat_turns(chat, keep), error = function(e) cur)
+    mod$append(sprintf("<<< Rewound %d exchange(s); %d turns kept.", n_back, kept),
+               role = "assistant")
+  })
+
+  # Skills — register each installed skill as a slash command
+  tryCatch({
+    metas <- list_skills_meta(cwd)
+    for (nm in names(metas)) {
+      local({
+        skill_name <- nm
+        skill_desc <- metas[[nm]]$description %||% ""
+        has_args   <- nzchar(metas[[nm]]$argument_hint %||% "")
+        if (has_args) {
+          mod$slash_command(skill_name, skill_desc, function(content) {
+            args   <- trimws(content@user_text)
+            prompt <- tryCatch(load_skill_prompt(skill_name, args, cwd),
+                               error = function(e) paste0("/", skill_name, " ", args))
+            # Inject skill prompt directly into the chat (as a user turn)
+            tryCatch(chat$chat(prompt), error = function(e) NULL)
+          })
+        } else {
+          mod$slash_command(skill_name, skill_desc, function() {
+            prompt <- tryCatch(load_skill_prompt(skill_name, "", cwd),
+                               error = function(e) paste0("/", skill_name))
+            tryCatch(chat$chat(prompt), error = function(e) NULL)
+          })
+        }
+      })
+    }
+  }, error = function(e) NULL)
+
   invisible(NULL)
 }
