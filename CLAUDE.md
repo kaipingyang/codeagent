@@ -258,3 +258,79 @@ All core subsystems are complete. 281 tests pass.
 - ✅ codeagent.md multi-client config
 - ✅ Rapp CLI (`exec/codeagent.R`) — `run`(--model/--continue/--resume/--stream) + `chat`/`repl`(交互式 REPL：readline loop + /model//compact//clear//help 斜杠命令 + 流式) + app/skills/mcp/info
 - ✅ MCP server (`codeagent_mcp_server()`) + MCP client (`register_mcp_client()`, stdio)
+
+---
+
+## Backlog（后续计划）
+
+对标 Claude Code 的已知缺口，按价值排序。实现前先确认上游（ellmer/btw/shinychat）是否已有原生支持。
+
+### P1 — Shiny ask_fn（工具审批 UI）
+
+**现状**：CLI REPL 有 `.console_ask_fn`（`readline()` 阻塞等待）；Shiny app 的 `ask_fn = NULL`（默认模式下写操作无交互审批）。
+
+**目标**：`default` 权限模式下，Shiny app 对"需要确认"的工具请求弹出审批 UI，用户点 Allow/Deny，结果异步返回给权限门。
+
+**实现思路**（参考 `/usrfiles/shared-projects/users/kaiping_yang/ClaudeAgentSDK/examples/16_shinychat_tool_approval_inline.R` 的 UI 设计，但底层机制完全不同）：
+```r
+# R/server_chat.R 里构造 Shiny ask_fn，注入 codeagent_client()
+.shiny_ask_fn <- function(session, state) {
+  function(tool_name, tool_input) {
+    # 通过 promise + reactiveVal 实现异步等待
+    # 1. state$pending_approval <- list(tool_name, tool_input, resolve_fn)
+    # 2. renderUI approval bar → Allow/Deny buttons
+    # 3. observeEvent(input$tool_allow) → resolve_fn(TRUE)
+    # 4. observeEvent(input$tool_deny)  → resolve_fn(FALSE)
+    # 返回 TRUE/FALSE 给 .make_permission_checker
+  }
+}
+```
+
+难点：`ask_fn` 目前是同步回调，Shiny 需要异步等待用户点击。需要用 `promises`/`coro::async` 桥接，或改 `ask_fn` 接口为 promise-returning。
+
+### P2 — AskUserQuestion 工具
+
+Claude Code 的 `AskUserQuestionTool`：agent 在 loop 中途主动暂停并问用户问题，用户回答后 loop 继续。
+
+**与 ask_fn 的区别**：ask_fn 是权限门（"能不能执行这个工具"），AskUserQuestion 是信息采集（"我需要更多信息才能继续"）。
+
+```r
+# R/tools_ask_user.R
+ask_user_tool <- function(session = NULL) {
+  ellmer::tool(
+    name = "AskUserQuestion",
+    fun = function(question, choices = NULL) {
+      # CLI: readline(question)
+      # Shiny: showModal + reactiveVal + promise
+    },
+    description = "Ask the user a clarifying question and wait for their answer before continuing.",
+    arguments = list(
+      question = ellmer::type_string("The question to ask the user."),
+      choices  = ellmer::type_array("Optional choices.", items = ellmer::type_string(), required = FALSE)
+    ),
+    annotations = ellmer::tool_annotations(title = "AskUserQuestion", read_only_hint = TRUE)
+  )
+}
+```
+
+### P3 — 工具并发执行
+
+Claude Code 的 `StreamingToolExecutor` 区分 read-only 工具（并发）和写操作（串行）。当前 ellmer 串行执行所有工具。
+
+**依赖上游**：ellmer 是否支持并发工具执行。关注 ellmer 进展，有原生支持时直接受益，不自己实现。
+
+### P4 — `@path` import in CLAUDE.md
+
+Claude Code 支持 CLAUDE.md 中用 `@/path/to/file.md` 内联引用外部文件。当前 `.load_claude_md()` 不解析 `@` 引用。
+
+**实现**：在 `.load_claude_md()` 读取每个文件后，正则扫描 `^@(.+)` 行，递归读取引用文件并替换。注意循环引用保护（`seen` set 已有，复用即可）。
+
+### P5 — Dollar budget（成本控制）
+
+Claude Code 有 `maxBudgetUsd`，按 API 成本限制。当前只有 token budget。
+
+**低优先级**：需维护各 provider 的 token 价格表，维护成本高。等有明确需求再做。
+
+### 语音输入
+
+**等上游**：JamesHWade 的 shinychat `feature/audio-input` 分支（`audio_input="transcribe"` 参数）完成后，codeagent 只需在 `ui_panels.R` 加一个参数。不自己实现。进展跟踪：https://github.com/posit-dev/shinychat/issues/146
