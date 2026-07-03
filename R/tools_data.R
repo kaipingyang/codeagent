@@ -73,10 +73,12 @@ explore_data_tool <- function(envir = .GlobalEnv) {
         }
       } else {
         # No code yet: return schema so the agent can plan the query
-        schema <- .df_schema(df, data_name)
-        .tool_result2(schema, kind = "text", icon = "table",
+        schema <- ellmer::df_schema(df)
+        # Prepend the data.frame name since ellmer::df_schema omits it
+        schema_txt <- paste0("'", data_name, "': ", schema)
+        .tool_result2(schema_txt, kind = "text", icon = "table",
                       title = sprintf("ExploreData: schema for '%s'", data_name),
-                      payload = list(text = schema))
+                      payload = list(text = schema_txt))
       }
     },
     name = "ExploreData",

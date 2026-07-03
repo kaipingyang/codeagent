@@ -7,11 +7,14 @@ An R-native agentic coding assistant built on [ellmer](https://ellmer.tidyverse.
 ## Installation
 
 ```r
-# Install from GitHub
-pak::pak("kaipingyang/codeagent")
+# Install from GitHub (requires ellmer dev version for set_model())
+pak::pak(c("tidyverse/ellmer", "kaipingyang/codeagent"))
 
-# btw for R-environment tools (docs, git, pkg, env, etc.)
+# Optional: btw for R-environment tools (docs, git, pkg, env, etc.)
 pak::pak("posit-dev/btw")
+
+# Optional: shinychat dev for latest chat UI
+pak::pak("posit-dev/shinychat/pkg-r")
 ```
 
 ## Quick start
@@ -21,7 +24,7 @@ library(codeagent)
 
 # Step 1: create any ellmer Chat (Databricks, Anthropic, Ollama, ...)
 chat <- ellmer::chat_openai_compatible(
-  base_url    = Sys.getenv("CODEAGENT_BASE_URL"),   # e.g. Databricks serving-endpoints
+  base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
   model       = Sys.getenv("CODEAGENT_MODEL"),
   credentials = function() Sys.getenv("CODEAGENT_API_KEY")
 )
@@ -34,27 +37,16 @@ codeagent(client, "List all .R files in R/")
 
 # Step 3b: interactive Shiny app
 codeagent_app(client, theme = "default")
+
+# Step 3c: interactive CLI REPL
+codeagent_repl(client)
 ```
 
-## Thinking / reasoning support
+### Interactive setup wizard
 
-`codeagent` can use any `ellmer` chat backend, but visible thinking depends on the
-provider response format.
-
-- `deepseek-r1` via `chat_openai_compatible()` works out of the box; ellmer maps
-  `reasoning_content` to `ContentThinking`.
-- GPT-style `reasoning_effort` can be sent to compatible endpoints, but this does
-  not expose raw thinking text; you typically only see usage metadata.
-- Databricks-hosted Claude extended thinking is not parsed by ellmer's current
-  `ProviderOpenAICompatible` implementation because it returns typed content blocks
-  instead of `reasoning_content`.
-
-Reference scripts:
-
-- `inst/examples/demo_04_thinking.R`: supported end-to-end example using `deepseek-r1`
-- `references/thinking_claude_haiku.R`: runtime monkey-patch for Databricks Claude
-- `references/thinking_claude_httr2.R`: raw `httr2` request that prints reasoning blocks
-- `references/ellmer_chat.R`: side-by-side notes for basic chat, GPT reasoning, and thinking
+```r
+use_codeagent_setup()   # guides provider selection + API key + settings.json
+```
 
 ### From a config file
 
@@ -82,15 +74,16 @@ codeagent_app(client)
 | Feature | Details |
 |---------|---------|
 | **Agent loop** | `agent_loop()` with max_turns, budget tracking, compaction |
-| **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments, e.g. `Bash(npm run test *)` |
-| **Hooks** | 12 lifecycle events (tool, permission, message, and session events), configurable declaratively from `settings.json` |
-| **Compaction** | 5 levels: snip -> memory summary -> full compact -> PTL fallback -> context collapse |
+| **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
+| **Hooks** | 12 lifecycle events (tool, permission, message, session), configurable from `settings.json` |
+| **Compaction** | 5 levels: snip → memory summary → full compact → PTL fallback → context collapse |
 | **System prompt** | Tone, task, convention, tool-use, and R-specific behavioural guidance |
-| **Error recovery** | Classifies PTL/rate-limit/network/auth; exponential backoff for rate limits |
-| **system-reminder** | Ephemeral per-turn context injection (date, iteration, cwd) preserves prompt cache |
+| **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff |
+| **system-reminder** | Ephemeral per-turn context injection preserves prompt cache |
 | **Verification** | `verify_fn` param + `verify_r_tests()` re-enters loop on test failures |
-| **Plan mode** | The model can enter/exit read-only planning mid-turn via plan-mode tools |
+| **Plan mode** | Model enters/exits read-only planning mid-turn |
 | **Rewind** | `truncate_chat_turns()` / REPL `/rewind` roll the conversation back |
+| **Model switch** | `switch_model(client, model)` swaps provider/model mid-session |
 
 ### Tools
 
@@ -99,16 +92,33 @@ codeagent_app(client)
 | Core | codeagent | Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS |
 | docs | btw | help pages, vignettes, NEWS |
 | env | btw | describe data frames / R environment |
-| files | btw | hashline-based precise editing |
+| files | btw | hashline-based precise editing + atomic multi-file patch |
 | git | btw | status, diff, log, commit, branches |
 | ide | btw | read current editor |
 | pkg | btw | document, check, test, coverage, load_all |
 | cran | btw | search, package info |
 | sessioninfo | btw | platform, package versions |
-| web | btw | URL -> Markdown |
+| web | btw | URL → Markdown |
 | agent | btw | hierarchical subagent delegation |
+| data | codeagent | `ExploreData` — sandboxed data.frame queries |
 
 All tools return `ContentToolResult` with HTML title + markdown for shinychat tool cards.
+
+### Data exploration (WEAR loop)
+
+Interactive data analysis with the Write/Execute/Analyze/Regroup pattern:
+
+```r
+# Start a WEAR session -- agent writes code, executes via ExploreData,
+# analyzes results, proposes 3-5 follow-up questions each turn
+wear_explore(data = list(sales = my_df))
+
+# Export the session to a reproducible Quarto document
+generate_wear_report(client, path = "analysis.qmd", title = "Sales Analysis")
+# Render: quarto render analysis.qmd
+```
+
+`ExploreData` runs in a sandboxed sub-environment (read-only, cannot modify source data).
 
 ### Skill system
 
@@ -116,15 +126,16 @@ Compatible with Claude Code and btw skill format (`name/SKILL.md` directories).
 
 ```
 Discovery order:
-  codeagent inst/skills/ -> btw paths -> ~/.codeagent/skills/
-  -> .codeagent/skills/ -> .claude/skills/ -> .codex/skills/
+  codeagent inst/skills/ → btw paths → ~/.codeagent/skills/
+  → .codeagent/skills/ → .claude/skills/ → .codex/skills/
 ```
 
 Two trigger paths:
-- **User** types `/name [args]` -> `load_skill_prompt()` injects full body
-- **LLM semantic match** -> calls `use_skill(name)` tool automatically
+- **User** types `/name [args]` → `load_skill_prompt()` injects full body
+- **LLM semantic match** → calls `use_skill(name)` tool automatically
 
-Built-in skills: `/compact`, `/plan`, `/verify`, `/simplify`, `/loop`, `/remember`
+Built-in skills: `/compact`, `/plan`, `/verify`, `/simplify`, `/loop`, `/remember`,
+`/explore`, `/report`
 
 Install btw skills:
 ```r
@@ -132,65 +143,77 @@ btw::btw_skill_install_package("btw")     # installs skill-creator
 btw::btw_skill_install_github("org/repo") # from GitHub
 ```
 
+### Security: API key storage
+
+```r
+# Option 1: OS keyring (macOS Keychain / Windows Credential Store / Linux Secret Service)
+# Offered automatically in setup wizard when keyring is available
+use_codeagent_setup()
+
+# Option 2: ~/.Renviron (plaintext, existing behaviour -- fallback when keyring unavailable)
+```
+
+`keyring` is optional (`Suggests`). On headless/server environments the keyring probe
+returns `FALSE` and all functions fall back to `~/.Renviron` silently.
+
 ### Sub-agents
 
 ```r
-# Sub-agent with an isolated, resumable session (persisted as a sidechain)
+# Sub-agent with isolated, resumable session
 client <- codeagent_client(chat, permission_mode = "bypass")
 
-# Optional: run sub-agent in isolated git worktree
+# Run sub-agent in isolated git worktree
 client <- codeagent_client(chat, worktree_isolation = TRUE)
 ```
 
 ### Multi-agent teams
 
-Run independent tasks in parallel across `mirai` daemons, capped to the
-container's CPU quota via `parallelly`:
-
 ```r
 # Fixed fan-out: one worker per task
 team_run(c("review R/a.R", "review R/b.R", "review R/c.R"))
 
-# Work-stealing over a shared SQLite board (balances uneven task sizes,
-# supports inter-agent messages)
+# Work-stealing over shared SQLite board (balances uneven task sizes)
 team_coordinate(c("task 1", "task 2", "task 3", "task 4"))
 ```
 
-The model can also call the `TeamRun` and `TeamCoordinate` tools directly.
-
 ### Sandboxed R execution
 
-`RunR` executes R code behind the permission gate. Enable sandboxing to run it
-in an isolated `callr` subprocess with a scrubbed environment (API keys are not
-visible to the executed code), no `.Renviron` reload, and a wall-clock timeout:
+`RunR` executes R code in a `callr` subprocess with a scrubbed environment (no API
+keys visible) and wall-clock timeout:
 
-```r
-client <- codeagent_client(
-  chat,
-  permission_mode = "bypass"
-)
-# Enable via settings.json:  "sandbox": { "enabled": true, "allow_network": false }
+```json
+// ~/.codeagent/settings.json
+{ "sandbox": { "enabled": true, "allow_network": false } }
 ```
 
-Sandboxing is opt-in: it isolates each call in a fresh process (a small spawn
-cost), so it is off by default for local, trusted use and recommended when
-running less-trusted code.
+### Eval harness (vitals)
+
+```r
+# Run all eval tasks (measures tool use, permissions, data exploration)
+source("inst/evals/setup_eval_client.R")
+source("inst/evals/eval.R")
+vitals::vitals_view()
+```
 
 ### Persistent memory
 
-Facts the agent should remember across sessions are stored under
-`~/.codeagent/memory/`. On the first turn of a session, only the memories
-relevant to the current request are recalled (selected by a small fast model),
-rather than concatenating everything.
+Facts the agent remembers across sessions are stored under `~/.codeagent/memory/`.
+On the first turn, only memories relevant to the current request are recalled
+(selected by a small fast model).
+
+### IDE Addin
+
+```r
+# Run from RStudio / Positron Addins menu:
+# "codeagent: Open chat" -- opens Shiny app for current file/project
+# "codeagent: Chat about selection" -- sends selected text as context
+```
 
 ### MCP server
 
 ```r
-# Expose all btw tools as an MCP server
 codeagent_mcp_server()
-
-# Claude Desktop config:
-# {"mcpServers": {"codeagent": {"command": "Rscript",
+# Claude Desktop: {"mcpServers": {"codeagent": {"command": "Rscript",
 #   "args": ["-e", "codeagent::codeagent_mcp_server()"]}}}
 ```
 
@@ -202,6 +225,7 @@ install_codeagent_cli()
 
 ```bash
 codeagent run "List all .R files"
+codeagent chat                      # interactive REPL
 codeagent app --theme glass
 codeagent skills list
 codeagent skills install --package btw
@@ -216,34 +240,31 @@ Four themes, three-panel accordion sidebar:
 ```r
 codeagent_app(
   client,
-  theme         = "default",        # "default" | "flatly" | "darkly" | "glass"
+  theme         = "default",   # "default" | "flatly" | "darkly" | "glass"
   pinned_skills = c("plan", "compact"),
   port          = NULL
 )
 ```
 
-**Sessions** panel: save/load/fork conversations.
+**Sessions** panel: save/load/fork/rename conversations, rewind turns.
 **Skills** panel: searchable, scrollable, one-click fill, + install button.
 **Settings** panel: permission mode, btw tool group toggles, theme switch.
 
 ## Configuration (settings.json)
 
-Scaffold a settings file (user or project scope):
-
 ```r
-use_codeagent_settings(scope = "user")   # ~/.codeagent/settings.json
+use_codeagent_settings(scope = "user")   # scaffold ~/.codeagent/settings.json
 ```
 
-It mirrors the schema of command-line coding agents. Precedence (low to high):
-package defaults < `~/.codeagent/settings.json` < `.codeagent/settings.json` <
-environment variables. Highlights:
+Precedence (low to high): package defaults < `~/.codeagent/settings.json` <
+`.codeagent/settings.json` < environment variables.
 
 ```json
 {
-  "model": "sonnet",
+  "provider": "openai_compatible",
+  "model": "your-model",
   "env": {
     "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE/serving-endpoints",
-    "CODEAGENT_DEFAULT_SONNET_MODEL": "your-sonnet-endpoint",
     "CODEAGENT_SMALL_FAST_MODEL": "your-haiku-endpoint"
   },
   "permissions": { "allow": [], "deny": [], "ask": [], "defaultMode": "default" },
@@ -254,65 +275,33 @@ environment variables. Highlights:
 ```
 
 The `env` block is applied before environment variables are read, so it works
-even under `Rscript --vanilla`. Never put API keys in `settings.json` -- keep
-them in `.Renviron` as `CODEAGENT_API_KEY`.
+even under `Rscript --vanilla`. **Never put API keys in `settings.json`** — keep
+them in `.Renviron` as `CODEAGENT_API_KEY`, or use keyring (see above).
 
-## Environment variables
+## Supported providers
 
-| Variable | Purpose |
-|----------|---------|
-| `CODEAGENT_BASE_URL` | Serving endpoint URL (e.g. Databricks) |
-| `CODEAGENT_MODEL` | Default model name |
-| `CODEAGENT_API_KEY` | API key / token |
-| `CODEAGENT_PERMISSION_MODE` | Override permission mode |
-| `CODEAGENT_MAX_TURNS` | Override max turns |
-
-## API reference
-
-```r
-# Factory
-codeagent_client(chat, permission_mode, btw_groups, worktree_isolation, verify_fn, ...)
-codeagent_client_config(alias, cwd)  # from codeagent.md
-
-# Execution
-codeagent(client, prompt)            # one-shot
-agent_loop(user_input, client, ...)  # per-turn
-
-# App
-codeagent_app(client, theme, pinned_skills, port, launch.browser)
-
-# Skills
-list_skills_meta(cwd)
-load_skill_prompt(name, args, cwd)
-build_skill_hint(cwd, max_tokens)
-
-# Sessions
-list_sessions(cwd, limit)
-save_session(chat, cwd, session_id)
-get_session_messages(session_id, cwd)
-
-# MCP / CLI
-codeagent_mcp_server(tools)
-install_codeagent_cli(destdir)
-use_codeagent_md(path)
-
-# Verification
-verify_r_tests()   # returns a verify_fn for codeagent_client()
-
-# Hooks
-HookRegistry$new()
-HookRegistry$register(HookEvent$USER_MESSAGE, fn)
-HookEvent$PRE_TOOL_USE / POST_TOOL_USE / POST_TOOL_USE_FAILURE /
-         PERMISSION_DENIED / PERMISSION_REQUEST /
-         USER_MESSAGE / ASSISTANT_MESSAGE
-```
+| Provider | `settings.json` `"provider"` | Notes |
+|----------|------|-------|
+| OpenAI-compatible | `"openai_compatible"` | Databricks, Azure, vLLM, custom |
+| Anthropic | `"anthropic"` | |
+| OpenAI | `"openai"` | |
+| Google Gemini | `"google_gemini"` | |
+| DeepSeek | `"deepseek"` | reasoning_content → ContentThinking |
+| Groq | `"groq"` | |
+| GitHub Copilot | `"github"` | |
+| Ollama | `"ollama"` | local |
+| Posit AI | `"posit"` | OAuth device flow |
+| Databricks | `"databricks"` | |
+| AWS Bedrock | `"aws_bedrock"` | |
+| Azure OpenAI | `"azure_openai"` | |
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────┐
-│  codeagent_client(chat)  <- CodagentClient   │
-│    ├─ tools: 8 built-in + btw 10 groups      │
+│  codeagent_client(chat)  ← CodagentClient   │
+│    ├─ tools: 8 built-in + btw 10 groups     │
+│    ├─ ExploreData (optional WEAR mode)       │
 │    ├─ skill tool (use_skill)                 │
 │    └─ system prompt (skills + CLAUDE.md)     │
 └────────────────┬────────────────────────────┘
@@ -320,17 +309,18 @@ HookEvent$PRE_TOOL_USE / POST_TOOL_USE / POST_TOOL_USE_FAILURE /
          agent_loop() / codeagent_app()
                  │
     ┌────────────▼────────────────────────────┐
-    │         HARNESS                         │
-    │  system-reminder -> compaction ->         │
-    │  ellmer Chat -> hooks -> verify           │
+    │            HARNESS                      │
+    │  system-reminder → compaction →         │
+    │  ellmer Chat → hooks → verify           │
     └─────────────────────────────────────────┘
 ```
 
 ## Related
 
-- [ellmer](https://ellmer.tidyverse.org) -- LLM client for R
-- [btw](https://btw.posit.co) -- R-environment tools for LLMs
-- [shinychat](https://posit-dev.github.io/shinychat/) -- Chat UI components
+- [ellmer](https://ellmer.tidyverse.org) — LLM client for R
+- [btw](https://btw.posit.co) — R-environment tools for LLMs
+- [shinychat](https://posit-dev.github.io/shinychat/) — Chat UI components
+- [vitals](https://vitals.tidymodels.org) — LLM eval framework
 
 ## License
 
