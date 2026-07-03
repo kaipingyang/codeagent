@@ -90,7 +90,8 @@ NULL
 .BTW_FILE_WRITE <- c(
   "btw_tool_files_write",
   "btw_tool_files_edit",
-  "btw_tool_files_replace"
+  "btw_tool_files_replace",
+  "btw_tool_files_patch"   # atomic multi-file patch (btw >= 1.3.0)
 )
 
 #' Register btw file tools with permission control
