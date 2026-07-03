@@ -84,6 +84,15 @@ NULL
     key_env     = NULL,
     base_url    = FALSE,
     detect_envs = NULL   # always available if ollama is running
+  ),
+  list(
+    name        = "posit",
+    label       = "Posit AI (OAuth device flow)",
+    fn          = "chat_posit",
+    model       = "claude-sonnet-4-6",
+    key_env     = NULL,
+    base_url    = FALSE,
+    detect_envs = NULL   # auth via OAuth, no env var needed
   )
 )
 
