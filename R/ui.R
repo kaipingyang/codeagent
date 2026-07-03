@@ -152,11 +152,19 @@ codeagent_app <- function(
     )
 
     # Wire server modules
+    # chat_server() registers shinychat's native slash palette and returns a
+    # controller object (mod) used by server_chat() for $slash_command() registration.
+    chat_server_mod <- tryCatch(
+      shinychat::chat_server("chat", chat_obj, history = FALSE, session = session),
+      error = function(e) NULL
+    )
+
     stream_task <- server_chat(input, output, session,
-                               chat     = chat_obj,
-                               settings = settings,
-                               state    = state,
-                               cwd      = cwd)
+                               chat            = chat_obj,
+                               settings        = settings,
+                               state           = state,
+                               cwd             = cwd,
+                               chat_server_mod = chat_server_mod)
 
     server_sessions(input, output, session,
                     chat        = chat_obj,
