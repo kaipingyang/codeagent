@@ -418,9 +418,12 @@ agent_loop <- function(user_input,
 #' @param chat An `ellmer::Chat` object.
 #' @param settings Named list from [load_settings()].
 #' @param ask_fn Function or NULL.
+#' @param ask_question_fn Function or NULL. Shiny callback for AskUserQuestion
+#'   (Phase 3). NULL uses CLI readline path.
 #' @return Invisibly `chat`.
 #' @keywords internal
-.register_all_tools <- function(chat, settings, ask_fn = NULL) {
+.register_all_tools <- function(chat, settings, ask_fn = NULL,
+                                  ask_question_fn = NULL) {
   # Live, mutable permission mode shared by every checker. Plan-mode tools flip
   # `mode_env$mode` mid-conversation and all already-registered checkers observe
   # it (see .make_permission_checker). Static string still works elsewhere.
@@ -490,6 +493,9 @@ agent_loop <- function(user_input,
     st <- .make_skill_tool(cwd)
     if (!is.null(st)) chat$register_tool(st)
   }, error = function(e) NULL)
+  # AskUserQuestion: always registered (read-only, all permission modes).
+  # ask_question_fn is NULL for CLI (readline path) or a Shiny callback (Phase 3).
+  tryCatch(register_ask_user_tool(chat, ask_question_fn), error = function(e) NULL)
 
   invisible(chat)
 }

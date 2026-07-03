@@ -36,7 +36,7 @@ PermissionMode <- list(
 # Tools that are always read-only (safe to auto-allow in all non-plan modes)
 .READONLY_TOOLS <- c(
   "Read", "Glob", "Grep", "LS", "WebFetch", "WebSearch",
-  "TaskGet", "TaskList", "NotebookRead"
+  "TaskGet", "TaskList", "NotebookRead", "AskUserQuestion"
 )
 
 # Tools auto-allowed in accept_edits mode
