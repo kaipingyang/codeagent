@@ -84,3 +84,42 @@ test_that("two-level maybe_compact falls back to full when session-memory can't 
   cc$maybe_compact(chat = list(), model_limit = 200000L)
   expect_identical(calls, c("snip", "sm", "full"))
 })
+
+# --- Fidelity fixes: tool-result-aware estimate + full_compact retention ------
+
+test_that("estimate_tokens counts tool-result value, not just text", {
+  chat <- ellmer::chat_openai_compatible(base_url = "http://x", model = "m",
+                                         credentials = function() "k")
+  big <- strrep("y", 700)
+  chat$set_turns(list(
+    ellmer::Turn("user", list(ellmer::ContentToolResult(value = big)))))
+  # previously ~0 (only @text was counted); now reflects the value payload
+  expect_gt(estimate_tokens(chat), 100L)
+  expect_identical(.content_chars(ellmer::ContentToolResult(value = big)),
+                   nchar(big))
+  expect_identical(.content_chars(ellmer::ContentText("hello")),
+                   nchar("hello"))
+})
+
+test_that(".is_plain_user_turn distinguishes plain user turns from tool turns", {
+  expect_true(.is_plain_user_turn(
+    ellmer::Turn("user", list(ellmer::ContentText("hi")))))
+  expect_false(.is_plain_user_turn(
+    ellmer::Turn("assistant", list(ellmer::ContentText("hi")))))
+  expect_false(.is_plain_user_turn(
+    ellmer::Turn("user", list(ellmer::ContentToolResult(value = "x")))))
+})
+
+test_that(".full_compact_turns keeps the current-task user turn when safe", {
+  summary <- ellmer::Turn("user", list(ellmer::ContentText("[summary]")))
+  turns_ok <- list(
+    ellmer::Turn("assistant", list(ellmer::ContentText("a"))),
+    ellmer::Turn("user", list(ellmer::ContentText("do X")))
+  )
+  expect_length(.full_compact_turns(turns_ok, summary), 2L)
+  # last turn carries a tool result -> summary only (avoid orphaning a pair)
+  turns_tool <- list(
+    ellmer::Turn("user", list(ellmer::ContentToolResult(value = "res")))
+  )
+  expect_length(.full_compact_turns(turns_tool, summary), 1L)
+})
