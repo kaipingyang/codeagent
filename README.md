@@ -76,7 +76,7 @@ codeagent_app(client)
 | **Agent loop** | `agent_loop()` with max_turns, budget tracking, compaction |
 | **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
 | **Hooks** | 12 lifecycle events (tool, permission, message, session), configurable from `settings.json` |
-| **Compaction** | 5 levels: snip → memory summary → full compact → PTL fallback → context collapse |
+| **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, and an "N% context left" indicator (REPL + Shiny) |
 | **System prompt** | Tone, task, convention, tool-use, and R-specific behavioural guidance |
 | **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff |
 | **system-reminder** | Ephemeral per-turn context injection preserves prompt cache |
@@ -250,6 +250,15 @@ codeagent_app(
 **Skills** panel: searchable, scrollable, one-click fill, + install button.
 **Settings** panel: permission mode, btw tool group toggles, theme switch.
 
+**Interactive pauses** (in-chat bar above the input):
+- **Permission approval** — in `default` mode, risky tools (Write/Edit/MultiEdit/Bash/RunR)
+  pause with an Allow/Deny bar before running; the agent loop resumes on your choice.
+- **AskUserQuestion** — the model can pause to ask a clarifying question (radio choices or
+  free text) and continues once you answer. ESC dismisses a pause without deadlocking the loop.
+
+Both ride an async promise mechanism, so only the Shiny path is async; the CLI/one-shot path
+stays synchronous (approvals use the console prompt).
+
 ## Configuration (settings.json)
 
 ```r
@@ -258,6 +267,12 @@ use_codeagent_settings(scope = "user")   # scaffold ~/.codeagent/settings.json
 
 Precedence (low to high): package defaults < `~/.codeagent/settings.json` <
 `.codeagent/settings.json` < environment variables.
+
+> **Config directory.** User-global config/sessions live in the OS-standard
+> location (`rappdirs::user_config_dir("codeagent")`; e.g. `~/.config/codeagent`
+> on Linux). A legacy `~/.codeagent` is migrated automatically on first use
+> (non-destructive copy), and still read as a fallback. Override with
+> `CODEAGENT_HOME`, or migrate manually via `migrate_config_dir()`.
 
 ```json
 {
