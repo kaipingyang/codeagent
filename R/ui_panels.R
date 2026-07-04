@@ -39,9 +39,11 @@ head_assets <- function() {
 # ---------------------------------------------------------------------------
 
 .skill_picker_footer <- function(skill_meta) {
-  skill_choices <- list(
-    "Slash Commands" = stats::setNames(skill_meta$key, skill_meta$label)
-  )
+  # NOTE: The skill pickerInput was removed in favour of shinychat's official
+  # slash-command typeahead (type "/" in the chat input; see R/server_slash.R).
+  # The historical pickerInput implementation is archived under
+  # inst/experiments/pickerinput_skill_selector/. This footer now only carries
+  # the file-upload / voice / server-browse buttons.
   htmltools::tags$div(
     class = "d-flex align-items-center gap-1 py-1",
 
@@ -67,31 +69,13 @@ head_assets <- function() {
       icon     = shiny::icon("server"),
       class    = "btn-outline-secondary btn-sm flex-shrink-0",
       multiple = FALSE),
-    htmltools::tags$div(
+    # Hint that slash commands live in the input now.
+    htmltools::tags$span(
+      class = "text-muted small ms-1",
       style = "flex:1; min-width:0;",
-      shinyWidgets::pickerInput(
-      inputId    = "skill_picker",
-      label      = NULL,
-      choices    = skill_choices,
-      selected   = character(0),
-      multiple   = FALSE,
-      width      = "100%",
-      choicesOpt = list(
-        subtext = skill_meta$desc,
-        tokens  = paste(skill_meta$key, skill_meta$desc)
-      ),
-      options = shinyWidgets::pickerOptions(
-        liveSearch            = TRUE,
-        noneSelectedText      = "Select a skill...",
-        liveSearchPlaceholder = "Search skills...",
-        showSubtext           = FALSE,
-        size                  = 8,
-        container             = "body",
-        width                 = "100%"
-      )
+      "Type / for commands & skills"
     )
-    )   # close flex:1 div
-  )     # close outer flex row
+  )
 }
 
 # ---------------------------------------------------------------------------
