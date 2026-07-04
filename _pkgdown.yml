@@ -167,6 +167,7 @@ reference:
       - migrate_sessions
       - load_settings
       - save_user_settings
+      - migrate_config_dir
 
   - title: "Harness internals"
     desc: "R6 controllers and content/permission types (advanced)."
