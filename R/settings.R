@@ -74,6 +74,11 @@ NULL
   # from .GlobalEnv so the agent knows what objects exist without a tool call.
   inject_r_env       = FALSE,
 
+  # File-tool set: "core" (codeagent Read/Write/Edit/... on ANY path; default),
+  # "btw" (btw hash-anchored/atomic tools, restricted to cwd), or "both" (the
+  # LLM picks per task). See references/plan/14-tool-reuse-and-selection.md.
+  file_tools         = "core",
+
   # Mid-loop compaction (Plan B): compact between tool rounds via on_tool_result.
   # midloop_compact = cheap budget-aware micro snip (ON by default, matches
   # Claude Code default-on compaction; only acts near the context limit).

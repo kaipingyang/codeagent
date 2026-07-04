@@ -336,6 +336,46 @@ register_midloop_compaction <- function(chat, settings = list()) {
 #' Keeps between `min_tokens` and `max_tokens` in the summary.
 #'
 #' @param chat An `ellmer::Chat` object.
+# Character size of a whole turn (sum of its content blocks).
+.turn_chars <- function(turn) {
+  contents <- tryCatch(turn@contents, error = function(e) list())
+  sum(vapply(contents, .content_chars, numeric(1)))
+}
+
+# TRUE if a turn carries any non-empty text content.
+.turn_has_text <- function(turn) {
+  contents <- tryCatch(turn@contents, error = function(e) list())
+  for (c in contents) {
+    txt <- tryCatch(as.character(c@text %||% ""), error = function(e) "")
+    if (nzchar(txt)) return(TRUE)
+  }
+  FALSE
+}
+
+# Number of most-recent turns to keep during session-memory compaction, using a
+# token budget (Claude Code calculateMessagesToKeepIndex): expand backwards from
+# the newest turn until we've retained >= min_tokens AND >= min_text_msgs
+# text-bearing turns, capped at max_tokens. Guarantees >= min_text_msgs kept
+# when possible, and never keeps everything (leaves >= 2 to summarise upstream).
+.session_keep_count <- function(turns, min_tokens = .COMPACT_L2_MIN_TOKENS,
+                                min_text_msgs = 5L,
+                                max_tokens = .COMPACT_L2_MAX_TOKENS) {
+  n <- length(turns)
+  if (n == 0L) return(0L)
+  tok <- 0
+  text_msgs <- 0L
+  keep <- 0L
+  for (i in rev(seq_len(n))) {
+    tok <- tok + .turn_chars(turns[[i]]) / 3.5
+    if (.turn_has_text(turns[[i]])) text_msgs <- text_msgs + 1L
+    keep <- keep + 1L
+    if (tok >= max_tokens) break
+    if (tok >= min_tokens && text_msgs >= min_text_msgs) break
+  }
+  # Never keep everything; leave room to summarise at least a couple of turns.
+  max(0L, min(keep, n - 2L))
+}
+
 #' @param model Character. Haiku model for summarisation.
 #' @param min_messages Integer. Minimum number of text messages to keep.
 #' @param min_tokens Integer. Minimum tokens to retain.
@@ -360,8 +400,11 @@ session_memory_compact <- function(chat,
     paste0(role, ": ", paste(text_parts[nzchar(text_parts)], collapse = " "))
   }, character(1))
 
-  # Identify how many turns to summarise (keep min_messages recent)
-  n_keep   <- min(min_messages, length(turns))
+  # How many recent turns to KEEP: token-budget keep-index (mirrors Claude Code
+  # calculateMessagesToKeepIndex, sessionMemoryCompact.ts) -- expand backwards
+  # from the newest turn until we retain >= min_tokens AND >= min_messages
+  # text-bearing turns, capped at max_tokens. Falls back to >= min_messages.
+  n_keep   <- .session_keep_count(turns, min_tokens, min_messages, max_tokens)
   n_summ   <- length(turns) - n_keep
   if (n_summ < 2L) return(invisible(NULL))
 
