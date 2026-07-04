@@ -210,8 +210,11 @@ NULL
 
     # R session environment context (gander-inspired ambient injection).
     # Proactively shows the agent what objects exist so it doesn't waste a
-    # tool call asking. Opt-in: settings$inject_r_env = TRUE (default FALSE).
-    if (isTRUE(settings$inject_r_env)) {
+    # tool call asking. Opt-in via settings$inject_r_env OR
+    # options(codeagent.ambient_context = TRUE) (default off).
+    ambient_on <- isTRUE(settings$inject_r_env) ||
+                  isTRUE(getOption("codeagent.ambient_context", FALSE))
+    if (ambient_on) {
       env_ctx <- tryCatch(.r_env_context(), error = function(e) "")
       if (nzchar(env_ctx)) lines <- c(lines, "", env_ctx)
     }
@@ -228,12 +231,13 @@ NULL
 # Summarise the current R session environment for the system-reminder.
 # Shows variable names + types, and column schemas for data.frames.
 # Kept intentionally brief to not bloat the context window.
-.r_env_context <- function(max_objects = 20L, max_df_cols = 10L) {
+.r_env_context <- function(max_objects = 20L, max_df_cols = 10L,
+                           max_chars = 2000L) {
   objs <- tryCatch(ls(envir = .GlobalEnv), error = function(e) character(0))
   if (!length(objs)) return("")
   objs <- utils::head(objs, max_objects)
 
-  parts <- vapply(objs, function(nm) {
+  parts <- lapply(objs, function(nm) {
     val <- tryCatch(get(nm, envir = .GlobalEnv, inherits = FALSE),
                    error = function(e) NULL)
     if (is.null(val)) return(NULL)
@@ -251,9 +255,13 @@ NULL
       sprintf("%s [%s len=%s]", nm, cls,
               if (is.na(len)) "?" else as.character(len))
     }
-  }, character(1))
-  parts <- parts[!vapply(parts, is.null, logical(1))]
+  })
+  parts <- unlist(parts[!vapply(parts, is.null, logical(1))])
   if (!length(parts)) return("")
-  paste0("R session objects (GlobalEnv):\n",
-         paste(paste0("  ", parts), collapse = "\n"))
+  out <- paste0("R session objects (GlobalEnv):\n",
+                paste(paste0("  ", parts), collapse = "\n"))
+  # Token-budget guard: inject only a schema summary, never unbounded env dumps.
+  if (nchar(out) > max_chars)
+    out <- paste0(substr(out, 1L, max_chars), "\n  ... (truncated)")
+  out
 }
