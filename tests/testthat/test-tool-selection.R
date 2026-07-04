@@ -42,6 +42,14 @@ test_that("register_btw_task_tools is opt-in and reuses btw (no reinvention)", {
   expect_gt(length(.tool_names(chat)), before)
 })
 
+test_that("agent_tool prefers btw's subagent; codeagent loop only for worktree", {
+  skip_if_not_installed("btw")
+  # default: reuse btw's upstream subagent (no reinvention)
+  expect_identical(agent_tool()@name, "btw_tool_agent_subagent")
+  # worktree isolation is a codeagent-only capability btw lacks -> own tool
+  expect_identical(agent_tool(worktree_isolation = TRUE)@name, "Agent")
+})
+
 test_that("codeagent_task wrappers are exported and delegate to btw", {
   expect_true(is.function(codeagent_task))
   expect_true(is.function(codeagent_create_skill))

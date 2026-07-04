@@ -32,3 +32,31 @@ test_that("btw-installed skills are on codeagent's discovery path", {
   dirs <- tryCatch(btw:::btw_skills_directories(), error = function(e) NULL)
   expect_false(is.null(dirs))
 })
+
+test_that("install_ds_skills installs each selected skill in a loop", {
+  skip_if_not_installed("btw")
+  calls <- character(0)
+  local_mocked_bindings(
+    btw_skill_install_github = function(repo, skill = NULL, scope = "user",
+                                        overwrite = FALSE) {
+      calls[[length(calls) + 1L]] <<- skill
+      invisible(TRUE)
+    },
+    .package = "btw"
+  )
+  # explicit vector -> one call per skill (btw installs one at a time)
+  ok <- suppressMessages(install_ds_skills(c("cli", "ggsql"), scope = "project"))
+  expect_true(ok)
+  expect_setequal(calls, c("cli", "ggsql"))
+  # NULL -> curated default set (all installed)
+  calls <- character(0)
+  suppressMessages(install_ds_skills(NULL, scope = "project"))
+  expect_setequal(calls, .posit_ds_default_skills())
+})
+
+test_that(".posit_ds_default_skills is a non-empty R/data-science set", {
+  d <- .posit_ds_default_skills()
+  expect_true(length(d) >= 5L)
+  expect_true(all(nzchar(d)))
+  expect_true("quarto-authoring" %in% d)
+})

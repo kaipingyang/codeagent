@@ -11,8 +11,10 @@ install_ds_skills(
 )
 }
 \arguments{
-\item{skill}{Character or NULL. Install only a specific skill from the
-collection; \code{NULL} (default) installs all.}
+\item{skill}{Which posit-dev/skills to install: \code{NULL} (default) installs a
+curated R / data-science set; \code{"all"} installs every skill in the repo;
+or pass one or more skill names (character vector). btw installs one skill
+at a time, so multiple names are installed in a loop.}
 
 \item{scope}{Character. \code{"user"} (default) installs to the user-global btw
 skills dir; \code{"project"} installs to the project's \code{.btw/skills}.}
@@ -20,7 +22,7 @@ skills dir; \code{"project"} installs to the project's \code{.btw/skills}.}
 \item{overwrite}{Logical. Overwrite an existing skill of the same name.}
 }
 \value{
-Invisibly \code{TRUE} on success, \code{FALSE} if btw is unavailable.
+Invisibly \code{TRUE} if all requested skills installed, else \code{FALSE}.
 }
 \description{
 Installs the \href{https://github.com/posit-dev/skills}{posit-dev/skills}
@@ -36,9 +38,11 @@ skills; it uses the upstream collection directly.
 }
 \examples{
 \dontrun{
-install_ds_skills()                       # all posit-dev/skills, user scope
-install_ds_skills(skill = "shiny")        # just one
-list_skills_meta()                        # now includes the new skills
+install_ds_skills()                        # curated R/data-science set
+install_ds_skills("all")                   # everything in posit-dev/skills
+install_ds_skills("shiny-bslib")           # a specific skill
+install_ds_skills(c("cli", "quarto-authoring"))
+list_skills_meta()                          # now includes the new skills
 }
 }
 \seealso{
