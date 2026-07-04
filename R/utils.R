@@ -67,7 +67,71 @@ NULL
 # ---------------------------------------------------------------------------
 
 .get_codeagent_dir <- function() {
+  new_dir <- .new_codeagent_dir()
+  old_dir <- .legacy_codeagent_dir()
+  # One-time, lazy migration of a pre-rappdirs ~/.codeagent into the
+  # OS-standard config dir. Guarded by an option so it is cheap on repeat calls.
+  if (!isTRUE(getOption("codeagent._migrated"))) {
+    tryCatch(.migrate_config_dir(old_dir, new_dir, quiet = TRUE),
+             error = function(e) NULL)
+    options(codeagent._migrated = TRUE)
+  }
+  # Safety fallback: if the new dir still does not exist but the legacy one does
+  # (migration skipped/failed), keep using legacy so existing users never lose
+  # their sessions/settings.
+  if (!dir.exists(new_dir) && dir.exists(old_dir)) return(old_dir)
+  new_dir
+}
+
+# Legacy (pre-rappdirs) location.
+.legacy_codeagent_dir <- function() {
   file.path(path.expand("~"), ".codeagent")
+}
+
+# OS-standard config dir (rappdirs), with a CODEAGENT_HOME override and a
+# graceful fallback to the legacy path when rappdirs is unavailable.
+.new_codeagent_dir <- function() {
+  ov <- Sys.getenv("CODEAGENT_HOME", "")
+  if (nzchar(ov)) return(ov)
+  if (!requireNamespace("rappdirs", quietly = TRUE)) return(.legacy_codeagent_dir())
+  tryCatch(rappdirs::user_config_dir("codeagent"),
+           error = function(e) .legacy_codeagent_dir())
+}
+
+# Copy a legacy config tree into the new dir. Idempotent: does nothing when the
+# paths are identical, the legacy dir is absent, or the new dir already has
+# content. Returns TRUE only when a migration actually happened.
+.migrate_config_dir <- function(old_dir, new_dir, quiet = FALSE) {
+  norm <- function(p) normalizePath(p, winslash = "/", mustWork = FALSE)
+  if (identical(norm(old_dir), norm(new_dir))) return(invisible(FALSE))
+  if (!dir.exists(old_dir)) return(invisible(FALSE))
+  if (dir.exists(new_dir) &&
+      length(list.files(new_dir, all.files = TRUE, no.. = TRUE)) > 0)
+    return(invisible(FALSE))
+  dir.create(new_dir, recursive = TRUE, showWarnings = FALSE)
+  ok <- tryCatch({
+    entries <- list.files(old_dir, full.names = TRUE, all.files = TRUE,
+                          no.. = TRUE)
+    if (length(entries))
+      file.copy(entries, new_dir, recursive = TRUE, copy.date = TRUE)
+    TRUE
+  }, error = function(e) FALSE)
+  if (isTRUE(all(ok)) && !quiet)
+    message(sprintf("[codeagent] Migrated config: %s -> %s", old_dir, new_dir))
+  invisible(isTRUE(all(ok)))
+}
+
+#' Migrate the codeagent config directory to the OS-standard location
+#'
+#' Copies a legacy `~/.codeagent` directory into the platform config directory
+#' (`rappdirs::user_config_dir("codeagent")`). Idempotent and safe to call
+#' repeatedly; normally runs automatically on first use.
+#'
+#' @param quiet Logical. Suppress the migration message.
+#' @return Invisibly `TRUE` if a migration happened, else `FALSE`.
+#' @export
+migrate_config_dir <- function(quiet = FALSE) {
+  .migrate_config_dir(.legacy_codeagent_dir(), .new_codeagent_dir(), quiet = quiet)
 }
 
 .get_sessions_dir <- function(cwd = NULL) {
