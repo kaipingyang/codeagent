@@ -57,13 +57,16 @@ Invisibly NULL.
 \subsection{Method \code{handle_ptl_error()}}{
 Handle a prompt-too-long (PTL) error by dropping turns.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompactionController$handle_ptl_error(chat)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{CompactionController$handle_ptl_error(chat, error = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{chat}}{An \code{ellmer::Chat} object.}
+
+\item{\code{error}}{An error condition or message string (parsed for a real
+context limit when present).}
 }
 \if{html}{\out{</div>}}
 }

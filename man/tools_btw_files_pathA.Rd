@@ -4,24 +4,30 @@
 \alias{tools_btw_files_pathA}
 \title{Path A -- btw File Tools with Permission Gate (EXPERIMENTAL)}
 \description{
-Wraps btw's file tools (files_read, files_write, files_edit,
-files_replace, files_list, files_search) with codeagent's permission
-system, replacing codeagent's own Read/Write/Edit/Glob/Grep/LS tools.
+Wraps btw's file tools with codeagent's permission system.
 
-\strong{Not loaded by default.} Opt in:
-
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{source(system.file("pathA/tools_btw_files.R", package = "codeagent"))
-client <- codeagent_client(chat, use_btw_files = TRUE)
-}\if{html}{\out{</div>}}
-
-Benefits over codeagent's own file tools:
-\itemize{
-\item btw \code{files_edit}: hashline-anchored edits reject stale changes
-\item btw \code{files_read}: returns hashline annotations for precise editing
-\item Unified permission gate on all write operations
+\strong{Design rationale -- two parallel edit paths:}\tabular{llll}{
+   Path \tab Tools \tab Scope \tab Strength \cr
+   \strong{Default} (codeagent) \tab Read/Write/Edit/MultiEdit/Glob/Grep/LS \tab Any absolute path \tab Full filesystem access \cr
+   \strong{Path A} (btw, this file) \tab files_read/write/edit/replace/patch/list/search \tab Project cwd only \tab Hash-anchored edits, atomic patch \cr
 }
 
-Limitation: btw tools enforce paths relative to cwd; absolute paths
-outside cwd are rejected by btw's \code{check_path_within_current_wd()}.
+
+The cwd restriction in Path A is \strong{intentional and desirable} for
+security-conscious environments: the agent cannot accidentally (or
+maliciously) modify files outside the project directory. The default path
+is more powerful but riskier; use it when you need to read system paths,
+other projects, \verb{/tmp}, etc.
+
+Use both: Path A is opt-in via \code{enable_btw_file_tools()}, and
+coexists with the default tools. The LLM chooses the right tool for each
+task: btw tools for project-local edits (safer, hash-verified), default
+tools for absolute paths.
+
+\strong{Not loaded by default.} Opt in with:
+
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{enable_btw_file_tools()          # sets options(codeagent.use_btw_files = TRUE)
+client <- codeagent_client(chat) # both tool sets registered
+}\if{html}{\out{</div>}}
 }
 \keyword{internal}

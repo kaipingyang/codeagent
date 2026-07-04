@@ -9,7 +9,8 @@ register_run_r_tool(
   mode = "default",
   rules = list(),
   ask_fn = NULL,
-  sandbox = NULL
+  sandbox = NULL,
+  async = FALSE
 )
 }
 \arguments{

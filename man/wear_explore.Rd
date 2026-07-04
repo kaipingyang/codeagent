@@ -7,20 +7,58 @@
 wear_explore(data = NULL, client = NULL, mode = c("repl", "shiny"), ...)
 }
 \arguments{
-\item{data}{Named list or environment of data.frames to explore.
-Defaults to objects in \code{.GlobalEnv}.}
+\item{data}{Named list, environment, or \code{NULL}. Data.frames to make
+available for exploration. If \code{NULL}, uses objects in \code{.GlobalEnv}.
+A named list is converted to an environment automatically.}
 
-\item{client}{A \code{CodagentClient}. If NULL, built from settings.}
+\item{client}{A \code{CodagentClient} (from \code{\link[=codeagent_client]{codeagent_client()}}). If \code{NULL},
+one is built from \verb{~/.codeagent/settings.json} with \code{permission_mode = "bypass"}.}
 
-\item{mode}{Character. \code{"repl"} (default) for CLI, \code{"shiny"} for app.}
+\item{mode}{Character. \code{"repl"} (default) starts an interactive CLI session;
+\code{"shiny"} launches the Shiny app.}
 
 \item{...}{Passed to \code{\link[=codeagent_repl]{codeagent_repl()}} or \code{\link[=codeagent_app]{codeagent_app()}}.}
 }
 \value{
-Invisibly the client.
+Invisibly the \code{CodagentClient} (useful for post-session inspection
+or calling \code{\link[=generate_wear_report]{generate_wear_report()}} manually).
 }
 \description{
-Launches an interactive exploration session with Databot-style WEAR loop
-(Write/Execute/Analyze/Regroup). The agent generates code, executes it
-via the ExploreData tool, analyzes results, and proposes next steps.
+Launches an \strong{interactive} data exploration session using the
+Write/Execute/Analyze/Regroup (WEAR) loop pattern. This is a \strong{dedicated
+exploration mode} — it is separate from a normal \code{codeagent_app()} or
+\code{codeagent_repl()} session. The difference:
+}
+\details{
+\tabular{ll}{
+   Normal session \tab WEAR session (\code{wear_explore()}) \cr
+   No data registered by default \tab \verb{data=} argument registers named data.frames \cr
+   No \code{GenerateReport} tool \tab \verb{/report} exports session to \code{.qmd} \cr
+   No WEAR system prompt \tab Agent instructed to end each turn with \strong{Next steps} \cr
+   General-purpose tools \tab \code{ExploreData} tool added (read-only, sandboxed) \cr
+}
+
+
+The \code{ExploreData} and \code{GenerateReport} tools are \strong{not} registered in the
+standard agent loop (\code{codeagent_app()}) — use \code{wear_explore()} to enter
+exploration mode explicitly.
+}
+\examples{
+\dontrun{
+# Explore mtcars from the CLI (requires a configured LLM client)
+wear_explore(data = list(mtcars = mtcars))
+
+# Shiny UI with multiple data.frames
+wear_explore(
+  data = list(sales = sales_df, products = products_df),
+  mode = "shiny"
+)
+
+# Capture the client to export the report afterwards
+client <- wear_explore(data = list(mtcars = mtcars))
+generate_wear_report(client, title = "Motor Trend Analysis")
+}
+}
+\seealso{
+\code{\link[=generate_wear_report]{generate_wear_report()}} to export the session to a Quarto document.
 }
