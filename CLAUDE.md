@@ -228,6 +228,15 @@ codeagent_app(client, theme="default") # Shiny UI
 - L4 `ptl_fallback`: drop oldest turns on 413 errors
 - L5 `context_collapse`: read-time projection (truncate all tool result values)
 
+> **Current flow (task 01 alignment):** the live `maybe_compact()` trigger is now
+> **two-level** — `snip_old_tools` pre-step → `session_memory_compact` → fall back to
+> `full_compact` (verbatim 9-section prompt). `ptl_fallback`/`context_collapse` remain
+> as reactive/utility paths. Dynamic per-model window lives in `R/context.R`.
+> **Known gap:** compaction runs only at **turn boundaries** (before `chat$chat()`),
+> not between tool rounds within a turn. Mid-loop compaction is planned via upstream
+> `on_turn_start` — see `references/plan/13-mid-loop-compaction.md`
+> (PR tidyverse/ellmer#1052; interim uses the released `on_tool_result` hook).
+
 **`tools_web.R`** — `web_fetch_tool()` and `web_search_tool()`. All tools return `ContentToolResult` with `extra$display` (HTML title + markdown preview for humans). WebSearch backend: `BRAVE_API_KEY` → Brave Search API (real results, 2000 free/month); fallback → DuckDuckGo Instant Answer (entity queries only, no key needed). WebFetch uses httr2 directly (no Chrome dependency). btw `web_read_url` (needs Chrome) is available as extra via `btw_groups = "web"`.
 
 **`skills.R`** — **btw-compatible** skill system. Skill format: `<name>/SKILL.md` directories (not flat `.md` files). Uses `btw:::btw_skills_list()` as primary discovery backend. Discovery paths: codeagent `inst/skills/` + btw paths + `.btw/skills/` + `.agents/skills/` + `.claude/skills/` + `.codex/skills/`. `.make_skill_tool()` registers `use_skill` ellmer tool for LLM semantic auto-trigger; returns `ContentToolResult` with HTML title card. Two trigger paths: user `/name` → `load_skill_prompt()` inject; LLM semantic match → `use_skill` tool call. User custom skills: use `~/.btw/skills/` (not `~/.codeagent/skills/`).
