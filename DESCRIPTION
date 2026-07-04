@@ -36,6 +36,7 @@ Suggests:
     mcptools,
     Rapp,
     promises,
+    rappdirs,
     testthat (>= 3.0.0),
     withr,
     devtools,
