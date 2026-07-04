@@ -218,9 +218,15 @@ codeagent_app <- function(
                   pinned_skills = pinned_skills)
 
     # Official shinychat slash-command typeahead (task 09), driven standalone
-    # (codeagent owns streaming, so no chat_server). Registers local commands +
-    # skills; selection re-submits through the normal input path.
-    server_slash(input, session, cwd = cwd)
+    # (codeagent owns streaming, so no chat_server). Selection is dispatched
+    # DIRECTLY here (local commands via .handle_chat_command, skills via the
+    # shared stream_task) -- NOT re-submitted through the input, which shinychat
+    # would re-recognise as a slash command and drop (observeEvent de-dupe).
+    server_slash(input, session, cwd = cwd,
+                 stream_task = stream_task,
+                 chat        = chat_obj,
+                 settings    = settings,
+                 state       = state)
 
     server_right(input, output, session,
                  cwd   = cwd,
