@@ -109,6 +109,16 @@ codeagent_app(client)
 
 **`coro::for` inside `coro::async`:** Write plain `for (x in gen)` — do not qualify as `coro::for`. Do not wrap in `tryCatch()` inside the loop.
 
+**No `x <- if (...)` inside a `coro::async` body:** coro rewrites `if` as control flow and
+**cannot assign the result of an `if` expression** (fails with coro `expr_info`: "Can't
+assign the result of a `if` expression"). Assign inside each branch instead
+(`if (cond) { x <- a } else { x <- b }`), or compute the value *before* the async body.
+Likewise avoid bare `!!!` splicing inside a coro body — use `do.call()`. Also: `coro::async()`
+takes a **literal** anonymous function (it `substitute()`s the arg), so you cannot wrap a
+dynamically-built function with it — return a `promises::then()` promise from a plain function
+instead (ellmer's `invoke_tools_async()` awaits any returned promise). See
+`lessons/2026-07-03-shiny-async-interaction.md` and `R/tools_builtin.R` `.asyncify_gated_tool()`.
+
 **Env vars:** Use `CODEAGENT_BASE_URL`, `CODEAGENT_MODEL`, `CODEAGENT_API_KEY` (not `OPENAI_*`).
 
 **Shiny layout rule:** Before changing chat/sidebar layout, read `~/.claude/docs/bslib-shinychat-layout.md`. In particular, `shinychat::chat_ui(fill = TRUE)` must live inside a truly fillable parent (for example `bslib::sidebar(fillable = TRUE, ...)`), and extra wrappers often break sticky-bottom input behavior.
