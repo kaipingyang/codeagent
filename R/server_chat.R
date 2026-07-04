@@ -80,7 +80,8 @@ server_chat <- function(input, output, session, chat, settings,
     stream_task <- shiny::ExtendedTask$new(function(user_contents) {
     # Extract text for skill-prompt injection; keep full contents for LLM
     text_part <- if (is.character(user_contents)) user_contents
-                 else if (is.list(user_contents) && is.character(user_contents[[1]]))
+                 else if (is.list(user_contents) && length(user_contents) > 0 &&
+                            is.character(user_contents[[1]]))
                    user_contents[[1]]
                  else as.character(user_contents)
 
@@ -102,25 +103,42 @@ server_chat <- function(input, output, session, chat, settings,
     ))
     shiny::isolate(state$resource_state$maybe_replace(chat))
 
+    # Resolve the positional turn contents ONCE, out here — not inside the
+    # coro::async body. coro rewrites `if` as control flow and cannot assign the
+    # result of an `if` expression (coro `expr_info` error), so the
+    # list-vs-scalar branch must live outside async. A list is spliced into
+    # separate positional args (text + ContentImage/PDF); a scalar is wrapped so
+    # do.call() treats it as a single positional arg.
+    stream_contents <- if (is.list(actual_input)) actual_input else list(actual_input)
+
     coro::async(function() {
       if (!is.null(stream_ctrl)) stream_ctrl$reset()
-      # Splice list contents so user_turn() receives each element as a separate
-      # positional argument (text string + ContentImage/ContentPDF/...).
-      # chat$stream_async(list(...)) passes the list as ONE arg → user_turn errors.
-      # chat$stream_async(!!!list(...)) splices → user_turn("text", img, ...) ✓
-      stream <- if (is.list(actual_input)) {
-        chat$stream_async(!!!actual_input, stream = "content", controller = stream_ctrl)
-      } else {
-        chat$stream_async(actual_input, stream = "content", controller = stream_ctrl)
-      }
+      # do.call() splices stream_contents as positional `...` args to
+      # user_turn() (equivalent to `!!!`), but is a plain call that coro can
+      # transform — a bare `!!!` inside a coro::async body is not coro-safe.
+      stream <- do.call(
+        chat$stream_async,
+        c(stream_contents, list(stream = "content", controller = stream_ctrl))
+      )
       await(shinychat::chat_append("chat", stream, session = session))
 
-      n_tokens    <- estimate_tokens(chat)
+      n_tokens    <- token_count_with_estimation(chat)
       model_limit <- settings$model_limit %||% 200000L
       pct         <- round(n_tokens / model_limit * 100)
+      # Context-left indicator (Claude Code calculateTokenWarningState).
+      ws    <- tryCatch(calculate_token_warning_state(n_tokens, settings$model %||% ""),
+                        error = function(e) NULL)
+      left  <- if (is.null(ws)) NA_integer_ else ws$percent_left
+      level <- if (is.null(ws)) "ok"
+               else if (isTRUE(ws$at_blocking)) "blocking"
+               else if (isTRUE(ws$above_error)) "error"
+               else if (isTRUE(ws$above_warning)) "warning"
+               else "ok"
       session$sendCustomMessage("update_budget", list(
-        text = format(n_tokens, big.mark = ","),
-        pct  = pct
+        text          = format(n_tokens, big.mark = ","),
+        pct           = pct,
+        percent_left  = left,
+        level         = level
       ))
 
       shiny::isolate(state$iteration <- state$iteration + 1L)
@@ -183,7 +201,6 @@ server_chat <- function(input, output, session, chat, settings,
     }
   })
 
-  # renderUI for main_output (two-phase: immediate + full)
   output$main_output <- shiny::renderUI({
     val <- state$main_output
     if (is.null(val)) {

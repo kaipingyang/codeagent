@@ -267,9 +267,10 @@ get_session_messages <- function(session_id, directory = NULL,
 
 #' Restore a saved session's messages into a Chat object
 #'
-#' Loads a session's messages and replays them as ellmer turns via
-#' `chat$set_turns()`. Currently text-level (tool-call turns are flattened to
-#' text); M7 will upgrade this to lossless `contents_record/replay`.
+#' Loads a session and replays it into a Chat. Prefers the lossless
+#' `chat-state` record (tool calls/results intact, via
+#' `contents_record()`/`contents_replay()`); falls back to text-level turns for
+#' pre-lossless sessions.
 #'
 #' @param chat An `ellmer::Chat` to populate.
 #' @param session_id Character. Session UUID. If `NULL`, the most recent
