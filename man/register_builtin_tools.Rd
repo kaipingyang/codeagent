@@ -10,7 +10,8 @@ register_builtin_tools(
   rules = list(),
   ask_fn = NULL,
   skip_file_tools = FALSE,
-  sandbox = NULL
+  sandbox = NULL,
+  async = FALSE
 )
 }
 \arguments{
@@ -23,8 +24,10 @@ register_builtin_tools(
 \item{ask_fn}{Function or NULL. \verb{function(tool_name, input) -> logical}.
 Called when permission is \code{"ask"}.}
 
-\item{skip_file_tools}{Logical. Skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
-(register only Bash) when btw file tools handle files (Path A).}
+\item{skip_file_tools}{Logical. If \code{TRUE}, skip Read/Write/Edit/MultiEdit/Glob/Grep/LS
+and register only Bash. Advanced use: set this if you want btw file tools to be
+the \emph{only} file tools (no absolute-path fallback). Default \code{FALSE} means both
+codeagent and btw file tools coexist when Path A is enabled.}
 
 \item{sandbox}{List or NULL. Bash sandbox profile (see \code{\link[=.sandbox_profile]{.sandbox_profile()}});
 passed through to \code{\link[=bash_tool]{bash_tool()}}.}

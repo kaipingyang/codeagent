@@ -4,18 +4,22 @@
 \alias{ptl_fallback}
 \title{L4: Prompt-too-long fallback -- drop oldest turns}
 \usage{
-ptl_fallback(chat, drop_turns = 3L)
+ptl_fallback(chat, drop_turns = 3L, error_msg = NULL)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
 
-\item{drop_turns}{Integer. Number of turns to drop from the start.}
+\item{drop_turns}{Integer. Turns to drop when no limit can be parsed.}
+
+\item{error_msg}{Character or NULL. The PTL/413 error message to parse.}
 }
 \value{
 Invisibly NULL.
 }
 \description{
-Called when the API returns a 413 / prompt_too_long error.
-Drops \code{drop_turns} oldest turns to reduce context size.
+Called when the API returns a 413 / prompt_too_long error. When the error
+message carries a real context limit (Claude Code parses \code{contextLimit}), drop
+the oldest turns until the estimate is under ~90\% of that limit; otherwise
+drop a fixed number of oldest turns.
 }
 \keyword{internal}

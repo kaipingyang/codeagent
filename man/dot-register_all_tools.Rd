@@ -4,7 +4,7 @@
 \alias{.register_all_tools}
 \title{Register all codeagent tools to a Chat object}
 \usage{
-.register_all_tools(chat, settings, ask_fn = NULL)
+.register_all_tools(chat, settings, ask_fn = NULL, ask_question_fn = NULL)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
@@ -12,6 +12,9 @@
 \item{settings}{Named list from \code{\link[=load_settings]{load_settings()}}.}
 
 \item{ask_fn}{Function or NULL.}
+
+\item{ask_question_fn}{Function or NULL. Shiny callback for AskUserQuestion
+(Phase 3). NULL uses CLI readline path.}
 }
 \value{
 Invisibly \code{chat}.

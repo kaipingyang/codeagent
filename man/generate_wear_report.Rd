@@ -11,16 +11,47 @@ generate_wear_report(
 )
 }
 \arguments{
-\item{client}{A \code{CodagentClient} with the exploration session history.}
+\item{client}{A \code{CodagentClient} whose \code{chat} has been used in a
+\code{\link[=wear_explore]{wear_explore()}} session.}
 
-\item{path}{Character. Output path for the \code{.qmd} file.}
+\item{path}{Character. Output file path (default: \code{exploration-YYYYMMDD.qmd}
+in the current directory).}
 
-\item{title}{Character. Document title.}
+\item{title}{Character. Quarto document title.}
 }
 \value{
-Invisibly the path to the generated file.
+Invisibly the path to the generated \code{.qmd} file.
 }
 \description{
-Generates a reproducible \code{.qmd} file containing the conversation history:
-questions, generated code, outputs, and analysis notes.
+Generates a reproducible \code{.qmd} file from the conversation history of a
+\code{\link[=wear_explore]{wear_explore()}} session. Each user message becomes a \verb{##} section heading;
+assistant text is written as prose; code from \code{ExploreData} tool results is
+written as \verb{\\}\\verb{\\}{r}` chunks.
+}
+\details{
+The \code{.qmd} has \code{eval: false} by default so it renders without re-running the
+LLM queries. Set \code{eval: true} in the YAML front-matter to make it fully
+reproducible.
+
+This function is also registered as the \code{GenerateReport} tool inside a
+\code{\link[=wear_explore]{wear_explore()}} session, so the agent can call it when the user types
+\verb{/report}.
+}
+\examples{
+\dontrun{
+# After a wear_explore() session:
+client <- wear_explore(data = list(mtcars = mtcars))
+
+# Export to a named file
+path <- generate_wear_report(client,
+  path  = "mtcars-analysis.qmd",
+  title = "Motor Trend Analysis")
+
+# Render with quarto CLI
+system(paste("quarto render", path))
+# Or: quarto::quarto_render(path)  # if quarto R package is installed
+}
+}
+\seealso{
+\code{\link[=wear_explore]{wear_explore()}} to start a WEAR exploration session.
 }

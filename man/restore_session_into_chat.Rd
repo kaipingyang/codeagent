@@ -18,7 +18,8 @@ session under \code{cwd} is used (for \code{--continue}).}
 Invisibly, the resolved session id (or \code{NULL} if none found).
 }
 \description{
-Loads a session's messages and replays them as ellmer turns via
-\code{chat$set_turns()}. Currently text-level (tool-call turns are flattened to
-text); M7 will upgrade this to lossless \code{contents_record/replay}.
+Loads a session and replays it into a Chat. Prefers the lossless
+\code{chat-state} record (tool calls/results intact, via
+\code{contents_record()}/\code{contents_replay()}); falls back to text-level turns for
+pre-lossless sessions.
 }
