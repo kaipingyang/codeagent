@@ -17,17 +17,30 @@
   // ---------------------------------------------------------------------------
   if (typeof Shiny !== "undefined") {
     Shiny.addCustomMessageHandler("update_budget", function (data) {
-      // Text
+      // Text: "12,345 tokens" plus "N% context left" when provided.
       var el = document.getElementById("token-budget-text");
-      if (el) el.textContent = data.text;
-      // Bar
+      if (el) {
+        var t = data.text;
+        if (data.percent_left !== null && data.percent_left !== undefined &&
+            !isNaN(data.percent_left)) {
+          t = data.text + "  \u00b7  " + data.percent_left + "% left";
+        }
+        el.textContent = t;
+      }
+      // Bar width from % used; color from the Claude Code warning level when
+      // available, else fall back to pct thresholds.
       var pct = data.pct || 0;
       var fill = document.querySelector(".token-budget-bar-fill");
       if (fill) {
         fill.style.width = Math.min(100, Math.max(0, pct)) + "%";
         fill.classList.remove("warn", "danger");
-        if (pct >= 90) fill.classList.add("danger");
-        else if (pct >= 70) fill.classList.add("warn");
+        var level = data.level;
+        if (level === "blocking" || level === "error") fill.classList.add("danger");
+        else if (level === "warning") fill.classList.add("warn");
+        else if (level === undefined) {
+          if (pct >= 90) fill.classList.add("danger");
+          else if (pct >= 70) fill.classList.add("warn");
+        }
       }
     });
 
