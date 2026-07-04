@@ -174,3 +174,23 @@ calculate_token_warning_state <- function(token_usage, model, chat = NULL) {
     at_blocking   = token_usage >= eff - .MANUAL_COMPACT_BUFFER
   )
 }
+
+# Build the Shiny `update_budget` payload (text/pct/percent_left/level). Kept as
+# a plain function so the coro::async streaming body never has to assign the
+# result of an `if` (coro forbids that). `if` here is fine -- not inside coro.
+.budget_payload <- function(n_tokens, model_limit = 200000L, model = "") {
+  ws    <- tryCatch(calculate_token_warning_state(n_tokens, model),
+                    error = function(e) NULL)
+  level <- "ok"
+  if (!is.null(ws)) {
+    if (isTRUE(ws$at_blocking))        level <- "blocking"
+    else if (isTRUE(ws$above_error))   level <- "error"
+    else if (isTRUE(ws$above_warning)) level <- "warning"
+  }
+  list(
+    text         = format(as.integer(n_tokens), big.mark = ","),
+    pct          = round(n_tokens / max(1L, model_limit) * 100),
+    percent_left = if (is.null(ws)) NA_integer_ else ws$percent_left,
+    level        = level
+  )
+}

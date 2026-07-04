@@ -84,3 +84,20 @@ test_that("percent_left never goes negative", {
   s <- calculate_token_warning_state(10^9, "claude-sonnet-4-5")
   expect_identical(s$percent_left, 0L)
 })
+
+test_that(".budget_payload shapes the update_budget message without coro-illegal ifs", {
+  # Low usage -> ok level, high percent_left
+  low <- .budget_payload(1000L, model_limit = 200000L, model = "claude-sonnet-4-5")
+  expect_named(low, c("text", "pct", "percent_left", "level"))
+  expect_identical(low$level, "ok")
+  expect_identical(low$pct, round(1000 / 200000 * 100))
+  expect_true(is.na(low$percent_left) || low$percent_left > 90)
+
+  # Near/over the blocking limit -> non-ok level
+  hi <- .budget_payload(199000L, model_limit = 200000L, model = "claude-sonnet-4-5")
+  expect_true(hi$level %in% c("warning", "error", "blocking"))
+
+  # Degrades gracefully when warning-state cannot be computed
+  none <- .budget_payload(500L, model_limit = 200000L, model = "")
+  expect_identical(none$level, "ok")
+})
