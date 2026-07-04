@@ -405,6 +405,10 @@ session_memory_compact <- function(chat,
 # NO_TOOLS_PREAMBLE + prompt.ts:61 BASE_COMPACT_PROMPT, with prompt.ts:39
 # DETAILED_ANALYSIS_INSTRUCTION_BASE embedded). Transcribed ASCII-only (em-dash
 # -> "--"). Kept as a raw string so the text stays byte-for-byte aligned.
+# PINNED to Claude Code prompt structure with the 9 summary sections below
+# (Primary Request/Intent ... Optional Next Step). test-compaction-cc.R guards
+# against accidental drift of these section headers. Re-verify when tracking a
+# newer Claude Code release (CC is closed-source and this prompt can evolve).
 .COMPACT_SYSTEM_PROMPT <- r"---(CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.
 
 - Do NOT use Read, Bash, Grep, Glob, Edit, Write, or ANY other tool.
@@ -528,6 +532,17 @@ When you are using compact - please focus on test output and code changes. Inclu
 
 #' L3: Full context compaction via fork agent
 #'
+# Build the compaction system prompt, optionally biased by user instructions
+# (Claude Code's `/compact <instructions>`). `if` here is fine -- plain function.
+.compact_system_prompt <- function(instructions = NULL) {
+  if (is.null(instructions) || !nzchar(trimws(as.character(instructions))))
+    return(.COMPACT_SYSTEM_PROMPT)
+  paste0(.COMPACT_SYSTEM_PROMPT,
+         "\n\nADDITIONAL INSTRUCTIONS FROM THE USER for this summary ",
+         "(follow these closely when deciding what to keep):\n",
+         trimws(as.character(instructions)))
+}
+
 # TRUE for a user turn that carries only plain content (no tool request/result),
 # i.e. safe to keep verbatim after a full compaction without orphaning a pair.
 .is_plain_user_turn <- function(turn) {
@@ -563,7 +578,7 @@ When you are using compact - please focus on test output and code changes. Inclu
 #' @param model Character. Haiku model for compaction.
 #' @return Invisibly NULL.
 #' @keywords internal
-full_compact <- function(chat, model = .HAIKU_MODEL) {
+full_compact <- function(chat, model = .HAIKU_MODEL, instructions = NULL) {
   turns <- .safe_get_turns(chat)
   if (length(turns) < 4L) return(invisible(NULL))
 
@@ -584,7 +599,7 @@ full_compact <- function(chat, model = .HAIKU_MODEL) {
                         "\n[... truncated for compaction ...]")
 
   summary_text <- tryCatch({
-    compactor <- .make_compact_chat(model, system_prompt = .COMPACT_SYSTEM_PROMPT)
+    compactor <- .make_compact_chat(model, system_prompt = .compact_system_prompt(instructions))
     compactor$chat(conv_text)
   }, error = function(e) {
     # Re-raise so the outer maybe_compact() tryCatch increments the circuit

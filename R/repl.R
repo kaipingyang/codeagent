@@ -44,7 +44,7 @@ NULL
     quit     = list(action = "exit"),
     help     = list(action = "help"),
     clear    = list(action = "clear"),
-    compact  = list(action = "compact"),
+    compact  = list(action = "compact", arg = arg),
     sessions = list(action = "sessions"),
     budget   = list(action = "budget"),
     rewind   = list(action = "rewind", arg = arg),
@@ -55,7 +55,7 @@ NULL
 .repl_help <- paste(
   "Commands:",
   "  /model [spec]   show current model & tiers; /model <name> to switch",
-  "  /compact        force context compaction",
+  "  /compact [hint] force context compaction (optional focus instructions)",
   "  /clear          clear conversation history",
   "  /rewind [N]     drop the last N exchanges (default 1)",
   "  /sessions       list recent saved sessions",
@@ -261,7 +261,10 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
         cat("[history cleared]\n"); TRUE
       },
       compact = {
-        tryCatch(full_compact(client$chat), error = function(e)
+        instr <- trimws(parsed$arg %||% "")
+        tryCatch(full_compact(client$chat,
+                              instructions = if (nzchar(instr)) instr else NULL),
+                 error = function(e)
           cat("[compact failed: ", conditionMessage(e), "]\n", sep = ""))
         cat("[context compacted]\n"); TRUE
       },

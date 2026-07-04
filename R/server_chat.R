@@ -79,11 +79,7 @@ server_chat <- function(input, output, session, chat, settings,
   # ------------------------------------------------------------------
     stream_task <- shiny::ExtendedTask$new(function(user_contents) {
     # Extract text for skill-prompt injection; keep full contents for LLM
-    text_part <- if (is.character(user_contents)) user_contents
-                 else if (is.list(user_contents) && length(user_contents) > 0 &&
-                            is.character(user_contents[[1]]))
-                   user_contents[[1]]
-                 else as.character(user_contents)
+    text_part <- .user_input_text(user_contents)
 
     parsed <- .preprocess_input(text_part, cwd)
     # For skill trigger: replace text part with skill prompt; keep attachments
@@ -143,21 +139,27 @@ server_chat <- function(input, output, session, chat, settings,
     if (stream_task$status() == "running") return()
     state$interrupt <- FALSE
 
-    # user_input_contents() normalises plain text OR {text, attachments} payloads
-    # (shinychat dev allow_attachments=TRUE). Returns character scalar or list of
-    # contents (text + ContentImage/ContentPDF etc).
+    # shinychat (dev, allow_attachments = TRUE) already delivers a normalized
+    # value in input$chat_user_input:
+    #   * allow_attachments = FALSE -> a plain character scalar
+    #   * allow_attachments = TRUE  -> a contents list (text string, then one
+    #     Content object per attachment)
+    # Only an older/alternate build sends a raw {text, attachments} wire payload
+    # that still needs user_input_contents(). Detect that shape explicitly:
+    # calling user_input_contents() on an ALREADY-normalized contents list
+    # wrongly returns an empty list() -> the message is silently dropped and the
+    # downstream stream_task crashes in .preprocess_input (subscript out of
+    # bounds). See inst/experiments/capture_input/ for the captured evidence.
     raw_input  <- input$chat_user_input
-    user_contents <- tryCatch(
-      shinychat:::user_input_contents(raw_input),
-      error = function(e) raw_input
-    )
+    user_contents <-
+      if (is.list(raw_input) && !is.null(raw_input[["text"]])) {
+        tryCatch(shinychat:::user_input_contents(raw_input),
+                 error = function(e) raw_input)
+      } else {
+        raw_input
+      }
     # Extract plain-text portion for slash-command detection
-    text_part <- if (is.character(user_contents)) user_contents
-                 else if (is.list(user_contents) && length(user_contents) > 0 &&
-                            is.character(user_contents[[1]]))
-                   user_contents[[1]]
-                 else if (is.list(raw_input)) raw_input[["text"]] %||% ""
-                 else as.character(raw_input)
+    text_part <- .user_input_text(user_contents)
 
     # Pre-process: local commands are handled here (not sent to LLM).
     parsed <- tryCatch(.preprocess_input(text_part, cwd),
@@ -459,10 +461,11 @@ server_chat <- function(input, output, session, chat, settings,
     }
   })
 
-  # /compact -- compact context
-  mod$slash_command("compact", "Compact the context", function() {
+  # /compact [instructions] -- compact context, optional focus instructions
+  mod$slash_command("compact", "Compact the context", function(content) {
+    instr <- tryCatch(trimws(content@user_text %||% ""), error = function(e) "")
     tryCatch({
-      full_compact(chat)
+      full_compact(chat, instructions = if (nzchar(instr)) instr else NULL)
       mod$append("OK Context compacted.", role = "assistant")
     }, error = function(e)
       mod$append(paste0("ERR Compact failed: ", conditionMessage(e)), role = "assistant"))

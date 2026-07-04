@@ -5,7 +5,7 @@
 \title{Spawns a separate haiku chat to generate a 9-section structured summary
 wrapped in \verb{<summary>} tags, then replaces all turns with that summary.}
 \usage{
-full_compact(chat, model = .HAIKU_MODEL)
+full_compact(chat, model = .HAIKU_MODEL, instructions = NULL)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
