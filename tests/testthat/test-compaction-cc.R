@@ -123,3 +123,36 @@ test_that(".full_compact_turns keeps the current-task user turn when safe", {
   )
   expect_length(.full_compact_turns(turns_tool, summary), 1L)
 })
+
+# --- Manual /compact custom instructions + prompt drift guard ----------------
+
+test_that(".compact_system_prompt biases the prompt with user instructions", {
+  expect_identical(.compact_system_prompt(NULL), .COMPACT_SYSTEM_PROMPT)
+  expect_identical(.compact_system_prompt(""), .COMPACT_SYSTEM_PROMPT)
+  expect_identical(.compact_system_prompt("   "), .COMPACT_SYSTEM_PROMPT)
+  p <- .compact_system_prompt("keep the SQL debugging details")
+  expect_true(startsWith(p, .COMPACT_SYSTEM_PROMPT))            # base preserved
+  expect_match(p, "keep the SQL debugging details", fixed = TRUE)
+  expect_match(p, "ADDITIONAL INSTRUCTIONS FROM THE USER")
+})
+
+test_that("full_compact accepts an instructions argument", {
+  expect_true("instructions" %in% names(formals(full_compact)))
+})
+
+test_that(".repl_dispatch captures /compact focus instructions", {
+  expect_identical(.repl_dispatch("/compact")$action, "compact")
+  d <- .repl_dispatch("/compact keep debug details")
+  expect_identical(d$action, "compact")
+  expect_identical(d$arg, "keep debug details")
+})
+
+test_that("compaction prompt keeps all 9 Claude Code summary sections", {
+  sections <- c(
+    "1. Primary Request and Intent", "2. Key Technical Concepts",
+    "3. Files and Code Sections", "4. Errors and fixes", "5. Problem Solving",
+    "6. All user messages", "7. Pending Tasks", "8. Current Work",
+    "9. Optional Next Step")
+  for (s in sections)
+    expect_match(.COMPACT_SYSTEM_PROMPT, s, fixed = TRUE)
+})
