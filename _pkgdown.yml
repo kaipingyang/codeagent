@@ -133,6 +133,57 @@ reference:
       - verify_r_tests
       - use_codeagent_md
 
+  - title: "Tools"
+    desc: "Tool factories and registration."
+    contents:
+      - agent_tool
+      - ask_user_tool
+      - notebook_edit_tool
+      - notebook_read_tool
+      - todo_write_tool
+      - web_fetch_tool
+      - web_search_tool
+      - register_agent_tool
+      - register_ask_user_tool
+      - register_btw_file_tools
+      - register_notebook_tools
+      - register_r_tools
+      - register_task_tools
+      - register_web_tools
+      - enable_btw_file_tools
+
+  - title: "Data exploration (WEAR)"
+    desc: "Interactive data exploration and reporting."
+    contents:
+      - wear_explore
+      - generate_wear_report
+
+  - title: "Sessions & settings"
+    desc: "Session storage and settings helpers."
+    contents:
+      - delete_session
+      - get_session_info
+      - migrate_sessions
+      - load_settings
+      - save_user_settings
+
+  - title: "Harness internals"
+    desc: "R6 controllers and content/permission types (advanced)."
+    contents:
+      - BudgetTracker
+      - CompactionController
+      - ContentReplacementState
+      - DenialTracker
+      - StreamingToolExecutor
+      - PreToolHook
+      - PostToolHook
+      - PermissionResultAllow
+      - PermissionResultDeny
+      - TextBlock
+      - ThinkingBlock
+      - ToolResultBlock
+      - ToolUseBlock
+
 articles:
   - title: "Getting Started"
     navbar: ~
@@ -142,7 +193,10 @@ articles:
   - title: "Configuration"
     navbar: "Configuration"
     contents:
+      - configuration
       - permissions
+      - models
+      - compaction
       - skills-usage
 
   - title: "Advanced"

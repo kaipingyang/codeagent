@@ -1,0 +1,80 @@
+---
+title: "Configuration"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Configuration}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+## Precedence
+
+Settings resolve from lowest to highest priority:
+
+```
+package defaults  <  ~/.codeagent/settings.json  <  .codeagent/settings.json  <  environment variables
+```
+
+Scaffold a settings file:
+
+```{r}
+use_codeagent_settings(scope = "user")     # ~/.codeagent/settings.json
+```
+
+## settings.json
+
+```json
+{
+  "provider": "openai_compatible",
+  "model": "your-model",
+  "env": {
+    "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE/serving-endpoints",
+    "CODEAGENT_SMALL_FAST_MODEL": "your-haiku-endpoint"
+  },
+  "permissions": { "allow": [], "deny": [], "ask": [], "defaultMode": "default" },
+  "sandbox": { "enabled": false, "allow_network": true },
+  "effortLevel": "high"
+}
+```
+
+The `env` block is applied before environment variables are read, so it works
+even under `Rscript --vanilla`.
+
+## Environment variables
+
+| Variable | Purpose |
+|----------|---------|
+| `CODEAGENT_BASE_URL` | OpenAI-compatible endpoint |
+| `CODEAGENT_MODEL` | Default model |
+| `CODEAGENT_API_KEY` | API key (never put this in `settings.json`) |
+| `CODEAGENT_SMALL_FAST_MODEL` | Compaction / classification model |
+| `CODEAGENT_MAX_CONTEXT_TOKENS` | Override the context window |
+| `CODEAGENT_DISABLE_COMPACT` | Disable auto-compaction |
+| `CODEAGENT_PERMISSION_MODE` | Default permission mode |
+
+## API keys
+
+Keep API keys in `~/.Renviron` as `CODEAGENT_API_KEY`, or use the OS keyring
+(offered by `use_codeagent_setup()`). Never store keys in `settings.json`.
+
+## Per-project multi-client config
+
+```yaml
+# codeagent.md
+---
+client:
+  gpt41:    openai/gsds-gpt41
+  deepseek: openai/deepseek-r1
+btw_groups: [docs, git, pkg]
+permission_mode: bypass
+---
+Follow tidyverse style.
+```
+
+```{r}
+client <- codeagent_client_config(alias = "gpt41")
+```

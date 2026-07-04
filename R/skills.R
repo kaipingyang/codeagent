@@ -305,8 +305,6 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
 # Input pre-processing (detect /skillname invocations)
 # ---------------------------------------------------------------------------
 
-#' Pre-process user input for skill invocation
-#'
 # Built-in local commands: handled client-side (not sent to LLM). Must match
 # the REPL meta-commands in .REPL_META_CMDS so both paths behave identically.
 .LOCAL_COMMANDS <- c("model", "compact", "clear", "rewind",
