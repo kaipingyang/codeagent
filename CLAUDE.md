@@ -28,6 +28,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Rules
 
+**安全铁律 — 绝不提交/推送/打印敏感数据：** 真实 API key / token / 密码，以及具体基础设施端点
+（真实 `base_url`、Databricks/serving-endpoint 主机、workspace ID/host 如 `adb-<id>.azuredatabricks.net`、
+内网 hostname/IP）**绝不能**出现在被 git 跟踪的文件（源码/测试/示例/文档/模板）里。示例一律用占位符
+（`YOUR-WORKSPACE.cloud.databricks.net`、`sk-...`、`<workspace-id>`），真实值只放 `.Renviron`/keyring
+（git 忽略）。`git add/commit/push` 前扫描 diff（`git diff --cached | grep -iE 'api[_-]?key|token|secret|sk-|ghp_|dapi|azuredatabricks\.net|serving-endpoints'`）；
+打印 remote URL 时用 `sed -E 's#//[^@]*@#//***@#g'` 掩码，**绝不回显完整 token**。详见 skill `no-secrets`。
+
 **每次改完代码必须重装包并更新 codegraph：**
 ```r
 pak::local_install(".", ask = FALSE, upgrade = FALSE)
