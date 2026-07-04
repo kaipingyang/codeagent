@@ -263,6 +263,7 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
       compact = {
         instr <- trimws(parsed$arg %||% "")
         tryCatch(full_compact(client$chat,
+                              model = .resolve_compact_model(client$chat, settings),
                               instructions = if (nzchar(instr)) instr else NULL),
                  error = function(e)
           cat("[compact failed: ", conditionMessage(e), "]\n", sep = ""))
@@ -331,7 +332,7 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
     # 1. Compaction + resource management (per turn, like agent_loop)
     tryCatch(compaction_ctrl$maybe_compact(client$chat,
              settings$model_limit %||% 200000L,
-             compact_model = settings$small_fast_model %||% .HAIKU_MODEL),
+             compact_model = .resolve_compact_model(client$chat, settings)),
              error = function(e) NULL)
     tryCatch(resource_state$maybe_replace(client$chat), error = function(e) NULL)
 

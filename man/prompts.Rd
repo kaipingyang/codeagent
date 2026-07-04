@@ -4,17 +4,20 @@
 \alias{prompts}
 \title{System Prompt Sections}
 \description{
-Behavioural guidance for the agent, ported from Claude Code's
-\code{src/constants/prompts.ts} and adapted for codeagent's R context. Each
-\verb{.prompt_*()} returns a markdown section string (or "" to skip). They are
-assembled by \code{.build_system_prompt()} in \code{settings.R}.
+Behavioural guidance for the agent, written for codeagent's R
+context. Each \verb{.prompt_*()} returns a markdown section string (or "" to
+skip). They are assembled by \code{.build_system_prompt()} in \code{settings.R}.
+
+These sections encode agent \emph{behaviours} (be concise, read before editing,
+verify before claiming done, act with care, etc.) in codeagent's own
+wording -- they are not copied from any other assistant's prompt text.
 
 Design: these are constant text (no side effects, no \code{Sys.time()}), so the
 prompt is stable and prompt-cache friendly. Per-turn ephemeral context
 (date / iteration / cwd) lives in \code{.build_system_reminder()} instead.
 
-Tool names (Bash/Read/Write/Edit/MultiEdit/Glob/Grep/LS) match Claude Code,
-so tool guidance ports directly. R-specific conventions are added in
+The built-in tool names (Bash/Read/Write/Edit/MultiEdit/Glob/Grep/LS) are
+codeagent's tool registry names; R-specific conventions are added in
 \code{.prompt_r_specifics()}.
 }
 \keyword{internal}

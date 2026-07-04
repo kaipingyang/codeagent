@@ -41,6 +41,18 @@ NULL
   }
 }
 
+# Resolve which model to use for compaction/summarisation. Prefers an explicitly
+# configured small/fast model, else reuses the MAIN chat's own model (guaranteed
+# to exist on whatever gateway is in use), and only falls back to the Anthropic
+# .HAIKU_MODEL literal as a last resort. This fixes /compact on OpenAI-compatible
+# gateways (e.g. Databricks) where "claude-haiku-4-5-*" is not a valid model id.
+.resolve_compact_model <- function(chat = NULL, settings = list()) {
+  settings$small_fast_model %||%
+    getOption("codeagent.small_fast_model", NULL) %||%
+    tryCatch(chat$get_model(), error = function(e) NULL) %||%
+    .HAIKU_MODEL
+}
+
 # ---------------------------------------------------------------------------
 # Token estimation for ellmer Chat objects
 # ---------------------------------------------------------------------------
