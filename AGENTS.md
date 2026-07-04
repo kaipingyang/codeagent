@@ -56,6 +56,11 @@ the result of an `if` (assign inside branches, or compute before the async body)
 built function — return a `promises::then()` promise from a plain function instead). See
 `lessons/2026-07-03-shiny-async-interaction.md`.
 
+**Compaction is turn-boundary only (known gap):** context compaction runs before each
+`chat$chat()`, not between tool rounds within a turn. Mid-loop compaction is planned via
+upstream `on_turn_start` — tracked in `references/plan/13-mid-loop-compaction.md`
+(PR tidyverse/ellmer#1052; interim via the released `on_tool_result` hook).
+
 **Env vars:** prefer `CODEAGENT_*` (`CODEAGENT_BASE_URL`, `CODEAGENT_MODEL`,
 `CODEAGENT_API_KEY`) over `OPENAI_*` names. Keep provider-specific experiments in `references/`
 unless they are part of the supported package API.
