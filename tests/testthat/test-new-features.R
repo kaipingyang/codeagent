@@ -236,7 +236,9 @@ test_that("chat_codeagent_ui includes upload, voice, and skill picker controls",
   expect_match(html, "ca_upload_local_btn")
   expect_match(html, "ca_voice_btn")
   expect_match(html, "ca_server_btn")
-  expect_match(html, "skill_picker")
+  # Skill pickerInput was replaced by shinychat's slash-command typeahead; the
+  # footer now shows a hint instead of a picker (see .skill_picker_footer).
+  expect_match(html, "Type / for commands")
   expect_match(html, "ca_file_hidden")
 })
 

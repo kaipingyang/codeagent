@@ -23,22 +23,10 @@ server_skills <- function(input, output, session, cwd, pinned_skills) {
     )
   })
 
-  # Reset picker to empty on session start (bootstrap-select selects first item)
-  session$onFlushed(function() {
-    shinyWidgets::updatePickerInput(session, "skill_picker", selected = character(0))
-  }, once = TRUE)
-
-  # Skill picker -> fill chat textarea
-  shiny::observeEvent(input$skill_picker, ignoreInit = TRUE, {
-    shiny::req(nzchar(input$skill_picker))
-    shinychat::update_chat_user_input(
-      "chat",
-      value   = paste0("/", input$skill_picker, " "),
-      focus   = TRUE,
-      submit  = FALSE,
-      session = session
-    )
-  })
+  # Skill selection is now handled by shinychat's official slash-command
+  # typeahead (type "/" in the chat input; see R/server_slash.R). The old
+  # pickerInput-based selector was removed -- archived under
+  # inst/experiments/pickerinput_skill_selector/.
 
   # Voice -> append to chat textarea
   shiny::observeEvent(input$ca_voice_text, {
