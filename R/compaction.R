@@ -141,14 +141,20 @@ token_count_with_estimation <- function(chat) {
 #' @param min_chars Integer. Only replace results larger than this size.
 #' @return Invisibly NULL.
 #' @keywords internal
-snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L) {
+snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L,
+                           target_tokens = NULL) {
   turns <- .safe_get_turns(chat)
-  if (length(turns) <= keep_recent_turns) return(invisible(NULL))
+  if (length(turns) <= keep_recent_turns) return(invisible(FALSE))
 
   cutoff <- length(turns) - keep_recent_turns
   modified <- FALSE
 
   for (i in seq_len(cutoff)) {
+    # Budget-aware micro-compaction (Claude Code clears oldest tool results
+    # until the tool-result payload is under a token budget). When no budget is
+    # given, clear all eligible old tool results (legacy behaviour).
+    if (!is.null(target_tokens) &&
+        .tool_result_tokens(turns) <= as.numeric(target_tokens)) break
     turn <- turns[[i]]
     contents <- tryCatch(turn@contents, error = function(e) NULL)
     if (is.null(contents)) next
@@ -177,6 +183,28 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L) {
   invisible(modified)
 }
 
+# Approximate tool-result payload tokens (chars/3.5) across a turns list. Used
+# for budget-aware micro-compaction; measures exactly what snip_old_tools clears
+# (ToolResult@value), so it drops as results are snipped -- unlike estimate_tokens
+# which only counts text content.
+.tool_result_tokens <- function(turns) {
+  is_tr <- function(c) tryCatch(
+    inherits(c, "ellmer::ContentToolResult") ||
+      identical(class(c)[[1L]], "ContentToolResult"),
+    error = function(e) FALSE)
+  total <- 0
+  for (t in turns) {
+    contents <- tryCatch(t@contents, error = function(e) list())
+    for (c in contents) {
+      if (is_tr(c)) {
+        v <- tryCatch(as.character(c@value %||% ""), error = function(e) "")
+        total <- total + nchar(v)
+      }
+    }
+  }
+  as.integer(ceiling(total / 3.5))
+}
+
 # ---------------------------------------------------------------------------
 # Mid-loop compaction (between tool rounds) -- Plan B
 # ---------------------------------------------------------------------------
@@ -184,35 +212,78 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L) {
 # A single turn with many large tool outputs can grow the context mid-loop with
 # no chance to compact until the turn ends. This uses ellmer's RELEASED
 # `on_tool_result` callback (fires between tool rounds, before the next model
-# request) to snip old tool results when over threshold -- cheap (no LLM call),
-# preserves turn structure + tool_use/tool_result pairing. Opt-in (default off).
-# When ellmer ships `on_turn_start` (PR tidyverse/ellmer#1052) switch to that;
-# see references/plan/13-mid-loop-compaction.md.
+# request) to compact when over threshold. Two tiers (mirrors Claude Code
+# autoCompactIfNeeded):
+#   * default    -> cheap budget-aware micro snip (no LLM), snip_old_tools().
+#   * opt-in full -> the same two-level compact as the turn boundary
+#                    (session_memory -> full), via CompactionController.
+# The cleaner target is upstream `on_turn_start` (PR tidyverse/ellmer#1052),
+# which fires before EVERY model request (not just between tool rounds);
+# see references/plan/13-mid-loop-compaction.md. NB `on_tool_request` cannot
+# substitute: it fires AFTER the model request (inside invoke_tools) and only
+# when the model called tools, so it is not a pre-request compaction hook.
 
-# Opt-in via settings$midloop_compact OR options(codeagent.midloop_compact = TRUE).
+# Micro snip on by default (matches Claude Code default-on compaction; cheap +
+# safe, only acts near the context limit). Toggle: settings$midloop_compact /
+# options(codeagent.midloop_compact).
 .midloop_enabled <- function(settings = list()) {
   isTRUE(settings$midloop_compact) ||
     isTRUE(getOption("codeagent.midloop_compact", FALSE))
 }
 
-# Snip old tool results if enabled AND token usage is over the compaction
-# threshold. Returns invisibly TRUE only when a snip actually modified turns.
-.midloop_maybe_snip <- function(chat, settings = list()) {
-  if (!.midloop_enabled(settings)) return(invisible(FALSE))
-  keep <- as.integer(settings$midloop_keep_recent %||%
-                       getOption("codeagent.midloop_keep_recent", 10L))
-  # Optional independent threshold (absolute tokens): lets mid-loop snip (cheap)
-  # kick in earlier than the heavier turn-boundary compaction. Falls back to the
-  # standard model_limit - margin.
+# Opt-in: also run the full two-level compact (LLM summary) mid-loop when a snip
+# is not enough. Off by default because it makes a blocking model call mid-stream.
+.midloop_full_enabled <- function(settings = list()) {
+  isTRUE(settings$midloop_full_compact) ||
+    isTRUE(getOption("codeagent.midloop_full_compact", FALSE))
+}
+
+# Trigger token count. Explicit override (settings$midloop_threshold / option)
+# lets it fire earlier than turn-boundary compaction; else model_limit - margin.
+.midloop_trigger <- function(settings = list(), model = "") {
   thr <- settings$midloop_threshold %||%
     getOption("codeagent.midloop_threshold", NA_integer_)
-  model_limit <- settings$model_limit %||% 200000L
-  threshold <- if (!is.na(thr) && as.numeric(thr) > 0) as.integer(thr)
-               else model_limit - .COMPACT_TRIGGER_MARGIN
+  if (!is.na(thr) && as.numeric(thr) > 0) return(as.integer(thr))
+  ml <- settings$model_limit
+  if (!is.null(ml)) return(as.integer(ml) - .COMPACT_TRIGGER_MARGIN)
+  .auto_compact_threshold(model)
+}
+
+# Budget (in tool-result tokens) the micro snip aims to stay under. Default =
+# half the auto-compact threshold; override via settings$midloop_snip_target /
+# option. NULL/0 means "clear all eligible old tool results" (no budget).
+.midloop_snip_target <- function(settings = list(), model = "") {
+  t <- settings$midloop_snip_target %||%
+    getOption("codeagent.midloop_snip_target", NA_integer_)
+  if (!is.na(t) && as.numeric(t) > 0) return(as.integer(t))
+  as.integer(.auto_compact_threshold(model) %/% 2L)
+}
+
+# Compact mid-loop if enabled AND over threshold. Returns invisibly TRUE when it
+# acted. `ctrl` is a CompactionController (or any object with a
+# `compact_now(chat, model)` method) used only for the opt-in full path.
+.midloop_compact_step <- function(chat, settings = list(), ctrl = NULL,
+                                   model = "", compact_model = .HAIKU_MODEL) {
+  if (!.midloop_enabled(settings)) return(invisible(FALSE))
   n <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
-  if (n < threshold) return(invisible(FALSE))
-  did <- isTRUE(tryCatch(snip_old_tools(chat, keep_recent_turns = keep),
-                         error = function(e) FALSE))
+  if (n < .midloop_trigger(settings, model)) return(invisible(FALSE))
+
+  # Opt-in full two-level compact (blocking LLM call, like CC autoCompactIfNeeded).
+  if (.midloop_full_enabled(settings) && !is.null(ctrl) &&
+      is.function(ctrl$compact_now)) {
+    ok <- isTRUE(tryCatch(ctrl$compact_now(chat, compact_model),
+                          error = function(e) FALSE))
+    if (ok) message(sprintf("[codeagent] mid-loop compact (full, tokens~%d)", n))
+    return(invisible(ok))
+  }
+
+  # Default: cheap budget-aware micro snip (no LLM call).
+  keep   <- as.integer(settings$midloop_keep_recent %||%
+                         getOption("codeagent.midloop_keep_recent", 10L))
+  target <- .midloop_snip_target(settings, model)
+  did <- isTRUE(tryCatch(
+    snip_old_tools(chat, keep_recent_turns = keep, target_tokens = target),
+    error = function(e) FALSE))
   if (did)
     message(sprintf("[codeagent] mid-loop snip (tokens~%d, keep=%d)", n, keep))
   invisible(did)
@@ -220,9 +291,11 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L) {
 
 #' Register mid-loop compaction on a Chat (Plan B)
 #'
-#' Adds an `on_tool_result` callback that snips old tool results between tool
-#' rounds when over the compaction threshold. Opt-in; no-op unless
-#' `settings$midloop_compact` (or `options(codeagent.midloop_compact = TRUE)`).
+#' Adds an `on_tool_result` callback that compacts between tool rounds when over
+#' threshold. Default = budget-aware micro snip (cheap, no LLM); opt in to a full
+#' two-level compact mid-loop with `settings$midloop_full_compact`. The whole
+#' feature is gated by `settings$midloop_compact` /
+#' `options(codeagent.midloop_compact = TRUE)` (on by default via settings).
 #'
 #' @param chat An `ellmer::Chat` object.
 #' @param settings Named list from [load_settings()].
@@ -231,9 +304,14 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L) {
 register_midloop_compaction <- function(chat, settings = list()) {
   force(chat)
   force(settings)
+  ctrl          <- tryCatch(CompactionController$new(), error = function(e) NULL)
+  model         <- settings$model %||% ""
+  compact_model <- settings$compact_model %||% settings$small_fast_model %||%
+    .HAIKU_MODEL
   tryCatch(
     chat$on_tool_result(function(result) {
-      tryCatch(.midloop_maybe_snip(chat, settings), error = function(e) NULL)
+      tryCatch(.midloop_compact_step(chat, settings, ctrl, model, compact_model),
+               error = function(e) NULL)
       invisible(NULL)
     }),
     error = function(e) NULL
@@ -625,6 +703,23 @@ CompactionController <- R6::R6Class(
       n         <- token_count_with_estimation(chat)
       if (n < threshold) return(invisible(NULL))
 
+      self$compact_now(chat, compact_model)
+      invisible(NULL)
+    },
+
+    #' @description Run the two-level compaction now (snip -> session-memory ->
+    #'   full 9-section), guarded by the circuit breaker. Unlike
+    #'   [maybe_compact()] this skips the token-threshold check, so callers that
+    #'   have already decided to compact (e.g. mid-loop) can reuse the exact
+    #'   same Claude Code-aligned flow.
+    #' @param chat An `ellmer::Chat` object.
+    #' @param compact_model Character. Model for compaction tasks (haiku).
+    #' @return Invisibly `TRUE` on success, `FALSE` if skipped or failed.
+    compact_now = function(chat, compact_model = .HAIKU_MODEL) {
+      if (!auto_compact_enabled()) return(invisible(FALSE))
+      if (private$failures >= .MAX_CONSECUTIVE_COMPACT_FAILS)
+        return(invisible(FALSE))
+      ok <- FALSE
       tryCatch({
         # Cheap independent pre-step: clear large old tool results (Claude Code
         # treats snip as a separate step, not part of the summary chain).
@@ -635,12 +730,13 @@ CompactionController <- R6::R6Class(
         did_sm <- isTRUE(session_memory_compact(chat, model = compact_model))
         if (!did_sm) full_compact(chat, model = compact_model)
         private$failures <- 0L
+        ok <- TRUE
       }, error = function(e) {
         private$failures <- private$failures + 1L
         warning("[codeagent] Compaction failed (attempt ", private$failures,
                 "): ", conditionMessage(e), call. = FALSE)
       })
-      invisible(NULL)
+      invisible(ok)
     },
 
     #' @description Handle a prompt-too-long (PTL) error by dropping turns.

@@ -15,8 +15,10 @@ register_midloop_compaction(chat, settings = list())
 Invisibly \code{chat}.
 }
 \description{
-Adds an \code{on_tool_result} callback that snips old tool results between tool
-rounds when over the compaction threshold. Opt-in; no-op unless
-\code{settings$midloop_compact} (or \code{options(codeagent.midloop_compact = TRUE)}).
+Adds an \code{on_tool_result} callback that compacts between tool rounds when over
+threshold. Default = budget-aware micro snip (cheap, no LLM); opt in to a full
+two-level compact mid-loop with \code{settings$midloop_full_compact}. The whole
+feature is gated by \code{settings$midloop_compact} /
+\code{options(codeagent.midloop_compact = TRUE)} (on by default via settings).
 }
 \keyword{internal}

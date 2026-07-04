@@ -56,12 +56,14 @@ the result of an `if` (assign inside branches, or compute before the async body)
 built function — return a `promises::then()` promise from a plain function instead). See
 `lessons/2026-07-03-shiny-async-interaction.md`.
 
-**Compaction — turn-boundary + opt-in mid-loop:** compaction runs before each
-`chat$chat()`. Between tool rounds, an **opt-in** mid-loop snip
-(`register_midloop_compaction()` via the released `on_tool_result`; enable with
-`settings$midloop_compact` / `options(codeagent.midloop_compact = TRUE)`) clears old
-tool results when over threshold. Cleaner target: upstream `on_turn_start` —
-see `references/plan/13-mid-loop-compaction.md` (PR tidyverse/ellmer#1052).
+**Compaction — turn-boundary + mid-loop (two-tier):** compaction runs before each
+`chat$chat()`. Between tool rounds (ellmer's released `on_tool_result`,
+`register_midloop_compaction()`), a **budget-aware micro snip** runs by default
+(`settings$midloop_compact`, ON) and an **opt-in full two-level compact**
+(`settings$midloop_full_compact`, OFF) escalates when snip isn't enough. Cleaner
+target: upstream `on_turn_start` (fires before *every* request; `on_tool_request`
+can't substitute — it fires after the request, per-tool). See
+`references/plan/13-mid-loop-compaction.md` (PR tidyverse/ellmer#1052).
 
 **Env vars:** prefer `CODEAGENT_*` (`CODEAGENT_BASE_URL`, `CODEAGENT_MODEL`,
 `CODEAGENT_API_KEY`) over `OPENAI_*` names. Keep provider-specific experiments in `references/`
