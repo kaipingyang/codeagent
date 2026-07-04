@@ -58,25 +58,33 @@ NULL
   force(original_fn)
   tool_name <- btw_tool@name
 
-  # Rebuild tool() with permission gate prepended
-  # We use ... to pass all arguments through to original_fn transparently
-  ellmer::tool(
-    fun = function(...) {
-      args <- list(...)
-      # _intent is purely display -- never pass to underlying fn for permission check
-      check_args <- args[names(args) != "_intent"]
-      if (!checker(check_args))
-        return(ellmer::ContentToolResult(
-          value = paste0("[Permission denied] ", tool_name),
-          extra = list(display = list(
-            title = htmltools::HTML(sprintf(
-              "<code>%s</code> -- permission denied (%s mode)",
-              htmltools::htmlEscape(tool_name), mode
-            ))
+  # Rebuild tool() with the permission gate prepended. ellmer validates that
+  # `arguments` match the fn's formals, so we cannot use `function(...)` -- we
+  # copy the original fn's formals via rlang::new_function (same technique as
+  # .asyncify_gated_tool). `_intent` is display-only and excluded from the
+  # permission check but still forwarded to the underlying fn.
+  body_expr <- quote({
+    .args       <- as.list(environment())
+    .check_args <- .args[names(.args) != "_intent"]
+    if (!checker(.check_args)) {
+      return(ellmer::ContentToolResult(
+        value = paste0("[Permission denied] ", tool_name),
+        extra = list(display = list(
+          title = htmltools::HTML(sprintf(
+            "<code>%s</code> -- permission denied (%s mode)",
+            htmltools::htmlEscape(tool_name), mode
           ))
         ))
-      do.call(original_fn, args)
-    },
+      ))
+    }
+    do.call(original_fn, .args)
+  })
+  wrapped_fun <- rlang::new_function(formals(original_fn), body_expr,
+                                     env = environment())
+
+  ellmer::tool(
+    fun         = wrapped_fun,
+    name        = tool_name,
     description = btw_tool@description,
     arguments   = btw_tool@arguments@properties,
     annotations = btw_tool@annotations
