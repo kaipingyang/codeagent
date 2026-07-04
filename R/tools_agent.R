@@ -94,16 +94,21 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                         worktree_isolation = FALSE,
                         hooks              = NULL,
                         ask_fn             = NULL) {
-  # Use btw's subagent when available (preferred: isolated session, resumable).
-  # btw.client option is set by .register_all_tools() to our gateway chat
-  # so subagent_resolve_client() picks it up at execution time.
-  if (requireNamespace("btw", quietly = TRUE)) {
+  # Prefer btw's upstream subagent (`btw_tool_agent_subagent`: own conversation
+  # thread, resumable via session_id) -- no reinvention. Only fall through to
+  # codeagent's own sub-agent loop when a codeagent-specific capability is
+  # requested that btw's subagent does NOT provide: git-worktree isolation.
+  # (Previously btw's tool was returned unconditionally, so worktree_isolation
+  # was silently ignored whenever btw was installed -- a latent bug.)
+  if (!isTRUE(worktree_isolation) && requireNamespace("btw", quietly = TRUE)) {
     tools <- tryCatch(btw::btw_tools("btw_tool_agent_subagent"),
                       error = function(e) list())
     if (length(tools) > 0L) return(tools[[1L]])
   }
 
-  # Fallback: codeagent's own simple sub-agent
+  # codeagent's own sub-agent -- used when btw is unavailable OR when
+  # worktree_isolation = TRUE (adds isolated git worktree + sidechain
+  # persistence + bubble permission mode on top of a plain sub-loop).
   ellmer::tool(
     fun = function(description, prompt, subagent_type = NULL) {
       if (!is.null(hooks)) tryCatch(
@@ -149,6 +154,7 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
       "Spawn a sub-agent to handle a complex, multi-step delegated task. ",
       "The sub-agent starts fresh with its own context and returns a summary."
     ),
+    name = "Agent",
     arguments = list(
       description   = ellmer::type_string(
         "Short description of what the sub-agent will do.", required = TRUE),
