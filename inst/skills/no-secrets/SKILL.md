@@ -31,6 +31,22 @@ This is a **hard rule**, not a preference.
 2. Purge from history with `git filter-repo --replace-text` (or BFG), then
    force-push. History rewrite does not un-expose an already-public value.
 3. Prefer placeholders over deletion so examples still read clearly.
+4. Scrub **every variant** of the value, not just one form. A workspace ID can
+   appear in several hosts (`adb-<id>.azuredatabricks.net`,
+   `<id>.ai-gateway.azuredatabricks.net`, ...). Replace the **bare id/number**
+   so all forms are caught, then re-scan the whole history
+   (`for c in $(git rev-list --all); do git grep -q '<id>' "$c" && echo "$c"; done`).
+
+## Tooling caveat: git-filter-repo prints the removed remote URL
+`git filter-repo` echoes the removed `origin` URL, e.g.
+`(was https://user:ghp_XXXX@github.com/...)` — that **leaks the token in your
+HTTPS remote** into the terminal/logs. Mitigate:
+- Pipe its output through a mask: `2>&1 | sed -E 's#//[^@]*@#//***@#g; s#ghp_[A-Za-z0-9]+#ghp_***#g'`.
+- Better: use a **tokenless** remote during the rewrite (SSH, or
+  `git remote remove origin` first), and re-add the token remote only for the
+  final push.
+- If a token was printed anyway, **rotate it** (github.com/settings/tokens) and
+  update `~/.Renviron`.
 
 ## Test fixtures
 Fake, obviously-non-real values in tests (e.g. `"SECRET_LEAK_TOKEN_abc"`) are
