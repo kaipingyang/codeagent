@@ -57,13 +57,20 @@ estimate_tokens <- function(chat) {
   if (length(turns) == 0L) return(0L)
   total_chars <- sum(vapply(turns, function(turn) {
     contents <- tryCatch(turn@contents, error = function(e) list())
-    sum(vapply(contents, function(c) {
-      text <- tryCatch(c@text %||% "", error = function(e) "")
-      nchar(as.character(text))
-    }, numeric(1)))
+    sum(vapply(contents, .content_chars, numeric(1)))
   }, numeric(1)))
   # Use same heuristic as estimate_tokens_text() for consistency
   as.integer(ceiling(total_chars / 3.5))
+}
+
+# Character size of a single content block. Counts BOTH text (ContentText@text)
+# and tool-result payloads (ContentToolResult@value) -- the old estimate only
+# read @text, so tool-heavy contexts (the exact case mid-loop compaction targets)
+# were undercounted. A block has one or the other, so summing is safe.
+.content_chars <- function(c) {
+  txt <- tryCatch(as.character(c@text %||% ""), error = function(e) "")
+  val <- tryCatch(as.character(c@value %||% ""), error = function(e) "")
+  nchar(txt) + nchar(val)
 }
 
 # Real input tokens from the most recent API exchange, via ellmer get_tokens().
@@ -521,6 +528,34 @@ When you are using compact - please focus on test output and code changes. Inclu
 
 #' L3: Full context compaction via fork agent
 #'
+# TRUE for a user turn that carries only plain content (no tool request/result),
+# i.e. safe to keep verbatim after a full compaction without orphaning a pair.
+.is_plain_user_turn <- function(turn) {
+  role <- tryCatch(turn@role, error = function(e) "")
+  if (!identical(role, "user")) return(FALSE)
+  contents <- tryCatch(turn@contents, error = function(e) list())
+  for (c in contents) {
+    is_tool <- tryCatch(
+      inherits(c, "ellmer::ContentToolResult") ||
+        inherits(c, "ellmer::ContentToolRequest") ||
+        grepl("ContentTool", class(c)[[1L]], fixed = TRUE),
+      error = function(e) FALSE)
+    if (isTRUE(is_tool)) return(FALSE)
+  }
+  TRUE
+}
+
+# Turns to keep after a full compaction: the summary, plus the most recent plain
+# user turn (the current task) when safe. Mirrors Claude Code continuing the
+# current work after summarising.
+.full_compact_turns <- function(turns, summary_turn) {
+  if (length(turns)) {
+    last <- turns[[length(turns)]]
+    if (.is_plain_user_turn(last)) return(list(summary_turn, last))
+  }
+  list(summary_turn)
+}
+
 #' Spawns a separate haiku chat to generate a 9-section structured summary
 #' wrapped in `<summary>` tags, then replaces all turns with that summary.
 #'
@@ -570,7 +605,12 @@ full_compact <- function(chat, model = .HAIKU_MODEL) {
   )
   if (is.null(summary_turn)) return(invisible(NULL))
 
-  tryCatch(chat$set_turns(list(summary_turn)), error = function(e) NULL)
+  # Replace history with the summary, but keep the most recent plain user turn
+  # (the current task) when it is safe -- mirrors Claude Code continuing the
+  # current work after a summary. Skipped if the last turn carries a tool
+  # request/result (avoids orphaning a tool_use/tool_result pair).
+  tryCatch(chat$set_turns(.full_compact_turns(turns, summary_turn)),
+           error = function(e) NULL)
   invisible(NULL)
 }
 
