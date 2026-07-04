@@ -146,18 +146,33 @@ codeagent_app <- function(
       interrupt       = FALSE,
       main_output     = NULL,
       settings_changed = 0L,
+      pending_interaction = NULL,   # Phase 3: approval / question pause slot
       compaction_ctrl = CompactionController$new(),
       budget_tracker  = BudgetTracker$new(),
       resource_state  = ContentReplacementState$new()
     )
 
     # Wire server modules
-    # chat_server() registers shinychat's native slash palette and returns a
-    # controller object (mod) used by server_chat() for $slash_command() registration.
-    chat_server_mod <- tryCatch(
-      shinychat::chat_server("chat", chat_obj, history = FALSE, session = session),
-      error = function(e) NULL
-    )
+    # NOTE: We do NOT call shinychat::chat_server() here. In shinychat >= 0.4 it
+    # unconditionally registers its own observeEvent(input$chat_user_input) that
+    # auto-streams the response via client$stream_async(). That conflicts with
+    # codeagent's harness stream_task (server_chat) — both would fire on every
+    # submit, producing duplicate/broken streams. codeagent owns streaming so it
+    # can wrap it with skill preprocessing, compaction, hooks and session save.
+    # Typed slash commands still work: server_chat's observeEvent runs the input
+    # through .preprocess_input()/.handle_chat_command() before the LLM.
+    # Trade-off: no native shinychat slash autocomplete palette.
+    chat_server_mod <- NULL
+
+    # Phase 3: wire the interaction bar (approval / question) and build the
+    # promise-returning Shiny ask callbacks. Stash them in `settings` so that
+    # .register_all_tools() (here AND on later permission-mode changes in
+    # server_settings) rebuilds the interactive tools (Write/Edit/MultiEdit/
+    # Bash/RunR + AskUserQuestion) as async, UI-gated variants.
+    interaction <- server_interaction(input, output, session, state)
+    settings$shiny_ask_fn          <- interaction$ask_fn
+    settings$shiny_ask_question_fn <- interaction$ask_question_fn
+    tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
 
     stream_task <- server_chat(input, output, session,
                                chat            = chat_obj,
@@ -201,6 +216,11 @@ codeagent_app <- function(
     server_skills(input, output, session,
                   cwd           = cwd,
                   pinned_skills = pinned_skills)
+
+    # Official shinychat slash-command typeahead (task 09), driven standalone
+    # (codeagent owns streaming, so no chat_server). Registers local commands +
+    # skills; selection re-submits through the normal input path.
+    server_slash(input, session, cwd = cwd)
 
     server_right(input, output, session,
                  cwd   = cwd,

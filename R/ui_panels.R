@@ -202,9 +202,15 @@ chat_codeagent_ui <- function(skill_meta) {
     enable_cancel    = TRUE,
     placeholder      = "Ask codeagent... (/ for skills, ESC to interrupt)",
     allow_attachments = TRUE,
-    footer           = .skill_picker_footer(skill_meta)
+    footer           = htmltools::tagList(
+      # Phase 3 interaction bar (approval / question) sits just above the
+      # skill picker + input area; rendered on demand by server_interaction().
+      shiny::uiOutput("ca_interaction_ui"),
+      .skill_picker_footer(skill_meta)
+    )
   )
 }
+
 
 # ---------------------------------------------------------------------------
 # Main output panel (right, largest area)
