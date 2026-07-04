@@ -174,7 +174,71 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L) {
   if (modified) {
     tryCatch(chat$set_turns(turns), error = function(e) NULL)
   }
-  invisible(NULL)
+  invisible(modified)
+}
+
+# ---------------------------------------------------------------------------
+# Mid-loop compaction (between tool rounds) -- Plan B
+# ---------------------------------------------------------------------------
+# codeagent's harness runs compaction at turn boundaries (before chat$chat()).
+# A single turn with many large tool outputs can grow the context mid-loop with
+# no chance to compact until the turn ends. This uses ellmer's RELEASED
+# `on_tool_result` callback (fires between tool rounds, before the next model
+# request) to snip old tool results when over threshold -- cheap (no LLM call),
+# preserves turn structure + tool_use/tool_result pairing. Opt-in (default off).
+# When ellmer ships `on_turn_start` (PR tidyverse/ellmer#1052) switch to that;
+# see references/plan/13-mid-loop-compaction.md.
+
+# Opt-in via settings$midloop_compact OR options(codeagent.midloop_compact = TRUE).
+.midloop_enabled <- function(settings = list()) {
+  isTRUE(settings$midloop_compact) ||
+    isTRUE(getOption("codeagent.midloop_compact", FALSE))
+}
+
+# Snip old tool results if enabled AND token usage is over the compaction
+# threshold. Returns invisibly TRUE only when a snip actually modified turns.
+.midloop_maybe_snip <- function(chat, settings = list()) {
+  if (!.midloop_enabled(settings)) return(invisible(FALSE))
+  keep <- as.integer(settings$midloop_keep_recent %||%
+                       getOption("codeagent.midloop_keep_recent", 10L))
+  # Optional independent threshold (absolute tokens): lets mid-loop snip (cheap)
+  # kick in earlier than the heavier turn-boundary compaction. Falls back to the
+  # standard model_limit - margin.
+  thr <- settings$midloop_threshold %||%
+    getOption("codeagent.midloop_threshold", NA_integer_)
+  model_limit <- settings$model_limit %||% 200000L
+  threshold <- if (!is.na(thr) && as.numeric(thr) > 0) as.integer(thr)
+               else model_limit - .COMPACT_TRIGGER_MARGIN
+  n <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
+  if (n < threshold) return(invisible(FALSE))
+  did <- isTRUE(tryCatch(snip_old_tools(chat, keep_recent_turns = keep),
+                         error = function(e) FALSE))
+  if (did)
+    message(sprintf("[codeagent] mid-loop snip (tokens~%d, keep=%d)", n, keep))
+  invisible(did)
+}
+
+#' Register mid-loop compaction on a Chat (Plan B)
+#'
+#' Adds an `on_tool_result` callback that snips old tool results between tool
+#' rounds when over the compaction threshold. Opt-in; no-op unless
+#' `settings$midloop_compact` (or `options(codeagent.midloop_compact = TRUE)`).
+#'
+#' @param chat An `ellmer::Chat` object.
+#' @param settings Named list from [load_settings()].
+#' @return Invisibly `chat`.
+#' @keywords internal
+register_midloop_compaction <- function(chat, settings = list()) {
+  force(chat)
+  force(settings)
+  tryCatch(
+    chat$on_tool_result(function(result) {
+      tryCatch(.midloop_maybe_snip(chat, settings), error = function(e) NULL)
+      invisible(NULL)
+    }),
+    error = function(e) NULL
+  )
+  invisible(chat)
 }
 
 # ---------------------------------------------------------------------------

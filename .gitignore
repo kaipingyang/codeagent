@@ -26,3 +26,6 @@ renv/local/
 Thumbs.db
 .vitals/
 inst/evals/.vitals/
+
+# Shiny chat runtime conversation logs
+.shinychat/

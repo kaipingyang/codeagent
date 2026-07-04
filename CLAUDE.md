@@ -232,10 +232,13 @@ codeagent_app(client, theme="default") # Shiny UI
 > **two-level** — `snip_old_tools` pre-step → `session_memory_compact` → fall back to
 > `full_compact` (verbatim 9-section prompt). `ptl_fallback`/`context_collapse` remain
 > as reactive/utility paths. Dynamic per-model window lives in `R/context.R`.
-> **Known gap:** compaction runs only at **turn boundaries** (before `chat$chat()`),
-> not between tool rounds within a turn. Mid-loop compaction is planned via upstream
-> `on_turn_start` — see `references/plan/13-mid-loop-compaction.md`
-> (PR tidyverse/ellmer#1052; interim uses the released `on_tool_result` hook).
+> **Known gap (partly closed):** turn-boundary compaction runs before each
+> `chat$chat()`. Between tool rounds *within* a turn, an **opt-in** mid-loop snip
+> (`register_midloop_compaction()` via ellmer's released `on_tool_result`) clears
+> old tool results when over threshold — enable with `settings$midloop_compact`
+> or `options(codeagent.midloop_compact = TRUE)`. The cleaner target is upstream
+> `on_turn_start` (PR tidyverse/ellmer#1052); see
+> `references/plan/13-mid-loop-compaction.md`.
 
 **`tools_web.R`** — `web_fetch_tool()` and `web_search_tool()`. All tools return `ContentToolResult` with `extra$display` (HTML title + markdown preview for humans). WebSearch backend: `BRAVE_API_KEY` → Brave Search API (real results, 2000 free/month); fallback → DuckDuckGo Instant Answer (entity queries only, no key needed). WebFetch uses httr2 directly (no Chrome dependency). btw `web_read_url` (needs Chrome) is available as extra via `btw_groups = "web"`.
 

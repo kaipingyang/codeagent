@@ -124,22 +124,10 @@ server_chat <- function(input, output, session, chat, settings,
 
       n_tokens    <- token_count_with_estimation(chat)
       model_limit <- settings$model_limit %||% 200000L
-      pct         <- round(n_tokens / model_limit * 100)
-      # Context-left indicator (Claude Code calculateTokenWarningState).
-      ws    <- tryCatch(calculate_token_warning_state(n_tokens, settings$model %||% ""),
-                        error = function(e) NULL)
-      left  <- if (is.null(ws)) NA_integer_ else ws$percent_left
-      level <- if (is.null(ws)) "ok"
-               else if (isTRUE(ws$at_blocking)) "blocking"
-               else if (isTRUE(ws$above_error)) "error"
-               else if (isTRUE(ws$above_warning)) "warning"
-               else "ok"
-      session$sendCustomMessage("update_budget", list(
-        text          = format(n_tokens, big.mark = ","),
-        pct           = pct,
-        percent_left  = left,
-        level         = level
-      ))
+      # Context-left indicator: computed in a plain helper because coro::async
+      # cannot assign the result of an `if` expression inside this body.
+      session$sendCustomMessage("update_budget",
+        .budget_payload(n_tokens, model_limit, settings$model %||% ""))
 
       shiny::isolate(state$iteration <- state$iteration + 1L)
 
@@ -327,17 +315,52 @@ server_chat <- function(input, output, session, chat, settings,
       sprintf("<<< Rewound %d exchange(s); %d turns kept.", n_back, kept)
     },
 
+    budget = {
+      n     <- tryCatch(estimate_tokens(chat), error = function(e) 0L)
+      limit <- settings$model_limit %||% 200000L
+      pct   <- if (limit > 0L) round(n / limit * 100) else 0L
+      sprintf("**Token budget**: %s / %s tokens (%d%%)",
+              format(n, big.mark = ","), format(limit, big.mark = ","), pct)
+    },
+
+    sessions = {
+      sl <- tryCatch(list_sessions(cwd, limit = 10L), error = function(e) list())
+      if (!length(sl)) {
+        "No saved sessions."
+      } else {
+        lines <- vapply(sl, function(s)
+          sprintf("- `%s`  %s", substr(s$session_id, 1L, 8L),
+                  s$title %||% s$timestamp %||% ""), character(1))
+        paste0("**Recent sessions**\n", paste(lines, collapse = "\n"))
+      }
+    },
+
+    help = ,
+    exit = ,
+    quit = paste0(
+      "**Slash commands**\n",
+      "- `/model [spec]` -- switch model (popup if no arg)\n",
+      "- `/compact` -- compact the context now\n",
+      "- `/clear` -- clear the conversation\n",
+      "- `/rewind [N]` -- rewind the last N exchange(s)\n",
+      "- `/budget` -- show token usage\n",
+      "- `/sessions` -- list recent saved sessions\n",
+      "- `/<skill> [args]` -- invoke a skill (sent to the model)"
+    ),
+
     # Unknown local command -- show help
     paste0("Unknown command: `/", name, "`.\n\n",
-           "Built-in commands: `/model`, `/compact`, `/clear`, `/rewind [N]`")
+           "Built-in commands: `/model`, `/compact`, `/clear`, `/rewind [N]`, ",
+           "`/budget`, `/sessions`, `/help`")
   )
 
   # Append feedback to chat (NULL means the command handled its own UI, e.g. modal).
+  # Use the string + role form (NOT a Turn object): in shinychat's React build
+  # chat_append() renders a plain string reliably, whereas a Turn object may not.
   if (!is.null(feedback) && nzchar(feedback)) {
     tryCatch(
-      shinychat::chat_append("chat",
-        ellmer::Turn("assistant", list(ellmer::ContentText(feedback))),
-        session = session),
+      shinychat::chat_append("chat", feedback, role = "assistant",
+                             session = session),
       error = function(e) NULL)
   }
 
