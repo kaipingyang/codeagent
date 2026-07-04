@@ -11,9 +11,9 @@ to \verb{~/.Renviron} (the existing behaviour).
 
 Call hierarchy:
 \itemize{
-\item \code{keyring_store_key()} — save a key (keyring preferred, .Renviron fallback)
-\item \code{keyring_get_key()} — retrieve a key (keyring → env var → "")
-\item \code{.keyring_available()} — runtime probe; cached per session
+\item \code{keyring_store_key()} -- save a key (keyring preferred, .Renviron fallback)
+\item \code{keyring_get_key()} -- retrieve a key (keyring -> env var -> "")
+\item \code{.keyring_available()} -- runtime probe; cached per session
 }
 }
 \keyword{internal}

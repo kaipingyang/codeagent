@@ -156,7 +156,7 @@ codeagent_app <- function(
     # NOTE: We do NOT call shinychat::chat_server() here. In shinychat >= 0.4 it
     # unconditionally registers its own observeEvent(input$chat_user_input) that
     # auto-streams the response via client$stream_async(). That conflicts with
-    # codeagent's harness stream_task (server_chat) — both would fire on every
+    # codeagent's harness stream_task (server_chat) -- both would fire on every
     # submit, producing duplicate/broken streams. codeagent owns streaming so it
     # can wrap it with skill preprocessing, compaction, hooks and session save.
     # Typed slash commands still work: server_chat's observeEvent runs the input

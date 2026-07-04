@@ -141,6 +141,11 @@ Install btw skills:
 ```r
 btw::btw_skill_install_package("btw")     # installs skill-creator
 btw::btw_skill_install_github("org/repo") # from GitHub
+
+install_ds_skills()                       # Posit's data-science skill
+                                          # collection (posit-dev/skills):
+                                          # r-lib / shiny / quarto / tidyverse.
+                                          # Discovered automatically afterwards.
 ```
 
 ### Security: API key storage

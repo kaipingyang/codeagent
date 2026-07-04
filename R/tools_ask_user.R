@@ -137,7 +137,7 @@ ask_user_tool <- function(ask_question_fn = NULL, async = FALSE) {
     kind     = "text",
     icon     = "message-circle",
     title    = htmltools::HTML(sprintf(
-      "<code>AskUserQuestion</code> — %s",
+      "<code>AskUserQuestion</code> -- %s",
       htmltools::htmlEscape(substr(question, 1L, 80L))
     )),
     payload  = list(text = answer)

@@ -216,7 +216,7 @@ use_codeagent_setup <- function(scope = c("user", "project")) {
     persist_sel <- utils::menu(persist_choices,
       title = sprintf("Store %s API key...", info$label))
     if (persist_sel == 0) {
-      # cancelled — nothing
+      # cancelled -- nothing
     } else if (keyring_ok && persist_sel == 2) {
       .keyring_store_key(key_env, key_val, backend = "keyring")
     } else if (persist_sel == length(persist_choices)) {
