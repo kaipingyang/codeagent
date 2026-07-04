@@ -118,7 +118,7 @@ print.CodagentClient <- function(x, ...) {
 # (cwd-only hash-anchored), or "both". settings$file_tools wins; falls back to
 # the legacy options(codeagent.use_btw_files) flag (TRUE == "both").
 .resolve_file_tools <- function(settings = list()) {
-  ft <- settings$file_tools %||%
+  ft <- settings$file_tools %||% getOption("codeagent.file_tools", NULL) %||%
     (if (isTRUE(getOption("codeagent.use_btw_files", FALSE))) "both" else "core")
   match.arg(as.character(ft), c("core", "btw", "both"))
 }
@@ -368,7 +368,7 @@ agent_loop <- function(user_input,
     hooks$run_pre_compact("auto", list(tokens = current_tokens)),
     error = function(e) NULL)
   compaction_ctrl$maybe_compact(chat, settings$model_limit %||% 200000L,
-                                compact_model = settings$small_fast_model %||% .HAIKU_MODEL)
+                                compact_model = .resolve_compact_model(chat, settings))
 
   # 4. Resource management
   resource_state$maybe_replace(chat)

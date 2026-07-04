@@ -174,3 +174,19 @@ test_that(".session_keep_count keeps recent turns by token budget (CC keep-index
                               max_tokens = 60L)
   expect_lte(kcap, 3L)
 })
+
+test_that(".resolve_compact_model prefers small model, else chat model, else haiku", {
+  ch <- ellmer::chat_openai_compatible(base_url = "http://x", model = "my-gateway-model",
+                                       credentials = function() "k")
+  # explicit small/fast model wins
+  expect_identical(.resolve_compact_model(ch, list(small_fast_model = "fast-x")), "fast-x")
+  # else the chat's own model (guaranteed to exist on the gateway; fixes the
+  # Databricks /compact 404 where .HAIKU_MODEL was an invalid Anthropic id)
+  expect_identical(.resolve_compact_model(ch, list()), "my-gateway-model")
+  # option fallback
+  withr::local_options(codeagent.small_fast_model = "opt-fast")
+  expect_identical(.resolve_compact_model(ch, list()), "opt-fast")
+  # last resort when no chat + nothing configured
+  withr::local_options(codeagent.small_fast_model = NULL)
+  expect_identical(.resolve_compact_model(NULL, list()), .HAIKU_MODEL)
+})

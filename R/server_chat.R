@@ -95,7 +95,8 @@ server_chat <- function(input, output, session, chat, settings,
 
     shiny::isolate(state$compaction_ctrl$maybe_compact(
       chat,
-      settings$model_limit %||% 200000L
+      settings$model_limit %||% 200000L,
+      compact_model = .resolve_compact_model(chat, settings)
     ))
     shiny::isolate(state$resource_state$maybe_replace(chat))
 
@@ -298,7 +299,7 @@ server_chat <- function(input, output, session, chat, settings,
 
     compact = {
       tryCatch({
-        full_compact(chat)
+        full_compact(chat, model = .resolve_compact_model(chat, settings))
         "OK Context compacted."
       }, error = function(e) paste0("ERR Compact failed: ", conditionMessage(e)))
     },
@@ -465,7 +466,8 @@ server_chat <- function(input, output, session, chat, settings,
   mod$slash_command("compact", "Compact the context", function(content) {
     instr <- tryCatch(trimws(content@user_text %||% ""), error = function(e) "")
     tryCatch({
-      full_compact(chat, instructions = if (nzchar(instr)) instr else NULL)
+      full_compact(chat, model = .resolve_compact_model(chat, settings),
+                   instructions = if (nzchar(instr)) instr else NULL)
       mod$append("OK Context compacted.", role = "assistant")
     }, error = function(e)
       mod$append(paste0("ERR Compact failed: ", conditionMessage(e)), role = "assistant"))
