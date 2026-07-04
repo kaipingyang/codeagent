@@ -156,3 +156,21 @@ test_that("compaction prompt keeps all 9 Claude Code summary sections", {
   for (s in sections)
     expect_match(.COMPACT_SYSTEM_PROMPT, s, fixed = TRUE)
 })
+
+test_that(".session_keep_count keeps recent turns by token budget (CC keep-index)", {
+  mk <- function(txt) ellmer::Turn("user", list(ellmer::ContentText(txt)))
+  turns <- lapply(1:10, function(i) mk(strrep("x", 100)))
+  # tiny min_tokens -> text-msg count governs; keep >= min_text_msgs, capped n-2
+  k <- .session_keep_count(turns, min_tokens = 1L, min_text_msgs = 3L,
+                           max_tokens = 1e6)
+  expect_gte(k, 3L)
+  expect_lte(k, 8L)
+  # never keeps everything (leaves >= 2 to summarise)
+  kall <- .session_keep_count(turns, min_tokens = 1e9, min_text_msgs = 100L,
+                              max_tokens = 1e9)
+  expect_lte(kall, 8L)
+  # max_tokens cap stops expansion early
+  kcap <- .session_keep_count(turns, min_tokens = 1e9, min_text_msgs = 100L,
+                              max_tokens = 60L)
+  expect_lte(kcap, 3L)
+})

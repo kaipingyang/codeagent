@@ -104,6 +104,27 @@ codeagent_app(client)
 
 All tools return `ContentToolResult` with HTML title + markdown for shinychat tool cards.
 
+**Selectable file tools.** Two read/write tool sets coexist and are chosen via
+`settings$file_tools`:
+
+| `file_tools` | Set | Scope |
+|---|---|---|
+| `"core"` (default) | codeagent Read/Write/Edit/MultiEdit/Glob/Grep/LS | **any path** (absolute or relative) |
+| `"btw"` | btw file tools (hash-anchored, atomic patch) | **project cwd only** |
+| `"both"` | both sets | LLM picks per task |
+
+**Reusing btw tasks/agents (not reinvented).** Sub-agents use btw's
+`btw_tool_agent_subagent`; custom agents are discovered via `btw_agent_tool()`.
+btw's guided tasks are reused directly:
+
+```r
+codeagent_create_skill(client)    # -> btw_task_create_skill
+codeagent_create_readme(client)   # -> btw_task_create_readme
+codeagent_init_context(client)    # -> btw_task_create_btw_md (btw.md)
+codeagent_task("path/to/task.md", client)
+# Or expose them as agent tools: settings$btw_tasks = TRUE
+```
+
 ### Data exploration (WEAR loop)
 
 Interactive data analysis with the Write/Execute/Analyze/Regroup pattern:

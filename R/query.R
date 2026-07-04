@@ -114,6 +114,15 @@ print.CodagentClient <- function(x, ...) {
 # codeagent_client() -- the primary configuration entry point
 # ---------------------------------------------------------------------------
 
+# Resolve which file-tool set to register: "core" (any path; default), "btw"
+# (cwd-only hash-anchored), or "both". settings$file_tools wins; falls back to
+# the legacy options(codeagent.use_btw_files) flag (TRUE == "both").
+.resolve_file_tools <- function(settings = list()) {
+  ft <- settings$file_tools %||%
+    (if (isTRUE(getOption("codeagent.use_btw_files", FALSE))) "both" else "core")
+  match.arg(as.character(ft), c("core", "btw", "both"))
+}
+
 #' Create a codeagent client from any ellmer Chat
 #'
 #' Injects codeagent tools (Bash, Read, Write, Edit, Glob, Grep, LS, btw tools,
@@ -473,13 +482,18 @@ agent_loop <- function(user_input,
     if (!is.null(btw_chat)) options(btw.client = btw_chat)
   }
 
-  # Core tools -- always register default file tools (Read/Write/Edit/... support
-  # absolute paths). When Path A is enabled, ALSO register btw file tools so the
-  # LLM has both: btw for hash-anchored project-local edits, default for
-  # absolute-path operations. The two sets coexist; the LLM picks based on task.
+  # Core tools -- file-tool set is selectable (settings$file_tools):
+  #   "core" (default): codeagent Read/Write/Edit/MultiEdit/Glob/Grep/LS -- work
+  #                     on ANY path (absolute or relative), not limited to cwd.
+  #   "btw"           : btw file tools only -- hash-anchored, atomic patch, but
+  #                     btw restricts operations to the project cwd.
+  #   "both"          : register both sets; the LLM picks per task.
+  # Back-compat: options(codeagent.use_btw_files = TRUE) == "both".
+  file_tools <- .resolve_file_tools(settings)
   register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn,
-                         sandbox = settings$sandbox, async = async_gate)
-  if (isTRUE(getOption("codeagent.use_btw_files", FALSE))) {
+                         sandbox = settings$sandbox, async = async_gate,
+                         skip_file_tools = identical(file_tools, "btw"))
+  if (file_tools %in% c("btw", "both")) {
     tryCatch(register_btw_file_tools(chat, mode, rules, ask_fn),
              error = function(e) NULL)
   }
@@ -491,6 +505,8 @@ agent_loop <- function(user_input,
   if (!is.null(settings$mcp_config))
     tryCatch(register_mcp_client(chat, settings$mcp_config),  error = function(e) NULL)
   tryCatch(register_task_tools(chat),                         error = function(e) NULL)
+  # Opt-in: reuse btw's task helpers (skill/README/context) as LLM tools.
+  tryCatch(register_btw_task_tools(chat, settings),           error = function(e) NULL)
   tryCatch(register_todo_tool(chat, settings$session_id %||% "default"),
                                                               error = function(e) NULL)
   tryCatch(register_team_tool(chat, settings$model %||% NULL, cwd),
