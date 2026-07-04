@@ -25,19 +25,6 @@ NULL
 # For a 200K model: 200K - 33K = 167K trigger point.
 .COMPACT_TRIGGER_MARGIN <- 33000L
 
-# L1 (snip) triggers at the base threshold (0 additional margin)
-.COMPACT_L1_MARGIN <- 0L
-
-# L2 (session memory) triggers 15K above the base threshold
-.COMPACT_L2_MARGIN <- 15000L
-
-# L3 (full compact) triggers 30K above the base threshold
-.COMPACT_L3_MARGIN <- 30000L
-
-# L5 (context collapse) triggers 45K above the base threshold
-# Applied before L4 drop when full compact has been attempted
-.COMPACT_L5_MARGIN <- 45000L
-
 # L2: minimum tokens to retain in the summary
 .COMPACT_L2_MIN_TOKENS <- 10000L
 
@@ -49,6 +36,35 @@ NULL
 
 # L3: maximum chars fed to the full-compact haiku agent
 .COMPACT_FULL_TRUNCATE_CHARS <- 400000L
+
+# ---------------------------------------------------------------------------
+# Claude Code-aligned context/compaction constants
+# (src/services/compact/autoCompact.ts + src/utils/context.ts)
+# ---------------------------------------------------------------------------
+
+# Default context window when a model is unknown (context.ts:9
+# MODEL_CONTEXT_WINDOW_DEFAULT).
+.MODEL_CONTEXT_WINDOW_DEFAULT <- 200000L
+
+# Output tokens reserved for the summary response (autoCompact.ts
+# MAX_OUTPUT_TOKENS_FOR_SUMMARY).
+.MAX_OUTPUT_TOKENS_FOR_SUMMARY <- 20000L
+
+# Extra buffer below the effective window that triggers auto-compaction
+# (autoCompact.ts:62 AUTOCOMPACT_BUFFER_TOKENS). 20000 + 13000 == 33000, i.e.
+# the historical .COMPACT_TRIGGER_MARGIN for a 200K model.
+.AUTOCOMPACT_BUFFER_TOKENS <- 13000L
+
+# Warning / error / manual-compact buffers for the %-left indicator
+# (autoCompact.ts WARNING/ERROR/MANUAL_COMPACT_BUFFER_TOKENS).
+.WARNING_THRESHOLD_BUFFER <- 20000L
+.ERROR_THRESHOLD_BUFFER   <- 20000L
+.MANUAL_COMPACT_BUFFER    <- 3000L
+
+# Circuit breaker: stop auto-compacting after this many consecutive failures
+# (autoCompact.ts MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES). Mirrors the existing
+# .COMPACT_CIRCUIT_BREAKER_LIMIT.
+.MAX_CONSECUTIVE_COMPACT_FAILS <- 3L
 
 # ---------------------------------------------------------------------------
 # Budget tracking

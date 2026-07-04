@@ -68,11 +68,21 @@ NULL
 
 # Print a one-line token-budget status (only when usage is notable).
 .repl_budget_line <- function(chat, settings) {
-  n     <- tryCatch(estimate_tokens(chat), error = function(e) 0L)
-  limit <- settings$model_limit %||% 200000L
-  pct   <- if (limit > 0L) round(n / limit * 100) else 0L
-  if (pct >= 50L)
-    cat(sprintf("  [%s tokens / %d%%]\n", format(n, big.mark = ","), pct))
+  n     <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
+  model <- settings$model %||% ""
+  ws    <- tryCatch(calculate_token_warning_state(n, model),
+                    error = function(e) NULL)
+  if (is.null(ws)) return(invisible(NULL))
+  left <- ws$percent_left
+  # Only surface when context is getting tight or a warning line is crossed.
+  if (left > 50L && !isTRUE(ws$above_warning)) return(invisible(NULL))
+  label <- sprintf("%d%% context left", left)
+  label <- if (isTRUE(ws$above_error))
+             tryCatch(cli::col_red(label), error = function(e) label)
+           else if (isTRUE(ws$above_warning))
+             tryCatch(cli::col_yellow(label), error = function(e) label)
+           else label
+  cat(sprintf("  [%s tokens / %s]\n", format(n, big.mark = ","), label))
   invisible(NULL)
 }
 

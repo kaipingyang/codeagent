@@ -137,7 +137,13 @@ load_settings <- function(cwd = getwd()) {
   if (nzchar(env_turns)) settings$max_turns <- as.integer(env_turns)
 
   env_limit <- Sys.getenv("CODEAGENT_MODEL_LIMIT", "")
-  if (nzchar(env_limit)) settings$model_limit <- as.integer(env_limit)
+  if (nzchar(env_limit)) {
+    settings$model_limit <- as.integer(env_limit)
+  } else {
+    # Resolve the context window dynamically from the model (Claude Code:
+    # getContextWindowForModel) instead of the hard-coded 200K default.
+    settings$model_limit <- .model_context_window(settings$model %||% "")
+  }
 
   env_base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")
   if (nzchar(env_base_url)) settings$base_url <- env_base_url
