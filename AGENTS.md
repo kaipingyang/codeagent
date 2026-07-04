@@ -25,6 +25,18 @@ and `btw`. It does **not** wrap an external CLI — the harness is reimplemented
 - `devtools::check()`: run full package checks; target zero errors and warnings.
 - `Rscript -e 'codeagent::codeagent_app(client)'`: launch the Shiny app once a `client` is configured.
 
+## Security (hard rule): never upload or print secrets
+Real API keys/tokens/passwords and concrete infrastructure endpoints (real
+`base_url` values, Databricks/serving-endpoint hosts, workspace IDs/hosts like
+`adb-<id>.azuredatabricks.net`, internal hostnames/IPs) must **never** appear in
+git-tracked files (source, tests, examples, docs, templates). Use placeholders
+(`YOUR-WORKSPACE.cloud.databricks.net`, `sk-...`, `<workspace-id>`); keep real
+values only in `.Renviron`/keyring (git-ignored). Scan the staged diff before
+committing (`git diff --cached | grep -iE 'api[_-]?key|token|secret|sk-|ghp_|dapi|azuredatabricks\.net|serving-endpoints'`),
+mask tokens in printed remote URLs (`sed -E 's#//[^@]*@#//***@#g'`), and never
+echo a full token/key. If a secret was committed, rotate it first, then purge
+with `git filter-repo`. See the `no-secrets` skill.
+
 ## Coding Style & Naming Conventions
 Use the existing base-R style in `R/`: small focused functions, descriptive snake_case names,
 and minimal diffs. Match surrounding indentation and spacing exactly. Keep public APIs stable
