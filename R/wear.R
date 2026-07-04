@@ -42,7 +42,7 @@ NULL
 #'
 #' Launches an **interactive** data exploration session using the
 #' Write/Execute/Analyze/Regroup (WEAR) loop pattern. This is a **dedicated
-#' exploration mode** — it is separate from a normal `codeagent_app()` or
+#' exploration mode** -- it is separate from a normal `codeagent_app()` or
 #' `codeagent_repl()` session. The difference:
 #'
 #' | Normal session | WEAR session (`wear_explore()`) |
@@ -53,7 +53,7 @@ NULL
 #' | General-purpose tools | `ExploreData` tool added (read-only, sandboxed) |
 #'
 #' The `ExploreData` and `GenerateReport` tools are **not** registered in the
-#' standard agent loop (`codeagent_app()`) — use `wear_explore()` to enter
+#' standard agent loop (`codeagent_app()`) -- use `wear_explore()` to enter
 #' exploration mode explicitly.
 #'
 #' @param data Named list, environment, or `NULL`. Data.frames to make

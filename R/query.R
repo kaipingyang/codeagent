@@ -451,7 +451,7 @@ agent_loop <- function(user_input,
   # build ASYNC-gated variants of the interactive tools (Write/Edit/MultiEdit/
   # Bash/RunR + AskUserQuestion) so they pause on the UI approval/question bar.
   # These override the ask_fn/ask_question_fn args and are only present in the
-  # Shiny path — the CLI/one-shot path leaves them NULL and stays synchronous.
+  # Shiny path -- the CLI/one-shot path leaves them NULL and stays synchronous.
   if (is.function(settings$shiny_ask_fn)) {
     ask_fn          <- settings$shiny_ask_fn
     async_gate      <- TRUE

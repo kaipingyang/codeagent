@@ -103,7 +103,7 @@ server_chat <- function(input, output, session, chat, settings,
     ))
     shiny::isolate(state$resource_state$maybe_replace(chat))
 
-    # Resolve the positional turn contents ONCE, out here — not inside the
+    # Resolve the positional turn contents ONCE, out here -- not inside the
     # coro::async body. coro rewrites `if` as control flow and cannot assign the
     # result of an `if` expression (coro `expr_info` error), so the
     # list-vs-scalar branch must live outside async. A list is spliced into
@@ -115,7 +115,7 @@ server_chat <- function(input, output, session, chat, settings,
       if (!is.null(stream_ctrl)) stream_ctrl$reset()
       # do.call() splices stream_contents as positional `...` args to
       # user_turn() (equivalent to `!!!`), but is a plain call that coro can
-      # transform — a bare `!!!` inside a coro::async body is not coro-safe.
+      # transform -- a bare `!!!` inside a coro::async body is not coro-safe.
       stream <- do.call(
         chat$stream_async,
         c(stream_contents, list(stream = "content", controller = stream_ctrl))
@@ -400,7 +400,7 @@ server_chat <- function(input, output, session, chat, settings,
 .register_slash_commands <- function(mod, chat, settings, state, session, cwd) {
   force(mod); force(chat); force(settings); force(state); force(session); force(cwd)
 
-  # /model — open model picker modal (no args) or switch directly (with args)
+  # /model -- open model picker modal (no args) or switch directly (with args)
   mod$slash_command("model", "Switch model", function(content) {
     args <- if (missing(content)) "" else trimws(content@user_text)
     cur  <- tryCatch(chat$get_model(), error = function(e) settings$model %||% "?")
@@ -422,7 +422,7 @@ server_chat <- function(input, output, session, chat, settings,
         ),
         easyClose = TRUE
       ))
-      mod$append(sprintf("**/model** — pick a model in the popup to switch."),
+      mod$append(sprintf("**/model** -- pick a model in the popup to switch."),
                  role = "assistant")
     } else {
       new_chat <- tryCatch(codeagent:::.resolve_model_chat(args, cwd), error = function(e) NULL)
@@ -436,7 +436,7 @@ server_chat <- function(input, output, session, chat, settings,
     }
   })
 
-  # /compact — compact context
+  # /compact -- compact context
   mod$slash_command("compact", "Compact the context", function() {
     tryCatch({
       full_compact(chat)
@@ -445,7 +445,7 @@ server_chat <- function(input, output, session, chat, settings,
       mod$append(paste0("ERR Compact failed: ", conditionMessage(e)), role = "assistant"))
   })
 
-  # /clear — clear UI + client history
+  # /clear -- clear UI + client history
   mod$slash_command("clear", "Clear chat history", function() {
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     mod$clear(
@@ -454,7 +454,7 @@ server_chat <- function(input, output, session, chat, settings,
     )
   })
 
-  # /rewind [N] — rewind N exchanges
+  # /rewind [N] -- rewind N exchanges
   mod$slash_command("rewind", "Rewind N exchanges", function(content) {
     args   <- trimws(content@user_text)
     n_back <- suppressWarnings(as.integer(args))
@@ -466,7 +466,7 @@ server_chat <- function(input, output, session, chat, settings,
                role = "assistant")
   })
 
-  # Skills — register each installed skill as a slash command
+  # Skills -- register each installed skill as a slash command
   tryCatch({
     metas <- list_skills_meta(cwd)
     for (nm in names(metas)) {

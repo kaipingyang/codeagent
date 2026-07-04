@@ -26,7 +26,7 @@ or calling \code{\link[=generate_wear_report]{generate_wear_report()}} manually)
 \description{
 Launches an \strong{interactive} data exploration session using the
 Write/Execute/Analyze/Regroup (WEAR) loop pattern. This is a \strong{dedicated
-exploration mode} — it is separate from a normal \code{codeagent_app()} or
+exploration mode} -- it is separate from a normal \code{codeagent_app()} or
 \code{codeagent_repl()} session. The difference:
 }
 \details{
@@ -40,7 +40,7 @@ exploration mode} — it is separate from a normal \code{codeagent_app()} or
 
 
 The \code{ExploreData} and \code{GenerateReport} tools are \strong{not} registered in the
-standard agent loop (\code{codeagent_app()}) — use \code{wear_explore()} to enter
+standard agent loop (\code{codeagent_app()}) -- use \code{wear_explore()} to enter
 exploration mode explicitly.
 }
 \examples{
