@@ -157,7 +157,16 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
 #' @return Invisibly returns `chat`.
 #' @keywords internal
 register_run_r_tool <- function(chat, mode = "default", rules = list(),
-                                ask_fn = NULL, sandbox = NULL) {
+                                ask_fn = NULL, sandbox = NULL, async = FALSE) {
+  if (isTRUE(async)) {
+    # Shiny path: bypass-built inner + async permission gate (see
+    # .asyncify_gated_tool). RunR is destructive/never read-only, so in default
+    # mode this shows the approval bar before executing.
+    inner <- run_r_tool("bypass", rules, NULL, sandbox = sandbox)
+    if (!is.null(inner))
+      chat$register_tool(.asyncify_gated_tool(inner, "RunR", mode, rules, ask_fn))
+    return(invisible(chat))
+  }
   t <- run_r_tool(mode, rules, ask_fn, sandbox = sandbox)
   if (!is.null(t)) chat$register_tool(t)
   invisible(chat)

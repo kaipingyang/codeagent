@@ -16,16 +16,38 @@ NULL
 #' @param ask_question_fn Function or NULL. If provided, called with
 #'   `(question, choices)` instead of `readline()`. Used by the Shiny UI
 #'   to show an input bar and await the user's answer.
+#' @param async Logical. When `TRUE`, the tool `fun` is a `coro::async`
+#'   function that `await()`s a promise returned by `ask_question_fn` (Shiny
+#'   path). Requires the chat to be run via `stream_async()`/`chat_async()`.
+#'   Leave `FALSE` for the synchronous CLI path (an async fun always returns a
+#'   promise, which the sync tool loop would not await).
 #' @return An `ellmer::ToolDef`.
 #' @export
-ask_user_tool <- function(ask_question_fn = NULL) {
+ask_user_tool <- function(ask_question_fn = NULL, async = FALSE) {
   force(ask_question_fn)
+  force(async)
+
+  fun <- if (isTRUE(async)) {
+    # coro cannot assign the result of an `if` expression, so branch with
+    # side-effecting assignments instead of `answer <- if (...) ... else ...`.
+    coro::async(function(question, choices = NULL, `_intent` = NULL) {
+      ans <- ask_question_fn(question, choices)
+      if (inherits(ans, "promise")) {
+        answer <- await(ans)
+      } else {
+        answer <- ans
+      }
+      .ask_tool_result(as.character(answer %||% ""), question)
+    })
+  } else {
+    function(question, choices = NULL, `_intent` = NULL) {
+      .ask_user_impl(question, choices, ask_question_fn)
+    }
+  }
 
   ellmer::tool(
     name = "AskUserQuestion",
-    fun  = function(question, choices = NULL, `_intent` = NULL) {
-      .ask_user_impl(question, choices, ask_question_fn)
-    },
+    fun  = fun,
     description = paste0(
       "Ask the user a clarifying question and wait for their answer before ",
       "continuing. Use when you need information from the user to proceed ",
@@ -130,9 +152,10 @@ ask_user_tool <- function(ask_question_fn = NULL) {
 #'
 #' @param chat An `ellmer::Chat` object.
 #' @param ask_question_fn Function or NULL. Shiny callback for Phase 3.
+#' @param async Logical. Build the async (promise-awaiting) variant (Shiny).
 #' @return Invisibly `chat`.
 #' @export
-register_ask_user_tool <- function(chat, ask_question_fn = NULL) {
-  chat$register_tool(ask_user_tool(ask_question_fn))
+register_ask_user_tool <- function(chat, ask_question_fn = NULL, async = FALSE) {
+  chat$register_tool(ask_user_tool(ask_question_fn, async = async))
   invisible(chat)
 }

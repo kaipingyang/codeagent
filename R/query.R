@@ -65,7 +65,7 @@ print.CodagentClient <- function(x, ...) {
   chat_args <- switch(
     provider,
     # ---- OpenAI-compatible: Databricks / Azure / vLLM / any custom endpoint ----
-    openai_compatible = c(list(base_url=bu, model=model, credentials=creds, system_prompt=sp), extra_params),
+    openai_compatible = c(list(base_url=bu, model=model, credentials=creds, system_prompt=sp, preserve_thinking=TRUE), extra_params),
     openai            = c(list(model=model, credentials=creds, system_prompt=sp), extra_params),
     vllm              = c(list(base_url=if(nzchar(bu)) bu else NULL, model=model, system_prompt=sp), extra_params),
     lmstudio          = c(list(base_url=if(nzchar(bu)) bu else NULL, model=model, system_prompt=sp), extra_params),
@@ -376,6 +376,17 @@ agent_loop <- function(user_input,
 
   if (!is.character(response)) response <- "[No text response]"
 
+  # 6b. Inspect the model's stop reason (ellmer AssistantTurn$finish_reason).
+  #     "length" means the reply hit the output-token cap -> flag it so the UI /
+  #     caller knows the answer may be cut off. ellmer resolves tool_use loops
+  #     inside chat$chat(), so the final turn is normally "stop"/"length".
+  finish_reason <- .last_finish_reason(chat)
+  if (identical(finish_reason, "length")) {
+    response <- paste0(
+      response,
+      "\n\n[Note: response was truncated at the model's output-token limit.]")
+  }
+
   # 7. Fire AssistantMessage hook
   if (!is.null(hooks)) tryCatch(hooks$run_assistant_message(response), error = function(e) NULL)
 
@@ -406,7 +417,9 @@ agent_loop <- function(user_input,
     hooks$run_stop("completed", list(session_id = session_id)),
     error = function(e) NULL)
 
-  list(response = response, session_id = session_id, stop_reason = "completed")
+  list(response = response, session_id = session_id,
+       stop_reason = if (identical(finish_reason, "length")) "truncated" else "completed",
+       finish_reason = finish_reason)
 }
 
 # ---------------------------------------------------------------------------
@@ -433,6 +446,20 @@ agent_loop <- function(user_input,
   rules <- settings$rules %||% list()
   cwd   <- settings$cwd %||% getwd()
 
+  # Shiny interaction wiring (Phase 3). When the Shiny server has installed
+  # promise-returning callbacks (settings$shiny_ask_fn / shiny_ask_question_fn),
+  # build ASYNC-gated variants of the interactive tools (Write/Edit/MultiEdit/
+  # Bash/RunR + AskUserQuestion) so they pause on the UI approval/question bar.
+  # These override the ask_fn/ask_question_fn args and are only present in the
+  # Shiny path — the CLI/one-shot path leaves them NULL and stays synchronous.
+  if (is.function(settings$shiny_ask_fn)) {
+    ask_fn          <- settings$shiny_ask_fn
+    async_gate      <- TRUE
+  } else {
+    async_gate      <- FALSE
+  }
+  ask_question_fn <- settings$shiny_ask_question_fn %||% ask_question_fn
+
   # Set btw.client so btw's subagent tool uses our gateway (Databricks /
   # OpenAI-compatible) instead of falling back to chat_anthropic() which
   # requires ANTHROPIC_API_KEY.  We build a fresh chat for subagents and
@@ -451,14 +478,15 @@ agent_loop <- function(user_input,
   # LLM has both: btw for hash-anchored project-local edits, default for
   # absolute-path operations. The two sets coexist; the LLM picks based on task.
   register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn,
-                         sandbox = settings$sandbox)
+                         sandbox = settings$sandbox, async = async_gate)
   if (isTRUE(getOption("codeagent.use_btw_files", FALSE))) {
     tryCatch(register_btw_file_tools(chat, mode, rules, ask_fn),
              error = function(e) NULL)
   }
   tryCatch(register_web_tools(chat),                          error = function(e) NULL)
   tryCatch(register_run_r_tool(chat, mode, rules, ask_fn,
-                               sandbox = settings$sandbox), error = function(e) NULL)
+                               sandbox = settings$sandbox,
+                               async = async_gate), error = function(e) NULL)
   tryCatch(register_memory_tool(chat),                        error = function(e) NULL)
   if (!is.null(settings$mcp_config))
     tryCatch(register_mcp_client(chat, settings$mcp_config),  error = function(e) NULL)
@@ -495,7 +523,8 @@ agent_loop <- function(user_input,
   }, error = function(e) NULL)
   # AskUserQuestion: always registered (read-only, all permission modes).
   # ask_question_fn is NULL for CLI (readline path) or a Shiny callback (Phase 3).
-  tryCatch(register_ask_user_tool(chat, ask_question_fn), error = function(e) NULL)
+  tryCatch(register_ask_user_tool(chat, ask_question_fn, async = async_gate),
+           error = function(e) NULL)
 
   invisible(chat)
 }
@@ -525,6 +554,19 @@ agent_loop <- function(user_input,
 .ERR_RATE_LIMIT  <- "429|rate.limit|too.many.requests|quota"
 .ERR_NETWORK     <- "timeout|connection|ECONNREFUSED|ETIMEDOUT|curl"
 .ERR_AUTH        <- "401|403|unauthorized|forbidden|invalid.*key"
+# ellmer dev warns/errors on truncated / filtered / incomplete responses.
+.ERR_TRUNCATED   <- "truncat|incomplete|max_tokens|finish_reason.*length|content.*filter|response.*filtered"
+
+# Read the finish_reason of the most recent assistant turn (ellmer dev
+# AssistantTurn$finish_reason): "stop" | "length" | "tool_use" | "content_filter"
+# | ... Returns NA_character_ when unavailable.
+.last_finish_reason <- function(chat) {
+  tryCatch({
+    lt <- if (!is.null(chat) && "last_turn" %in% names(chat)) chat$last_turn() else NULL
+    fr <- tryCatch(lt@finish_reason, error = function(e) NULL)
+    if (is.null(fr) || !length(fr) || !nzchar(fr)) NA_character_ else as.character(fr)
+  }, error = function(e) NA_character_)
+}
 
 .handle_agent_error <- function(e, chat, input, compaction_ctrl,
                                  max_retries = 3L) {
@@ -533,10 +575,20 @@ agent_loop <- function(user_input,
 
   # PTL: compact then retry once
   if (grepl(.ERR_PTL, clean, ignore.case = TRUE)) {
-    compaction_ctrl$handle_ptl_error(chat)
+    compaction_ctrl$handle_ptl_error(chat, error = clean)
     return(tryCatch(
       chat$chat(input),
       error = function(e2) paste0("[PTL Error after compact] ", conditionMessage(e2))
+    ))
+  }
+
+  # Truncated / filtered / incomplete response: retry once (often transient);
+  # surface a clear note if it recurs. (ellmer dev signals these explicitly.)
+  if (grepl(.ERR_TRUNCATED, clean, ignore.case = TRUE)) {
+    return(tryCatch(
+      chat$chat(input),
+      error = function(e2) paste0(
+        "[Incomplete/truncated response] ", conditionMessage(e2))
     ))
   }
 
