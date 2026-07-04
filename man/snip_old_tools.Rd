@@ -4,7 +4,12 @@
 \alias{snip_old_tools}
 \title{L1: Replace old tool results with a placeholder}
 \usage{
-snip_old_tools(chat, keep_recent_turns = 10L, min_chars = 500L)
+snip_old_tools(
+  chat,
+  keep_recent_turns = 10L,
+  min_chars = 500L,
+  target_tokens = NULL
+)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object (modified in place via set_turns).}

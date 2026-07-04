@@ -74,10 +74,14 @@ NULL
   # from .GlobalEnv so the agent knows what objects exist without a tool call.
   inject_r_env       = FALSE,
 
-  # Mid-loop compaction (Plan B): snip old tool results between tool rounds via
-  # on_tool_result. FALSE = off (default); TRUE = opt in. See
-  # references/plan/13-mid-loop-compaction.md.
-  midloop_compact    = FALSE,
+  # Mid-loop compaction (Plan B): compact between tool rounds via on_tool_result.
+  # midloop_compact = cheap budget-aware micro snip (ON by default, matches
+  # Claude Code default-on compaction; only acts near the context limit).
+  # midloop_full_compact = also run the full two-level LLM compact mid-loop when
+  # a snip isn't enough (OFF by default -- it makes a blocking model call
+  # mid-stream). See references/plan/13-mid-loop-compaction.md.
+  midloop_compact      = TRUE,
+  midloop_full_compact = FALSE,
 
   # Data exploration tool (ExploreData). TRUE = always register (default);
   # FALSE = opt-out (batch/non-interactive contexts).
