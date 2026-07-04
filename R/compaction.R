@@ -66,6 +66,64 @@ estimate_tokens <- function(chat) {
   as.integer(ceiling(total_chars / 3.5))
 }
 
+# Real input tokens from the most recent API exchange, via ellmer get_tokens().
+# get_tokens() returns one row per assistant response with columns
+# input/output/cached_input/cost. The last row's input already includes the
+# entire context sent, so input+output approximates the current context size.
+.last_usage_tokens <- function(chat) {
+  if (is.null(chat) || !("get_tokens" %in% names(chat))) return(NA_integer_)
+  tk <- tryCatch(chat$get_tokens(), error = function(e) NULL)
+  if (is.null(tk) || !is.data.frame(tk) || nrow(tk) == 0L) return(NA_integer_)
+  inp <- suppressWarnings(as.numeric(tk$input))
+  out <- suppressWarnings(as.numeric(tk$output))
+  last_in  <- inp[length(inp)];  if (is.na(last_in))  last_in  <- 0
+  last_out <- out[length(out)];  if (is.na(last_out)) last_out <- 0
+  v <- last_in + last_out
+  if (v > 0) as.integer(v) else NA_integer_
+}
+
+#' Token count preferring real usage over the char heuristic
+#'
+#' Mirrors Claude Code `tokenCountWithEstimation` (src/utils/tokens.ts): use the
+#' real token usage from the last API exchange when available, otherwise fall
+#' back to the char/3.5 estimate. This makes the compaction trigger fire on
+#' actual model token counts rather than a rough character approximation.
+#'
+#' @param chat An `ellmer::Chat` object.
+#' @return Integer token count.
+#' @keywords internal
+token_count_with_estimation <- function(chat) {
+  real <- tryCatch(.last_usage_tokens(chat), error = function(e) NA_integer_)
+  if (!is.na(real) && real > 0L) return(real)
+  estimate_tokens(chat)
+}
+
+# Char/3.5 token estimate for a bare list of turns (used by PTL head-dropping
+# where we work on a turns vector before calling set_turns()).
+.estimate_turns_tokens <- function(turns) {
+  if (length(turns) == 0L) return(0L)
+  total_chars <- sum(vapply(turns, function(turn) {
+    contents <- tryCatch(turn@contents, error = function(e) list())
+    sum(vapply(contents, function(c) {
+      nchar(as.character(tryCatch(c@text %||% "", error = function(e) "")))
+    }, numeric(1)))
+  }, numeric(1)))
+  as.integer(ceiling(total_chars / 3.5))
+}
+
+# Parse a real context/token limit out of a PTL/413 error message when the
+# provider reports one (mirrors Claude Code reading contextLimit in
+# withRetry.ts). Returns the largest plausible token limit (>= 10000) or NA.
+.parse_ptl_limit <- function(msg) {
+  if (is.null(msg) || !length(msg) || !nzchar(msg[[1]])) return(NA_integer_)
+  nums <- regmatches(msg, gregexpr("[0-9][0-9,]{3,}", msg))[[1]]
+  if (!length(nums)) return(NA_integer_)
+  vals <- suppressWarnings(as.integer(gsub(",", "", nums)))
+  vals <- vals[!is.na(vals) & vals >= 10000L]
+  if (!length(vals)) return(NA_integer_)
+  max(vals)
+}
+
 # Placeholder text injected by L1 compaction
 .SNIP_PLACEHOLDER <- "[Old tool result content cleared]"
 
@@ -187,23 +245,137 @@ session_memory_compact <- function(chat,
 
   new_turns <- c(list(summary_turn), turns[(n_summ + 1L):length(turns)])
   tryCatch(chat$set_turns(new_turns), error = function(e) NULL)
-  invisible(NULL)
+  invisible(TRUE)
 }
 
 # ---------------------------------------------------------------------------
 # L3: Full Compaction (fork agent, 9-section summary)
 # ---------------------------------------------------------------------------
 
-.FULL_COMPACT_SYSTEM <- paste0(
-  "You are a context compaction assistant. ",
-  "Generate a structured summary of the following conversation using exactly ",
-  "these nine sections wrapped in <summary> tags:\n",
-  "1. Task\n2. Environment\n3. Progress\n4. Files Changed\n",
-  "5. Key Decisions\n6. Errors Encountered\n7. Pending Actions\n",
-  "8. Tool Results\n9. Next Steps\n\n",
-  "Be concise but complete. Preserve file paths, error messages, ",
-  "and code snippets verbatim."
-)
+# Verbatim Claude Code compaction prompt (src/services/compact/prompt.ts:22
+# NO_TOOLS_PREAMBLE + prompt.ts:61 BASE_COMPACT_PROMPT, with prompt.ts:39
+# DETAILED_ANALYSIS_INSTRUCTION_BASE embedded). Transcribed ASCII-only (em-dash
+# -> "--"). Kept as a raw string so the text stays byte-for-byte aligned.
+.COMPACT_SYSTEM_PROMPT <- r"---(CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.
+
+- Do NOT use Read, Bash, Grep, Glob, Edit, Write, or ANY other tool.
+- You already have all the context you need in the conversation above.
+- Tool calls will be REJECTED and will waste your only turn -- you will fail the task.
+- Your entire response must be plain text: an <analysis> block followed by a <summary> block.
+
+Your task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions.
+This summary should be thorough in capturing technical details, code patterns, and architectural decisions that would be essential for continuing development work without losing context.
+
+Before providing your final summary, wrap your analysis in <analysis> tags to organize your thoughts and ensure you've covered all necessary points. In your analysis process:
+
+1. Chronologically analyze each message and section of the conversation. For each section thoroughly identify:
+   - The user's explicit requests and intents
+   - Your approach to addressing the user's requests
+   - Key decisions, technical concepts and code patterns
+   - Specific details like:
+     - file names
+     - full code snippets
+     - function signatures
+     - file edits
+   - Errors that you ran into and how you fixed them
+   - Pay special attention to specific user feedback that you received, especially if the user told you to do something differently.
+2. Double-check for technical accuracy and completeness, addressing each required element thoroughly.
+
+Your summary should include the following sections:
+
+1. Primary Request and Intent: Capture all of the user's explicit requests and intents in detail
+2. Key Technical Concepts: List all important technical concepts, technologies, and frameworks discussed.
+3. Files and Code Sections: Enumerate specific files and code sections examined, modified, or created. Pay special attention to the most recent messages and include full code snippets where applicable and include a summary of why this file read or edit is important.
+4. Errors and fixes: List all errors that you ran into, and how you fixed them. Pay special attention to specific user feedback that you received, especially if the user told you to do something differently.
+5. Problem Solving: Document problems solved and any ongoing troubleshooting efforts.
+6. All user messages: List ALL user messages that are not tool results. These are critical for understanding the users' feedback and changing intent.
+7. Pending Tasks: Outline any pending tasks that you have explicitly been asked to work on.
+8. Current Work: Describe in detail precisely what was being worked on immediately before this summary request, paying special attention to the most recent messages from both user and assistant. Include file names and code snippets where applicable.
+9. Optional Next Step: List the next step that you will take that is related to the most recent work you were doing. IMPORTANT: ensure that this step is DIRECTLY in line with the user's most recent explicit requests, and the task you were working on immediately before this summary request. If your last task was concluded, then only list next steps if they are explicitly in line with the users request. Do not start on tangential requests or really old requests that were already completed without confirming with the user first.
+                       If there is a next step, include direct quotes from the most recent conversation showing exactly what task you were working on and where you left off. This should be verbatim to ensure there's no drift in task interpretation.
+
+Here's an example of how your output should be structured:
+
+<example>
+<analysis>
+[Your thought process, ensuring all points are covered thoroughly and accurately]
+</analysis>
+
+<summary>
+1. Primary Request and Intent:
+   [Detailed description]
+
+2. Key Technical Concepts:
+   - [Concept 1]
+   - [Concept 2]
+   - [...]
+
+3. Files and Code Sections:
+   - [File Name 1]
+      - [Summary of why this file is important]
+      - [Summary of the changes made to this file, if any]
+      - [Important Code Snippet]
+   - [File Name 2]
+      - [Important Code Snippet]
+   - [...]
+
+4. Errors and fixes:
+    - [Detailed description of error 1]:
+      - [How you fixed the error]
+      - [User feedback on the error if any]
+    - [...]
+
+5. Problem Solving:
+   [Description of solved problems and ongoing troubleshooting]
+
+6. All user messages:
+    - [Detailed non tool use user message]
+    - [...]
+
+7. Pending Tasks:
+   - [Task 1]
+   - [Task 2]
+   - [...]
+
+8. Current Work:
+   [Precise description of current work]
+
+9. Optional Next Step:
+   [Optional Next step to take]
+
+</summary>
+</example>
+
+Please provide your summary based on the conversation so far, following this structure and ensuring precision and thoroughness in your response.
+
+There may be additional summarization instructions provided in the included context. If so, remember to follow these instructions when creating the above summary. Examples of instructions include:
+<example>
+## Compact Instructions
+When summarizing the conversation focus on typescript code changes and also remember the mistakes you made and how you fixed them.
+</example>
+
+<example>
+# Summary instructions
+When you are using compact - please focus on test output and code changes. Include file reads verbatim.
+</example>
+)---"
+
+# Legacy alias kept so any external reference still resolves; prefer
+# .COMPACT_SYSTEM_PROMPT.
+.FULL_COMPACT_SYSTEM <- .COMPACT_SYSTEM_PROMPT
+
+# Extract the <summary> block, dropping the <analysis> scratch pad
+# (= formatCompactSummary, prompt.ts:327). Returns "Summary:\n<body>".
+.extract_compact_summary <- function(text) {
+  text <- as.character(text %||% "")
+  if (grepl("<summary>", text, fixed = TRUE)) {
+    body <- sub("(?s).*<summary>(.*?)</summary>.*", "\\1", text, perl = TRUE)
+  } else {
+    # No tags: drop any <analysis> block, keep the rest.
+    body <- sub("(?s)<analysis>.*?</analysis>", "", text, perl = TRUE)
+  }
+  paste0("Summary:\n", trimws(body))
+}
 
 #' L3: Full context compaction via fork agent
 #'
@@ -235,7 +407,7 @@ full_compact <- function(chat, model = .HAIKU_MODEL) {
                         "\n[... truncated for compaction ...]")
 
   summary_text <- tryCatch({
-    compactor <- .make_compact_chat(model, system_prompt = .FULL_COMPACT_SYSTEM)
+    compactor <- .make_compact_chat(model, system_prompt = .COMPACT_SYSTEM_PROMPT)
     compactor$chat(conv_text)
   }, error = function(e) {
     # Re-raise so the outer maybe_compact() tryCatch increments the circuit
@@ -245,9 +417,8 @@ full_compact <- function(chat, model = .HAIKU_MODEL) {
   })
   if (is.null(summary_text)) return(invisible(NULL))
 
-  # Ensure summary is wrapped in <summary> tags
-  if (!grepl("<summary>", summary_text, fixed = TRUE))
-    summary_text <- paste0("<summary>\n", summary_text, "\n</summary>")
+  # Strip the <analysis> scratch pad, keep the <summary> body, prefix "Summary:".
+  summary_text <- .extract_compact_summary(summary_text)
 
   # Replace all turns with the summary
   summary_turn <- tryCatch(
@@ -267,17 +438,33 @@ full_compact <- function(chat, model = .HAIKU_MODEL) {
 
 #' L4: Prompt-too-long fallback -- drop oldest turns
 #'
-#' Called when the API returns a 413 / prompt_too_long error.
-#' Drops `drop_turns` oldest turns to reduce context size.
+#' Called when the API returns a 413 / prompt_too_long error. When the error
+#' message carries a real context limit (Claude Code parses `contextLimit`), drop
+#' the oldest turns until the estimate is under ~90% of that limit; otherwise
+#' drop a fixed number of oldest turns.
 #'
 #' @param chat An `ellmer::Chat` object.
-#' @param drop_turns Integer. Number of turns to drop from the start.
+#' @param drop_turns Integer. Turns to drop when no limit can be parsed.
+#' @param error_msg Character or NULL. The PTL/413 error message to parse.
 #' @return Invisibly NULL.
 #' @keywords internal
-ptl_fallback <- function(chat, drop_turns = 3L) {
+ptl_fallback <- function(chat, drop_turns = 3L, error_msg = NULL) {
   turns <- .safe_get_turns(chat)
   if (length(turns) <= drop_turns) return(invisible(NULL))
-  new_turns <- turns[(drop_turns + 1L):length(turns)]
+
+  limit <- .parse_ptl_limit(error_msg)
+  if (!is.na(limit)) {
+    target <- as.integer(limit * 0.9)
+    start  <- 1L
+    # Drop oldest turns until the remaining estimate fits, but keep >= 1 turn.
+    while (start < length(turns) &&
+           .estimate_turns_tokens(turns[start:length(turns)]) > target) {
+      start <- start + 1L
+    }
+    new_turns <- turns[start:length(turns)]
+  } else {
+    new_turns <- turns[(drop_turns + 1L):length(turns)]
+  }
   tryCatch(chat$set_turns(new_turns), error = function(e) NULL)
   invisible(NULL)
 }
@@ -365,24 +552,24 @@ CompactionController <- R6::R6Class(
     #' @return Invisibly NULL.
     maybe_compact = function(chat, model_limit = 200000L,
                               compact_model = .HAIKU_MODEL) {
+      # Disabled via env (= CLAUDE_CODE_DISABLE_COMPACT)
+      if (!auto_compact_enabled()) return(invisible(NULL))
       # Circuit breaker
-      if (private$failures >= .COMPACT_CIRCUIT_BREAKER_LIMIT) return(invisible(NULL))
+      if (private$failures >= .MAX_CONSECUTIVE_COMPACT_FAILS) return(invisible(NULL))
 
       threshold <- model_limit - .COMPACT_TRIGGER_MARGIN  # e.g. 167K for 200K model
-      n         <- estimate_tokens(chat)
+      n         <- token_count_with_estimation(chat)
       if (n < threshold) return(invisible(NULL))
 
       tryCatch({
-        if (n < threshold + .COMPACT_L2_MARGIN) {
-          snip_old_tools(chat)
-        } else if (n < threshold + .COMPACT_L3_MARGIN) {
-          session_memory_compact(chat, model = compact_model)
-        } else if (n < threshold + .COMPACT_L5_MARGIN) {
-          full_compact(chat, model = compact_model)
-        } else {
-          # L5: context collapse (read-time projection) before L4 drop
-          context_collapse(chat)
-        }
+        # Cheap independent pre-step: clear large old tool results (Claude Code
+        # treats snip as a separate step, not part of the summary chain).
+        snip_old_tools(chat)
+        # Two-level compaction (autoCompact.ts autoCompactIfNeeded): try the
+        # incremental session-memory summary first; if it could not run (too
+        # few turns), fall back to the full 9-section summary.
+        did_sm <- isTRUE(session_memory_compact(chat, model = compact_model))
+        if (!did_sm) full_compact(chat, model = compact_model)
         private$failures <- 0L
       }, error = function(e) {
         private$failures <- private$failures + 1L
@@ -394,8 +581,13 @@ CompactionController <- R6::R6Class(
 
     #' @description Handle a prompt-too-long (PTL) error by dropping turns.
     #' @param chat An `ellmer::Chat` object.
-    handle_ptl_error = function(chat) {
-      tryCatch(ptl_fallback(chat), error = function(e) NULL)
+    #' @param error An error condition or message string (parsed for a real
+    #'   context limit when present).
+    handle_ptl_error = function(chat, error = NULL) {
+      msg <- if (inherits(error, "condition")) conditionMessage(error)
+             else if (is.character(error)) error
+             else NULL
+      tryCatch(ptl_fallback(chat, error_msg = msg), error = function(e) NULL)
     },
 
     #' @description Reset the failure counter (e.g. after a successful turn).
