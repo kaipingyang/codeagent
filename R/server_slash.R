@@ -37,18 +37,27 @@ NULL
     help     = "Show help", sessions = "List saved sessions",
     budget   = "Show token budget"
   )
+  # Local commands: echo = FALSE. They do NOT go to the LLM, so we must not let
+  # shinychat enter its "awaitResponse" (loading spinner waiting for AI) state.
+  # We render the user-echo bubble + result ourselves in the dispatcher so the
+  # invocation is still visible in the chat log (matching assistant-ui /
+  # Claude Code convention) without a hanging loading state.
   local_defs <- lapply(.LOCAL_COMMANDS, function(nm) {
     list(name = nm, description = unname(local_desc[nm]) %||% nm, echo = FALSE)
   })
 
+  # Skill commands: echo = TRUE (shinychat's default for handler-backed
+  # commands). shinychat renders the "/skill args" user bubble and enters the
+  # awaitResponse state, which is correct because skills DO invoke the LLM.
   skill_defs <- tryCatch({
     metas <- list_skills_meta(cwd)
     lapply(metas, function(m) {
-      list(name = m$name, description = m$description %||% m$name, echo = FALSE)
+      list(name = m$name, description = m$description %||% m$name, echo = TRUE)
     })
   }, error = function(e) list())
 
   # De-duplicate by name (a command may also be a skill, e.g. /compact).
+  # Local wins on conflict (its echo=FALSE + manual handling is intentional).
   all_defs <- c(local_defs, skill_defs)
   seen <- character(0)
   out  <- list()
@@ -80,27 +89,81 @@ NULL
 #' @param input,session Standard Shiny server args.
 #' @param cwd Character. Working directory (for skill discovery).
 #' @param id Character. The `chat_ui()` id (default `"chat"`).
+#' @param stream_task The `ExtendedTask` returned by [server_chat()], used to
+#'   run skill/normal slash commands through the harness (compaction, skill
+#'   injection, streaming). Required for skill commands to reach the LLM.
+#' @param chat,settings,state,exec_command Harness handles for executing local
+#'   commands directly. `exec_command` is a function
+#'   `function(parsed)` that runs a local command (wraps
+#'   `.handle_chat_command`); when supplied it is used instead of the
+#'   chat/settings/state trio.
 #' @return Invisibly NULL.
+#' @details
+#'   Slash commands are dispatched **directly inside this handler** — we do NOT
+#'   re-submit `/command` through `update_chat_user_input()`. Re-submitting is
+#'   broken: shinychat re-recognises the re-submitted `/command` as a slash
+#'   command and fires `input$<id>_slash_command` again with the *same* value,
+#'   which Shiny's `observeEvent` de-dupes into a no-op — so the command never
+#'   reaches `input$<id>_user_input` / `.preprocess_input` and silently dies.
+#'   Instead we mirror `server_chat`'s routing here: local commands run via
+#'   `.handle_chat_command()`, skills/normal go through the shared `stream_task`
+#'   (which injects the skill prompt internally).
 #' @keywords internal
-server_slash <- function(input, session, cwd = getwd(), id = "chat") {
+server_slash <- function(input, session, cwd = getwd(), id = "chat",
+                         stream_task = NULL,
+                         chat = NULL, settings = NULL, state = NULL) {
   # Register commands once the client has connected (after the first flush).
   tryCatch(
     session$onFlushed(function() .send_slash_commands(session, cwd, id),
                       once = TRUE),
     error = function(e) .send_slash_commands(session, cwd, id))
 
-  # Selection -> reconstruct "/command args" and submit through the normal input
-  # so server_chat's single routing path handles it.
+  # Selection -> dispatch DIRECTLY (never re-submit; see @details).
   shiny::observeEvent(input[[paste0(id, "_slash_command")]], {
-    data <- input[[paste0(id, "_slash_command")]]
-    cmd  <- if (is.list(data)) data$command else NULL
-    if (is.null(cmd) || !nzchar(cmd)) return()
-    ut   <- if (is.list(data)) (data$userText %||% "") else ""
-    val  <- paste0("/", cmd, if (nzchar(ut)) paste0(" ", ut) else "")
-    tryCatch(
-      shinychat::update_chat_user_input(id, value = val, submit = TRUE,
-                                        session = session),
-      error = function(e) NULL)
+    parsed <- .slash_parse_selection(input[[paste0(id, "_slash_command")]])
+    if (is.null(parsed)) return()
+
+    if (identical(parsed$type, "command")) {
+      # Local command: does NOT touch the LLM (echo=FALSE, so shinychat renders
+      # no bubble and no loading state). To keep the invocation visible in the
+      # chat log -- matching assistant-ui / Claude Code convention where the
+      # command AND its result are shown -- we manually echo the "/command args"
+      # as a user bubble here; .handle_chat_command() then appends the result
+      # (or opens a dialog, e.g. /model).
+      echo_val <- paste0("/", parsed$name,
+                         if (nzchar(parsed$args)) paste0(" ", parsed$args) else "")
+      tryCatch(
+        shinychat::chat_append(id, echo_val, role = "user", session = session),
+        error = function(e) NULL)
+      if (!is.null(chat))
+        tryCatch(.handle_chat_command(parsed, chat, settings, state, session, cwd),
+                 error = function(e) NULL)
+      return()
+    }
+
+    # Skill command: run through the shared stream_task, which injects the
+    # skill prompt (.preprocess_input -> load_skill_prompt) before streaming.
+    if (!is.null(stream_task)) {
+      if (isTRUE(tryCatch(stream_task$status() == "running", error = function(e) FALSE)))
+        return()
+      val <- paste0("/", parsed$name,
+                    if (nzchar(parsed$args)) paste0(" ", parsed$args) else "")
+      tryCatch(stream_task$invoke(val), error = function(e) NULL)
+    }
   })
   invisible(NULL)
+}
+
+# Parse a client `{command, userText}` selection into a routing decision.
+# Pure + testable. Returns NULL for empty/invalid input; otherwise a list
+# `list(type, name, args)` where `type` is "command" (local, run directly) or
+# "skill" (needs the LLM, go through stream_task).
+.slash_parse_selection <- function(data) {
+  cmd <- if (is.list(data)) data$command else NULL
+  if (is.null(cmd) || !is.character(cmd) || length(cmd) != 1L || !nzchar(cmd))
+    return(NULL)
+  ut <- if (is.list(data)) (data$userText %||% "") else ""
+  if (!is.character(ut) || length(ut) != 1L) ut <- ""
+  list(type = if (cmd %in% .LOCAL_COMMANDS) "command" else "skill",
+       name = cmd, args = ut)
 }
