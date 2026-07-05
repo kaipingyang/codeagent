@@ -29,3 +29,7 @@ inst/evals/.vitals/
 
 # Shiny chat runtime conversation logs
 .shinychat/
+
+# Local-only working docs (privacy: contains private tests/notes) -- never commit
+references/
+lessons/
