@@ -80,13 +80,50 @@ server_right <- function(input, output, session, cwd, state,
       htmltools::tags$p(paste("[Error]", conditionMessage(e)))
     })
 
+    # Wrap in a card(full_screen = TRUE) so the opened file gets the same
+    # expand-to-fullscreen affordance as the tool-output card.
+    card_ui <- bslib::card(
+      full_screen = TRUE,
+      class       = "ca-file-card",
+      bslib::card_body(padding = 0, preview)
+    )
+
+    # Tab title with a close "x". stopPropagation so clicking x doesn't just
+    # select the tab; setInputValue drives the ca_close_tab observer below.
+    title_ui <- htmltools::tags$span(
+      class = "ca-file-tab", basename(fname),
+      htmltools::tags$span(
+        class = "ca-tab-close",
+        style = "margin-left:8px; cursor:pointer; opacity:0.55;",
+        title = "Close",
+        onclick = sprintf(
+          "event.stopPropagation();event.preventDefault();Shiny.setInputValue('ca_close_tab','%s',{priority:'event'});",
+          tab_value),
+        htmltools::HTML("&times;")
+      )
+    )
+
     bslib::nav_insert(
       "main_tab",
-      nav    = bslib::nav_panel(title = basename(fname), value = tab_value, preview),
-      select = TRUE,
+      nav     = bslib::nav_panel(title = title_ui, value = tab_value, card_ui),
+      select  = TRUE,
       session = session
     )
     open_files(c(open_files(), tab_value))
+  }, ignoreInit = TRUE)
+
+  # Close a file tab via its "x" button.
+  shiny::observeEvent(input$ca_close_tab, {
+    tv <- input$ca_close_tab
+    bslib::nav_remove("main_tab", tv, session = session)
+    open_files(setdiff(open_files(), tv))
+  }, ignoreInit = TRUE)
+
+  # Session transition (new / delete / restore all change session_id) -> close
+  # opened file tabs so stale files from the previous session don't linger.
+  shiny::observeEvent(state$session_id, {
+    for (tv in open_files()) bslib::nav_remove("main_tab", tv, session = session)
+    open_files(character(0))
   }, ignoreInit = TRUE)
 }
 
