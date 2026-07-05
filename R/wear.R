@@ -43,7 +43,7 @@ NULL
 #' Launches an **interactive** data exploration session using the
 #' Write/Execute/Analyze/Regroup (WEAR) loop pattern. This is a **dedicated
 #' exploration mode** -- it is separate from a normal `codeagent_app()` or
-#' `codeagent_repl()` session. The difference:
+#' `codeagent_console()` session. The difference:
 #'
 #' | Normal session | WEAR session (`wear_explore()`) |
 #' |---|---|
@@ -64,7 +64,7 @@ NULL
 #'   "bypass"`.
 #' @param mode Character. `"repl"` (default) starts an interactive CLI session;
 #'   `"shiny"` launches the Shiny app.
-#' @param ... Passed to [codeagent_repl()] or [codeagent_app()].
+#' @param ... Passed to [codeagent_console()] or [codeagent_app()].
 #' @return Invisibly the `CodagentClient` (useful for post-session inspection
 #'   or calling [generate_wear_report()] manually).
 #' @seealso [generate_wear_report()] to export the session to a Quarto document.
@@ -118,7 +118,7 @@ wear_explore <- function(data = NULL, client = NULL, mode = c("repl", "shiny"), 
   }
 
   switch(mode,
-    repl  = codeagent_repl(client, ...),
+    repl  = codeagent_console(client, ...),
     shiny = codeagent_app(client, ...)
   )
   invisible(client)

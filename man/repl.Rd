@@ -13,6 +13,6 @@ preprocessing, and auto-save -- the same harness objects the app uses.
 Slash commands: \verb{/model}, \verb{/compact}, \verb{/clear}, \verb{/sessions}, \verb{/budget},
 \verb{/help}, \verb{/exit}. \verb{/<skill>} invokes a skill via \code{load_skill_prompt()}.
 The line parser \code{.repl_dispatch()} is a pure function (testable); the loop
-\code{codeagent_repl()} handles IO + the turn pipeline.
+\code{codeagent_console()} handles IO + the turn pipeline.
 }
 \keyword{internal}

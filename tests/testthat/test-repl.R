@@ -35,7 +35,7 @@ test_that(".repl_dispatch routes non-meta slash commands to skill", {
 })
 
 # ---------------------------------------------------------------------------
-# codeagent_repl loop (textConnection, no API)
+# codeagent_console loop (textConnection, no API)
 # ---------------------------------------------------------------------------
 
 .mk_client <- function() {
@@ -44,42 +44,42 @@ test_that(".repl_dispatch routes non-meta slash commands to skill", {
   codeagent_client(ch, permission_mode = "bypass", btw_groups = NULL, cwd = getwd())
 }
 
-test_that("codeagent_repl rejects non-clients", {
-  expect_error(codeagent_repl("nope"), "CodagentClient")
+test_that("codeagent_console rejects non-clients", {
+  expect_error(codeagent_console("nope"), "CodagentClient")
 })
 
-test_that("codeagent_repl runs /help, /clear, /exit without hitting the API", {
+test_that("codeagent_console runs /help, /clear, /exit without hitting the API", {
   cli <- .mk_client()
   con <- textConnection(c("/help", "/clear", "/exit"))
   on.exit(close(con), add = TRUE)
-  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con, quiet = TRUE))
+  out <- capture.output(codeagent_console(cli, stream = FALSE, con = con, quiet = TRUE))
   expect_true(any(grepl("Commands:", out)))
   expect_true(any(grepl("history cleared", out)))
   expect_true(any(grepl("Bye", out)))
   expect_length(cli$chat$get_turns(), 0L)   # /clear emptied history
 })
 
-test_that("codeagent_repl /model switches the model in place", {
+test_that("codeagent_console /model switches the model in place", {
   cli <- .mk_client()
   con <- textConnection(c("/model anthropic/claude-haiku-4-5", "/exit"))
   on.exit(close(con), add = TRUE)
-  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con, quiet = TRUE))
+  out <- capture.output(codeagent_console(cli, stream = FALSE, con = con, quiet = TRUE))
   expect_true(any(grepl("model:", out)))
   expect_identical(cli$chat$get_model(), "claude-haiku-4-5")  # Route A: same obj
 })
 
-test_that("codeagent_repl exits cleanly on EOF (empty connection)", {
+test_that("codeagent_console exits cleanly on EOF (empty connection)", {
   cli <- .mk_client()
   con <- textConnection(character(0))
   on.exit(close(con), add = TRUE)
-  expect_silent(invisible(capture.output(codeagent_repl(cli, stream = FALSE, con = con, quiet = TRUE))))
+  expect_silent(invisible(capture.output(codeagent_console(cli, stream = FALSE, con = con, quiet = TRUE))))
 })
 
-test_that("codeagent_repl /sessions and /budget run without the API", {
+test_that("codeagent_console /sessions and /budget run without the API", {
   cli <- .mk_client()
   con <- textConnection(c("/sessions", "/budget", "/exit"))
   on.exit(close(con), add = TRUE)
-  out <- capture.output(codeagent_repl(cli, stream = FALSE, con = con, quiet = TRUE))
+  out <- capture.output(codeagent_console(cli, stream = FALSE, con = con, quiet = TRUE))
   # Both meta-commands run without errors and the REPL exits cleanly.
   expect_true(any(grepl("Bye", out)))
   expect_false(any(grepl("error", out, ignore.case = TRUE)))
@@ -99,4 +99,14 @@ test_that(".repl_tool_summary falls back to char count when no display title", {
   res <- ellmer::ContentToolResult(value = "hello world")
   s <- codeagent:::.repl_tool_summary(res)
   expect_true(is.character(s) && nzchar(s))
+})
+
+test_that("console tool-card helpers render label/summary (color-agnostic)", {
+  req <- .repl_tool_request_line("Read", "R/utils.R")
+  expect_true(grepl("Read", req) && grepl("R/utils.R", req))
+  expect_true(grepl("\n", req))
+  res <- .repl_tool_result_line("42 lines")
+  expect_true(grepl("42 lines", res))
+  # empty hint -> no trailing hint text, still renders the label
+  expect_true(grepl("Bash", .repl_tool_request_line("Bash", "")))
 })

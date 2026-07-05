@@ -58,7 +58,7 @@ the client, so follow-up calls keep context.
 From R:
 
 ```{r}
-codeagent_repl(client)
+codeagent_console(client)
 ```
 
 Or install the command-line executable and use it from a terminal:

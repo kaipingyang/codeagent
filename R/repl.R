@@ -8,7 +8,7 @@
 #'   Slash commands: `/model`, `/compact`, `/clear`, `/sessions`, `/budget`,
 #'   `/help`, `/exit`. `/<skill>` invokes a skill via `load_skill_prompt()`.
 #'   The line parser `.repl_dispatch()` is a pure function (testable); the loop
-#'   `codeagent_repl()` handles IO + the turn pipeline.
+#'   `codeagent_console()` handles IO + the turn pipeline.
 #' @name repl
 #' @keywords internal
 NULL
@@ -116,6 +116,23 @@ NULL
   name %||% "tool"
 }
 
+# Colored, card-style tool lines for the console TUI. cli auto-disables ANSI on
+# non-tty / NO_COLOR, so these degrade to plain text (tests see plain strings).
+#   request:  ⏺ <label>  <hint>     (cyan bold label, dim hint)
+#   result:     ⎿ <summary>          (green connector, dim text)
+.repl_tool_request_line <- function(label, hint = "") {
+  glyph <- tryCatch(cli::col_cyan("\u23fa"), error = function(e) "*")
+  lab   <- tryCatch(cli::col_cyan(cli::style_bold(label)), error = function(e) label)
+  h     <- if (nzchar(hint)) tryCatch(cli::style_dim(paste0("  ", hint)),
+                                      error = function(e) paste0("  ", hint)) else ""
+  paste0("\n", glyph, " ", lab, h, "\n")
+}
+.repl_tool_result_line <- function(summary) {
+  conn <- tryCatch(cli::col_green("\u23bf"), error = function(e) "->")
+  txt  <- tryCatch(cli::style_dim(summary), error = function(e) summary)
+  paste0("    ", conn, " ", txt, "\n")
+}
+
 # Register tool-visibility callbacks on the Chat (idempotent per chat object).
 # on_tool_request -> print the tool name (so tool_use is visible mid-stream);
 # on_tool_result  -> print a one-line summary.  Mirrors Claude Code's CLI.
@@ -130,16 +147,16 @@ NULL
         a <- args[["command"]] %||% args[["file_path"]] %||%
              args[["pattern"]] %||% args[["path"]] %||% ""
         a <- as.character(a)[[1L]] %||% ""
-        if (nzchar(a)) paste0(" ", substr(a, 1L, 60L)) else ""
+        if (nzchar(a)) substr(a, 1L, 60L) else ""
       }, error = function(e) "")
-      cat(sprintf("\n  \u00b7 %s%s\n", label, hint))
+      cat(.repl_tool_request_line(label, hint))
     })
     TRUE
   }, error = function(e) FALSE)
 
   tryCatch({
     chat$on_tool_result(function(result) {
-      cat(sprintf("    \u2192 %s\n", .repl_tool_summary(result)))
+      cat(.repl_tool_result_line(.repl_tool_summary(result)))
     })
   }, error = function(e) NULL)
 
@@ -177,10 +194,10 @@ NULL
 #'   noise).
 #' @return Invisibly the session id. Loops until `/exit` or EOF.
 #' @export
-codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
+codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
                            con = NULL, session_id = NULL, quiet = FALSE) {
   if (!inherits(client, "CodagentClient"))
-    stop("codeagent_repl() expects a CodagentClient.", call. = FALSE)
+    stop("codeagent_console() expects a CodagentClient.", call. = FALSE)
 
   settings <- client$settings
   cwd      <- settings$cwd %||% getwd()
@@ -351,8 +368,19 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
         # rendered distinctly. Models without extended thinking only emit
         # ContentText -> identical output to before.
         s <- client$chat$stream(actual_input, stream = "content")
+        # Progress: show a dim "thinking" hint during the initial latency, then
+        # clear it (\r + erase-line) as soon as the first token arrives. TTY-only
+        # so piped/non-interactive output stays clean.
+        show_hint   <- tryCatch(isatty(stdout()), error = function(e) FALSE)
+        hint_active <- FALSE
+        if (show_hint) {
+          cat(tryCatch(cli::style_dim("\u22ef thinking"),
+                       error = function(e) "... thinking"))
+          hint_active <- TRUE
+        }
         first_chunk <- TRUE
         coro::loop(for (chunk in s) {
+          if (hint_active) { cat("\r\033[K"); hint_active <- FALSE }
           if (S7::S7_inherits(chunk, ellmer::ContentThinking)) {
             th <- tryCatch(chunk@thinking, error = function(e) "")
             cat(.fmt_thinking(th))
@@ -365,6 +393,7 @@ codeagent_repl <- function(client, stream = TRUE, prompt_str = "\u203a ",
             }
           }
         })
+        if (hint_active) cat("\r\033[K")
         cat("\n"); TRUE
       }, error = function(e) {
         recovered <- tryCatch(
