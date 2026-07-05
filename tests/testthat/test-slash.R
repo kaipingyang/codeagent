@@ -119,3 +119,13 @@ test_that("skill rebuild string matches the '/name args' contract", {
   expect_identical(val0, "/verify")
 })
 
+
+test_that(".truncate_desc shortens long descriptions with an ellipsis", {
+  expect_identical(.truncate_desc("short"), "short")
+  long <- strrep("x", 200)
+  out <- .truncate_desc(long, n = 72L)
+  expect_lte(nchar(out), 72L)
+  expect_true(grepl("\u2026$", out))
+  # newlines collapsed to single line
+  expect_false(grepl("[\r\n]", .truncate_desc("a\nb\nc")))
+})

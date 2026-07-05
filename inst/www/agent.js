@@ -206,4 +206,44 @@
     }
   });
 
+  // ---------------------------------------------------------------------------
+  // Disable the chat input while the agent is streaming / busy (server-driven
+  // via `ca_input_busy`). shinychat leaves the contenteditable editable during
+  // streaming, so we gate it here to prevent overlapping sends.
+  // ---------------------------------------------------------------------------
+  if (typeof Shiny !== "undefined" && Shiny.addCustomMessageHandler) {
+    Shiny.addCustomMessageHandler("ca_input_busy", function (msg) {
+      var busy = !!(msg && msg.busy);
+      var container = document.querySelector("shiny-chat-container");
+      if (!container) return;
+      var ce = container.querySelector("[contenteditable]");
+      if (ce) ce.setAttribute("contenteditable", busy ? "false" : "true");
+      var wrap = ce ? (ce.closest("form") || ce.parentElement) : null;
+      if (wrap) {
+        wrap.style.opacity = busy ? "0.55" : "";
+        wrap.style.pointerEvents = busy ? "none" : "";
+      }
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Click outside the slash-command palette dismisses it (typical autocomplete
+  // UX). The palette is `ul.shiny-chat-slash-palette` (light DOM) and closes on
+  // Escape, so we send an Escape keydown to the input when the click lands
+  // outside both the palette and the input.
+  // ---------------------------------------------------------------------------
+  document.addEventListener("mousedown", function (e) {
+    var palette = document.querySelector(".shiny-chat-slash-palette");
+    if (!palette) return;                      // palette not open
+    if (palette.contains(e.target)) return;    // clicking an item -> let it select
+    var container = document.querySelector("shiny-chat-container");
+    var ce = container ? container.querySelector("[contenteditable]") : null;
+    if (ce && ce.contains(e.target)) return;   // clicking in the input -> keep open
+    if (ce) {
+      var opts = { key: "Escape", code: "Escape", keyCode: 27, which: 27, bubbles: true };
+      ce.dispatchEvent(new KeyboardEvent("keydown", opts));
+      ce.dispatchEvent(new KeyboardEvent("keyup", opts));
+    }
+  }, true);
+
 })();
