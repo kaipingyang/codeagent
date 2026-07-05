@@ -40,3 +40,7 @@ lessons/
 
 # Experiment / prototype apps -- local only, not shipped
 inst/experiments/
+
+# Local-only: internal design notes + stray images (privacy + irrelevant)
+to_kiro/
+image/
