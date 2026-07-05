@@ -174,25 +174,38 @@ check_permission <- function(tool_name, mode = "default",
 # Auto classifier (haiku model)
 # ---------------------------------------------------------------------------
 
-.auto_classify_tool <- function(tool_name, tool_input = NULL) {
+.auto_classify_tool <- function(tool_name, tool_input = NULL, model = NULL) {
   # Safe tools that never need classification
   if (tool_name %in% .READONLY_TOOLS) return("allow")
 
-  # Use haiku to classify
+  # Resolve a classifier model that actually exists on the current gateway.
+  # (Previously hardcoded chat_anthropic(.HAIKU_MODEL), which errors -> "ask" on
+  #  OpenAI-compatible/Databricks gateways where that model id is unknown.)
+  if (is.null(model) || !nzchar(model))
+    model <- Sys.getenv("CODEAGENT_SMALL_FAST_MODEL",
+               unset = Sys.getenv("CODEAGENT_MODEL", unset = .HAIKU_MODEL))
+
+  # Structured output: ask for a typed {decision, reason} rather than parsing
+  # free text (which broke when the model replied "allow." or a sentence).
   result <- tryCatch({
-    classifier <- ellmer::chat_anthropic(
-      model = .HAIKU_MODEL,
-      system_prompt = paste0(
-        "You are a security classifier. Answer only 'allow' or 'deny'.\n",
-        "Determine if the following tool call is safe to execute automatically."
-      )
-    )
+    classifier <- .make_compact_chat(model, system_prompt = paste0(
+      "You are a security classifier for an R coding agent. Decide whether the ",
+      "given tool call is safe to run automatically WITHOUT asking the user. ",
+      "Deny anything destructive, irreversible, or affecting shared/production ",
+      "state: deletes (rm -rf), force-push, git reset --hard, dropping DB tables, ",
+      "installing/removing software, or network side effects. Allow read-only or ",
+      "clearly-local, reversible actions."))
     input_str <- if (!is.null(tool_input))
       jsonlite::toJSON(tool_input, auto_unbox = TRUE) else "{}"
-    response  <- classifier$chat(
-      paste0("Tool: ", tool_name, "\nInput: ", input_str)
-    )
-    trimws(tolower(response))
+    dec <- classifier$chat_structured(
+      paste0("Tool: ", tool_name, "\nInput: ", input_str),
+      type = ellmer::type_object(
+        decision = ellmer::type_enum(
+          c("allow", "deny"),
+          "allow if safe to auto-run without confirmation, deny otherwise"),
+        reason = ellmer::type_string("one-line justification", required = FALSE)
+      ))
+    tolower(trimws(as.character(dec$decision %||% "ask")))
   }, error = function(e) "ask")
 
   if (result %in% c("allow", "deny")) result else "ask"

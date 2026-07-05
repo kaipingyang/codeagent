@@ -192,3 +192,22 @@ test_that("check_permission respects fine-grained Bash deny rule", {
     "allow"
   )
 })
+
+test_that(".auto_classify_tool uses structured output + safe fallbacks (12E)", {
+  # read-only tools short-circuit to allow (no model call)
+  expect_identical(.auto_classify_tool("Read"), "allow")
+  # structured decision is honoured
+  testthat::local_mocked_bindings(.make_compact_chat = function(model, system_prompt = NULL)
+    list(chat_structured = function(prompt, type)
+      list(decision = if (grepl("rm -rf", prompt, fixed = TRUE)) "deny" else "allow")))
+  expect_identical(.auto_classify_tool("Bash", list(command = "rm -rf /")), "deny")
+  expect_identical(.auto_classify_tool("Bash", list(command = "ls")), "allow")
+  # unexpected decision -> ask
+  testthat::local_mocked_bindings(.make_compact_chat = function(model, system_prompt = NULL)
+    list(chat_structured = function(prompt, type) list(decision = "maybe")))
+  expect_identical(.auto_classify_tool("Bash", list(command = "x")), "ask")
+  # classifier error -> ask (safe)
+  testthat::local_mocked_bindings(.make_compact_chat = function(model, system_prompt = NULL)
+    stop("boom"))
+  expect_identical(.auto_classify_tool("Bash", list(command = "x")), "ask")
+})
