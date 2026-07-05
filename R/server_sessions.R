@@ -119,6 +119,15 @@ server_sessions <- function(input, output, session, chat, cwd,
     error = function(e) list())
   if (!length(items)) return(invisible(NULL))
 
+  # A content block is "empty" if it is a character value with no visible text.
+  # Empty assistant turns (tool-only or interrupted responses that were saved
+  # with no text) otherwise render as a bubble stuck showing the "..." typing
+  # indicator on restore -- so we drop them. Non-character blocks (tool
+  # request/result cards, thinking panels) are never treated as empty.
+  .is_empty_block <- function(b) {
+    is.character(b) && !nzchar(trimws(paste(b, collapse = "")))
+  }
+
   for (item in items) {
     role    <- item$role %||% "assistant"
     content <- item$content
@@ -127,6 +136,7 @@ server_sessions <- function(input, output, session, chat, cwd,
     # Scalar content (single text block)
     if (!is.list(content)) {
       disp <- if (identical(role, "user")) .strip_system_reminder(content) else content
+      if (.is_empty_block(disp)) next   # no empty "..." bubble on restore
       tryCatch(
         shinychat::chat_append_message("chat",
           list(role = role, content = disp),
@@ -135,20 +145,26 @@ server_sessions <- function(input, output, session, chat, cwd,
       next
     }
 
-    # List content (multiple blocks: text + tool cards mixed).
-    # Use chunk="start" / chunk=TRUE / chunk="end" so shinychat groups them.
-    n <- length(content)
+    # List content (multiple blocks: text + tool cards mixed). Strip reminders
+    # from user text, drop empty blocks, then group with the chunk protocol.
+    blocks <- lapply(content, function(b) {
+      if (identical(role, "user") && is.character(b)) .strip_system_reminder(b) else b
+    })
+    blocks <- Filter(function(b) !.is_empty_block(b), blocks)
+    n <- length(blocks)
+    if (n == 0L) next   # whole turn was empty -> skip (no stuck "..." bubble)
+
+    # chunk="start"/TRUE/"end" groups the blocks into one bubble; recomputed on
+    # the FILTERED list so a single remaining block sends chunk=FALSE (a
+    # complete message) rather than opening a stream that is never closed.
     for (j in seq_len(n)) {
-      block     <- content[[j]]
-      if (identical(role, "user") && is.character(block))
-        block <- .strip_system_reminder(block)
-      chunk_arg <- if (j == 1L && n > 1L) "start"
-                   else if (j == n && n > 1L) "end"
-                   else if (n == 1L) FALSE
+      chunk_arg <- if (n == 1L) FALSE
+                   else if (j == 1L) "start"
+                   else if (j == n) "end"
                    else TRUE
       tryCatch(
         shinychat::chat_append_message("chat",
-          list(role = role, content = block),
+          list(role = role, content = blocks[[j]]),
           chunk = chunk_arg, session = session),
         error = function(e) NULL)
     }

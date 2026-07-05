@@ -81,23 +81,9 @@
       else startRecognition();
     });
 
-    // Local file: icon button -> hidden <input type=file>
-    $(document).on("click", "#ca_upload_local_btn", function () {
-      var fi = document.getElementById("ca_file_hidden");
-      if (fi) fi.click();
-    });
-
-    // File input change (delegated — footer rendered after page load)
-    $(document).on("change", "#ca_file_hidden", function (e) {
-      var fi = e.target;
-      if (!fi.files.length) return;
-      var names = Array.from(fi.files).map(function (f) { return f.name; }).join(", ");
-      if (typeof Shiny !== "undefined") {
-        Shiny.setInputValue("ca_uploaded_files",
-          { names: names, ts: Date.now() }, { priority: "event" });
-      }
-      fi.value = "";
-    });
+    // Local file upload is handled by shinychat's native attachment button
+    // (chat_ui allow_attachments = TRUE). The old custom #ca_upload_local_btn /
+    // #ca_file_hidden path was removed as a duplicate.
   }
 
   // Wait for jQuery (loaded by Shiny) to be available

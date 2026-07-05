@@ -9,6 +9,7 @@ codeagent_app(
   pinned_skills = character(0),
   port = NULL,
   launch.browser = TRUE,
+  file_tree_show_hidden = FALSE,
   model = NULL,
   permission_mode = "default",
   cwd = getwd(),
