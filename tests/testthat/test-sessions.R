@@ -99,3 +99,36 @@ test_that("save_session produces valid ISO 8601 timestamps (decimal point preser
   # Must match ISO 8601 with milliseconds: YYYY-MM-DDTHH:MM:SS.mmmZ
   expect_match(ts, "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z$")
 })
+
+
+test_that(".turn_is_empty flags only content-less assistant turns", {
+  u  <- ellmer::Turn("user", list(ellmer::ContentText("hi")))
+  ea <- ellmer::Turn("assistant", list(ellmer::ContentText("")))
+  ra <- ellmer::Turn("assistant", list(ellmer::ContentText("real")))
+  expect_true(codeagent:::.turn_is_empty(ea))
+  expect_false(codeagent:::.turn_is_empty(ra))
+  expect_false(codeagent:::.turn_is_empty(u))  # never drop user turns
+})
+
+test_that("save_session drops empty assistant turns (no stuck '...' on restore)", {
+  chat <- ellmer::chat_openai_compatible(
+    base_url = "http://127.0.0.1:1/v1", model = "m", credentials = function() "k")
+  chat$set_turns(list(
+    ellmer::Turn("user", list(ellmer::ContentText("hi"))),
+    ellmer::Turn("assistant", list(ellmer::ContentText(""))),      # dropped
+    ellmer::Turn("assistant", list(ellmer::ContentText("real")))
+  ))
+  tmp <- tempfile(); dir.create(tmp)
+  sid <- save_session(chat, cwd = tmp)
+
+  ch2 <- ellmer::chat_openai_compatible(
+    base_url = "http://127.0.0.1:1/v1", model = "m", credentials = function() "k")
+  restore_session_into_chat(ch2, session_id = sid, cwd = tmp)
+  roles <- vapply(ch2$get_turns(), function(t) t@role, character(1))
+  txts  <- vapply(ch2$get_turns(), function(t) {
+    paste(vapply(t@contents, function(c) tryCatch(c@text %||% "", error = function(e) ""),
+                 character(1)), collapse = "")
+  }, character(1))
+  expect_length(roles, 2L)
+  expect_false(any(roles == "assistant" & !nzchar(trimws(txts))))
+})
