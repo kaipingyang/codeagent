@@ -221,6 +221,29 @@ source("inst/evals/eval.R")
 vitals::vitals_view()
 ```
 
+### Observability (OpenTelemetry)
+
+codeagent inherits [ellmer](https://ellmer.tidyverse.org)'s built-in OpenTelemetry
+instrumentation: when a tracer is active, ellmer emits spans for every chat request
+and tool call. codeagent adds a top-level `codeagent.query` span so those chat/tool
+spans nest under a codeagent-owned parent (mirroring an `invoke_agent -> chat -> tool`
+hierarchy).
+
+```r
+codeagent_otel_status()   # reports whether otel/otelsdk are installed + tracing is active
+```
+
+To enable, install the SDK and configure an exporter *before* launching codeagent:
+
+```r
+install.packages(c("otel", "otelsdk"))   # otelsdk needs system Protobuf
+Sys.setenv(OTEL_TRACES_EXPORTER = "stdout")               # or an OTLP endpoint:
+# Sys.setenv(OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318")
+```
+
+Everything is a no-op with zero overhead unless a tracer is active, so there is no
+hard dependency. Pairs well with the vitals eval harness for quality monitoring.
+
 ### Persistent memory
 
 Facts the agent remembers across sessions are stored under `~/.codeagent/memory/`.

@@ -273,7 +273,13 @@ codeagent <- function(client_or_prompt,
   }
 
   response <- tryCatch(
-    chat$chat(prompt),
+    .with_codeagent_span(
+      "codeagent.query",
+      attributes = list(
+        "codeagent.model"           = settings$model %||% "(auto)",
+        "codeagent.permission_mode" = settings$permission_mode %||% "default"),
+      function() chat$chat(prompt)
+    ),
     error = function(e) paste0("[Error] ", conditionMessage(e))
   )
   if (is.character(response)) response else "[No response]"
