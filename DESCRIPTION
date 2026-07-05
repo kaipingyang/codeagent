@@ -22,7 +22,7 @@ Imports:
     httr2,
     cli,
     shiny,
-    bslib,
+    bslib (>= 0.11.0),
     shinychat,
     htmltools,
     coro,

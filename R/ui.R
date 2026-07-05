@@ -24,6 +24,7 @@ codeagent_app <- function(
   pinned_skills   = character(0),
   port            = NULL,
   launch.browser  = TRUE,
+  file_tree_show_hidden = FALSE,
   # Legacy params
   model           = NULL,
   permission_mode = "default",
@@ -238,7 +239,8 @@ codeagent_app <- function(
 
     server_right(input, output, session,
                  cwd   = cwd,
-                 state = state)
+                 state = state,
+                 show_hidden = isTRUE(file_tree_show_hidden))
 
     # Stream task result handler (no-op: updates handled inside server_chat)
     shiny::observe({

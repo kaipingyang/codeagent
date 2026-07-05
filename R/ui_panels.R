@@ -47,17 +47,10 @@ head_assets <- function() {
   htmltools::tags$div(
     class = "d-flex align-items-center gap-1 py-1",
 
-    # Hidden file input
-    htmltools::tags$input(
-      type   = "file",
-      id     = "ca_file_hidden",
-      style  = "display:none;",
-      accept = ".pdf,.txt,.csv,.R,.Rmd,.md,.docx,.xlsx,.png,.jpg"
-    ),
-    shiny::actionButton("ca_upload_local_btn", NULL,
-      icon  = shiny::icon("paperclip"),
-      class = "btn-outline-secondary btn-sm flex-shrink-0",
-      title = "Upload local file"),
+    # NOTE: local file upload is handled by shinychat's native attachment
+    # button (chat_ui(allow_attachments = TRUE)) in the input row -- the old
+    # custom paperclip button (ca_upload_local_btn + ca_file_hidden) was a
+    # duplicate and has been removed.
     shiny::actionButton("ca_voice_btn", NULL,
       icon  = shiny::icon("microphone"),
       class = "btn-outline-secondary btn-sm flex-shrink-0",

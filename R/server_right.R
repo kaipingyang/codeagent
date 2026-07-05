@@ -3,12 +3,17 @@
 #' @keywords internal
 NULL
 
-server_right <- function(input, output, session, cwd, state) {
+server_right <- function(input, output, session, cwd, state,
+                          show_hidden = FALSE) {
 
-  # File tree (jsTreeR)
+  # File tree (jsTreeR). all.files = show_hidden: by default hide dotfiles
+  # (.git, .codegraph -- often megabytes, .kiro, .Rproj.user, .shinychat, ...)
+  # which otherwise clutter the tree and slow it down. Expose via
+  # codeagent_app(file_tree_show_hidden = ) for users who want them.
   selected_paths <- jsTreeR::treeNavigatorServer(
     "file_tree",
-    rootFolder = cwd
+    rootFolder = cwd,
+    all.files  = isTRUE(show_hidden)
   )
 
   # Click file -> render preview to Output tab

@@ -228,18 +228,22 @@ test_that("verify_r_tests() passes when devtools not available", {
 # Shiny UI helpers
 # ---------------------------------------------------------------------------
 
-test_that("chat_codeagent_ui includes upload, voice, and skill picker controls", {
+test_that("chat_codeagent_ui uses native attachments + voice/server/skill controls", {
   sm <- data.frame(key = "plan", label = "/plan", desc = "x",
                    stringsAsFactors = FALSE)
   html <- as.character(chat_codeagent_ui(sm))
 
-  expect_match(html, "ca_upload_local_btn")
+  # Local file upload is now shinychat's NATIVE attachment button
+  # (allow_attachments), not a custom paperclip -- the old ca_upload_local_btn
+  # / ca_file_hidden pair was removed as a duplicate.
+  expect_match(html, "allow-attachments")
+  expect_no_match(html, "ca_upload_local_btn")
+  expect_no_match(html, "ca_file_hidden")
   expect_match(html, "ca_voice_btn")
   expect_match(html, "ca_server_btn")
   # Skill pickerInput was replaced by shinychat's slash-command typeahead; the
   # footer now shows a hint instead of a picker (see .skill_picker_footer).
   expect_match(html, "Type / for commands")
-  expect_match(html, "ca_file_hidden")
 })
 
 test_that("head_assets includes styles.css, agent.js, and inlined voice JS", {
