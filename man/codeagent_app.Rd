@@ -10,6 +10,7 @@ codeagent_app(
   port = NULL,
   launch.browser = TRUE,
   file_tree_show_hidden = FALSE,
+  file_tree_exclude = c("renv", "node_modules", "packrat", ".git", ".Rproj.user"),
   model = NULL,
   permission_mode = "default",
   cwd = getwd(),
@@ -26,6 +27,13 @@ codeagent_app(
 \item{port}{Integer or NULL. Shiny port (NULL = random).}
 
 \item{launch.browser}{Logical. Open in browser (default TRUE).}
+
+\item{file_tree_show_hidden}{Logical. Show hidden dotfiles (e.g. \code{.git},
+\code{.codegraph}) in the file tree. Default \code{FALSE} to reduce clutter/lag.}
+
+\item{file_tree_exclude}{Character vector. Directory names excluded from the
+file tree (default \code{renv}, \code{node_modules}, \code{packrat}, \code{.git},
+\code{.Rproj.user}). Set \code{character(0)} to disable exclusion.}
 
 \item{model}{Character. Legacy: model name.}
 
