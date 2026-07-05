@@ -8,16 +8,12 @@ Behavioural guidance for the agent, written for codeagent's R
 context. Each \verb{.prompt_*()} returns a markdown section string (or "" to
 skip). They are assembled by \code{.build_system_prompt()} in \code{settings.R}.
 
-These sections encode agent \emph{behaviours} (be concise, read before editing,
-verify before claiming done, act with care, etc.) in codeagent's own
-wording -- they are not copied from any other assistant's prompt text.
-
 Design: these are constant text (no side effects, no \code{Sys.time()}), so the
 prompt is stable and prompt-cache friendly. Per-turn ephemeral context
 (date / iteration / cwd) lives in \code{.build_system_reminder()} instead.
 
-The built-in tool names (Bash/Read/Write/Edit/MultiEdit/Glob/Grep/LS) are
-codeagent's tool registry names; R-specific conventions are added in
-\code{.prompt_r_specifics()}.
+The built-in tool names referenced here (Bash/Read/Write/Edit/MultiEdit/
+Glob/Grep/LS, and the task/skill/agent tools) are codeagent's own tool
+registry names; R-specific conventions are added in \code{.prompt_r_specifics()}.
 }
 \keyword{internal}

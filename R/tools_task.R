@@ -54,6 +54,7 @@ NULL
 task_create_tool <- function(store) {
   force(store)
   ellmer::tool(
+    name = "TaskCreate",
     fun = function(subject, description, active_form = NULL) {
       id   <- .task_new_id(store)
       task <- list(
@@ -100,6 +101,7 @@ task_create_tool <- function(store) {
 task_get_tool <- function(store) {
   force(store)
   ellmer::tool(
+    name = "TaskGet",
     fun = function(task_id) {
       task <- .task_get(as.character(task_id), store)
       if (is.null(task)) return(paste0("[Error] Task not found: #", task_id))
@@ -136,6 +138,7 @@ task_get_tool <- function(store) {
 task_update_tool <- function(store) {
   force(store)
   ellmer::tool(
+    name = "TaskUpdate",
     fun = function(task_id, status = NULL, subject = NULL,
                    description = NULL, owner = NULL,
                    add_blocks = NULL, add_blocked_by = NULL) {
@@ -203,6 +206,7 @@ task_update_tool <- function(store) {
 task_list_tool <- function(store) {
   force(store)
   ellmer::tool(
+    name = "TaskList",
     fun = function() {
       tasks <- .task_list_all(store)
       tasks <- tasks[!vapply(tasks, is.null, logical(1))]

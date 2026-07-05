@@ -205,6 +205,7 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
   }, character(1)), collapse = "\n")
 
   ellmer::tool(
+    name = "use_skill",
     fun = function(name, args = "", `_intent` = NULL) {
       result <- tryCatch(
         load_skill_prompt(name, args, cwd),
@@ -310,6 +311,21 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
 .LOCAL_COMMANDS <- c("model", "compact", "clear", "rewind",
                      "help", "exit", "quit", "sessions", "budget")
 
+#' Extract the plain-text portion from a user-input value
+#'
+#' shinychat delivers `input$chat_user_input` as either a character scalar
+#' (attachments off) or a contents list whose first element is the typed text
+#' (attachments on). Return that text as a single string, or `""` when there is
+#' none (empty list, NULL, attachment-only). Never errors.
+#' @keywords internal
+.user_input_text <- function(x) {
+  if (is.character(x) && length(x) > 0L) return(x[[1L]])
+  if (is.list(x) && length(x) > 0L && is.character(x[[1L]])) return(x[[1L]])
+  if (is.list(x) && !is.null(x[["text"]]) && is.character(x[["text"]]))
+    return(x[["text"]])
+  ""
+}
+
 #' Pre-process a chat input to detect slash commands
 #'
 #' Detects `/skillname [args]` patterns.
@@ -322,7 +338,11 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
 #'   - `type = "skill"`: skill invocation (load prompt, then send to LLM).
 #' @keywords internal
 .preprocess_input <- function(input, cwd = getwd()) {
-  trimmed  <- trimws(input)
+  # Be defensive: `input` may arrive as character(0), NULL, or a non-character
+  # (e.g. an empty contents list). Coerce to a single string so regmatches()
+  # never indexes an empty match list -> "subscript out of bounds".
+  if (length(input) == 0L || !is.character(input)) input <- ""
+  trimmed  <- trimws(input[[1L]])
   m        <- regexec("^/(\\w+)\\s*(.*)", trimmed, perl = TRUE)
   captures <- regmatches(trimmed, m)[[1L]]
   if (length(captures) < 3L)

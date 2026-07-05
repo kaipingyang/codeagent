@@ -15,6 +15,7 @@ NULL
 #' @export
 notebook_read_tool <- function() {
   ellmer::tool(
+    name = "NotebookRead",
     fun = function(notebook_path) {
       path <- normalizePath(notebook_path, mustWork = FALSE)
       if (!file.exists(path))
@@ -88,6 +89,7 @@ notebook_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) 
   checker <- .make_permission_checker("NotebookEdit", mode, rules, ask_fn)
 
   ellmer::tool(
+    name = "NotebookEdit",
     fun = function(notebook_path, new_source, cell_number = NULL,
                    cell_id = NULL, cell_type = "code",
                    edit_mode = "replace") {

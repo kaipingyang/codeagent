@@ -24,6 +24,7 @@ NULL
 #' @export
 web_fetch_tool <- function() {
   ellmer::tool(
+    name = "WebFetch",
     fun = function(url, prompt = NULL) {
       # --- Primary: Jina Reader ---
       result <- tryCatch({
@@ -147,6 +148,7 @@ web_fetch_tool <- function() {
 #' @export
 web_search_tool <- function() {
   ellmer::tool(
+    name = "WebSearch",
     fun = function(query, num_results = 8L) {
       n <- min(as.integer(num_results), 20L)
 

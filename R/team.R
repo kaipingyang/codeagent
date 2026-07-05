@@ -123,6 +123,7 @@ team_run <- function(tasks, model = NULL, n_workers = NULL,
 team_run_tool <- function(model = NULL, cwd = getwd()) {
   force(model); force(cwd)
   ellmer::tool(
+    name = "TeamRun",
     fun = function(tasks, n_workers = NULL) {
       tk <- if (is.character(tasks)) as.list(tasks) else tasks
       tk <- unlist(lapply(tk, as.character))
@@ -192,6 +193,7 @@ register_team_tool <- function(chat, model = NULL, cwd = getwd()) {
 team_coordinate_tool <- function(model = NULL, cwd = getwd()) {
   force(model); force(cwd)
   ellmer::tool(
+    name = "TeamCoordinate",
     fun = function(tasks, n_workers = NULL) {
       tk <- if (is.character(tasks)) as.list(tasks) else tasks
       tk <- unlist(lapply(tk, as.character))

@@ -204,3 +204,42 @@ test_that(".preprocess_input: unknown slash word returns type='skill'", {
   r2 <- codeagent:::.preprocess_input("/verify")
   expect_equal(r2$type, "skill")
 })
+
+# ---------------------------------------------------------------------------
+# Regression: input normalization for shinychat dev allow_attachments=TRUE.
+# input$chat_user_input is a contents LIST (e.g. list("hello")), not a string.
+# The old code ran it through shinychat:::user_input_contents() which returns
+# an EMPTY list() for this format -> as.character(list()) == character(0) ->
+# .preprocess_input crashed with "subscript out of bounds" and the message was
+# silently dropped (no LLM call). See inst/experiments/capture_input/ evidence.
+# ---------------------------------------------------------------------------
+
+test_that(".preprocess_input never crashes on degenerate input", {
+  # These previously threw "subscript out of bounds" via regmatches()[[1L]].
+  expect_equal(codeagent:::.preprocess_input(character(0))$type, "normal")
+  expect_equal(codeagent:::.preprocess_input(NULL)$type, "normal")
+  expect_equal(codeagent:::.preprocess_input(list())$type, "normal")
+  expect_equal(codeagent:::.preprocess_input("")$type, "normal")
+})
+
+test_that(".user_input_text extracts text from all shinychat input shapes", {
+  # allow_attachments = TRUE, plain text typed -> contents list of one string
+  expect_equal(codeagent:::.user_input_text(list("hello world")), "hello world")
+  # allow_attachments = TRUE, slash skill
+  expect_equal(codeagent:::.user_input_text(list("/plan refactor")), "/plan refactor")
+  # allow_attachments = FALSE -> plain character scalar
+  expect_equal(codeagent:::.user_input_text("hello world"), "hello world")
+  # legacy {text, attachments} wire payload
+  expect_equal(codeagent:::.user_input_text(list(text = "wire", attachments = NULL)), "wire")
+  # degenerate -> "" (never errors)
+  expect_equal(codeagent:::.user_input_text(list()), "")
+  expect_equal(codeagent:::.user_input_text(NULL), "")
+})
+
+test_that("contents-list input round-trips to a slash decision (the crash path)", {
+  # The exact captured value that used to crash: list("你好") from Microsoft
+  # Pinyin / any text with allow_attachments = TRUE.
+  tp <- codeagent:::.user_input_text(list("\u4f60\u597d"))
+  expect_equal(tp, "\u4f60\u597d")
+  expect_equal(codeagent:::.preprocess_input(tp)$type, "normal")
+})
