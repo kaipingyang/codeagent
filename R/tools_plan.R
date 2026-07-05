@@ -17,6 +17,7 @@ NULL
 enter_plan_mode_tool <- function(mode_env) {
   force(mode_env)
   ellmer::tool(
+    name = "EnterPlanMode",
     fun = function(reason = NULL) {
       prev <- mode_env$mode %||% "default"
       mode_env$prev <- prev
@@ -54,6 +55,7 @@ enter_plan_mode_tool <- function(mode_env) {
 exit_plan_mode_tool <- function(mode_env) {
   force(mode_env)
   ellmer::tool(
+    name = "ExitPlanMode",
     fun = function() {
       restored <- mode_env$prev %||% "default"
       # Never restore back into "plan" (would be a no-op trap).

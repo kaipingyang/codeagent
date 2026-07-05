@@ -428,6 +428,7 @@ migrate_sessions <- function(directory = NULL) {
       if (!is.null(obj) && identical(obj[["type"]], "user")) {
         msg <- obj[["message"]] %||% list()
         txt <- if (is.character(msg[["content"]])) msg[["content"]] else ""
+        txt <- .strip_system_reminder(txt)   # ephemeral context, not a title
         if (nzchar(txt)) {
           first_user_msg <- substr(txt, 1L, 50L)
           if (nchar(txt) > 50L) first_user_msg <- paste0(first_user_msg, "...")

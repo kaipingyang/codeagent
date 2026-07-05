@@ -4,7 +4,7 @@
 NULL
 
 server_sessions <- function(input, output, session, chat, cwd,
-                              state, stream_task) {
+                              state, stream_task, settings = list()) {
 
   output$session_list_ui <- shiny::renderUI({
     sessions <- tryCatch(list_sessions(cwd, limit = 10L),
@@ -81,6 +81,15 @@ server_sessions <- function(input, output, session, chat, cwd,
           shinychat::chat_clear("chat", session)
           # Replay via contents_shinychat -- native tool card rendering.
           .replay_turns_to_ui(chat, session)
+          # Refresh the CONTEXT token meter for the restored conversation
+          # (the stream task only updates it on new turns, so a freshly
+          # restored session would otherwise read 0 tokens).
+          tryCatch({
+            n_tokens    <- token_count_with_estimation(chat)
+            model_limit <- settings$model_limit %||% 200000L
+            session$sendCustomMessage("update_budget",
+              .budget_payload(n_tokens, model_limit, settings$model %||% ""))
+          }, error = function(e) NULL)
           shiny::showNotification(
             paste0("Session loaded: ", substr(sid, 1L, 8L), "..."),
             type = "message", duration = 3)
@@ -117,9 +126,10 @@ server_sessions <- function(input, output, session, chat, cwd,
 
     # Scalar content (single text block)
     if (!is.list(content)) {
+      disp <- if (identical(role, "user")) .strip_system_reminder(content) else content
       tryCatch(
         shinychat::chat_append_message("chat",
-          list(role = role, content = content),
+          list(role = role, content = disp),
           chunk = FALSE, session = session),
         error = function(e) NULL)
       next
@@ -130,6 +140,8 @@ server_sessions <- function(input, output, session, chat, cwd,
     n <- length(content)
     for (j in seq_len(n)) {
       block     <- content[[j]]
+      if (identical(role, "user") && is.character(block))
+        block <- .strip_system_reminder(block)
       chunk_arg <- if (j == 1L && n > 1L) "start"
                    else if (j == n && n > 1L) "end"
                    else if (n == 1L) FALSE

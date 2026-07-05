@@ -25,7 +25,7 @@ test_that(".build_system_prompt contains key behavioural anchors", {
   expect_match(p, "# Following conventions")
   expect_match(p, "# Using your tools")
   expect_match(p, "# R-specific guidance")
-  expect_match(p, "verify it actually works")
+  expect_match(p, "Confirm a task works before calling it complete")
   expect_match(p, "tidyverse")
   expect_match(p, "renv")
   expect_match(p, "file_path:line_number")
@@ -47,10 +47,10 @@ test_that(".build_system_prompt is stable (no Sys.time/date -> cache-safe)", {
   expect_false(grepl("\\d{4}-\\d{2}-\\d{2}", p1))
 })
 
-test_that(".prompt_subagent ports the DEFAULT_AGENT_PROMPT essentials", {
+test_that(".prompt_subagent produces the sub-agent essentials", {
   sp <- codeagent:::.prompt_subagent("review the parser", "bubble", NULL)
-  expect_match(sp, "concise report")
-  expect_match(sp, "gold-plate")
+  expect_match(sp, "short report")
+  expect_match(sp, "padding it out")
   expect_match(sp, "review the parser")
   expect_match(sp, "bubble")
   # With a worktree path
@@ -59,7 +59,7 @@ test_that(".prompt_subagent ports the DEFAULT_AGENT_PROMPT essentials", {
 })
 
 test_that("static prompt sections have no non-ASCII (R CMD check safe)", {
-  # Only the ported guidance sections must be ASCII; runtime-injected content
+  # Only the static guidance sections must be ASCII; runtime-injected content
   # (CLAUDE.md, skill descriptions) may legitimately contain non-ASCII.
   s <- .mk_settings()
   static <- paste(
@@ -90,7 +90,7 @@ test_that("system prompt stays within a reasonable token budget", {
 test_that(".prompt_actions covers reversibility and risky-ops guidance", {
   a <- codeagent:::.prompt_actions()
   expect_match(a, "# Executing actions with care")
-  expect_match(a, "reversibility")
+  expect_match(a, "how reversible an action is")
   expect_match(a, "rm -rf")
   expect_match(a, "force-push")
 })

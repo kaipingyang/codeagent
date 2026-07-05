@@ -65,6 +65,7 @@ NULL
 todo_write_tool <- function(session_id = "default") {
   force(session_id)
   ellmer::tool(
+    name = "TodoWrite",
     fun = function(todos) {
       items <- .coerce_todos(todos)
       md    <- .render_todos(items)
