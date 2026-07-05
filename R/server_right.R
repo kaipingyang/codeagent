@@ -30,12 +30,6 @@ server_right <- function(input, output, session, cwd, state,
     fname   <- sub(paste0("^", normalizePath(cwd, winslash = "/", mustWork = FALSE), "/?"), "", path)
     preview <- tryCatch({
       switch(tolower(ext),
-        r  = ,
-        rmd = htmltools::tags$pre(
-          htmltools::tags$code(
-            class = "language-r",
-            paste(readLines(path, warn = FALSE, n = 500L), collapse = "\n")
-          )),
         csv = {
           if (requireNamespace("reactable", quietly = TRUE)) {
             df <- tryCatch(utils::read.csv(path, nrows = 200L),
@@ -65,9 +59,8 @@ server_right <- function(input, output, session, cwd, state,
               paste(readLines(path, warn = FALSE), collapse = "\n")),
             error = function(e) paste(readLines(path, warn = FALSE, n=100), collapse="\n")
           )),
-        htmltools::tags$pre(
-          style = "font-size:0.78rem; overflow:auto;",
-          paste(readLines(path, warn = FALSE, n = 300L), collapse = "\n"))
+        # Default: code/text files -> syntax-highlighted read-only editor.
+        .code_preview(path, ext)
       )
     }, error = function(e) {
       htmltools::tags$p(paste("[Error]", conditionMessage(e)))
@@ -138,4 +131,47 @@ server_right <- function(input, output, session, cwd, state,
     })
     Paths
   })
+}
+
+
+# ---------------------------------------------------------------------------
+# Code file preview (Output panel)
+# ---------------------------------------------------------------------------
+
+# Map a file extension to a prism-code-editor language id for input_code_editor.
+.editor_language <- function(ext) {
+  m <- c(r = "r", rmd = "markdown", rnw = "latex", py = "python", pyi = "python",
+         js = "javascript", mjs = "javascript", cjs = "javascript", jsx = "jsx",
+         ts = "typescript", tsx = "tsx", json = "json", jsonc = "json",
+         yaml = "yaml", yml = "yaml", toml = "toml", ini = "ini",
+         sh = "bash", bash = "bash", zsh = "bash", ps1 = "powershell",
+         sql = "sql", css = "css", scss = "scss", sass = "sass", less = "less",
+         html = "html", htm = "html", xml = "xml", svg = "xml", vue = "html",
+         c = "c", h = "c", cpp = "cpp", cxx = "cpp", cc = "cpp",
+         hpp = "cpp", hxx = "cpp", cs = "csharp", go = "go", rs = "rust",
+         java = "java", kt = "kotlin", swift = "swift", rb = "ruby",
+         php = "php", pl = "perl", lua = "lua", jl = "julia", scala = "scala",
+         dart = "dart", md = "markdown", dockerfile = "docker",
+         make = "makefile", cmake = "cmake", tex = "latex")
+  lang <- unname(m[tolower(ext)])
+  if (length(lang) != 1L || is.na(lang)) "plain" else lang
+}
+
+# Read-only, syntax-highlighted preview of a code/text file for the Output
+# panel. Uses bslib::input_code_editor (bundled prism-code-editor: highlighting,
+# line numbers, auto light/dark, no CDN). Replaces the old plain <pre> fallback.
+.code_preview <- function(path, ext, max_lines = 5000L) {
+  lines <- tryCatch(readLines(path, warn = FALSE, n = max_lines),
+                    error = function(e) character(0))
+  bslib::input_code_editor(
+    id           = "main_code_editor",
+    label        = NULL,
+    value        = paste(lines, collapse = "\n"),
+    language     = .editor_language(ext),
+    read_only    = TRUE,
+    line_numbers = TRUE,
+    word_wrap    = FALSE,
+    fill         = TRUE,
+    height       = "calc(100vh - 160px)"
+  )
 }
