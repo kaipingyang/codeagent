@@ -21,6 +21,14 @@ test_that(".code_preview renders a read-only input_code_editor for code files", 
   expect_match(html, "line-numbers=\"true\"")
 })
 
+test_that(".code_preview honors a custom editor id (for per-tab uniqueness)", {
+  tf <- tempfile(fileext = ".js")
+  writeLines("const a = 1;", tf)
+  html <- as.character(codeagent:::.code_preview(tf, "js", id = "ced__abc"))
+  expect_match(html, 'id="ced__abc"')
+  expect_match(html, 'language="javascript"')
+})
+
 test_that(".code_preview tolerates unreadable paths without erroring", {
   expect_no_error(codeagent:::.code_preview(tempfile(fileext = ".xyz"), "xyz"))
 })
