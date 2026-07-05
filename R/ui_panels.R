@@ -86,6 +86,19 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
                              btw_groups_selected,
                              model_choices = NULL, current_model = NULL) {
   htmltools::tagList(
+    # Active model badge -- so the user always sees which model is in use
+    # (previously only discoverable via /model).
+    htmltools::tags$div(
+      class = "ca-model-badge d-flex align-items-center gap-1 mb-2",
+      style = "font-size:.8rem;color:var(--bs-secondary-color,#6c757d);",
+      htmltools::tags$span(
+        style = "width:.5rem;height:.5rem;border-radius:50%;background:#22c55e;display:inline-block;flex:0 0 auto;"),
+      htmltools::tags$span("Model:", class = "text-muted"),
+      htmltools::tags$span(
+        id = "ca-current-model",
+        style = "font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;",
+        current_model %||% "(auto)")
+    ),
     # Token budget bar
     htmltools::tags$div(
       class = "ca-budget-wrap",
@@ -186,6 +199,19 @@ chat_codeagent_ui <- function(skill_meta) {
     enable_cancel    = TRUE,
     placeholder      = "Ask codeagent... (/ for skills, ESC to interrupt)",
     allow_attachments = TRUE,
+    # Greeting + clickable suggestion cards for a fresh session. shinychat
+    # renders a markdown list whose items are <span class="suggestion"> as a
+    # grid of clickable cards; clicking submits the card's text.
+    messages = list(
+      paste0(
+        "**codeagent** -- an R-native coding agent on ellmer + btw. ",
+        "Ask anything about this project, or start here:\n\n",
+        "- <span class=\"suggestion\">List the R files in the R/ directory</span>\n",
+        "- <span class=\"suggestion\">Read DESCRIPTION and summarize this package</span>\n",
+        "- <span class=\"suggestion\">Run the test suite and report failures</span>\n",
+        "- <span class=\"suggestion\" title=\"Plan\">/plan add a new feature</span>\n"
+      )
+    ),
     footer           = htmltools::tagList(
       # Phase 3 interaction bar (approval / question) sits just above the
       # skill picker + input area; rendered on demand by server_interaction().

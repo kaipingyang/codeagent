@@ -110,14 +110,32 @@ server_chat <- function(input, output, session, chat, settings,
 
     coro::async(function() {
       if (!is.null(stream_ctrl)) stream_ctrl$reset()
-      # do.call() splices stream_contents as positional `...` args to
-      # user_turn() (equivalent to `!!!`), but is a plain call that coro can
-      # transform -- a bare `!!!` inside a coro::async body is not coro-safe.
-      stream <- do.call(
-        chat$stream_async,
-        c(stream_contents, list(stream = "content", controller = stream_ctrl))
+      # Wrap the stream so an unreachable endpoint / auth failure / mid-stream
+      # error surfaces as a visible message and the task leaves the "running"
+      # state (which re-enables the input) instead of leaving the user staring
+      # at a stuck streaming spinner.
+      tryCatch(
+        {
+          stream <- do.call(
+            chat$stream_async,
+            c(stream_contents, list(stream = "content", controller = stream_ctrl))
+          )
+          await(shinychat::chat_append("chat", stream, session = session))
+        },
+        error = function(e) {
+          tryCatch(
+            shinychat::chat_append(
+              "chat",
+              paste0(
+                "**Request failed.** ", conditionMessage(e),
+                "\n\nCheck the model endpoint / credentials and try again."
+              ),
+              session = session
+            ),
+            error = function(e2) NULL
+          )
+        }
       )
-      await(shinychat::chat_append("chat", stream, session = session))
 
       n_tokens    <- token_count_with_estimation(chat)
       model_limit <- settings$model_limit %||% 200000L
