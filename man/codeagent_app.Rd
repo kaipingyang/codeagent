@@ -7,6 +7,7 @@
 codeagent_app(
   client = NULL,
   pinned_skills = character(0),
+  greeting = NULL,
   port = NULL,
   launch.browser = TRUE,
   file_tree_show_hidden = FALSE,
@@ -23,6 +24,10 @@ codeagent_app(
 \code{ellmer::Chat}, or NULL (legacy mode).}
 
 \item{pinned_skills}{Character vector. Skill names pinned at top of Skills panel.}
+
+\item{greeting}{Character or NULL. If provided, pre-fills the chat input box
+with this text on startup (used by the "Chat about selection" IDE addin to
+seed the first message with the selected code). NULL leaves the input empty.}
 
 \item{port}{Integer or NULL. Shiny port (NULL = random).}
 

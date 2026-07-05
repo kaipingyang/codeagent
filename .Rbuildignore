@@ -12,3 +12,6 @@
 ^.*\.code-workspace$
 ^\.codegraph$
 ^\.codeagent$
+^\.claude$
+^\.kiro$
+^\.shinychat$

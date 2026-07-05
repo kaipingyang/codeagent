@@ -11,27 +11,23 @@
 # ---------------------------------------------------------------------------
 
 test_that("ask_user_tool returns an ellmer ToolDef with correct name", {
-  devtools::load_all(quiet = TRUE)
   t <- ask_user_tool()
   expect_equal(t@name, "AskUserQuestion")
 })
 
 test_that("ask_user_tool has required 'question' argument", {
-  devtools::load_all(quiet = TRUE)
   t <- ask_user_tool()
   arg_names <- names(t@arguments@properties)
   expect_true("question" %in% arg_names)
 })
 
 test_that("ask_user_tool has optional 'choices' argument", {
-  devtools::load_all(quiet = TRUE)
   t <- ask_user_tool()
   arg_names <- names(t@arguments@properties)
   expect_true("choices" %in% arg_names)
 })
 
 test_that("ask_user_tool is marked read_only_hint = TRUE", {
-  devtools::load_all(quiet = TRUE)
   t <- ask_user_tool()
   # Check via annotations object or by confirming tool is in .READONLY_TOOLS path
   read_only <- tryCatch(
@@ -46,7 +42,6 @@ test_that("ask_user_tool is marked read_only_hint = TRUE", {
 })
 
 test_that("register_ask_user_tool registers tool on chat", {
-  devtools::load_all(quiet = TRUE)
   ch <- ellmer::chat_openai_compatible(
     base_url    = "http://fake/v1/",
     model       = "test",
@@ -62,31 +57,26 @@ test_that("register_ask_user_tool registers tool on chat", {
 # ---------------------------------------------------------------------------
 
 test_that("AskUserQuestion is allowed in bypass mode", {
-  devtools::load_all(quiet = TRUE)
   result <- codeagent:::check_permission("AskUserQuestion", "bypass", list(), "")
   expect_equal(result, "allow")
 })
 
 test_that("AskUserQuestion is allowed in plan mode (not a write tool)", {
-  devtools::load_all(quiet = TRUE)
   result <- codeagent:::check_permission("AskUserQuestion", "plan", list(), "")
   expect_equal(result, "allow")
 })
 
 test_that("AskUserQuestion is allowed in default mode", {
-  devtools::load_all(quiet = TRUE)
   result <- codeagent:::check_permission("AskUserQuestion", "default", list(), "")
   expect_equal(result, "allow")
 })
 
 test_that("AskUserQuestion is allowed in dont_ask mode", {
-  devtools::load_all(quiet = TRUE)
   result <- codeagent:::check_permission("AskUserQuestion", "dont_ask", list(), "")
   expect_equal(result, "allow")
 })
 
 test_that("AskUserQuestion is allowed in accept_edits mode", {
-  devtools::load_all(quiet = TRUE)
   result <- codeagent:::check_permission("AskUserQuestion", "accept_edits", list(), "")
   expect_equal(result, "allow")
 })
@@ -96,7 +86,6 @@ test_that("AskUserQuestion is allowed in accept_edits mode", {
 # ---------------------------------------------------------------------------
 
 test_that("ask_user_tool CLI path returns user free-text answer", {
-  devtools::load_all(quiet = TRUE)
   # Mock readline via withr to return "Paris"
   withr::with_options(
     list(codeagent.test_ask_answer = "Paris"),
@@ -111,7 +100,6 @@ test_that("ask_user_tool CLI path returns user free-text answer", {
 })
 
 test_that("ask_user_tool CLI path with choices returns selected answer", {
-  devtools::load_all(quiet = TRUE)
   # User types "2" → should resolve to second choice "btw"
   withr::with_options(
     list(codeagent.test_ask_answer = "2"),
@@ -127,7 +115,6 @@ test_that("ask_user_tool CLI path with choices returns selected answer", {
 })
 
 test_that("ask_user_tool CLI path with out-of-range choice re-prompts or returns raw input", {
-  devtools::load_all(quiet = TRUE)
   # User types "99" (out of range) → tool should return "99" or a fallback, not error
   withr::with_options(
     list(codeagent.test_ask_answer = "99"),
@@ -145,7 +132,6 @@ test_that("ask_user_tool CLI path with out-of-range choice re-prompts or returns
 })
 
 test_that("ask_user_tool CLI path with empty answer returns empty string, not error", {
-  devtools::load_all(quiet = TRUE)
   withr::with_options(
     list(codeagent.test_ask_answer = ""),
     {
@@ -162,7 +148,6 @@ test_that("ask_user_tool CLI path with empty answer returns empty string, not er
 # ---------------------------------------------------------------------------
 
 test_that("ask_user_tool returns fallback in non-interactive mode with no option set", {
-  devtools::load_all(quiet = TRUE)
   # No test_ask_answer option, non-interactive → should return something graceful
   withr::with_options(
     list(codeagent.test_ask_answer = NULL),
