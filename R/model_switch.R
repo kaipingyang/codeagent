@@ -73,21 +73,21 @@ NULL
   }, error = function(e) FALSE)
 }
 
-#' Switch the active model on a CodagentClient, preserving history
+#' Switch the active model on a CodeagentClient, preserving history
 #'
 #' Tries Route A (in-place provider swap); falls back to Route B (rebuild +
 #' migrate turns) if the in-place swap fails. The returned client always has the
 #' full conversation history and re-registered tools.
 #'
-#' @param client A `CodagentClient` from [codeagent_client()].
+#' @param client A `CodeagentClient` from [codeagent_client()].
 #' @param model Character. New model spec/alias (see [.resolve_model_chat()]).
-#' @return A `CodagentClient` with the new model and preserved history. With
+#' @return A `CodeagentClient` with the new model and preserved history. With
 #'   Route A this is the SAME client object (Chat identity unchanged); with
 #'   Route B it is a NEW client object.
 #' @export
 switch_model <- function(client, model) {
-  if (!inherits(client, "CodagentClient"))
-    cli::cli_abort("{.fn switch_model} expects a {.cls CodagentClient}, not {.cls {class(client)[1]}}.")
+  if (!inherits(client, "CodeagentClient"))
+    cli::cli_abort("{.fn switch_model} expects a {.cls CodeagentClient}, not {.cls {class(client)[1]}}.")
   if (!is.character(model) || length(model) != 1L || !nzchar(model))
     cli::cli_abort("{.arg model} must be a non-empty character spec or alias.")
 

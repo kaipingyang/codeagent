@@ -7,7 +7,7 @@ NULL
 
 #' Launch the codeagent Shiny application
 #'
-#' @param client A `CodagentClient` from [codeagent_client()], an
+#' @param client A `CodeagentClient` from [codeagent_client()], an
 #'   `ellmer::Chat`, or NULL (legacy mode).
 #' @param pinned_skills Character vector. Skill names pinned at top of Skills panel.
 #' @param greeting Character or NULL. If provided, pre-fills the chat input box
@@ -43,8 +43,8 @@ codeagent_app <- function(
   chat            = NULL
 ) {
 
-  # Resolve to CodagentClient ------------------------------------------------
-  if (inherits(client, "CodagentClient")) {
+  # Resolve to CodeagentClient ------------------------------------------------
+  if (inherits(client, "CodeagentClient")) {
     ca_client <- client
   } else {
     raw_chat <- if (inherits(client, "Chat")) client else chat

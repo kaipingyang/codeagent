@@ -103,11 +103,8 @@ NULL
 #' @param stream_task The `ExtendedTask` returned by [server_chat()], used to
 #'   run skill/normal slash commands through the harness (compaction, skill
 #'   injection, streaming). Required for skill commands to reach the LLM.
-#' @param chat,settings,state,exec_command Harness handles for executing local
-#'   commands directly. `exec_command` is a function
-#'   `function(parsed)` that runs a local command (wraps
-#'   `.handle_chat_command`); when supplied it is used instead of the
-#'   chat/settings/state trio.
+#' @param chat,settings,state Harness handles for executing local commands
+#'   directly (via `.handle_chat_command()`).
 #' @return Invisibly NULL.
 #' @details
 #'   Slash commands are dispatched **directly inside this handler** — we do NOT

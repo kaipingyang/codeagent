@@ -228,7 +228,7 @@ use_codeagent_md <- function(path = "codeagent.md", open = interactive()) {
 #'   section. NULL uses the first/only defined client.
 #' @param cwd Character. Project directory.
 #' @param ... Additional arguments passed to [codeagent_client()].
-#' @return A `CodagentClient` object, or NULL if no config file found.
+#' @return A `CodeagentClient` object, or NULL if no config file found.
 #' @export
 codeagent_client_config <- function(alias = NULL, cwd = getwd(), ...) {
   cfg <- .read_codeagent_config(cwd)

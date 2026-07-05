@@ -342,12 +342,6 @@ register_midloop_compaction <- function(chat, settings = list()) {
 # L2: Session Memory Compaction (incremental summary)
 # ---------------------------------------------------------------------------
 
-#' L2: Incremental session memory compaction
-#'
-#' Summarises early turns while retaining recent context.
-#' Keeps between `min_tokens` and `max_tokens` in the summary.
-#'
-#' @param chat An `ellmer::Chat` object.
 # Character size of a whole turn (sum of its content blocks).
 .turn_chars <- function(turn) {
   contents <- tryCatch(turn@contents, error = function(e) list())
@@ -388,6 +382,12 @@ register_midloop_compaction <- function(chat, settings = list()) {
   max(0L, min(keep, n - 2L))
 }
 
+#' L2: Incremental session memory compaction
+#'
+#' Summarises early turns while retaining recent context.
+#' Keeps between `min_tokens` and `max_tokens` in the summary.
+#'
+#' @param chat An `ellmer::Chat` object.
 #' @param model Character. Haiku model for summarisation.
 #' @param min_messages Integer. Minimum number of text messages to keep.
 #' @param min_tokens Integer. Minimum tokens to retain.
@@ -585,8 +585,6 @@ When you are using compact - please focus on test output and code changes. Inclu
   paste0("Summary:\n", trimws(body))
 }
 
-#' L3: Full context compaction via fork agent
-#'
 # Build the compaction system prompt, optionally biased by user instructions
 # (Claude Code's `/compact <instructions>`). `if` here is fine -- plain function.
 .compact_system_prompt <- function(instructions = NULL) {
@@ -626,11 +624,14 @@ When you are using compact - please focus on test output and code changes. Inclu
   list(summary_turn)
 }
 
+#' L3: Full context compaction via fork agent
+#'
 #' Spawns a separate haiku chat to generate a 9-section structured summary
 #' wrapped in `<summary>` tags, then replaces all turns with that summary.
 #'
 #' @param chat An `ellmer::Chat` object.
 #' @param model Character. Haiku model for compaction.
+#' @param instructions Character or NULL. Optional user instructions to bias the summary.
 #' @return Invisibly NULL.
 #' @keywords internal
 full_compact <- function(chat, model = .HAIKU_MODEL, instructions = NULL) {
@@ -819,7 +820,7 @@ CompactionController <- R6::R6Class(
 
     #' @description Run the two-level compaction now (snip -> session-memory ->
     #'   full 9-section), guarded by the circuit breaker. Unlike
-    #'   [maybe_compact()] this skips the token-threshold check, so callers that
+    #'   `maybe_compact()` this skips the token-threshold check, so callers that
     #'   have already decided to compact (e.g. mid-loop) can reuse the exact
     #'   same Claude Code-aligned flow.
     #' @param chat An `ellmer::Chat` object.

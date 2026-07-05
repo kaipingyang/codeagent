@@ -26,6 +26,6 @@ was used.
 \description{
 Attempts to save \code{key_value} under \code{key_name} (service = "codeagent")
 via \code{keyring}. If keyring is unavailable (no daemon, no package), falls
-back to appending \code{KEY=value} to \verb{~/.Renviron} via \code{\link[=.append_renviron]{.append_renviron()}}.
+back to appending \code{KEY=value} to \verb{~/.Renviron} via \code{.append_renviron()}.
 }
 \keyword{internal}

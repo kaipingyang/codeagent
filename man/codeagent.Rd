@@ -17,11 +17,11 @@ codeagent(
 )
 }
 \arguments{
-\item{client_or_prompt}{Either a \code{CodagentClient} (from \code{\link[=codeagent_client]{codeagent_client()}})
+\item{client_or_prompt}{Either a \code{CodeagentClient} (from \code{\link[=codeagent_client]{codeagent_client()}})
 or a character prompt string (legacy mode).}
 
 \item{prompt}{Character. The user prompt. Required when \code{client_or_prompt}
-is a \code{CodagentClient}; unused in legacy mode.}
+is a \code{CodeagentClient}; unused in legacy mode.}
 
 \item{model}{Character. Legacy: model name.}
 

@@ -1,11 +1,11 @@
 # Tests for the WEAR loop data-exploration report export (R/wear.R).
 
-# Build a CodagentClient-like stub wrapping a real ellmer chat with set turns.
+# Build a CodeagentClient-like stub wrapping a real ellmer chat with set turns.
 .wear_fake_client <- function(turns = list()) {
   chat <- ellmer::chat_openai_compatible(base_url = "http://x", model = "m",
                                          credentials = function() "k")
   if (length(turns)) tryCatch(chat$set_turns(turns), error = function(e) NULL)
-  structure(list(chat = chat), class = "CodagentClient")
+  structure(list(chat = chat), class = "CodeagentClient")
 }
 
 test_that("generate_wear_report errors on empty history", {

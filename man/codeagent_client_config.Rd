@@ -17,7 +17,7 @@ section. NULL uses the first/only defined client.}
 \item{...}{Additional arguments passed to \code{\link[=codeagent_client]{codeagent_client()}}.}
 }
 \value{
-A \code{CodagentClient} object, or NULL if no config file found.
+A \code{CodeagentClient} object, or NULL if no config file found.
 }
 \description{
 Reads \code{codeagent.md} or \code{.codeagent/config.md} in the project directory

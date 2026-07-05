@@ -5,7 +5,7 @@
 \title{Interactive CLI REPL (harness, no Shiny)}
 \description{
 A terminal read-eval-print loop for the agent. Reuses one
-\code{CodagentClient} so history accumulates in the Chat object across turns.
+\code{CodeagentClient} so history accumulates in the Chat object across turns.
 Mirrors the Shiny \code{agent_loop()} turn pipeline so long sessions stay
 healthy: per-turn compaction, \verb{<system-reminder>} injection, skill
 preprocessing, and auto-save -- the same harness objects the app uses.

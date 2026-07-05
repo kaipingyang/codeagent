@@ -11,7 +11,7 @@ generate_wear_report(
 )
 }
 \arguments{
-\item{client}{A \code{CodagentClient} whose \code{chat} has been used in a
+\item{client}{A \code{CodeagentClient} whose \code{chat} has been used in a
 \code{\link[=wear_explore]{wear_explore()}} session.}
 
 \item{path}{Character. Output file path (default: \code{exploration-YYYYMMDD.qmd}
@@ -26,7 +26,7 @@ Invisibly the path to the generated \code{.qmd} file.
 Generates a reproducible \code{.qmd} file from the conversation history of a
 \code{\link[=wear_explore]{wear_explore()}} session. Each user message becomes a \verb{##} section heading;
 assistant text is written as prose; code from \code{ExploreData} tool results is
-written as \verb{\\}\\verb{\\}{r}` chunks.
+written as fenced R code chunks.
 }
 \details{
 The \code{.qmd} has \code{eval: false} by default so it renders without re-running the

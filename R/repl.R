@@ -1,6 +1,6 @@
 #' @title Interactive CLI REPL (harness, no Shiny)
 #' @description A terminal read-eval-print loop for the agent. Reuses one
-#'   `CodagentClient` so history accumulates in the Chat object across turns.
+#'   `CodeagentClient` so history accumulates in the Chat object across turns.
 #'   Mirrors the Shiny `agent_loop()` turn pipeline so long sessions stay
 #'   healthy: per-turn compaction, `<system-reminder>` injection, skill
 #'   preprocessing, and auto-save -- the same harness objects the app uses.
@@ -246,7 +246,7 @@ NULL
 
 #' Run the interactive REPL
 #'
-#' @param client A `CodagentClient`.
+#' @param client A `CodeagentClient`.
 #' @param stream Logical. Stream responses token-by-token.
 #' @param prompt_str Character. The input prompt shown each turn.
 #' @param con Connection to read lines from (default stdin; override in tests).
@@ -259,8 +259,8 @@ NULL
 #' @export
 codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
                            con = NULL, session_id = NULL, quiet = FALSE) {
-  if (!inherits(client, "CodagentClient"))
-    stop("codeagent_console() expects a CodagentClient.", call. = FALSE)
+  if (!inherits(client, "CodeagentClient"))
+    stop("codeagent_console() expects a CodeagentClient.", call. = FALSE)
 
   settings <- client$settings
   cwd      <- settings$cwd %||% getwd()

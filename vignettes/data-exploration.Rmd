@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -34,7 +34,7 @@ Use a standard session when data questions are one of many things you need.
 
 You can register `ExploreData` manually on any client:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 library(codeagent)
 
 client <- codeagent_client(permission_mode = "bypass", btw_groups = NULL)
@@ -59,7 +59,7 @@ Write/Execute/Analyze/Regroup loop. On every turn the agent:
 3. **A** — interprets results, flags patterns and outliers
 4. **R** — proposes 3-5 follow-up questions
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 # CLI session (blocks until you type /exit or Ctrl+C)
 wear_explore(data = list(mtcars = mtcars))
 
@@ -76,7 +76,7 @@ Type `/report` in the chat (or say "export my analysis") to save the session
 as a reproducible `.qmd` file. The `/report` command is **only available inside
 a `wear_explore()` session** — it is not registered in standard sessions.
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 # Capture the client to generate the report after the session ends
 client <- wear_explore(data = list(mtcars = mtcars))
 

@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -28,7 +28,7 @@ evaluated when the vignette is built.
 A `codeagent` client wraps an `ellmer::Chat`. Bring your own backend --
 Databricks, Anthropic, OpenAI-compatible, or Ollama:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 library(codeagent)
 
 chat <- ellmer::chat_openai_compatible(
@@ -46,7 +46,7 @@ controls how tool calls are gated -- see section 5.
 
 ## 2. One-shot queries
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 codeagent(client, "List the .R files in R/ and summarise what each does")
 ```
 
@@ -57,13 +57,13 @@ the client, so follow-up calls keep context.
 
 From R:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 codeagent_console(client)
 ```
 
 Or install the command-line executable and use it from a terminal:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 install_codeagent_cli()
 ```
 
@@ -78,7 +78,7 @@ Inside the REPL, slash commands include `/model`, `/compact`, `/clear`,
 
 ## 4. Shiny app
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 codeagent_app(client, theme = "default")
 ```
 
@@ -102,7 +102,7 @@ confirmation:
 Fine-grained rules match on tool arguments -- for example, allow only a specific
 command:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 client <- codeagent_client(
   chat,
   permission_mode = "default",
@@ -114,7 +114,7 @@ client <- codeagent_client(
 
 Scaffold a settings file:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 use_codeagent_settings(scope = "user")
 ```
 
@@ -143,7 +143,7 @@ when executing less-trusted code; leave it off for fast, local, trusted use.
 
 Run independent tasks in parallel, capped to the container's CPU quota:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 # Fixed fan-out
 team_run(c("review R/a.R", "review R/b.R"))
 

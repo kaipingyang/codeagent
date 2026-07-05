@@ -20,7 +20,7 @@ codeagent_app(
 )
 }
 \arguments{
-\item{client}{A \code{CodagentClient} from \code{\link[=codeagent_client]{codeagent_client()}}, an
+\item{client}{A \code{CodeagentClient} from \code{\link[=codeagent_client]{codeagent_client()}}, an
 \code{ellmer::Chat}, or NULL (legacy mode).}
 
 \item{pinned_skills}{Character vector. Skill names pinned at top of Skills panel.}

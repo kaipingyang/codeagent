@@ -26,11 +26,8 @@ server_slash(
 run skill/normal slash commands through the harness (compaction, skill
 injection, streaming). Required for skill commands to reach the LLM.}
 
-\item{chat, settings, state, exec_command}{Harness handles for executing local
-commands directly. \code{exec_command} is a function
-\verb{function(parsed)} that runs a local command (wraps
-\code{.handle_chat_command}); when supplied it is used instead of the
-chat/settings/state trio.}
+\item{chat, settings, state}{Harness handles for executing local commands
+directly (via \code{.handle_chat_command()}).}
 }
 \value{
 Invisibly NULL.

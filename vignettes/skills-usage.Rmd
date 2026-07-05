@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -72,7 +72,7 @@ Use $ARGUMENTS to insert the user-supplied arguments.
 
 ## Skill discovery
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 # List all available skills
 list_skills_meta()
 

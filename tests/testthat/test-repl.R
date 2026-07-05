@@ -45,7 +45,7 @@ test_that(".repl_dispatch routes non-meta slash commands to skill", {
 }
 
 test_that("codeagent_console rejects non-clients", {
-  expect_error(codeagent_console("nope"), "CodagentClient")
+  expect_error(codeagent_console("nope"), "CodeagentClient")
 })
 
 test_that("codeagent_console runs /help, /clear, /exit without hitting the API", {

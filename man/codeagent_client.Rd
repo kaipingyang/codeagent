@@ -42,10 +42,10 @@ loop when it reports failures (e.g. \code{\link[=verify_r_tests]{verify_r_tests(
 external MCP servers; see \code{\link[=register_mcp_client]{register_mcp_client()}}. NULL disables.}
 }
 \value{
-Object of class \code{CodagentClient} with slots \verb{$chat} and \verb{$settings}.
+Object of class \code{CodeagentClient} with slots \verb{$chat} and \verb{$settings}.
 }
 \description{
 Injects codeagent tools (Bash, Read, Write, Edit, Glob, Grep, LS, btw tools,
-skill tool) and rebuilds the system prompt. The returned \code{CodagentClient}
+skill tool) and rebuilds the system prompt. The returned \code{CodeagentClient}
 is the single object passed to \code{\link[=codeagent]{codeagent()}} and \code{\link[=codeagent_app]{codeagent_app()}}.
 }

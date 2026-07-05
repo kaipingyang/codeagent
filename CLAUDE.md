@@ -185,7 +185,7 @@ chat <- ellmer::chat_openai_compatible(...)   # Databricks/Azure
 # OR chat <- ellmer::chat_anthropic(...)
 # OR chat <- ellmer::chat_ollama(...)
 
-# Step 2: codeagent_client() injects tools + system prompt → CodagentClient
+# Step 2: codeagent_client() injects tools + system prompt → CodeagentClient
 client <- codeagent_client(chat,
   permission_mode    = "bypass",
   btw_groups         = c("docs","git","pkg"),
@@ -203,7 +203,7 @@ codeagent_app(client, theme="default") # Shiny UI
 
 ### Subsystems
 
-**`query.R`** — `codeagent_client()` is the primary factory; builds `CodagentClient` S3 object. `codeagent()` dispatches new/legacy style. `agent_loop()` is called per-turn (was `query_loop`). `.register_all_tools()` wires all tool groups. `.handle_agent_error()` classifies PTL/rate-limit/network/auth errors with backoff. `verify_r_tests()` is a built-in verify function.
+**`query.R`** — `codeagent_client()` is the primary factory; builds `CodeagentClient` S3 object. `codeagent()` dispatches new/legacy style. `agent_loop()` is called per-turn (was `query_loop`). `.register_all_tools()` wires all tool groups. `.handle_agent_error()` classifies PTL/rate-limit/network/auth errors with backoff. `verify_r_tests()` is a built-in verify function.
 
 **`permissions.R`** — **Seven-mode** gate: `default / plan / accept_edits / bypass / dont_ask / auto / bubble`. `bubble` returns `"ask"` to bubble permission up to parent agent (sub-agent mode). `auto` uses haiku ML classifier. `DenialTracker` emits warnings.
 
@@ -264,7 +264,7 @@ codeagent_app(client, theme="default") # Shiny UI
 
 ### Key design decisions
 
-- **`codeagent_client()` is the central factory**: takes any ellmer Chat, injects tools + system prompt, returns `CodagentClient`. Both `codeagent()` and `codeagent_app()` accept `CodagentClient` as first arg; old flat params still work for backward compat.
+- **`codeagent_client()` is the central factory**: takes any ellmer Chat, injects tools + system prompt, returns `CodeagentClient`. Both `codeagent()` and `codeagent_app()` accept `CodeagentClient` as first arg; old flat params still work for backward compat.
 - **All tools return `ContentToolResult` with `extra$display`**: `title` (HTML, use `htmltools::HTML()`), `markdown` (human-readable preview), `value` (LLM-facing text). See `ellmer-tool-calling.md` for the full `extra$display` field spec.
 - **WebSearch backends**: `BRAVE_API_KEY` env var enables Brave Search API; without it falls back to DuckDuckGo (entity queries only). Never rely on DDG for general questions.
 - **btw as tool layer**: codeagent is the harness (loop/permissions/compaction/hooks/skills); btw provides the R-environment tool set (docs/git/pkg/env/etc). They compose, not compete.

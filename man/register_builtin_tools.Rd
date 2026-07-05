@@ -31,6 +31,9 @@ codeagent and btw file tools coexist when Path A is enabled.}
 
 \item{sandbox}{List or NULL. Bash sandbox profile (see \code{\link[=.sandbox_profile]{.sandbox_profile()}});
 passed through to \code{\link[=bash_tool]{bash_tool()}}.}
+
+\item{async}{Logical. If \code{TRUE}, register async permission-gated tool variants
+for the Shiny path (UI-gated approvals). Default \code{FALSE} (synchronous).}
 }
 \value{
 Invisibly returns \code{chat}.

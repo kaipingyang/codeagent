@@ -44,3 +44,4 @@ inst/experiments/
 # Local-only: internal design notes + stray images (privacy + irrelevant)
 to_kiro/
 image/
+vignettes/*.R

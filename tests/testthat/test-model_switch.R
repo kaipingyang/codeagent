@@ -78,7 +78,7 @@ test_that(".resolve_model_chat handles anthropic/ prefix", {
 
 test_that("switch_model rejects bad inputs", {
   cli <- .mk_client()
-  expect_error(switch_model("not a client", "anthropic/x"), "CodagentClient")
+  expect_error(switch_model("not a client", "anthropic/x"), "CodeagentClient")
   expect_error(switch_model(cli, ""), "non-empty")
   expect_error(switch_model(cli, character(0)), "non-empty")
 })
