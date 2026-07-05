@@ -32,6 +32,7 @@ Imports:
     bsicons,
     reactable
 Suggests:
+    otel,
     prettycode,
     btw,
     mcptools,
