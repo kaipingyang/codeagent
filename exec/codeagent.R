@@ -65,7 +65,7 @@ ca_start_repl <- function(mode, model, continue, no_stream) {
       if (!is.null(sid))
         cat("[continued session ", substr(sid, 1L, 8L), "]\n", sep = "")
     }
-    codeagent::codeagent_repl(client, stream = !isTRUE(no_stream),
+    codeagent::codeagent_console(client, stream = !isTRUE(no_stream),
                               session_id = sid)
   }, error = ca_error)
 }

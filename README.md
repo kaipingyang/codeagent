@@ -39,7 +39,7 @@ codeagent(client, "List all .R files in R/")
 codeagent_app(client, theme = "default")
 
 # Step 3c: interactive CLI REPL
-codeagent_repl(client)
+codeagent_console(client)
 ```
 
 ### Interactive setup wizard

@@ -17,7 +17,7 @@ one is built from \verb{~/.codeagent/settings.json} with \code{permission_mode =
 \item{mode}{Character. \code{"repl"} (default) starts an interactive CLI session;
 \code{"shiny"} launches the Shiny app.}
 
-\item{...}{Passed to \code{\link[=codeagent_repl]{codeagent_repl()}} or \code{\link[=codeagent_app]{codeagent_app()}}.}
+\item{...}{Passed to \code{\link[=codeagent_console]{codeagent_console()}} or \code{\link[=codeagent_app]{codeagent_app()}}.}
 }
 \value{
 Invisibly the \code{CodagentClient} (useful for post-session inspection
@@ -27,7 +27,7 @@ or calling \code{\link[=generate_wear_report]{generate_wear_report()}} manually)
 Launches an \strong{interactive} data exploration session using the
 Write/Execute/Analyze/Regroup (WEAR) loop pattern. This is a \strong{dedicated
 exploration mode} -- it is separate from a normal \code{codeagent_app()} or
-\code{codeagent_repl()} session. The difference:
+\code{codeagent_console()} session. The difference:
 }
 \details{
 \tabular{ll}{

@@ -16,7 +16,7 @@ Invisibly, a character vector of issue descriptions (empty = clean).
 Verifies that the critical settings (backend URL and API key) are present
 after all sources have been merged and \code{apiKeyHelper} has been run.
 Emits \code{cli_alert_warning} + actionable hints for each gap. Intended to run
-once at \code{codeagent_repl()} startup so users see the problem immediately
+once at \code{codeagent_console()} startup so users see the problem immediately
 rather than getting an opaque HTTP 401 on their first message.
 }
 \keyword{internal}

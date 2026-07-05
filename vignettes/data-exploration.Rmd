@@ -19,7 +19,7 @@ data query inside a general-purpose agent conversation.
 
 | | Standard session | WEAR session (`wear_explore()`) |
 |---|---|---|
-| Entry point | `codeagent_app()` / `codeagent_repl()` | `wear_explore(data = ...)` |
+| Entry point | `codeagent_app()` / `codeagent_console()` | `wear_explore(data = ...)` |
 | `ExploreData` tool | Not registered by default | Automatically registered |
 | `/report` command | Not available | Exports session to `.qmd` |
 | WEAR system prompt | Not injected | Injected: agent ends each turn with **Next steps** |

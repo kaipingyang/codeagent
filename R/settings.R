@@ -384,7 +384,7 @@ use_codeagent_settings <- function(scope = c("user", "project"),
 #' Verifies that the critical settings (backend URL and API key) are present
 #' after all sources have been merged and `apiKeyHelper` has been run.
 #' Emits `cli_alert_warning` + actionable hints for each gap. Intended to run
-#' once at `codeagent_repl()` startup so users see the problem immediately
+#' once at `codeagent_console()` startup so users see the problem immediately
 #' rather than getting an opaque HTTP 401 on their first message.
 #'
 #' @param settings List from [load_settings()].
