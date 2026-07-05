@@ -30,6 +30,15 @@ NULL
 # (handled without the LLM) + discovered skills. echo = FALSE for all, because
 # codeagent re-submits the reconstructed input through the normal path, which
 # renders the user message itself (avoids a double user bubble).
+# Truncate a slash-command description for the palette (long skill descriptions
+# like /cli overflow the dropdown). Keeps it to one line, adds an ellipsis.
+.truncate_desc <- function(x, n = 72L) {
+  x <- gsub("[\r\n]+", " ", as.character(x %||% ""))
+  x <- trimws(x)
+  if (nchar(x) <= n) return(x)
+  paste0(substr(x, 1L, n - 1L), "\u2026")
+}
+
 .slash_command_defs <- function(cwd = getwd()) {
   local_desc <- c(
     model    = "Switch the model", compact = "Compact the context now",
@@ -52,7 +61,9 @@ NULL
   skill_defs <- tryCatch({
     metas <- list_skills_meta(cwd)
     lapply(metas, function(m) {
-      list(name = m$name, description = m$description %||% m$name, echo = TRUE)
+      list(name = m$name,
+           description = .truncate_desc(m$description %||% m$name),
+           echo = TRUE)
     })
   }, error = function(e) list())
 
@@ -122,6 +133,8 @@ server_slash <- function(input, session, cwd = getwd(), id = "chat",
   shiny::observeEvent(input[[paste0(id, "_slash_command")]], {
     parsed <- .slash_parse_selection(input[[paste0(id, "_slash_command")]])
     if (is.null(parsed)) return()
+    if (isTRUE(shiny::isolate(tryCatch(state$busy, error = function(e) FALSE))))
+      return()   # a local command (e.g. /compact) is still in progress
 
     if (identical(parsed$type, "command")) {
       # Local command: does NOT touch the LLM (echo=FALSE, so shinychat renders

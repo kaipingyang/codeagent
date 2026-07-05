@@ -138,6 +138,7 @@ server_chat <- function(input, output, session, chat, settings,
 
   shiny::observeEvent(input$chat_user_input, {
     if (stream_task$status() == "running") return()
+    if (isTRUE(shiny::isolate(state$busy))) return()   # e.g. /compact in progress
     state$interrupt <- FALSE
 
     # shinychat (dev, allow_attachments = TRUE) already delivers a normalized
@@ -173,6 +174,16 @@ server_chat <- function(input, output, session, chat, settings,
 
     # Pass full contents (text + any attachments) to the stream task
     stream_task$invoke(user_contents)
+  })
+
+  # Disable the chat input while streaming OR while a local command (e.g.
+  # /compact) is in progress. Reacts to the ExtendedTask status + state$busy and
+  # tells the client to gate the input (see agent.js `ca_input_busy`). This
+  # eliminates overlapping sends (belt-and-suspenders over the server guards).
+  shiny::observe({
+    busy <- identical(tryCatch(stream_task$status(), error = function(e) ""),
+                      "running") || isTRUE(state$busy)
+    session$sendCustomMessage("ca_input_busy", list(busy = busy))
   })
 
   shiny::observeEvent(input$esc, {
@@ -298,10 +309,32 @@ server_chat <- function(input, output, session, chat, settings,
     },
 
     compact = {
-      tryCatch({
-        full_compact(chat, model = .resolve_compact_model(chat, settings))
-        "OK Context compacted."
-      }, error = function(e) paste0("ERR Compact failed: ", conditionMessage(e)))
+      # Show an immediate progress indicator, then run the (blocking) compaction
+      # on the next event-loop tick so the indicator renders first. Set state$busy
+      # so input submits are ignored until compaction finishes (see the input +
+      # slash observers). Result is appended from the deferred callback below, so
+      # we return NULL here (caller appends nothing now).
+      instr <- trimws(args)
+      cm    <- .resolve_compact_model(chat, settings)
+      if (!is.null(state)) shiny::isolate(state$busy <- TRUE)
+      tryCatch(shiny::showNotification(
+        "\U0001F5DC Compacting context\u2026 (a few seconds)",
+        id = "ca_compact_progress", duration = NULL, type = "message",
+        session = session), error = function(e) NULL)
+      later::later(function() {
+        ok <- tryCatch({
+          full_compact(chat, model = cm,
+                       instructions = if (nzchar(instr)) instr else NULL)
+          TRUE
+        }, error = function(e) FALSE)
+        tryCatch(shiny::removeNotification("ca_compact_progress", session = session),
+                 error = function(e) NULL)
+        tryCatch(shinychat::chat_append("chat",
+          if (ok) "\u2705 Context compacted." else "\u274C Compact failed.",
+          role = "assistant", session = session), error = function(e) NULL)
+        if (!is.null(state)) shiny::isolate(state$busy <- FALSE)
+      }, delay = 0.15)
+      NULL
     },
 
     clear = {
