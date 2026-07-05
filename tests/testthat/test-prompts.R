@@ -117,3 +117,28 @@ test_that(".prompt_context_blocks omits CLAUDE.md section when absent", {
   expect_false(grepl("Project Instructions", cb))
   expect_match(cb, "Permission mode")
 })
+
+
+# ---------------------------------------------------------------------------
+# .strip_system_reminder: ephemeral <system-reminder> blocks must never leak
+# into user-facing text (session titles, restored chat bubbles).
+# ---------------------------------------------------------------------------
+
+test_that(".strip_system_reminder removes reminder blocks but keeps user text", {
+  x <- "hello\n\n<system-reminder>\nCurrent date/time: 2026-07-01\nAgent loop iteration: 1\n</system-reminder>"
+  expect_equal(codeagent:::.strip_system_reminder(x), "hello")
+})
+
+test_that(".strip_system_reminder is a no-op when there is no reminder", {
+  expect_equal(codeagent:::.strip_system_reminder("just a message"), "just a message")
+})
+
+test_that(".strip_system_reminder passes non-character through untouched", {
+  expect_equal(codeagent:::.strip_system_reminder(list(1, 2)), list(1, 2))
+  expect_null(codeagent:::.strip_system_reminder(NULL))
+})
+
+test_that(".strip_system_reminder handles a reminder-only string", {
+  x <- "<system-reminder>ephemeral</system-reminder>"
+  expect_equal(codeagent:::.strip_system_reminder(x), "")
+})

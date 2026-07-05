@@ -185,7 +185,8 @@ codeagent_app <- function(
                     chat        = chat_obj,
                     cwd         = cwd,
                     state       = state,
-                    stream_task = stream_task)
+                    stream_task = stream_task,
+                    settings    = settings)
 
     # Auto-continue: restore the most recent session on startup so users
     # pick up where they left off (mirrors `codeagent chat --continue`).
@@ -199,6 +200,13 @@ codeagent_app <- function(
         shinychat::chat_clear("chat", session)
         # Replay via contents_shinychat -- native tool card rendering.
         .replay_turns_to_ui(chat_obj, session)
+        # Refresh the CONTEXT token meter for the auto-restored conversation.
+        tryCatch({
+          n_tokens <- token_count_with_estimation(chat_obj)
+          session$sendCustomMessage("update_budget",
+            .budget_payload(n_tokens, settings$model_limit %||% 200000L,
+                            settings$model %||% ""))
+        }, error = function(e) NULL)
       }
     }) |> shiny::bindEvent(session$clientData$url_hostname, once = TRUE)
 
