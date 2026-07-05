@@ -110,3 +110,15 @@ test_that("console tool-card helpers render label/summary (color-agnostic)", {
   # empty hint -> no trailing hint text, still renders the label
   expect_true(grepl("Bash", .repl_tool_request_line("Bash", "")))
 })
+
+test_that(".render_markdown highlights code + degrades to plain off-tty", {
+  md <- "T\n\n```r\nadd <- function(a,b) a+b\n```\n\nUse `add(1,2)` and **x**."
+  withr::local_options(cli.num_colors = 256)
+  r <- .render_markdown(md)
+  expect_true(grepl("add", r) && grepl("\033\\[", r))   # code kept + ANSI
+  withr::local_options(cli.num_colors = 1)
+  r2 <- .render_markdown(md)
+  expect_true(grepl("add", r2)); expect_false(grepl("\033\\[", r2))  # plain, no ANSI
+  # empty input safe
+  expect_identical(.render_markdown(""), "")
+})

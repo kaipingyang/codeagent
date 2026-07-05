@@ -181,6 +181,69 @@ NULL
   paste0("\033[2m", text, "\033[0m")
 }
 
+# ---------------------------------------------------------------------------
+# Terminal markdown rendering (fenced code + light styling)
+# ---------------------------------------------------------------------------
+# Renders a useful subset of markdown for the console: fenced code blocks
+# (R highlighted via {prettycode} when available, else dimmed), ATX headers,
+# **bold**, and `inline code`. ANSI is only emitted on a colour-capable tty, so
+# captured/piped output stays plain.
+.render_code_block <- function(code, lang, use_color) {
+  lang_l <- tolower(lang)
+  body <- if (lang_l %in% c("r", "rscript", "") &&
+              requireNamespace("prettycode", quietly = TRUE) && use_color) {
+    tryCatch(as.character(prettycode::highlight(code)), error = function(e) code)
+  } else if (use_color) {
+    paste0("\033[2m", code, "\033[0m")   # dim non-R (or no prettycode)
+  } else {
+    code
+  }
+  bar <- if (use_color) "\u001b[90m\u2502\u001b[0m" else "|"   # grey left bar
+  tag <- if (nzchar(lang)) lang else "code"
+  head <- if (use_color) paste0("  ", bar, " \033[90m", tag, "\033[0m")
+          else paste0("  ", bar, " ", tag)
+  c(head, paste0("  ", bar, " ", body))
+}
+
+.render_md_line <- function(ln, use_color) {
+  if (grepl("^#{1,6}\\s", ln)) {
+    h <- sub("^#{1,6}\\s+", "", ln)
+    return(if (use_color) paste0("\033[1m", h, "\033[0m") else h)
+  }
+  if (use_color) {
+    ln <- gsub("`([^`]+)`", "\033[36m\\1\033[39m", ln)        # inline code -> cyan
+    ln <- gsub("\\*\\*([^*]+)\\*\\*", "\033[1m\\1\033[0m", ln)  # **bold**
+  }
+  ln
+}
+
+#' Render a subset of markdown for the terminal.
+#' @param text Character scalar (assistant response).
+#' @return Character scalar with fenced code highlighted + light styling.
+#' @keywords internal
+.render_markdown <- function(text) {
+  if (is.null(text) || !length(text) || !nzchar(text[[1L]])) return(text %||% "")
+  use_color <- tryCatch(cli::num_ansi_colors() > 1L, error = function(e) FALSE)
+  lines <- strsplit(paste(text, collapse = "\n"), "\n", fixed = TRUE)[[1L]]
+  out <- character(0); i <- 1L; n <- length(lines)
+  while (i <= n) {
+    ln <- lines[[i]]
+    if (grepl("^```", ln)) {
+      lang <- sub("^```[[:space:]]*", "", sub("[[:space:]]*$", "", ln))
+      j <- i + 1L; code <- character(0)
+      while (j <= n && !grepl("^```[[:space:]]*$", lines[[j]])) {
+        code <- c(code, lines[[j]]); j <- j + 1L
+      }
+      out <- c(out, .render_code_block(code, lang, use_color))
+      i <- j + 1L
+    } else {
+      out <- c(out, .render_md_line(ln, use_color))
+      i <- i + 1L
+    }
+  }
+  paste(out, collapse = "\n")
+}
+
 #' Run the interactive REPL
 #'
 #' @param client A `CodagentClient`.
@@ -416,7 +479,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         resp <<- tryCatch(client$chat$chat(actual_input),
                           error = function(e2)
                             .handle_agent_error(e2, client$chat, actual_input, compaction_ctrl)))
-      cat(if (is.character(resp)) resp else "[no response]", "\n"); TRUE
+      cat(if (is.character(resp)) .render_markdown(resp) else "[no response]", "\n"); TRUE
     }
 
     # 4. Housekeeping: auto-save + budget line
