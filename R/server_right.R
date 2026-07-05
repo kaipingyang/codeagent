@@ -19,15 +19,29 @@ server_right <- function(input, output, session, cwd, state,
     exclude    = exclude
   )
 
-  # Click file -> render preview to Output tab
+  # Click a file -> open it in its OWN tab in the main panel. The "Files" tree
+  # tab and the "Output" (live tool output) tab persist; opened files accumulate
+  # as named tabs. Re-clicking an already-open file just focuses its tab
+  # (deduped by path) instead of overwriting in place.
+  open_files <- shiny::reactiveVal(character(0))
+
   shiny::observeEvent(selected_paths(), {
     paths <- selected_paths()
     if (length(paths) == 0L) return()
     path <- normalizePath(paths[[length(paths)]], winslash = "/", mustWork = FALSE)
     if (!file.exists(path) || dir.exists(path)) return()
 
-    ext     <- tools::file_ext(path)
-    fname   <- sub(paste0("^", normalizePath(cwd, winslash = "/", mustWork = FALSE), "/?"), "", path)
+    ext       <- tools::file_ext(path)
+    fname     <- sub(paste0("^", normalizePath(cwd, winslash = "/", mustWork = FALSE), "/?"), "", path)
+    key       <- gsub("[^A-Za-z0-9]+", "_", path)
+    tab_value <- paste0("file__", key)
+
+    # Already open -> focus that tab, don't rebuild or duplicate.
+    if (tab_value %in% open_files()) {
+      bslib::nav_select("main_tab", tab_value, session = session)
+      return()
+    }
+
     preview <- tryCatch({
       switch(tolower(ext),
         csv = {
@@ -60,14 +74,19 @@ server_right <- function(input, output, session, cwd, state,
             error = function(e) paste(readLines(path, warn = FALSE, n=100), collapse="\n")
           )),
         # Default: code/text files -> syntax-highlighted read-only editor.
-        .code_preview(path, ext)
+        .code_preview(path, ext, id = paste0("ced__", key))
       )
     }, error = function(e) {
       htmltools::tags$p(paste("[Error]", conditionMessage(e)))
     })
 
-    state$main_output <- list(title = fname, content = preview)
-    shiny::updateTabsetPanel(session, "main_tab", selected = "output")
+    bslib::nav_insert(
+      "main_tab",
+      nav    = bslib::nav_panel(title = basename(fname), value = tab_value, preview),
+      select = TRUE,
+      session = session
+    )
+    open_files(c(open_files(), tab_value))
   }, ignoreInit = TRUE)
 }
 
@@ -160,11 +179,11 @@ server_right <- function(input, output, session, cwd, state,
 # Read-only, syntax-highlighted preview of a code/text file for the Output
 # panel. Uses bslib::input_code_editor (bundled prism-code-editor: highlighting,
 # line numbers, auto light/dark, no CDN). Replaces the old plain <pre> fallback.
-.code_preview <- function(path, ext, max_lines = 5000L) {
+.code_preview <- function(path, ext, id = "main_code_editor", max_lines = 5000L) {
   lines <- tryCatch(readLines(path, warn = FALSE, n = max_lines),
                     error = function(e) character(0))
   bslib::input_code_editor(
-    id           = "main_code_editor",
+    id           = id,
     label        = NULL,
     value        = paste(lines, collapse = "\n"),
     language     = .editor_language(ext),
