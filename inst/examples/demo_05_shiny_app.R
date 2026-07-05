@@ -40,7 +40,7 @@ devtools::load_all(quiet = TRUE)
 # Option A: Databricks / OpenAI-compatible endpoint
 chat <- ellmer::chat_openai_compatible(
   base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
-  model       = Sys.getenv("CODEAGENT_MODEL", unset = "gsds-gpt41"),
+  model       = Sys.getenv("CODEAGENT_MODEL"),
   credentials = function() Sys.getenv("CODEAGENT_API_KEY")
 )
 
