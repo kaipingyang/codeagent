@@ -25,6 +25,7 @@ codeagent_app <- function(
   port            = NULL,
   launch.browser  = TRUE,
   file_tree_show_hidden = FALSE,
+  file_tree_exclude = c("renv", "node_modules", "packrat", ".git", ".Rproj.user"),
   # Legacy params
   model           = NULL,
   permission_mode = "default",
@@ -240,7 +241,8 @@ codeagent_app <- function(
     server_right(input, output, session,
                  cwd   = cwd,
                  state = state,
-                 show_hidden = isTRUE(file_tree_show_hidden))
+                 show_hidden = isTRUE(file_tree_show_hidden),
+                 exclude = file_tree_exclude)
 
     # Stream task result handler (no-op: updates handled inside server_chat)
     shiny::observe({

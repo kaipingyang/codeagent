@@ -4,16 +4,19 @@
 NULL
 
 server_right <- function(input, output, session, cwd, state,
-                          show_hidden = FALSE) {
+                          show_hidden = FALSE,
+                          exclude = c("renv", "node_modules", "packrat",
+                                      ".git", ".Rproj.user")) {
 
-  # File tree (jsTreeR). all.files = show_hidden: by default hide dotfiles
-  # (.git, .codegraph -- often megabytes, .kiro, .Rproj.user, .shinychat, ...)
-  # which otherwise clutter the tree and slow it down. Expose via
-  # codeagent_app(file_tree_show_hidden = ) for users who want them.
-  selected_paths <- jsTreeR::treeNavigatorServer(
+  # File tree (jsTreeR). Uses .file_tree_server -- a thin fork of jsTreeR's
+  # treeNavigatorServer that reuses its jstree widget + lazy-load JS protocol
+  # but adds directory exclusion (jsTreeR has no exclude hook). all.files =
+  # show_hidden hides dotfiles by default (incl. the multi-MB .codegraph).
+  selected_paths <- .file_tree_server(
     "file_tree",
     rootFolder = cwd,
-    all.files  = isTRUE(show_hidden)
+    all.files  = isTRUE(show_hidden),
+    exclude    = exclude
   )
 
   # Click file -> render preview to Output tab
@@ -73,4 +76,66 @@ server_right <- function(input, output, session, cwd, state,
     state$main_output <- list(title = fname, content = preview)
     shiny::updateTabsetPanel(session, "main_tab", selected = "output")
   }, ignoreInit = TRUE)
+}
+
+
+# ---------------------------------------------------------------------------
+# File tree server with directory exclusion
+# ---------------------------------------------------------------------------
+
+# A thin fork of jsTreeR::treeNavigatorServer(). It reuses jsTreeR's jstree
+# widget and its lazy-load JS protocol verbatim (output id "treeNavigator___",
+# inputs "path_from_js" / "treeNavigator____selected_paths", custom message
+# "getChildren") -- we only reimplement the children-listing step so we can
+#   (a) hide dotfiles via all.files = FALSE, and
+#   (b) exclude heavy non-dot directories (renv/, node_modules/, ...),
+# neither of which treeNavigatorServer exposes a hook for.
+#
+# COUPLING NOTE: this mirrors jsTreeR's internal widget protocol. If jsTreeR
+# changes it, re-sync this function (see references/plan tracking for dev-dep
+# bumps). Paired UI is still jsTreeR::treeNavigatorUI().
+.file_tree_server <- function(id, rootFolder, exclude = character(0),
+                              all.files = FALSE, search = TRUE,
+                              wholerow = FALSE, contextMenu = FALSE,
+                              theme = "proton") {
+  shiny::moduleServer(id, function(input, output, session) {
+    output[["treeNavigator___"]] <- jsTreeR::renderJstree({
+      jsTreeR::jstree(
+        nodes = list(list(
+          text     = normalizePath(rootFolder, winslash = "/", mustWork = TRUE),
+          type     = "folder",
+          children = FALSE,
+          li_attr  = list(class = "jstree-x")
+        )),
+        types = list(
+          folder = list(icon = "fa fa-folder gold"),
+          file   = list(icon = "far fa-file red")
+        ),
+        checkCallback = TRUE, theme = theme, checkboxes = TRUE,
+        search = search, wholerow = wholerow, contextMenu = contextMenu,
+        selectLeavesOnly = TRUE
+      )
+    })
+
+    shiny::observeEvent(input[["path_from_js"]], {
+      entries <- tryCatch(
+        list.files(input[["path_from_js"]], all.files = all.files,
+                   full.names = TRUE, no.. = TRUE),
+        error = function(e) character(0))
+      if (length(exclude)) {
+        entries <- entries[!basename(entries) %in% exclude]
+      }
+      fi <- file.info(entries, extra_cols = FALSE)
+      x  <- list(elem = as.list(basename(entries)),
+                 folder = as.list(fi[["isdir"]]))
+      session$sendCustomMessage("getChildren", x)
+    })
+
+    Paths <- shiny::reactiveVal()
+    shiny::observeEvent(input[["treeNavigator____selected_paths"]], {
+      Paths(vapply(input[["treeNavigator____selected_paths"]],
+                   `[[`, character(1L), "path"))
+    })
+    Paths
+  })
 }

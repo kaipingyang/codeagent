@@ -54,6 +54,11 @@ save_session <- function(chat, cwd = getwd(),
   file_path   <- file.path(session_dir, paste0(session_id, ".jsonl"))
 
   turns <- tryCatch(chat$get_turns(), error = function(e) list())
+  # Drop empty assistant turns (no text, no tool request/result, no thinking --
+  # e.g. a failed/interrupted stream). Persisting them makes a restored session
+  # show a perpetual "..." typing bubble, and sends useless empties to the LLM
+  # on continuation. Applies to BOTH the text lines and the lossless state.
+  turns <- Filter(function(t) !.turn_is_empty(t), turns)
   now <- paste0(format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", tz = "UTC"), "Z")
 
   lines <- character(0)
@@ -73,7 +78,7 @@ save_session <- function(chat, cwd = getwd(),
   # Lossless chat-state line (contents_record -> gzip -> base64). Preserves tool
   # requests/results that the per-message text lines below flatten away. Read
   # back by restore_session_into_chat() for true history restoration.
-  state_str <- tryCatch(.session_state_encode(chat), error = function(e) NULL)
+  state_str <- tryCatch(.session_state_encode(chat, turns = turns), error = function(e) NULL)
   if (!is.null(state_str)) {
     lines <- c(lines, jsonlite::toJSON(
       list(type = "chat-state", sessionId = session_id,
@@ -110,11 +115,28 @@ save_session <- function(chat, cwd = getwd(),
 # toJSON is not, so tool requests/results survive a round trip.
 # ---------------------------------------------------------------------------
 
-.session_state_encode <- function(chat) {
-  turns    <- chat$get_turns()
+.session_state_encode <- function(chat, turns = NULL) {
+  if (is.null(turns)) turns <- chat$get_turns()
   recorded <- lapply(turns, ellmer::contents_record)
   json     <- jsonlite::serializeJSON(recorded)
   base64enc::base64encode(memCompress(charToRaw(json), "gzip"))
+}
+
+# An assistant turn is "empty" when it has nothing renderable: no visible text
+# and no non-text content (tool request/result, thinking, image). Such turns
+# come from a failed/interrupted stream and, if persisted, render as a stuck
+# "..." bubble on restore. User turns are never treated as empty here.
+.turn_is_empty <- function(turn) {
+  role <- tryCatch(turn@role, error = function(e) "")
+  if (!identical(role, "assistant")) return(FALSE)
+  contents <- tryCatch(turn@contents, error = function(e) list())
+  if (!length(contents)) return(TRUE)
+  any_renderable <- any(vapply(contents, function(cc) {
+    if (!inherits(cc, "ellmer::ContentText")) return(TRUE)  # tool/thinking/etc.
+    txt <- tryCatch(cc@text, error = function(e) "")
+    nzchar(trimws(paste(txt %||% "", collapse = "")))
+  }, logical(1)))
+  !any_renderable
 }
 
 .session_state_decode <- function(state_str, tools = list()) {
