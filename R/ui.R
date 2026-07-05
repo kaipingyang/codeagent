@@ -10,6 +10,9 @@ NULL
 #' @param client A `CodagentClient` from [codeagent_client()], an
 #'   `ellmer::Chat`, or NULL (legacy mode).
 #' @param pinned_skills Character vector. Skill names pinned at top of Skills panel.
+#' @param greeting Character or NULL. If provided, pre-fills the chat input box
+#'   with this text on startup (used by the "Chat about selection" IDE addin to
+#'   seed the first message with the selected code). NULL leaves the input empty.
 #' @param port Integer or NULL. Shiny port (NULL = random).
 #' @param launch.browser Logical. Open in browser (default TRUE).
 #' @param file_tree_show_hidden Logical. Show hidden dotfiles (e.g. `.git`,
@@ -27,6 +30,7 @@ NULL
 codeagent_app <- function(
   client          = NULL,
   pinned_skills   = character(0),
+  greeting        = NULL,
   port            = NULL,
   launch.browser  = TRUE,
   file_tree_show_hidden = FALSE,
@@ -158,6 +162,18 @@ codeagent_app <- function(
       budget_tracker  = BudgetTracker$new(),
       resource_state  = ContentReplacementState$new()
     )
+
+    # Pre-fill the input with an initial greeting (e.g. the IDE "Chat about
+    # selection" addin seeds the selected code). Guarded: default NULL leaves the
+    # normal app path untouched. onFlushed ensures the chat UI exists first.
+    if (!is.null(greeting) && nzchar(greeting)) {
+      session$onFlushed(function() {
+        tryCatch(
+          shinychat::update_chat_user_input("chat", value = greeting,
+                                             focus = TRUE, session = session),
+          error = function(e) NULL)
+      }, once = TRUE)
+    }
 
     # Wire server modules
     # NOTE: We do NOT call shinychat::chat_server() here. In shinychat >= 0.4 it

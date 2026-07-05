@@ -173,7 +173,7 @@ use_codeagent_setup <- function(scope = c("user", "project")) {
     key_input <- trimws(readline(
       sprintf("Paste your %s API key (leave blank to skip): ", info$label)))
     if (nzchar(key_input)) {
-      Sys.setenv(setNames(key_input, key_env))
+      Sys.setenv(stats::setNames(key_input, key_env))
       key_val  <- key_input
       save_key <- TRUE
     }

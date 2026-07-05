@@ -84,7 +84,7 @@ NULL
     cli::cli_alert_success(
       "Saved {.envvar {key_name}} to OS keyring (service = {.val codeagent}).")
     # Also set in current session so tools can find it immediately.
-    do.call(Sys.setenv, setNames(list(key_value), key_name))
+    do.call(Sys.setenv, stats::setNames(list(key_value), key_name))
     return(invisible("keyring"))
   }
 
