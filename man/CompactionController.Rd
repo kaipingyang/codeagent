@@ -58,7 +58,7 @@ Invisibly NULL.
 \subsection{Method \code{compact_now()}}{
 Run the two-level compaction now (snip -> session-memory ->
 full 9-section), guarded by the circuit breaker. Unlike
-\code{\link[=maybe_compact]{maybe_compact()}} this skips the token-threshold check, so callers that
+\code{maybe_compact()} this skips the token-threshold check, so callers that
 have already decided to compact (e.g. mid-loop) can reuse the exact
 same Claude Code-aligned flow.
 \subsection{Usage}{

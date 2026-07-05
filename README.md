@@ -363,7 +363,7 @@ them in `.Renviron` as `CODEAGENT_API_KEY`, or use keyring (see above).
 
 ```
 ┌─────────────────────────────────────────────┐
-│  codeagent_client(chat)  ← CodagentClient   │
+│  codeagent_client(chat)  ← CodeagentClient   │
 │    ├─ tools: 8 built-in + btw 10 groups     │
 │    ├─ ExploreData (optional WEAR mode)       │
 │    ├─ skill tool (use_skill)                 │

@@ -110,6 +110,8 @@ NULL
 #'   codeagent and btw file tools coexist when Path A is enabled.
 #' @param sandbox List or NULL. Bash sandbox profile (see [.sandbox_profile()]);
 #'   passed through to [bash_tool()].
+#' @param async Logical. If `TRUE`, register async permission-gated tool variants
+#'   for the Shiny path (UI-gated approvals). Default `FALSE` (synchronous).
 #' @return Invisibly returns `chat`.
 #' @export
 register_builtin_tools <- function(chat, mode = "default",

@@ -30,9 +30,12 @@ Imports:
     base64enc,
     commonmark,
     bsicons,
-    reactable
+    reactable,
+    later,
+    rlang
 Suggests:
     otel,
+    otelsdk,
     prettycode,
     btw,
     mcptools,

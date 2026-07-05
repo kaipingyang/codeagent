@@ -15,3 +15,5 @@
 ^\.claude$
 ^\.kiro$
 ^\.shinychat$
+^lessons$
+^to_kiro$

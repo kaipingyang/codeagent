@@ -7,22 +7,22 @@
 NULL
 
 # ---------------------------------------------------------------------------
-# CodagentClient S3 class
+# CodeagentClient S3 class
 # ---------------------------------------------------------------------------
 
 #' Wrap an ellmer Chat with codeagent settings into a client object
 #'
 #' @param chat Ellmer Chat object (already equipped with tools and system prompt).
 #' @param settings Named list from [load_settings()].
-#' @return Object of class `CodagentClient`.
+#' @return Object of class `CodeagentClient`.
 #' @keywords internal
 .new_client <- function(chat, settings) {
-  structure(list(chat = chat, settings = settings), class = "CodagentClient")
+  structure(list(chat = chat, settings = settings), class = "CodeagentClient")
 }
 
 #' @export
-print.CodagentClient <- function(x, ...) {
-  cat("<CodagentClient>\n")
+print.CodeagentClient <- function(x, ...) {
+  cat("<CodeagentClient>\n")
   cat("  model:           ", x$settings$model %||% "(auto)", "\n")
   cat("  permission_mode: ", x$settings$permission_mode %||% "default", "\n")
   cat("  cwd:             ", x$settings$cwd %||% getwd(), "\n")
@@ -126,7 +126,7 @@ print.CodagentClient <- function(x, ...) {
 #' Create a codeagent client from any ellmer Chat
 #'
 #' Injects codeagent tools (Bash, Read, Write, Edit, Glob, Grep, LS, btw tools,
-#' skill tool) and rebuilds the system prompt. The returned `CodagentClient`
+#' skill tool) and rebuilds the system prompt. The returned `CodeagentClient`
 #' is the single object passed to [codeagent()] and [codeagent_app()].
 #'
 #' @param chat An `ellmer::Chat` object -- any backend supported by ellmer:
@@ -144,7 +144,7 @@ print.CodagentClient <- function(x, ...) {
 #'   loop when it reports failures (e.g. [verify_r_tests()]).
 #' @param mcp_config MCP client config (JSON path or inline list) to connect
 #'   external MCP servers; see [register_mcp_client()]. NULL disables.
-#' @return Object of class `CodagentClient` with slots `$chat` and `$settings`.
+#' @return Object of class `CodeagentClient` with slots `$chat` and `$settings`.
 #' @export
 codeagent_client <- function(
   chat               = NULL,
@@ -226,10 +226,10 @@ codeagent_client <- function(
 #' codeagent("List all .R files", model = "gsds-gpt41", permission_mode = "bypass")
 #' ```
 #'
-#' @param client_or_prompt Either a `CodagentClient` (from [codeagent_client()])
+#' @param client_or_prompt Either a `CodeagentClient` (from [codeagent_client()])
 #'   or a character prompt string (legacy mode).
 #' @param prompt Character. The user prompt. Required when `client_or_prompt`
-#'   is a `CodagentClient`; unused in legacy mode.
+#'   is a `CodeagentClient`; unused in legacy mode.
 #' @param model Character. Legacy: model name.
 #' @param permission_mode Character. Legacy: permission mode.
 #' @param rules List. Legacy: permission rules.
@@ -248,11 +248,11 @@ codeagent <- function(client_or_prompt,
                        max_turns       = 100L,
                        btw_groups      = NULL,
                        ...) {
-  # Dispatch: new style (CodagentClient) vs legacy (prompt string)
-  if (inherits(client_or_prompt, "CodagentClient")) {
+  # Dispatch: new style (CodeagentClient) vs legacy (prompt string)
+  if (inherits(client_or_prompt, "CodeagentClient")) {
     client <- client_or_prompt
     if (is.null(prompt))
-      stop("'prompt' must be provided when 'client_or_prompt' is a CodagentClient.",
+      stop("'prompt' must be provided when 'client_or_prompt' is a CodeagentClient.",
            call. = FALSE)
     chat     <- client$chat
     settings <- client$settings
@@ -291,14 +291,14 @@ codeagent <- function(client_or_prompt,
 
 #' Main agentic query loop
 #'
-#' Handles a single user turn. Accepts either a `CodagentClient` (new style)
+#' Handles a single user turn. Accepts either a `CodeagentClient` (new style)
 #' or the legacy `(chat, settings)` pair.
 #'
 #' @param user_input Character. User message.
-#' @param client A `CodagentClient` (from [codeagent_client()]), or an
+#' @param client A `CodeagentClient` (from [codeagent_client()]), or an
 #'   `ellmer::Chat` for legacy use.
 #' @param settings Named list. Only needed in legacy mode (ignored when
-#'   `client` is a `CodagentClient`).
+#'   `client` is a `CodeagentClient`).
 #' @param compaction_ctrl A [CompactionController] R6 object.
 #' @param budget_tracker A [BudgetTracker] R6 object.
 #' @param resource_state A [ContentReplacementState] R6 object.
@@ -319,8 +319,8 @@ agent_loop <- function(user_input,
                         cwd             = NULL,
                         session_id      = NULL,
                         iteration       = 1L) {
-  # Resolve chat + settings from CodagentClient or legacy pair
-  if (inherits(client, "CodagentClient")) {
+  # Resolve chat + settings from CodeagentClient or legacy pair
+  if (inherits(client, "CodeagentClient")) {
     chat     <- client$chat
     settings <- client$settings
   } else {

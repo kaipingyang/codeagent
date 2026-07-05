@@ -14,7 +14,7 @@ codeagent_console(
 )
 }
 \arguments{
-\item{client}{A \code{CodagentClient}.}
+\item{client}{A \code{CodeagentClient}.}
 
 \item{stream}{Logical. Stream responses token-by-token.}
 

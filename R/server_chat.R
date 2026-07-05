@@ -254,7 +254,7 @@ server_chat <- function(input, output, session, chat, settings,
     new_spec <- input$ca_model_pick %||% ""
     if (!nzchar(new_spec)) return()
     new_chat <- tryCatch(
-      codeagent:::.resolve_model_chat(new_spec, cwd),
+      .resolve_model_chat(new_spec, cwd),
       error = function(e) NULL)
     if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
       new_model <- tryCatch(chat$get_model(), error = function(e) new_spec)
@@ -314,7 +314,7 @@ server_chat <- function(input, output, session, chat, settings,
         sprintf("**/model** -- pick a model in the popup to switch.")
       } else {
         new_chat <- tryCatch(
-          codeagent:::.resolve_model_chat(args, cwd),
+          .resolve_model_chat(args, cwd),
           error = function(e) NULL)
         if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
           new_model <- tryCatch(chat$get_model(), error = function(e) args)
@@ -502,7 +502,7 @@ server_chat <- function(input, output, session, chat, settings,
       mod$append(sprintf("**/model** -- pick a model in the popup to switch."),
                  role = "assistant")
     } else {
-      new_chat <- tryCatch(codeagent:::.resolve_model_chat(args, cwd), error = function(e) NULL)
+      new_chat <- tryCatch(.resolve_model_chat(args, cwd), error = function(e) NULL)
       if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
         new_model <- tryCatch(chat$get_model(), error = function(e) args)
         state$settings_changed <- state$settings_changed + 1L

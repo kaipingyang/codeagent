@@ -59,13 +59,13 @@ NULL
 #' @param data Named list, environment, or `NULL`. Data.frames to make
 #'   available for exploration. If `NULL`, uses objects in `.GlobalEnv`.
 #'   A named list is converted to an environment automatically.
-#' @param client A `CodagentClient` (from [codeagent_client()]). If `NULL`,
+#' @param client A `CodeagentClient` (from [codeagent_client()]). If `NULL`,
 #'   one is built from `~/.codeagent/settings.json` with `permission_mode =
 #'   "bypass"`.
 #' @param mode Character. `"repl"` (default) starts an interactive CLI session;
 #'   `"shiny"` launches the Shiny app.
 #' @param ... Passed to [codeagent_console()] or [codeagent_app()].
-#' @return Invisibly the `CodagentClient` (useful for post-session inspection
+#' @return Invisibly the `CodeagentClient` (useful for post-session inspection
 #'   or calling [generate_wear_report()] manually).
 #' @seealso [generate_wear_report()] to export the session to a Quarto document.
 #' @examples
@@ -133,7 +133,7 @@ wear_explore <- function(data = NULL, client = NULL, mode = c("repl", "shiny"), 
 #' Generates a reproducible `.qmd` file from the conversation history of a
 #' [wear_explore()] session. Each user message becomes a `##` section heading;
 #' assistant text is written as prose; code from `ExploreData` tool results is
-#' written as `\`\`\`{r}` chunks.
+#' written as fenced R code chunks.
 #'
 #' The `.qmd` has `eval: false` by default so it renders without re-running the
 #' LLM queries. Set `eval: true` in the YAML front-matter to make it fully
@@ -143,7 +143,7 @@ wear_explore <- function(data = NULL, client = NULL, mode = c("repl", "shiny"), 
 #' [wear_explore()] session, so the agent can call it when the user types
 #' `/report`.
 #'
-#' @param client A `CodagentClient` whose `chat` has been used in a
+#' @param client A `CodeagentClient` whose `chat` has been used in a
 #'   [wear_explore()] session.
 #' @param path Character. Output file path (default: `exploration-YYYYMMDD.qmd`
 #'   in the current directory).
@@ -241,7 +241,7 @@ register_wear_report_tool <- function(chat) {
         paste0("exploration-", format(Sys.Date(), "%Y%m%d"), ".qmd")
       # Build a mock client-like object the report generator can use
       fake_client <- list(chat = chat)
-      class(fake_client) <- "CodagentClient"
+      class(fake_client) <- "CodeagentClient"
       tryCatch(
         generate_wear_report(fake_client, path = out_path,
                              title = title %||% "Data Exploration Report"),

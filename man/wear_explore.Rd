@@ -11,7 +11,7 @@ wear_explore(data = NULL, client = NULL, mode = c("repl", "shiny"), ...)
 available for exploration. If \code{NULL}, uses objects in \code{.GlobalEnv}.
 A named list is converted to an environment automatically.}
 
-\item{client}{A \code{CodagentClient} (from \code{\link[=codeagent_client]{codeagent_client()}}). If \code{NULL},
+\item{client}{A \code{CodeagentClient} (from \code{\link[=codeagent_client]{codeagent_client()}}). If \code{NULL},
 one is built from \verb{~/.codeagent/settings.json} with \code{permission_mode = "bypass"}.}
 
 \item{mode}{Character. \code{"repl"} (default) starts an interactive CLI session;
@@ -20,7 +20,7 @@ one is built from \verb{~/.codeagent/settings.json} with \code{permission_mode =
 \item{...}{Passed to \code{\link[=codeagent_console]{codeagent_console()}} or \code{\link[=codeagent_app]{codeagent_app()}}.}
 }
 \value{
-Invisibly the \code{CodagentClient} (useful for post-session inspection
+Invisibly the \code{CodeagentClient} (useful for post-session inspection
 or calling \code{\link[=generate_wear_report]{generate_wear_report()}} manually).
 }
 \description{

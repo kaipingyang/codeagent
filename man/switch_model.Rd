@@ -2,17 +2,17 @@
 % Please edit documentation in R/model_switch.R
 \name{switch_model}
 \alias{switch_model}
-\title{Switch the active model on a CodagentClient, preserving history}
+\title{Switch the active model on a CodeagentClient, preserving history}
 \usage{
 switch_model(client, model)
 }
 \arguments{
-\item{client}{A \code{CodagentClient} from \code{\link[=codeagent_client]{codeagent_client()}}.}
+\item{client}{A \code{CodeagentClient} from \code{\link[=codeagent_client]{codeagent_client()}}.}
 
 \item{model}{Character. New model spec/alias (see \code{\link[=.resolve_model_chat]{.resolve_model_chat()}}).}
 }
 \value{
-A \code{CodagentClient} with the new model and preserved history. With
+A \code{CodeagentClient} with the new model and preserved history. With
 Route A this is the SAME client object (Chat identity unchanged); with
 Route B it is a NEW client object.
 }

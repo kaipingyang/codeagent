@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -25,7 +25,7 @@ Every tool call passes through a permission gate before it runs.
 | `auto` | A small model classifies each call |
 | `bubble` | Sub-agent mode: permission bubbles up to the parent agent |
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 client <- codeagent_client(chat, permission_mode = "default")
 ```
 

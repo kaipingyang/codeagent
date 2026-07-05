@@ -2,8 +2,7 @@
 % Please edit documentation in R/compaction.R
 \name{full_compact}
 \alias{full_compact}
-\title{Spawns a separate haiku chat to generate a 9-section structured summary
-wrapped in \verb{<summary>} tags, then replaces all turns with that summary.}
+\title{L3: Full context compaction via fork agent}
 \usage{
 full_compact(chat, model = .HAIKU_MODEL, instructions = NULL)
 }
@@ -11,6 +10,8 @@ full_compact(chat, model = .HAIKU_MODEL, instructions = NULL)
 \item{chat}{An \code{ellmer::Chat} object.}
 
 \item{model}{Character. Haiku model for compaction.}
+
+\item{instructions}{Character or NULL. Optional user instructions to bias the summary.}
 }
 \value{
 Invisibly NULL.

@@ -12,7 +12,7 @@
 \item{settings}{Named list from \code{\link[=load_settings]{load_settings()}}.}
 }
 \value{
-Object of class \code{CodagentClient}.
+Object of class \code{CodeagentClient}.
 }
 \description{
 Wrap an ellmer Chat with codeagent settings into a client object

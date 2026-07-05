@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -15,7 +15,7 @@ codeagent wraps any `ellmer` Chat, so it is provider-agnostic.
 
 ## Any ellmer backend
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 chat <- ellmer::chat_openai_compatible(   # Databricks / Azure / vLLM / custom
   base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
   model       = Sys.getenv("CODEAGENT_MODEL"),
@@ -30,7 +30,7 @@ Supported `provider` values include `openai_compatible`, `anthropic`, `openai`,
 
 ## Switching models mid-session
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 switch_model(client, "openai/deepseek-r1")   # CLI / one-shot
 # In the Shiny app: the Settings panel model picker, or /model
 ```
@@ -42,7 +42,7 @@ identity — and every callback/closure bound to it — stays valid.
 
 Models with extended thinking are controlled natively via ellmer:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 # settings.json: "effortLevel": "high"  ->  params(reasoning_effort = "high")
 ```
 

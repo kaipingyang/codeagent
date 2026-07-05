@@ -94,7 +94,7 @@ client_b <- tryCatch(
   error = function(e) { cat("  [ERROR]", conditionMessage(e), "\n"); NULL }
 )
 ok(!is.null(client_b),                          "codeagent_client() returns non-NULL")
-ok(inherits(client_b, "CodagentClient"),        "codeagent_client() returns CodagentClient")
+ok(inherits(client_b, "CodeagentClient"),        "codeagent_client() returns CodeagentClient")
 ok(inherits(client_b$chat, "Chat"),             "client$chat is an ellmer Chat")
 ok(is.list(client_b$settings),                  "client$settings is a list")
 

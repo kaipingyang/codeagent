@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -25,7 +25,7 @@ order (highest priority first):
    provider-reported window when available.
 4. A 200,000-token default.
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 # The effective window reserves output tokens; the auto-compaction threshold
 # sits one buffer below that (e.g. ~167K for a 200K Claude model).
 ```
@@ -56,7 +56,7 @@ yellow near the warning line and red near the error/blocking line
 
 ## Controls
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 Sys.setenv(CODEAGENT_DISABLE_COMPACT = "1")     # disable auto-compaction
 Sys.setenv(CODEAGENT_MAX_CONTEXT_TOKENS = "500000")  # override the window
 # Manual compaction from the REPL / Shiny:

@@ -46,7 +46,7 @@ NULL
 #'
 #' Attempts to save `key_value` under `key_name` (service = "codeagent")
 #' via `keyring`. If keyring is unavailable (no daemon, no package), falls
-#' back to appending `KEY=value` to `~/.Renviron` via [.append_renviron()].
+#' back to appending `KEY=value` to `~/.Renviron` via `.append_renviron()`.
 #'
 #' @param key_name Character. Environment variable name (e.g. `"OPENAI_API_KEY"`).
 #' @param key_value Character. The secret value.

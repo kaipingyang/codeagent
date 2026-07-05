@@ -25,5 +25,5 @@ test_that("codeagent_client accepts mcp_config without registering on NULL", {
   ch  <- chat_anthropic(model = "claude-sonnet-4-6")
   cli <- codeagent_client(ch, permission_mode = "bypass",
                           btw_groups = NULL, mcp_config = NULL, cwd = getwd())
-  expect_s3_class(cli, "CodagentClient")
+  expect_s3_class(cli, "CodeagentClient")
 })

@@ -20,11 +20,11 @@ agent_loop(
 \arguments{
 \item{user_input}{Character. User message.}
 
-\item{client}{A \code{CodagentClient} (from \code{\link[=codeagent_client]{codeagent_client()}}), or an
+\item{client}{A \code{CodeagentClient} (from \code{\link[=codeagent_client]{codeagent_client()}}), or an
 \code{ellmer::Chat} for legacy use.}
 
 \item{settings}{Named list. Only needed in legacy mode (ignored when
-\code{client} is a \code{CodagentClient}).}
+\code{client} is a \code{CodeagentClient}).}
 
 \item{compaction_ctrl}{A \link{CompactionController} R6 object.}
 
@@ -45,6 +45,6 @@ agent_loop(
 Named list: \code{response}, \code{session_id}, \code{stop_reason}.
 }
 \description{
-Handles a single user turn. Accepts either a \code{CodagentClient} (new style)
+Handles a single user turn. Accepts either a \code{CodeagentClient} (new style)
 or the legacy \verb{(chat, settings)} pair.
 }

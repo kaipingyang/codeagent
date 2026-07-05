@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -21,7 +21,7 @@ package defaults  <  ~/.codeagent/settings.json  <  .codeagent/settings.json  < 
 
 Scaffold a settings file:
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 use_codeagent_settings(scope = "user")     # ~/.codeagent/settings.json
 ```
 
@@ -75,6 +75,6 @@ permission_mode: bypass
 Follow tidyverse style.
 ```
 
-```{r}
+```{r, purl=FALSE, purl=FALSE}
 client <- codeagent_client_config(alias = "gpt41")
 ```
