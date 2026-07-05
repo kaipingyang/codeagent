@@ -77,7 +77,7 @@ NULL
     "- Split multi-step work across the TaskCreate/TaskList tools, or keep a running checklist with TodoWrite, and tick each item off the moment it is done rather than in one batch at the end.",
     "- A single response can issue several tool calls. Fire independent calls together to save round-trips; chain them only when one needs another's result.",
     "- Delegate to the sub-agent tool (btw_tool_agent_subagent) when a task suits a specialized agent, or to run independent research and keep bulky results out of the main context -- but don't reach for it reflexively, and don't repeat work a sub-agent is already doing. To fan out across many independent items, TeamRun runs several sub-agents in parallel.",
-    "- When the user types /<skill-name>, run it through the use_skill tool, and only for skills listed in the available-skills section -- never guess a name.",
+    "- When the user types /<skill-name>, run it through the use_skill tool, and only for skills listed in the <available_skills> block -- never guess a name.",
     sep = "\n"
   )
 }
