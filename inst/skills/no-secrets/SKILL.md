@@ -37,14 +37,36 @@ This is a **hard rule**, not a preference.
    so all forms are caught, then re-scan the whole history
    (`for c in $(git rev-list --all); do git grep -q '<id>' "$c" && echo "$c"; done`).
 
+## PRIMARY defense: never put the token in the git remote URL
+Masking (above) is a fragile *fallback* — it's easy to forget to pipe one
+command through the mask. The real fix is that the token is **never in git at
+all**, so `git filter-repo` / `git remote -v` / any git output have nothing to
+leak. Set this up once per repo:
+- **Clean remote (no token):** `git remote set-url origin https://github.com/OWNER/REPO.git`
+- **Token via a credential helper** that reads it at push time from the
+  environment or `~/.Renviron` (never stored in the URL or `.git/config`):
+  ```sh
+  # ~/.git-cred-codeagent.sh  (chmod +x)
+  #!/usr/bin/env bash
+  [ "$1" = "get" ] || exit 0
+  tok="${GITHUB_TOKEN:-}"
+  [ -z "$tok" ] && tok=$(grep -E '^GITHUB_TOKEN=' "$HOME/.Renviron" | head -1 | cut -d'"' -f2)
+  echo "username=x-access-token"; echo "password=$tok"
+  ```
+  `git config credential.helper "$HOME/.git-cred-codeagent.sh"`
+- **Result:** `git push` works with a tokenless URL; rotating the token = edit
+  `~/.Renviron` ONLY (no remote surgery); filter-repo can never print it.
+- If you inherit a token-in-URL remote, convert it with the two commands above
+  before doing any history rewrite.
+
 ## Tooling caveat: git-filter-repo prints the removed remote URL
 `git filter-repo` echoes the removed `origin` URL, e.g.
 `(was https://user:ghp_XXXX@github.com/...)` — that **leaks the token in your
-HTTPS remote** into the terminal/logs. Mitigate:
-- Pipe its output through a mask: `2>&1 | sed -E 's#//[^@]*@#//***@#g; s#ghp_[A-Za-z0-9]+#ghp_***#g'`.
-- Better: use a **tokenless** remote during the rewrite (SSH, or
-  `git remote remove origin` first), and re-add the token remote only for the
-  final push.
+HTTPS remote** into the terminal/logs. Mitigate (fallback if the remote still
+embeds a token):
+- Pipe **every** filter-repo invocation (both attempts + retries) through a
+  mask: `2>&1 | sed -E 's#//[^@]*@#//***@#g; s#ghp_[A-Za-z0-9]+#ghp_***#g'`.
+- Better: use the tokenless remote above so there is nothing to print.
 - If a token was printed anyway, **rotate it** (github.com/settings/tokens) and
   update `~/.Renviron`.
 
