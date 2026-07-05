@@ -12,6 +12,11 @@ NULL
 #' @param pinned_skills Character vector. Skill names pinned at top of Skills panel.
 #' @param port Integer or NULL. Shiny port (NULL = random).
 #' @param launch.browser Logical. Open in browser (default TRUE).
+#' @param file_tree_show_hidden Logical. Show hidden dotfiles (e.g. `.git`,
+#'   `.codegraph`) in the file tree. Default `FALSE` to reduce clutter/lag.
+#' @param file_tree_exclude Character vector. Directory names excluded from the
+#'   file tree (default `renv`, `node_modules`, `packrat`, `.git`,
+#'   `.Rproj.user`). Set `character(0)` to disable exclusion.
 #' @param model Character. Legacy: model name.
 #' @param permission_mode Character. Legacy: permission mode.
 #' @param cwd Character. Legacy: working directory.
