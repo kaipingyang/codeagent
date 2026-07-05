@@ -33,3 +33,10 @@ inst/evals/.vitals/
 # Local-only working docs (privacy: contains private tests/notes) -- never commit
 references/
 lessons/
+
+# Local tool artifacts / CLI config (privacy + irrelevant to the package)
+.codegraph/
+.kiro/
+
+# Experiment / prototype apps -- local only, not shipped
+inst/experiments/
