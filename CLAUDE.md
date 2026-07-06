@@ -44,6 +44,8 @@ codegraph sync   # 更新符号索引，让 kiro/AI 工具看到最新代码
 ```
 这确保 `codeagent chat` / `codeagent_app()` 等用安装版运行的入口点使用最新代码。`devtools::load_all()` 只在当前 R session 里生效，launcher（`--vanilla`）和 CLI 用的是已装的包。codegraph 不会自动同步，手动 sync 后 kiro 的 codegraph 审核才能看到新符号。
 
+> **测试无误 = 要装到本地才算数。** 每次改完代码、跑完测试后，务必 `pak::local_install(".", ask = FALSE, upgrade = FALSE)` 把**当前版本装到本地**——`load_all()` 只在当前 session 生效，真实验证/CLI/launcher 跑的是已安装的包。
+
 **新增功能必须同步更新 README.md：**
 - 新导出函数/新 feature → 在 README 对应 section 补一行
 - 重要行为变更 → 更新 README 相应描述

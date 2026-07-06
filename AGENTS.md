@@ -75,6 +75,10 @@ Tests use `testthat`. Place tests in `tests/testthat/test-*.R` and group by subs
 update tests covering both the main path and any fallback/degraded path. Prefer targeted tests
 first, then broader runs with `devtools::test()`.
 
+> **测试无误 = 要装到本地才算数。** `devtools::load_all()` 只在当前 R session 生效；CLI/launcher
+> (`--vanilla`) 和真实验证跑的是**已安装**的包。改完代码、跑完测试后，务必用
+> `pak::local_install(".", ask = FALSE, upgrade = FALSE)` 把**当前版本装到本地**，否则你验的不是最新代码。
+
 ## Keep-in-Sync Rules (do this on every code change)
 1. **Rebuild the installed package** after code changes — launcher/CLI entry points run the
    installed package, not `load_all()`:
