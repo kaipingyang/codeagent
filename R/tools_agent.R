@@ -25,11 +25,18 @@ NULL
 #' @return Character. Path to new worktree, or NULL if git not available.
 #' @keywords internal
 .create_worktree <- function(base_dir = getwd()) {
+  # gert (libgit2) has no worktree API, so `git worktree add` below still needs
+  # the git binary. gert is used only for the repo-membership check.
   if (!nzchar(Sys.which("git"))) return(NULL)
-  # Check we're inside a git repo
-  repo_check <- system2("git", c("-C", base_dir, "rev-parse", "--git-dir"),
-                         stdout = TRUE, stderr = FALSE)
-  if (!length(repo_check) || grepl("fatal", repo_check[1])) return(NULL)
+  # Check we're inside a git repo (prefer gert; fall back to a no-shell rev-parse).
+  in_repo <- if (requireNamespace("gert", quietly = TRUE)) {
+    !is.null(tryCatch(gert::git_find(base_dir), error = function(e) NULL))
+  } else {
+    repo_check <- system2("git", c("-C", base_dir, "rev-parse", "--git-dir"),
+                          stdout = TRUE, stderr = FALSE)
+    length(repo_check) > 0L && !grepl("fatal", repo_check[1])
+  }
+  if (!in_repo) return(NULL)
 
   wt_path <- file.path(tempdir(), paste0("codeagent-wt-", .generate_uuid_v4()))
   branch  <- paste0("codeagent-subagent-", substr(.generate_uuid_v4(), 1L, 8L))

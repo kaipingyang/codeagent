@@ -36,6 +36,9 @@ Imports:
 Suggests:
     otel,
     otelsdk,
+    gert,
+    lintr,
+    styler,
     prettycode,
     btw,
     mcptools,

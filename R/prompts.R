@@ -100,6 +100,7 @@ NULL
     "- Prefer tidyverse idioms (dplyr/purrr/stringr, the native `|>` pipe) for data work unless the surrounding file is clearly base-R; then match it. Use vapply over sapply for type-stable results.",
     "- This project uses renv. Do not install packages ad hoc with install.packages() inside the project; add dependencies to DESCRIPTION (Imports/Suggests) and let renv manage them.",
     "- Write tests with testthat (tests/testthat/test-*.R). When you change a function, update or add its test. Aim to keep `devtools::test()` green and `devtools::check()` at 0 errors / 0 warnings.",
+    "- Two quality tools are available: `Lint` (lintr static analysis) and `Format` (styler auto-format to tidyverse style). Run `Lint` on files you changed before finishing; use `Format` to fix layout rather than hand-aligning code.",
     "- Never use `setwd()`, `rm(list = ls())`, `Sys.setenv()` for secrets, or `source()` on untrusted files in committed code. Use relative paths from the project root.",
     "- R CMD check rejects non-ASCII characters in R source. Use `\\uXXXX` escapes only inside string literals, never in roxygen `#'` comments.",
     "- Tool/registration functions use the closure-factory pattern: external resources (connections, checkers) are captured via a factory function with force(), and the inner function closes over them. Follow the existing pattern when adding tools.",

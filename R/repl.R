@@ -298,10 +298,16 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 
   if (!isTRUE(quiet)) {
     # Codex-style box banner via cli::boxx (round corners, key info aligned).
-    branch <- tryCatch(
-      trimws(system("git rev-parse --abbrev-ref HEAD 2>/dev/null", intern = TRUE,
-                    ignore.stderr = TRUE)),
-      error = function(e) "")
+    branch <- tryCatch({
+      if (requireNamespace("gert", quietly = TRUE)) {
+        gert::git_branch(repo = cwd)
+      } else {
+        # No-shell fallback (arg vector, not a shell string).
+        b <- system2("git", c("-C", cwd, "rev-parse", "--abbrev-ref", "HEAD"),
+                     stdout = TRUE, stderr = FALSE)
+        if (length(b)) trimws(b[1]) else ""
+      }
+    }, error = function(e) "")
     short_cwd <- if (nchar(cwd) > 48)
       paste0("...", substr(cwd, nchar(cwd) - 44L, nchar(cwd))) else cwd
     dir_str <- if (nzchar(branch)) paste0(short_cwd, "  (", branch, ")")
