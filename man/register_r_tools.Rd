@@ -11,7 +11,7 @@ register_r_tools(chat, groups = NULL)
 
 \item{groups}{Character vector of group names to include, or \code{NULL} for all.
 Valid groups: \code{"agent"}, \code{"cran"}, \code{"docs"}, \code{"env"}, \code{"files"},
-\code{"git"}, \code{"ide"}, \code{"pkg"}, \code{"sessioninfo"}, \code{"web"}.
+\code{"git"}, \code{"github"}, \code{"ide"}, \code{"pkg"}, \code{"sessioninfo"}, \code{"web"}.
 \code{"files"} is included in the default \code{NULL} (all groups).}
 }
 \value{
