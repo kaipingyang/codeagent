@@ -196,3 +196,12 @@
   height: 100%;
   min-height: 0;
 }
+/* Many file tabs: scroll the tab strip horizontally instead of wrapping. */
+#main_tab.nav-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+#main_tab.nav-tabs .nav-link { white-space: nowrap; }
+.ca-close-all-tabs { cursor: pointer; padding: .25rem .5rem; }
+.ca-tab-close:hover { opacity: 1 !important; }

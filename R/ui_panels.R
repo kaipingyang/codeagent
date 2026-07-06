@@ -251,6 +251,17 @@ output_panel_ui <- function() {
           style = "height:100%;min-height:0;overflow:auto;",
           jsTreeR::treeNavigatorUI("file_tree", height = "100%")
         )
+      ),
+      # Pushed to the right: close every opened file tab at once. Handled in
+      # server_right (input$close_all_files).
+      bslib::nav_spacer(),
+      bslib::nav_item(
+        shiny::actionLink(
+          "close_all_files", label = NULL,
+          icon  = shiny::icon("xmark"),
+          class = "ca-close-all-tabs text-muted",
+          title = "Close all file tabs"
+        )
       )
     )
 }
