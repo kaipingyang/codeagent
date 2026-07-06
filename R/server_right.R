@@ -119,6 +119,12 @@ server_right <- function(input, output, session, cwd, state,
     open_files(setdiff(open_files(), tv))
   }, ignoreInit = TRUE)
 
+  # Close ALL opened file tabs at once (the "x" in the tab strip).
+  shiny::observeEvent(input$close_all_files, {
+    for (tv in open_files()) bslib::nav_remove("main_tab", tv, session = session)
+    open_files(character(0))
+  }, ignoreInit = TRUE)
+
   # Session transition (new / delete / restore all change session_id) -> close
   # opened file tabs so stale files from the previous session don't linger.
   shiny::observeEvent(state$session_id, {
