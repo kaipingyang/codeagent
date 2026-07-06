@@ -508,6 +508,7 @@ agent_loop <- function(user_input,
                                sandbox = settings$sandbox,
                                async = async_gate), error = function(e) NULL)
   tryCatch(register_memory_tool(chat),                        error = function(e) NULL)
+  tryCatch(register_lint_tools(chat),                         error = function(e) NULL)
   if (!is.null(settings$mcp_config))
     tryCatch(register_mcp_client(chat, settings$mcp_config),  error = function(e) NULL)
   tryCatch(register_task_tools(chat),                         error = function(e) NULL)
