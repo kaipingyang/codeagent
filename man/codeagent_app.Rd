@@ -12,6 +12,7 @@ codeagent_app(
   launch.browser = TRUE,
   file_tree_show_hidden = FALSE,
   file_tree_exclude = c("renv", "node_modules", "packrat", ".git", ".Rproj.user"),
+  chat_submit_key = c("enter", "enter+modifier"),
   model = NULL,
   permission_mode = "default",
   cwd = getwd(),
@@ -39,6 +40,11 @@ seed the first message with the selected code). NULL leaves the input empty.}
 \item{file_tree_exclude}{Character vector. Directory names excluded from the
 file tree (default \code{renv}, \code{node_modules}, \code{packrat}, \code{.git},
 \code{.Rproj.user}). Set \code{character(0)} to disable exclusion.}
+
+\item{chat_submit_key}{How the chat input submits: \code{"enter"} (default, Enter
+sends, Shift/Ctrl+Enter inserts a newline) or \code{"enter+modifier"}
+(Ctrl/Cmd+Enter sends, plain Enter inserts a newline -- friendlier for
+long multi-line prompts). Set at launch; not switchable live.}
 
 \item{model}{Character. Legacy: model name.}
 
