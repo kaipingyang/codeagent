@@ -46,3 +46,4 @@ to_kiro/
 image/
 vignettes/*.R
 otelsdk-install-issue.md
+vignettes/*.html
