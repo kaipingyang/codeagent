@@ -17,6 +17,7 @@ NULL
   env         = "btw_tool_env_",
   files       = "btw_tool_files_",
   git         = "btw_tool_git_",
+  github      = "btw_tool_github",
   ide         = "btw_tool_ide_",
   pkg         = "btw_tool_pkg_",
   sessioninfo = "btw_tool_sessioninfo_",
@@ -41,7 +42,7 @@ NULL
 #' @param chat An `ellmer::Chat` object.
 #' @param groups Character vector of group names to include, or `NULL` for all.
 #'   Valid groups: `"agent"`, `"cran"`, `"docs"`, `"env"`, `"files"`,
-#'   `"git"`, `"ide"`, `"pkg"`, `"sessioninfo"`, `"web"`.
+#'   `"git"`, `"github"`, `"ide"`, `"pkg"`, `"sessioninfo"`, `"web"`.
 #'   `"files"` is included in the default `NULL` (all groups).
 #' @return Invisibly returns the number of tools registered.
 #' @export
