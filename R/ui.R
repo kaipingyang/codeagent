@@ -105,6 +105,7 @@ codeagent_app <- function(
   # ---------------------------------------------------------------------------
   ui <- bslib::page_sidebar(
     fillable = TRUE,
+    theme    = bslib::bs_theme(version = 5),
     head_assets(),
     sidebar  = bslib::sidebar(
       id        = "ca_left_sidebar",

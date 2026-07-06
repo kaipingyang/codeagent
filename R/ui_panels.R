@@ -79,6 +79,12 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
                              btw_groups_selected,
                              model_choices = NULL, current_model = NULL) {
   htmltools::tagList(
+    # Light/dark toggle (Bootstrap 5 color mode). input_code_editor and bslib
+    # components follow data-bs-theme automatically.
+    htmltools::tags$div(
+      class = "d-flex justify-content-end mb-1",
+      bslib::input_dark_mode(id = "ca_dark_mode")
+    ),
     # Active model badge -- so the user always sees which model is in use
     # (previously only discoverable via /model).
     htmltools::tags$div(
