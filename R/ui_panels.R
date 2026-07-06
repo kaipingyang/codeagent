@@ -191,11 +191,12 @@ left_sidebar_ui_default <- left_sidebar_ui
 # Chat sidebar -- chat_ui with skill picker + file/voice footer
 # ---------------------------------------------------------------------------
 
-chat_codeagent_ui <- function(skill_meta) {
+chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
   shinychat::chat_ui(
     "chat",
     fill             = TRUE,
     enable_cancel    = TRUE,
+    submit_key       = submit_key,
     placeholder      = "Ask codeagent... (/ for skills, ESC to interrupt)",
     allow_attachments = TRUE,
     # Greeting + clickable suggestion cards for a fresh session. shinychat

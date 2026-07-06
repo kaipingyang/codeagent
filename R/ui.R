@@ -14,6 +14,10 @@ NULL
 #'   with this text on startup (used by the "Chat about selection" IDE addin to
 #'   seed the first message with the selected code). NULL leaves the input empty.
 #' @param port Integer or NULL. Shiny port (NULL = random).
+#' @param chat_submit_key How the chat input submits: `"enter"` (default, Enter
+#'   sends, Shift/Ctrl+Enter inserts a newline) or `"enter+modifier"`
+#'   (Ctrl/Cmd+Enter sends, plain Enter inserts a newline -- friendlier for
+#'   long multi-line prompts). Set at launch; not switchable live.
 #' @param launch.browser Logical. Open in browser (default TRUE).
 #' @param file_tree_show_hidden Logical. Show hidden dotfiles (e.g. `.git`,
 #'   `.codegraph`) in the file tree. Default `FALSE` to reduce clutter/lag.
@@ -35,6 +39,7 @@ codeagent_app <- function(
   launch.browser  = TRUE,
   file_tree_show_hidden = FALSE,
   file_tree_exclude = c("renv", "node_modules", "packrat", ".git", ".Rproj.user"),
+  chat_submit_key = c("enter", "enter+modifier"),
   # Legacy params
   model           = NULL,
   permission_mode = "default",
@@ -103,6 +108,7 @@ codeagent_app <- function(
   # ---------------------------------------------------------------------------
   # UI
   # ---------------------------------------------------------------------------
+  chat_submit_key <- match.arg(chat_submit_key)
   ui <- bslib::page_sidebar(
     fillable = TRUE,
     theme    = bslib::bs_theme(version = 5),
@@ -141,7 +147,7 @@ codeagent_app <- function(
       ),
       bslib::card(
         fill = TRUE,
-        chat_codeagent_ui(skill_meta)
+        chat_codeagent_ui(skill_meta, submit_key = chat_submit_key)
       )
     )
   )
