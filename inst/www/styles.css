@@ -176,3 +176,23 @@
   font-size: 0.78rem;
   color: var(--bs-secondary-color, #6c757d);
 }
+
+
+/* --- Fill the main output navset so the Files tree tracks panel height --- */
+/* The navset_tab wrapper is .tabbable; make it (and its tab-content + active
+   pane) flex-fill the card-body so a height:100% tree fills instead of
+   collapsing. */
+#ca_output_sidebar .card-body > .tabbable {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#ca_output_sidebar .tabbable > .tab-content {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+#ca_output_sidebar .tab-content > .tab-pane.active {
+  height: 100%;
+  min-height: 0;
+}
