@@ -496,17 +496,20 @@ agent_loop <- function(user_input,
   #   "both"          : register both sets; the LLM picks per task.
   # Back-compat: options(codeagent.use_btw_files = TRUE) == "both".
   file_tools <- .resolve_file_tools(settings)
-  register_builtin_tools(chat, mode = mode, rules = rules, ask_fn = ask_fn,
-                         sandbox = settings$sandbox, async = async_gate,
+  # Approach A: build sensitive tools UNGATED (mode = "bypass", synchronous) and
+  # let the single central gate (.install_permission_gate, installed at the end)
+  # be the sole permission authority for EVERY tool -- native, btw, Format, MCP.
+  register_builtin_tools(chat, mode = "bypass", rules = rules, ask_fn = NULL,
+                         sandbox = settings$sandbox, async = FALSE,
                          skip_file_tools = identical(file_tools, "btw"))
   if (file_tools %in% c("btw", "both")) {
-    tryCatch(register_btw_file_tools(chat, mode, rules, ask_fn),
+    tryCatch(register_btw_file_tools(chat, "bypass", rules, NULL),
              error = function(e) NULL)
   }
   tryCatch(register_web_tools(chat),                          error = function(e) NULL)
-  tryCatch(register_run_r_tool(chat, mode, rules, ask_fn,
+  tryCatch(register_run_r_tool(chat, "bypass", rules, NULL,
                                sandbox = settings$sandbox,
-                               async = async_gate), error = function(e) NULL)
+                               async = FALSE), error = function(e) NULL)
   tryCatch(register_memory_tool(chat),                        error = function(e) NULL)
   tryCatch(register_lint_tools(chat),                         error = function(e) NULL)
   if (!is.null(settings$mcp_config))
@@ -528,11 +531,11 @@ agent_loop <- function(user_input,
             (is.list(settings$rag) && isTRUE(settings$rag$enabled))
   if (rag_on)
     tryCatch(register_rag_tool(chat, cwd), error = function(e) NULL)
-  tryCatch(register_notebook_tools(chat, mode, rules, ask_fn),error = function(e) NULL)
+  tryCatch(register_notebook_tools(chat, "bypass", rules, NULL),error = function(e) NULL)
   tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",
-                                mode_env$mode, rules,
+                                "bypass", rules,
                                 worktree_isolation = isTRUE(settings$worktree_isolation),
-                                ask_fn = ask_fn),
+                                ask_fn = NULL),
                                                               error = function(e) NULL)
   tryCatch(register_r_tools(chat, groups = settings$btw_groups %||% NULL),
                                                               error = function(e) NULL)
@@ -551,6 +554,14 @@ agent_loop <- function(user_input,
   # Mid-loop compaction (Plan B, opt-in): snip old tool results between tool
   # rounds via on_tool_result. No-op unless settings$midloop_compact = TRUE.
   tryCatch(register_midloop_compaction(chat, settings), error = function(e) NULL)
+
+  # Single central permission gate (approach A): the sole authority over every
+  # tool. Sync (console ask_fn) and async (Shiny shiny_ask_fn promise) both ride
+  # ellmer's rejectable on_tool_request. Installed last so it sees all tools.
+  gate_ask_fn <- settings$shiny_ask_fn %||% ask_fn
+  tryCatch(.install_permission_gate(chat, settings, mode_env, rules,
+                                    ask_fn = gate_ask_fn, hooks = settings$hooks),
+           error = function(e) NULL)
 
   invisible(chat)
 }
