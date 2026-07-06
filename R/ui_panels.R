@@ -85,19 +85,28 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
       class = "d-flex justify-content-end mb-1",
       bslib::input_dark_mode(id = "ca_dark_mode")
     ),
-    # Active model badge -- so the user always sees which model is in use
-    # (previously only discoverable via /model).
-    htmltools::tags$div(
-      class = "ca-model-badge d-flex align-items-center gap-1 mb-2",
-      style = "font-size:.8rem;color:var(--bs-secondary-color,#6c757d);",
-      htmltools::tags$span(
-        style = "width:.5rem;height:.5rem;border-radius:50%;background:#22c55e;display:inline-block;flex:0 0 auto;"),
-      htmltools::tags$span("Model:", class = "text-muted"),
-      htmltools::tags$span(
-        id = "ca-current-model",
-        style = "font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;",
-        current_model %||% "(auto)")
-    ),
+    # Active model as a toolbar select -- switch model in one click (was a
+    # read-only badge + a duplicate selectInput buried in Settings). Reuses the
+    # "model_select" input id, so the existing server observer handles it.
+    if (length(model_choices) > 0L) {
+      bslib::toolbar(
+        class = "ca-model-toolbar mb-2",
+        bslib::toolbar_input_select(
+          "model_select", label = "Model",
+          choices = model_choices, selected = current_model,
+          show_label = FALSE, icon = shiny::icon("robot"),
+          tooltip = "Switch model -- history preserved"
+        )
+      )
+    } else {
+      htmltools::tags$div(
+        class = "ca-model-badge text-muted mb-2",
+        style = "font-size:.8rem;",
+        htmltools::tags$i(class = "fa fa-robot me-1"),
+        "Model: ",
+        htmltools::tags$span(id = "ca-current-model", current_model %||% "(auto)")
+      )
+    },
     # Token budget bar
     htmltools::tags$div(
       class = "ca-budget-wrap",
@@ -149,15 +158,6 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
         value = "Settings",
         htmltools::tags$div(
           class = "ca-settings",
-          if (length(model_choices) > 0L) {
-            htmltools::tagList(
-              htmltools::tags$span("Model", class = "ca-settings-label"),
-              shiny::selectInput("model_select", NULL,
-                choices  = model_choices,
-                selected = current_model,
-                width    = "100%")
-            )
-          },
           htmltools::tags$span("Permission mode", class = "ca-settings-label"),
           shiny::selectInput("perm_mode", NULL,
             choices  = unlist(PermissionMode),
