@@ -244,7 +244,13 @@ output_panel_ui <- function() {
       bslib::nav_panel(
         title = "Files",
         value = "files",
-        jsTreeR::treeNavigatorUI("file_tree", height = "calc(100vh - 120px)")
+        # Fill the panel instead of a fixed viewport calc, so the tree tracks
+        # the resizable output sidebar's height.
+        htmltools::div(
+          class = "html-fill-container html-fill-item",
+          style = "height:100%;min-height:0;overflow:auto;",
+          jsTreeR::treeNavigatorUI("file_tree", height = "100%")
+        )
       )
     )
 }
