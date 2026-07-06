@@ -330,11 +330,11 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
     tryCatch(.check_settings_completeness(settings), error = function(e) NULL)
   }
 
+  history <- character(0)  # in-session line history for up/down recall
   repeat {
-    cat(prompt_str)
-    line <- tryCatch(readLines(con, n = 1L), error = function(e) character(0))
-    if (length(line) == 0L) break  # EOF (Ctrl-D)
-
+    line <- .console_read_line(prompt_str, history, con)
+    if (is.null(line)) break  # EOF (Ctrl-D / closed connection)
+    if (nzchar(trimws(line))) history <- c(history, line)
     act <- .repl_dispatch(line)
 
     # --- meta commands (do not reach the model) ---
@@ -497,4 +497,121 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
   tryCatch(save_session(client$chat, cwd, session_id), error = function(e) NULL)
   cat(sprintf("Session saved: %s\n", substr(session_id, 1L, 8L)))
   invisible(session_id)
+}
+
+
+# ---------------------------------------------------------------------------
+# Console line editor
+# ---------------------------------------------------------------------------
+# The console reads a whole line per turn. Plain readLines() on file("stdin")
+# relies on the terminal's cooked mode, which does NOT interpret arrow / Home /
+# End / Delete keys -- their escape sequences (e.g. Left = ESC[D) leak into the
+# input as literal "^[[D". We instead read one key at a time (keypress pkg,
+# which puts the TTY in raw mode) and maintain the line buffer + cursor
+# ourselves. Falls back to cooked readLines when there is no keypress support
+# (pipes, tests, unsupported terminals).
+
+# Pure key handler: given editor state + a keypress name, return the new state.
+# Kept side-effect-free so every key case is unit-testable.
+#   state = list(chars = <chars>, pos = <int>, history = <chr>,
+#                hist_pos = <int>, stash = <chars>, action = NULL|chr)
+.console_apply_key <- function(state, key) {
+  n <- length(state$chars)
+  load_hist <- function(s, idx) {
+    txt <- s$history[idx]
+    s$chars <- if (is.na(txt) || !nzchar(txt)) character(0)
+               else strsplit(txt, "", fixed = TRUE)[[1]]
+    s$pos <- length(s$chars)
+    s
+  }
+  if (key %in% c("enter", "\r", "\n")) {
+    state$action <- "submit"
+  } else if (key == "left") {
+    state$pos <- max(0L, state$pos - 1L)
+  } else if (key == "right") {
+    state$pos <- min(n, state$pos + 1L)
+  } else if (key %in% c("home", "ctrl-a")) {
+    state$pos <- 0L
+  } else if (key %in% c("end", "ctrl-e")) {
+    state$pos <- n
+  } else if (key == "backspace") {
+    if (state$pos > 0L) {
+      state$chars <- state$chars[-state$pos]
+      state$pos   <- state$pos - 1L
+    }
+  } else if (key == "delete") {
+    if (state$pos < n) state$chars <- state$chars[-(state$pos + 1L)]
+  } else if (key == "ctrl-u") {          # kill to line start
+    if (state$pos > 0L) state$chars <- state$chars[-seq_len(state$pos)]
+    state$pos <- 0L
+  } else if (key == "ctrl-k") {          # kill to line end
+    if (state$pos < n) state$chars <- state$chars[seq_len(state$pos)]
+  } else if (key == "ctrl-c") {
+    state$action <- "cancel"
+  } else if (key == "ctrl-d") {
+    if (n == 0L) state$action <- "eof"   # EOF only on an empty line
+  } else if (key == "up") {
+    if (state$hist_pos > 1L) {
+      if (state$hist_pos == length(state$history) + 1L) state$stash <- state$chars
+      state$hist_pos <- state$hist_pos - 1L
+      state <- load_hist(state, state$hist_pos)
+    }
+  } else if (key == "down") {
+    if (state$hist_pos <= length(state$history)) {
+      state$hist_pos <- state$hist_pos + 1L
+      if (state$hist_pos == length(state$history) + 1L) {
+        state$chars <- state$stash
+        state$pos   <- length(state$chars)
+      } else {
+        state <- load_hist(state, state$hist_pos)
+      }
+    }
+  } else if (key %in% c("tab", "escape", "insert", "pageup", "pagedown") ||
+             startsWith(key, "ctrl-") || startsWith(key, "f")) {
+    # ignore unsupported specials (no-op) rather than inserting garbage
+  } else if (nchar(key, type = "chars") == 1L && !grepl("[[:cntrl:]]", key)) {
+    # printable single character -> insert at cursor
+    state$chars <- append(state$chars, key, after = state$pos)
+    state$pos   <- state$pos + 1L
+  }
+  state
+}
+
+# Redraw the current line in place: carriage-return, clear to EOL, reprint
+# prompt + buffer, then move the cursor back to its logical position.
+.console_redraw <- function(prompt, state) {
+  line <- paste(state$chars, collapse = "")
+  cat("\r\033[K", prompt, line, sep = "")
+  back <- length(state$chars) - state$pos
+  if (back > 0L) cat(sprintf("\033[%dD", back))
+  utils::flush.console()
+}
+
+# Read one edited line. Returns the string, "" for a cancelled (Ctrl-C) line,
+# or NULL on EOF (Ctrl-D on empty line / closed connection).
+.console_read_line <- function(prompt, history = character(0), con = stdin()) {
+  supported <- tryCatch(keypress::has_keypress_support(), error = function(e) FALSE)
+  if (!isTRUE(supported)) {
+    # Cooked-mode fallback (pipes, tests, unsupported terminals).
+    cat(prompt)
+    line <- tryCatch(readLines(con, n = 1L), error = function(e) character(0))
+    if (length(line) == 0L) return(NULL)
+    return(line[[1]])
+  }
+  state <- list(chars = character(0), pos = 0L, history = history,
+                hist_pos = length(history) + 1L, stash = character(0),
+                action = NULL)
+  .console_redraw(prompt, state)
+  repeat {
+    key <- tryCatch(keypress::keypress(), error = function(e) "enter")
+    state <- .console_apply_key(state, key)
+    .console_redraw(prompt, state)
+    if (!is.null(state$action)) break
+  }
+  cat("\n")
+  switch(state$action,
+    eof    = NULL,
+    cancel = "",
+    paste(state$chars, collapse = "")
+  )
 }

@@ -27,6 +27,7 @@ Imports:
     htmltools,
     coro,
     jsTreeR,
+    keypress,
     base64enc,
     commonmark,
     bsicons,
