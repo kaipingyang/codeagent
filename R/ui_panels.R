@@ -10,19 +10,24 @@ NULL
 
 head_assets <- function() {
   htmltools::tags$head(
-    htmltools::tags$link(
-      rel  = "stylesheet",
-      href = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
-    ),
-    # Prism.js -- syntax highlighting for code/diff tool cards
-    htmltools::tags$link(
-      rel  = "stylesheet",
-      href = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism.min.css"
-    ),
-    htmltools::tags$script(
-      src = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"),
-    htmltools::tags$script(
-      src = "https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"),
+    # Font-Awesome: NOT loaded from a CDN. shiny::icon() (used throughout)
+    # brings the bundled {fontawesome} htmlDependency, which also styles the
+    # few raw `fa fa-*` classes (tree folder/file, model icon).
+    #
+    # Prism.js -- syntax highlighting for code/diff tool cards. Vendored locally
+    # under inst/www/vendor/prism (core + autoloader + theme + common language
+    # grammars) so there is no CDN dependency (offline-safe, CSP-friendly).
+    htmltools::tags$link(rel = "stylesheet", type = "text/css",
+                         href = "codeagent-www/vendor/prism/prism.min.css"),
+    htmltools::tags$script(src = "codeagent-www/vendor/prism/prism-core.min.js"),
+    htmltools::tags$script(src = "codeagent-www/vendor/prism/prism-autoloader.min.js"),
+    # Point the autoloader at the locally vendored grammars (runs synchronously
+    # right after the autoloader script defines the plugin).
+    htmltools::tags$script(htmltools::HTML(paste0(
+      "if(window.Prism&&Prism.plugins&&Prism.plugins.autoloader){",
+      "Prism.plugins.autoloader.languages_path=",
+      "'codeagent-www/vendor/prism/components/';}"
+    ))),
     htmltools::tags$link(rel = "stylesheet", type = "text/css",
                          href = "codeagent-www/styles.css"),
     htmltools::tags$script(src = "codeagent-www/agent.js"),
