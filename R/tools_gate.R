@@ -80,23 +80,6 @@ NULL
   check_permission(name, mode, rules, input)
 }
 
-#' Install the central permission gate on a Chat
-#'
-#' Registers one `on_tool_request` callback that gates every tool by name, plus
-#' an `on_tool_result` callback for PostToolUse hooks. Works for the sync
-#' (`$chat()`) and async (`$chat_async()`/Shiny) paths: when the decision is
-#' `"ask"` and `ask_fn` returns a promise, the gate returns a promise that the
-#' async loop awaits (UI approval); a logical `ask_fn` is handled inline.
-#'
-#' @param chat An `ellmer::Chat`.
-#' @param settings Named list (for `settings$tools` policy).
-#' @param mode_env Environment with `$mode` (live permission mode) or a string.
-#' @param rules List of fine-grained permission rules.
-#' @param ask_fn `function(name, input)` returning logical or promise<logical>,
-#'   or NULL (then `"ask"` becomes deny).
-#' @param hooks A `HookRegistry` or NULL (fires PreToolUse/PostToolUse/PermissionDenied).
-#' @return Invisibly `chat`.
-#' @keywords internal
 # Build the gate callback (extracted so it is unit-testable in isolation). Returns
 # a `function(request)` suitable for `chat$on_tool_request()`: returns invisible()
 # to allow, raises `ellmer::tool_reject()` to deny (sync), or returns a promise
@@ -148,6 +131,23 @@ NULL
   }
 }
 
+#' Install the central permission gate on a Chat
+#'
+#' Registers one `on_tool_request` callback that gates every tool by name, plus
+#' an `on_tool_result` callback for PostToolUse hooks. Works for the sync
+#' (`$chat()`) and async (`$chat_async()`/Shiny) paths: when the decision is
+#' `"ask"` and `ask_fn` returns a promise, the gate returns a promise that the
+#' async loop awaits (UI approval); a logical `ask_fn` is handled inline.
+#'
+#' @param chat An `ellmer::Chat`.
+#' @param settings Named list (for `settings$tools` policy).
+#' @param mode_env Environment with `$mode` (live permission mode) or a string.
+#' @param rules List of fine-grained permission rules.
+#' @param ask_fn `function(name, input)` returning logical or promise<logical>,
+#'   or NULL (then `"ask"` becomes deny).
+#' @param hooks A `HookRegistry` or NULL (fires PreToolUse/PostToolUse/PermissionDenied).
+#' @return Invisibly `chat`.
+#' @keywords internal
 .install_permission_gate <- function(chat, settings, mode_env,
                                      rules = list(), ask_fn = NULL, hooks = NULL) {
   policy <- .resolve_tool_policy(settings)
