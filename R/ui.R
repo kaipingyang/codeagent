@@ -224,7 +224,7 @@ codeagent_app <- function(
     # session on every open.
     shiny::observe({
       shiny::req(TRUE)   # run once at startup
-      if (!isTRUE(settings$auto_continue %||% TRUE)) return()
+      if (!isTRUE(settings$auto_continue %||% FALSE)) return()
       sid <- tryCatch(
         restore_session_into_chat(chat_obj, session_id = NULL, cwd = cwd),
         error = function(e) NULL)

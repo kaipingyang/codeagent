@@ -93,9 +93,10 @@ NULL
   explore_data       = TRUE,
 
   # Shiny app: auto-restore the most recent session on startup (mirrors
-  # `codeagent chat --continue`). TRUE = resume last conversation (default);
-  # FALSE = open a fresh session each time.
-  auto_continue      = TRUE
+  # `codeagent chat --continue`). FALSE = fresh session each open (default,
+  # clean slate); TRUE = resume the last conversation. Past sessions are always
+  # loadable from the Sessions panel regardless.
+  auto_continue      = FALSE
 )
 
 # ---------------------------------------------------------------------------
