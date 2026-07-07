@@ -10,7 +10,14 @@ and `btw`. It does **not** wrap an external CLI — the harness is reimplemented
 
 ## Project Structure & Module Organization
 - `R/`: package source — agent loop, tools, sessions, permissions, and Shiny server/UI modules.
-- `tests/testthat/`: unit and integration tests; entrypoint is `tests/testthat.R`.
+
+> **Tool permissions = one central gate.** `R/tools_gate.R` (`.install_permission_gate`)
+> registers a single `on_tool_request` callback that governs every tool (native + btw +
+> Format + MCP) uniformly — tools are built `mode="bypass"` and the gate is the sole
+> authority (enforces via `ellmer::tool_reject`; async/Shiny via `maybe_on_tool_request_async`).
+> Fine-grained control lives in `settings$tools` (`sets`/`capabilities`/`overrides`); see
+> README → *Tool permission control*. When adding a write/exec/net tool, add it to
+> `.TOOL_META` so the gate classifies it.- `tests/testthat/`: unit and integration tests; entrypoint is `tests/testthat.R`.
 - `inst/examples/`: runnable examples and demos; update these when public behavior changes.
 - `inst/skills/`: built-in skills (`name/SKILL.md` format).
 - `references/`: exploratory scripts and provider-specific experiments (e.g. Databricks, thinking demos).

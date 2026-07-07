@@ -332,11 +332,37 @@ Precedence (low to high): package defaults < `~/.codeagent/settings.json` <
     "CODEAGENT_SMALL_FAST_MODEL": "your-haiku-endpoint"
   },
   "permissions": { "allow": [], "deny": [], "ask": [], "defaultMode": "default" },
+  "tools": {
+    "sets": ["A", "B"],
+    "capabilities": { "read": "allow", "write": "ask", "exec": "ask", "net": "deny" },
+    "overrides": { "btw_tool_git_commit": "deny", "Format": "ask" }
+  },
   "sandbox": { "enabled": false, "allow_network": true },
   "hooks": {},
   "effortLevel": "high"
 }
 ```
+
+### Tool permission control (`settings$tools`)
+
+Every tool call — codeagent-native (Read/Write/Edit/Bash/RunR/Format/…), btw
+(`btw_tool_*`), and MCP — is governed by a **single central gate** registered on
+ellmer's `on_tool_request` (it enforces via `tool_reject`, which ellmer's tool loop
+turns into an error result; the same gate rides the async path for the Shiny
+approval bar). Read-only tools pass automatically.
+
+`settings$tools` gives three precedence levels (highest first):
+
+| Key | Purpose | Values |
+|-----|---------|--------|
+| `overrides` | Decide a **specific tool** by name | `"allow"` / `"deny"` / `"ask"` |
+| `capabilities` | Decide by **capability class** | keys `read`/`write`/`exec`/`net` → `allow`/`deny`/`ask` |
+| `sets` | Which tool **sets** to register | `"A"` (codeagent core) and/or `"B"` (btw) |
+
+When none matches, the decision falls back to the `permissions` mode/rules. This is
+how you express "allow reads, ask on writes, deny network, but always deny
+`btw_tool_git_commit`". PreToolUse/PostToolUse/PermissionDenied hooks fire in the
+same gate.
 
 The `env` block is applied before environment variables are read, so it works
 even under `Rscript --vanilla`. **Never put API keys in `settings.json`** — keep

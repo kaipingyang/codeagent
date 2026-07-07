@@ -559,8 +559,10 @@ agent_loop <- function(user_input,
   # tool. Sync (console ask_fn) and async (Shiny shiny_ask_fn promise) both ride
   # ellmer's rejectable on_tool_request. Installed last so it sees all tools.
   gate_ask_fn <- settings$shiny_ask_fn %||% ask_fn
+  gate_hooks  <- settings$hooks_registry %||%
+                 tryCatch(.hooks_from_settings(settings), error = function(e) NULL)
   tryCatch(.install_permission_gate(chat, settings, mode_env, rules,
-                                    ask_fn = gate_ask_fn, hooks = settings$hooks),
+                                    ask_fn = gate_ask_fn, hooks = gate_hooks),
            error = function(e) NULL)
 
   invisible(chat)

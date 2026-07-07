@@ -97,12 +97,14 @@ NULL
 #' @param hooks A `HookRegistry` or NULL (fires PreToolUse/PostToolUse/PermissionDenied).
 #' @return Invisibly `chat`.
 #' @keywords internal
-.install_permission_gate <- function(chat, settings, mode_env,
-                                     rules = list(), ask_fn = NULL, hooks = NULL) {
-  policy <- .resolve_tool_policy(settings)
-  resolve_mode <- function()
-    if (is.environment(mode_env)) mode_env$mode %||% "default" else (mode_env %||% "default")
-  force(policy); force(rules); force(ask_fn); force(hooks)
+# Build the gate callback (extracted so it is unit-testable in isolation). Returns
+# a `function(request)` suitable for `chat$on_tool_request()`: returns invisible()
+# to allow, raises `ellmer::tool_reject()` to deny (sync), or returns a promise
+# that resolves/rejects (async/Shiny). Fires PreToolUse + PermissionDenied hooks.
+#' @keywords internal
+.tool_gate_fn <- function(policy, resolve_mode, rules = list(),
+                          ask_fn = NULL, hooks = NULL) {
+  force(policy); force(resolve_mode); force(rules); force(ask_fn); force(hooks)
 
   deny <- function(name, input, reason) {
     if (!is.null(hooks))
@@ -112,7 +114,7 @@ NULL
                                if (nzchar(reason)) paste0(" (", reason, ")") else ""))
   }
 
-  gate <- function(request) {
+  function(request) {
     name  <- tryCatch(request@name, error = function(e) NULL)
     if (is.null(name) || !nzchar(name)) return(invisible())
     input <- tryCatch(as.list(request@arguments), error = function(e) list())
@@ -144,6 +146,14 @@ NULL
     if (isTRUE(res)) return(invisible())                              # sync approved
     deny(name, input, cap)
   }
+}
+
+.install_permission_gate <- function(chat, settings, mode_env,
+                                     rules = list(), ask_fn = NULL, hooks = NULL) {
+  policy <- .resolve_tool_policy(settings)
+  resolve_mode <- function()
+    if (is.environment(mode_env)) mode_env$mode %||% "default" else (mode_env %||% "default")
+  gate <- .tool_gate_fn(policy, resolve_mode, rules, ask_fn, hooks)
 
   tryCatch(chat$on_tool_request(gate), error = function(e) NULL)
 
