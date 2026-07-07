@@ -58,6 +58,12 @@ register_r_tools <- function(chat, groups = NULL) {
   # Always exclude btw_tool_skill -- handled by codeagent's skill system
   all_tools <- Filter(function(t) !identical(t@name, "btw_tool_skill"), all_tools)
 
+  # Always exclude the 'files' group here -- file tools are owned by the
+  # file_tools setting (codeagent core tools and/or register_btw_file_tools /
+  # Path A). This prevents the double-registration where btw file tools also
+  # arrived (previously ungated) via the default all-groups path.
+  all_tools <- Filter(function(t) !startsWith(t@name, "btw_tool_files_"), all_tools)
+
   # Filter by group if requested
   if (!is.null(groups)) {
     valid_groups   <- names(.BTW_GROUPS)

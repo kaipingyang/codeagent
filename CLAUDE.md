@@ -170,14 +170,23 @@ User input
       → HookRegistry$run_user_message()
       → ellmer Chat$chat() / stream_async(stream="content")
           → tools dispatch (ellmer tool loop)
-              → check_permission()         # 7-mode gate
-              → HookRegistry$run_pre()     # PreToolUse
-              → tool execution             # returns ContentToolResult
-              → HookRegistry$run_post()    # PostToolUse
+              → central gate on `on_tool_request`  # .install_permission_gate:
+                  → HookRegistry$run_pre()          #   PreToolUse
+                  → .gate_decide(): settings$tools overrides > capabilities >
+                    check_permission()              #   7-mode gate; deny -> tool_reject
+                  → HookRegistry$run_permission_denied() on deny
+              → tool execution (built mode="bypass"; gate is sole authority)
+              → HookRegistry$run_post() on `on_tool_result`  # PostToolUse
       → verify_fn (optional)    # re-enter if fails
       → HookRegistry$run_assistant_message()
       → save_session()
 ```
+
+> **Tool permissions = one central gate** (`R/tools_gate.R`, `.install_permission_gate`).
+> All tools (native + btw + Format + MCP) are built ungated (`mode="bypass"`) and
+> governed uniformly by ellmer's rejectable `on_tool_request` (sync) /
+> `maybe_on_tool_request_async` (Shiny). Fine-grained control via `settings$tools`
+> (`sets`/`capabilities`/`overrides`); see README → Tool permission control.
 
 ### Client object model
 
