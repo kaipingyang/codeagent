@@ -11,7 +11,7 @@ test_that("async gate maps ask_fn resolve -> allow / reject", {
     rf <- NULL
     ask <- function(n, i) promises::promise(function(resolve, reject) rf <<- resolve)
     list(gate = .tool_gate_fn(list(overrides = list(), capabilities = list(write = "ask")),
-                              function() "default", list(), ask_fn = ask, hooks = NULL),
+                              "default", list(), ask_fn = ask, hooks = NULL),
          resolver = function() rf)
   }
   req <- ellmer::ContentToolRequest(id = "1", name = "Write",

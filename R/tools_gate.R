@@ -80,18 +80,32 @@ NULL
   check_permission(name, mode, rules, input)
 }
 
-# Build the gate callback (extracted so it is unit-testable in isolation). Returns
-# a `function(request)` suitable for `chat$on_tool_request()`: returns invisible()
-# to allow, raises `ellmer::tool_reject()` to deny (sync), or returns a promise
-# that resolves/rejects (async/Shiny). Fires PreToolUse + PermissionDenied hooks.
-#' @keywords internal
-.tool_gate_fn <- function(policy, resolve_mode, rules = list(),
-                          ask_fn = NULL, hooks = NULL) {
-  force(policy); force(resolve_mode); force(rules); force(ask_fn); force(hooks)
+# Per-chat gate context registry. `.register_all_tools()` may run more than once
+# on the SAME chat (e.g. the Shiny app re-registers to wire shiny_ask_fn AFTER the
+# client was built). ellmer's `on_tool_request` ACCUMULATES callbacks, so a naive
+# re-install would leave a stale first gate (built before shiny_ask_fn -> "ask"
+# with no ask_fn -> deny) racing the real one. We therefore install exactly ONE
+# gate per chat and have it read a MUTABLE context (mode/ask_fn/policy/hooks), so
+# re-registration just updates the context instead of stacking a second gate.
+.gate_contexts <- new.env(parent = emptyenv())
 
+# Build the gate callback from a live context env (`ctx`). Reads ctx$policy,
+# ctx$mode_env, ctx$rules, ctx$ask_fn, ctx$hooks at call time. Returns invisible()
+# to allow, raises `ellmer::tool_reject()` to deny (sync), or returns a promise
+# (async/Shiny). Fires PreToolUse + PermissionDenied hooks. Unit-testable.
+#' @keywords internal
+.tool_gate_fn <- function(policy_or_ctx, mode_env = NULL, rules = list(),
+                          ask_fn = NULL, hooks = NULL) {
+  ctx <- if (is.environment(policy_or_ctx)) policy_or_ctx
+         else .make_gate_ctx(policy_or_ctx, mode_env, rules, ask_fn, hooks)
+  force(ctx)
+  resolve_mode <- function() {
+    m <- ctx$mode_env
+    if (is.environment(m)) m$mode %||% "default" else (m %||% "default")
+  }
   deny <- function(name, input, reason) {
-    if (!is.null(hooks))
-      tryCatch(hooks$run_permission_denied(name, input, resolve_mode()),
+    if (!is.null(ctx$hooks))
+      tryCatch(ctx$hooks$run_permission_denied(name, input, resolve_mode()),
                error = function(e) NULL)
     ellmer::tool_reject(paste0("Permission denied for ", name,
                                if (nzchar(reason)) paste0(" (", reason, ")") else ""))
@@ -103,22 +117,23 @@ NULL
     input <- tryCatch(as.list(request@arguments), error = function(e) list())
     tool  <- tryCatch(request@tool, error = function(e) NULL)
 
-    if (!is.null(hooks))
-      tryCatch(hooks$run_pre(name, input), error = function(e) NULL)   # PreToolUse
+    if (!is.null(ctx$hooks))
+      tryCatch(ctx$hooks$run_pre(name, input), error = function(e) NULL)  # PreToolUse
 
-    ov  <- policy$overrides[[name]]
+    ov  <- ctx$policy$overrides[[name]]
     cap <- .tool_capability(name, tool)
     # benign (read/meta) tools with no explicit override: allow, don't gate.
     if (is.null(ov) && identical(cap, "read")) return(invisible())
 
     decision <- tryCatch(
-      .gate_decide(name, input, policy, resolve_mode(), rules, cap),
+      .gate_decide(name, input, ctx$policy, resolve_mode(), ctx$rules, cap),
       error = function(e) "allow")
 
     if (identical(decision, "allow")) return(invisible())
     if (identical(decision, "deny"))  return(deny(name, input, cap))
 
     # decision == "ask"
+    ask_fn <- ctx$ask_fn
     res <- if (is.function(ask_fn)) tryCatch(ask_fn(name, input),
                                              error = function(e) FALSE) else FALSE
     if (inherits(res, "promise")) {                                   # async (Shiny)
@@ -131,13 +146,31 @@ NULL
   }
 }
 
-#' Install the central permission gate on a Chat
+# Build a fresh gate context env (also used directly by tests).
+#' @keywords internal
+.make_gate_ctx <- function(policy, mode_env, rules = list(),
+                           ask_fn = NULL, hooks = NULL) {
+  ctx <- new.env(parent = emptyenv())
+  ctx$policy   <- policy
+  ctx$mode_env <- mode_env
+  ctx$rules    <- rules
+  ctx$ask_fn   <- ask_fn
+  ctx$hooks    <- hooks
+  ctx$installed <- FALSE
+  ctx
+}
+
+#' Install the central permission gate on a Chat (idempotent per chat)
 #'
-#' Registers one `on_tool_request` callback that gates every tool by name, plus
-#' an `on_tool_result` callback for PostToolUse hooks. Works for the sync
-#' (`$chat()`) and async (`$chat_async()`/Shiny) paths: when the decision is
-#' `"ask"` and `ask_fn` returns a promise, the gate returns a promise that the
-#' async loop awaits (UI approval); a logical `ask_fn` is handled inline.
+#' Registers ONE `on_tool_request` callback (+ one `on_tool_result` for PostToolUse)
+#' that gates every tool by name. Safe to call repeatedly on the same chat: the
+#' first call installs the callbacks; later calls only refresh the live context
+#' (mode / ask_fn / policy / hooks), so the Shiny path can wire `shiny_ask_fn`
+#' after the client was built without stacking a second (denying) gate.
+#'
+#' Works for sync (`$chat()`) and async (`$chat_async()`/Shiny): when the decision
+#' is `"ask"` and `ask_fn` returns a promise, the gate returns a promise the async
+#' loop awaits (UI approval); a logical `ask_fn` is handled inline.
 #'
 #' @param chat An `ellmer::Chat`.
 #' @param settings Named list (for `settings$tools` policy).
@@ -150,18 +183,24 @@ NULL
 #' @keywords internal
 .install_permission_gate <- function(chat, settings, mode_env,
                                      rules = list(), ask_fn = NULL, hooks = NULL) {
-  policy <- .resolve_tool_policy(settings)
-  resolve_mode <- function()
-    if (is.environment(mode_env)) mode_env$mode %||% "default" else (mode_env %||% "default")
-  gate <- .tool_gate_fn(policy, resolve_mode, rules, ask_fn, hooks)
-
-  tryCatch(chat$on_tool_request(gate), error = function(e) NULL)
-
-  if (!is.null(hooks)) {
-    tryCatch(chat$on_tool_result(function(result) {
-      nm <- tryCatch(result@request@name, error = function(e) "")
-      tryCatch(hooks$run_post(nm, list(), result), error = function(e) NULL)  # PostToolUse
-    }), error = function(e) NULL)
+  key <- tryCatch(rlang::obj_address(chat), error = function(e) NULL) %||% "default"
+  ctx <- .gate_contexts[[key]]
+  if (is.null(ctx)) {
+    ctx <- .make_gate_ctx(.resolve_tool_policy(settings), mode_env, rules, ask_fn, hooks)
+    .gate_contexts[[key]] <- ctx
+  } else {
+    # refresh live context (mode/ask_fn/policy/hooks may have changed)
+    ctx$policy <- .resolve_tool_policy(settings); ctx$mode_env <- mode_env
+    ctx$rules  <- rules; ctx$ask_fn <- ask_fn; ctx$hooks <- hooks
   }
+  if (isTRUE(ctx$installed)) return(invisible(chat))   # gate already on this chat
+  ctx$installed <- TRUE
+
+  tryCatch(chat$on_tool_request(.tool_gate_fn(ctx)), error = function(e) NULL)
+  tryCatch(chat$on_tool_result(function(result) {      # PostToolUse (reads ctx live)
+    if (is.null(ctx$hooks)) return(invisible())
+    nm <- tryCatch(result@request@name, error = function(e) "")
+    tryCatch(ctx$hooks$run_post(nm, list(), result), error = function(e) NULL)
+  }), error = function(e) NULL)
   invisible(chat)
 }
