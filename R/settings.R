@@ -90,7 +90,12 @@ NULL
 
   # Data exploration tool (ExploreData). TRUE = always register (default);
   # FALSE = opt-out (batch/non-interactive contexts).
-  explore_data       = TRUE
+  explore_data       = TRUE,
+
+  # Shiny app: auto-restore the most recent session on startup (mirrors
+  # `codeagent chat --continue`). TRUE = resume last conversation (default);
+  # FALSE = open a fresh session each time.
+  auto_continue      = TRUE
 )
 
 # ---------------------------------------------------------------------------

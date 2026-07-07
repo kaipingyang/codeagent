@@ -220,13 +220,19 @@ codeagent_app <- function(
 
     # Auto-continue: restore the most recent session on startup so users
     # pick up where they left off (mirrors `codeagent chat --continue`).
+    # Gated by settings$auto_continue (default TRUE); set FALSE for a fresh
+    # session on every open.
     shiny::observe({
       shiny::req(TRUE)   # run once at startup
+      if (!isTRUE(settings$auto_continue %||% TRUE)) return()
       sid <- tryCatch(
         restore_session_into_chat(chat_obj, session_id = NULL, cwd = cwd),
         error = function(e) NULL)
       if (!is.null(sid)) {
         state$session_id <- sid
+        # A restored conversation must never carry a stale live approval/question
+        # pause: pending_interaction is per-session UI state, not conversation.
+        state$pending_interaction <- NULL
         shinychat::chat_clear("chat", session)
         # Replay via contents_shinychat -- native tool card rendering.
         .replay_turns_to_ui(chat_obj, session)
