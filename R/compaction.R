@@ -323,6 +323,10 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L,
 register_midloop_compaction <- function(chat, settings = list()) {
   force(chat)
   force(settings)
+  # Install the on_tool_result callback at most once per chat: .register_all_tools
+  # may run several times on the same chat (Shiny re-registration) and ellmer's
+  # on_tool_result accumulates, which would run the snip multiple times per round.
+  if (!.chat_once(chat, "midloop")) return(invisible(chat))
   ctrl          <- tryCatch(CompactionController$new(), error = function(e) NULL)
   model         <- settings$model %||% ""
   compact_model <- settings$compact_model %||% settings$small_fast_model %||%

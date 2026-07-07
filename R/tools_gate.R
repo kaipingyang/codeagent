@@ -89,6 +89,21 @@ NULL
 # re-registration just updates the context instead of stacking a second gate.
 .gate_contexts <- new.env(parent = emptyenv())
 
+# Generic "run once per (chat, key)" guard. Several callbacks are registered from
+# .register_all_tools(), which the Shiny app runs more than once on the same chat;
+# ellmer's on_tool_request/on_tool_result ACCUMULATE, so callbacks that should be
+# singletons (the permission gate, mid-loop compaction, ...) must guard with this.
+# Returns TRUE the first time for a given chat+key, FALSE afterwards.
+.chat_callbacks_installed <- new.env(parent = emptyenv())
+#' @keywords internal
+.chat_once <- function(chat, key) {
+  addr <- tryCatch(rlang::obj_address(chat), error = function(e) NULL) %||% "default"
+  k <- paste0(addr, ":", key)
+  if (isTRUE(.chat_callbacks_installed[[k]])) return(FALSE)
+  .chat_callbacks_installed[[k]] <- TRUE
+  TRUE
+}
+
 # Build the gate callback from a live context env (`ctx`). Reads ctx$policy,
 # ctx$mode_env, ctx$rules, ctx$ask_fn, ctx$hooks at call time. Returns invisible()
 # to allow, raises `ellmer::tool_reject()` to deny (sync), or returns a promise
