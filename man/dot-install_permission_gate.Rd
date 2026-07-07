@@ -2,7 +2,7 @@
 % Please edit documentation in R/tools_gate.R
 \name{.install_permission_gate}
 \alias{.install_permission_gate}
-\title{Install the central permission gate on a Chat}
+\title{Install the central permission gate on a Chat (idempotent per chat)}
 \usage{
 .install_permission_gate(
   chat,
@@ -31,10 +31,15 @@ or NULL (then \code{"ask"} becomes deny).}
 Invisibly \code{chat}.
 }
 \description{
-Registers one \code{on_tool_request} callback that gates every tool by name, plus
-an \code{on_tool_result} callback for PostToolUse hooks. Works for the sync
-(\verb{$chat()}) and async (\verb{$chat_async()}/Shiny) paths: when the decision is
-\code{"ask"} and \code{ask_fn} returns a promise, the gate returns a promise that the
-async loop awaits (UI approval); a logical \code{ask_fn} is handled inline.
+Registers ONE \code{on_tool_request} callback (+ one \code{on_tool_result} for PostToolUse)
+that gates every tool by name. Safe to call repeatedly on the same chat: the
+first call installs the callbacks; later calls only refresh the live context
+(mode / ask_fn / policy / hooks), so the Shiny path can wire \code{shiny_ask_fn}
+after the client was built without stacking a second (denying) gate.
+}
+\details{
+Works for sync (\verb{$chat()}) and async (\verb{$chat_async()}/Shiny): when the decision
+is \code{"ask"} and \code{ask_fn} returns a promise, the gate returns a promise the async
+loop awaits (UI approval); a logical \code{ask_fn} is handled inline.
 }
 \keyword{internal}
