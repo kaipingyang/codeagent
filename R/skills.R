@@ -69,9 +69,51 @@ NULL
     files <- list.files(d, pattern = "^SKILL\\.md$",
                         recursive = TRUE, full.names = TRUE)
     if (length(files) == 0L) return(0)
-    sum(as.numeric(file.mtime(files)))
+    # Fold in the file count so add/remove is always detected (not only mtime
+    # changes), then the mtimes themselves.
+    length(files) + sum(as.numeric(file.mtime(files)))
   }, numeric(1))
   sum(sigs)
+}
+
+# ---------------------------------------------------------------------------
+# Disk cache -- survives process restarts. The full btw skill scan is ~20s
+# cold, so a fresh Shiny app / R session would otherwise re-pay it on every
+# launch (slash typeahead, skill tool, chat all call list_skills_meta). The
+# on-disk copy is keyed by cwd + the mtime signature, so it self-invalidates
+# whenever any SKILL.md changes or a skill is added/removed. All disk I/O is
+# best-effort (tryCatch): a missing/corrupt/unwritable cache never breaks skill
+# listing -- it just falls back to a full scan.
+# ---------------------------------------------------------------------------
+.skill_cache_dir <- function() {
+  file.path(.get_codeagent_dir(), "cache", "skills")
+}
+
+.skill_cache_file <- function(cache_key) {
+  file.path(.skill_cache_dir(), paste0(cache_key, ".rds"))
+}
+
+# Return cached metas if the on-disk signature matches, else NULL.
+.skill_cache_read <- function(cache_key, sig) {
+  f <- .skill_cache_file(cache_key)
+  if (!file.exists(f)) return(NULL)
+  obj <- tryCatch(readRDS(f), error = function(e) NULL)
+  if (is.null(obj) || !isTRUE(obj$sig == sig) || !is.list(obj$metas)) return(NULL)
+  obj$metas
+}
+
+# Persist metas atomically (write temp + rename) so a crash/concurrent launch
+# never leaves a half-written cache.
+.skill_cache_write <- function(cache_key, sig, metas) {
+  tryCatch({
+    dir <- .skill_cache_dir()
+    if (!dir.exists(dir))
+      dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+    tmp <- tempfile(tmpdir = dir, fileext = ".rds")
+    saveRDS(list(sig = sig, metas = metas), tmp)
+    file.rename(tmp, .skill_cache_file(cache_key))
+  }, error = function(e) NULL)
+  invisible(NULL)
 }
 
 #' List skill metadata from all skill directories
@@ -89,9 +131,18 @@ list_skills_meta <- function(cwd = getwd()) {
   cache_key <- .sanitize_path(.canonicalize_path(cwd))
   sig       <- .skill_dirs_mtime_sig(dirs)
 
+  # 1. In-memory cache (per process).
   cached <- .skill_cache[[cache_key]]
   if (!is.null(cached) && isTRUE(cached$sig == sig))
     return(cached$metas)
+
+  # 2. Disk cache (survives process restarts -- avoids the ~20s btw scan on a
+  # fresh Shiny app / R session when nothing changed).
+  disk <- .skill_cache_read(cache_key, sig)
+  if (!is.null(disk)) {
+    .skill_cache[[cache_key]] <- list(sig = sig, metas = disk)
+    return(disk)
+  }
 
   metas <- list()
 
@@ -137,6 +188,7 @@ list_skills_meta <- function(cwd = getwd()) {
   }
 
   .skill_cache[[cache_key]] <- list(sig = sig, metas = metas)
+  .skill_cache_write(cache_key, sig, metas)
   metas
 }
 
