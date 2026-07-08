@@ -48,18 +48,24 @@ codeagent_app <- function(
   chat            = NULL
 ) {
 
-  # Resolve to CodeagentClient ------------------------------------------------
+  # Resolve to CodeagentClient. When we build it ourselves, build a *shell*
+  # (register_tools = FALSE) so the UI renders immediately and the expensive tool
+  # registration (btw_tools, ~15-40s) is deferred to a progress-reported in-server
+  # step. A pre-built client already has its tools, so it is used as-is.
   if (inherits(client, "CodeagentClient")) {
-    ca_client <- client
+    ca_client   <- client
+    tools_ready <- TRUE
   } else {
     raw_chat <- if (inherits(client, "Chat")) client else chat
     ca_client <- codeagent_client(
       chat            = raw_chat,
       permission_mode = permission_mode,
       cwd             = cwd,
-      btw_groups      = btw_groups
+      btw_groups      = btw_groups,
+      register_tools  = FALSE
     )
     if (!is.null(model)) ca_client$settings$model <- model
+    tools_ready <- FALSE
   }
 
   chat_obj <- ca_client$chat
@@ -71,23 +77,18 @@ codeagent_app <- function(
   if (nzchar(www_dir))
     shiny::addResourcePath("codeagent-www", www_dir)
 
-  # Skill meta for footer picker
-  skill_meta <- tryCatch({
-    metas <- list_skills_meta(cwd)
-    data.frame(
-      key   = vapply(metas, `[[`, character(1), "name"),
-      label = paste0("/", vapply(metas, `[[`, character(1), "name")),
-      desc  = vapply(metas, function(m) m$description %||% "", character(1)),
-      stringsAsFactors = FALSE
-    )
-  }, error = function(e) {
-    data.frame(
-      key   = c("plan", "compact", "verify"),
-      label = c("/plan", "/compact", "/verify"),
-      desc  = c("Break work into steps", "Make replies shorter", "Verify last action"),
-      stringsAsFactors = FALSE
-    )
-  })
+  # Skill picker footer: use a fast built-in list so the UI renders instantly.
+  # The full skill scan (list_skills_meta) is slow (~20s, see startup profiling)
+  # and is intentionally skipped here; real skills still work via `/<name>` and
+  # the use_skill tool. (Restored to the full fast list once skill metadata is
+  # cached -- see plan step 2.)
+  skill_meta <- data.frame(
+    key   = c("plan", "compact", "verify", "explore", "report", "remember"),
+    label = c("/plan", "/compact", "/verify", "/explore", "/report", "/remember"),
+    desc  = c("Break work into steps", "Make replies shorter", "Verify last action",
+              "Explore data (WEAR)", "Generate a report", "Remember a fact"),
+    stringsAsFactors = FALSE
+  )
 
   # btw groups for Settings panel
   btw_available_groups <- tryCatch({
@@ -160,6 +161,7 @@ codeagent_app <- function(
     # Shared reactive state (single reactiveValues, no scattered reactiveVal)
     state <- shiny::reactiveValues(
       session_id      = tryCatch(.generate_uuid_v4(), error = function(e) "default"),
+      initializing    = TRUE,       # deferred tool registration in progress -> gate input
       iteration       = 0L,
       interrupt       = FALSE,
       main_output     = NULL,
@@ -217,6 +219,21 @@ codeagent_app <- function(
                     state       = state,
                     stream_task = stream_task,
                     settings    = settings)
+
+    # Deferred initialization: register tools (btw + skills, ~15-40s) AFTER the UI
+    # has rendered, with a progress bar. Input stays gated (state$initializing)
+    # until ready. A pre-built client already has its tools (tools_ready) -> quick.
+    shiny::observe({
+      shiny::req(TRUE)
+      if (!isTRUE(tools_ready)) {
+        shiny::withProgress(message = "Starting codeagent\u2026", value = 0.05, {
+          shiny::setProgress(0.25, detail = "Loading tools (btw, skills)\u2026")
+          tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
+          shiny::setProgress(0.95, detail = "Ready")
+        })
+      }
+      state$initializing <- FALSE
+    }) |> shiny::bindEvent(session$clientData$url_hostname, once = TRUE)
 
     # Auto-continue: restore the most recent session on startup so users
     # pick up where they left off (mirrors `codeagent chat --continue`).

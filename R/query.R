@@ -144,6 +144,10 @@ print.CodeagentClient <- function(x, ...) {
 #'   loop when it reports failures (e.g. [verify_r_tests()]).
 #' @param mcp_config MCP client config (JSON path or inline list) to connect
 #'   external MCP servers; see [register_mcp_client()]. NULL disables.
+#' @param register_tools Logical. If `TRUE` (default) register all tools now.
+#'   `FALSE` returns a lightweight shell (chat + settings + system prompt, no
+#'   tools) so callers (e.g. [codeagent_app()]) can render UI first and defer the
+#'   expensive tool registration; call [.register_all_tools()] later.
 #' @return Object of class `CodeagentClient` with slots `$chat` and `$settings`.
 #' @export
 codeagent_client <- function(
@@ -155,7 +159,8 @@ codeagent_client <- function(
   btw_groups         = NULL,
   worktree_isolation = FALSE,
   verify_fn          = NULL,
-  mcp_config         = NULL
+  mcp_config         = NULL,
+  register_tools     = TRUE
 ) {
   # Input validation (user-facing entry point).
   if (!is.null(chat) && !inherits(chat, "Chat"))
@@ -198,11 +203,16 @@ codeagent_client <- function(
   }
 
   ask_fn <- if (interactive()) .console_ask_fn else NULL
-  .register_all_tools(chat, settings, ask_fn = ask_fn)
-
-  # Auto-connect MCP servers declared in settings.json (P2 closing). The
-  # mcp_config param still works; this adds servers from the settings file.
-  tryCatch(.mcp_autoconnect(chat, settings), error = function(e) NULL)
+  # register_tools = FALSE returns a cheap "shell" client (chat + settings +
+  # system prompt, no tools registered) so callers like codeagent_app() can
+  # render the UI instantly and defer the expensive tool registration
+  # (btw_tools, skill scanning) to a progress-reported in-server step.
+  if (isTRUE(register_tools)) {
+    .register_all_tools(chat, settings, ask_fn = ask_fn)
+    # Auto-connect MCP servers declared in settings.json (P2 closing). The
+    # mcp_config param still works; this adds servers from the settings file.
+    tryCatch(.mcp_autoconnect(chat, settings), error = function(e) NULL)
+  }
 
   .new_client(chat, settings)
 }

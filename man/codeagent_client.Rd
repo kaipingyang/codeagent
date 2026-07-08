@@ -13,7 +13,8 @@ codeagent_client(
   btw_groups = NULL,
   worktree_isolation = FALSE,
   verify_fn = NULL,
-  mcp_config = NULL
+  mcp_config = NULL,
+  register_tools = TRUE
 )
 }
 \arguments{
@@ -40,6 +41,11 @@ loop when it reports failures (e.g. \code{\link[=verify_r_tests]{verify_r_tests(
 
 \item{mcp_config}{MCP client config (JSON path or inline list) to connect
 external MCP servers; see \code{\link[=register_mcp_client]{register_mcp_client()}}. NULL disables.}
+
+\item{register_tools}{Logical. If \code{TRUE} (default) register all tools now.
+\code{FALSE} returns a lightweight shell (chat + settings + system prompt, no
+tools) so callers (e.g. \code{\link[=codeagent_app]{codeagent_app()}}) can render UI first and defer the
+expensive tool registration; call \code{\link[=.register_all_tools]{.register_all_tools()}} later.}
 }
 \value{
 Object of class \code{CodeagentClient} with slots \verb{$chat} and \verb{$settings}.

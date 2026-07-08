@@ -200,7 +200,7 @@ server_chat <- function(input, output, session, chat, settings,
   # eliminates overlapping sends (belt-and-suspenders over the server guards).
   shiny::observe({
     busy <- identical(tryCatch(stream_task$status(), error = function(e) ""),
-                      "running") || isTRUE(state$busy)
+                      "running") || isTRUE(state$busy) || isTRUE(state$initializing)
     session$sendCustomMessage("ca_input_busy", list(busy = busy))
   })
 
