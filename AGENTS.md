@@ -117,6 +117,15 @@ Reference docs live in `.claude/docs/` (project) — read before changing a subs
   notifications.
 - **State:** consolidate shared session state into a single `shiny::reactiveValues()` container
   (see `ui.R` `state <- reactiveValues(...)`); do not scatter standalone `reactiveVal()` objects.
+- **Output panel / file viewer:** the right panel (`ui_panels.R` `output_panel_ui`) has THREE
+  **static** navset tabs — Output / Files / File. Opening a file renders its preview into the
+  single `File` tab via `server_right.R`'s `ca_file_view` reactiveVal. Do **not** reintroduce
+  per-file `bslib::nav_insert()` tabs: the inserted card renders outside the navset tab-content
+  and covers the tab strip. Keep file content in a height-constrained, `overflow:auto` body.
+- **Startup:** keep the shell instant. Expensive tool/skill registration is deferred into
+  `session$onFlushed()` behind the `ca_init_overlay` (gated on `state$initializing`), and the
+  chat input stays disabled until it clears. Pass a bare ellmer `Chat` to `codeagent_app()` for
+  this lazy path; don't move tool registration back onto the UI-construction critical path.
 - **Slash-command grouping:** when mimicking `shinyAssistantUI`, use the canonical 6 sections —
   `Context`, `Model`, `Customize`, `Slash Commands`, `Settings`, `Support`. Do not invent
   replacement group labels unless the user requests a different taxonomy.
