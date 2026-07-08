@@ -77,3 +77,75 @@ test_that("team_coordinate_tool builds a valid ellmer tool", {
   t <- codeagent:::team_coordinate_tool(model = "claude-sonnet-4-6")
   expect_true(inherits(t, "ellmer::ToolDef"))
 })
+
+# ---------------------------------------------------------------------------
+# Task DAG: dependency-aware claim + pure helpers (12A phase 1)
+# ---------------------------------------------------------------------------
+
+test_that("board_claim skips a blocked task until its blocker is done", {
+  db <- board_create(); on.exit(unlink(db), add = TRUE)
+  a <- board_add_task(db, "A")
+  b <- board_add_task(db, "B", blocked_by = a)   # B waits for A
+
+  # First claim must be A (B is blocked); a second claim returns NULL (B still
+  # blocked) even though B is pending.
+  c1 <- board_claim(db, "w1")
+  expect_equal(c1$prompt, "A")
+  expect_null(board_claim(db, "w2"))             # B blocked -> nothing claimable
+
+  # Complete A -> B becomes claimable.
+  board_complete(db, a, "done-A")
+  c2 <- board_claim(db, "w2")
+  expect_false(is.null(c2))
+  expect_equal(c2$prompt, "B")
+})
+
+test_that("board_claim with no deps is FIFO (backward compatible)", {
+  db <- board_create(); on.exit(unlink(db), add = TRUE)
+  board_add_task(db, "first"); board_add_task(db, "second")
+  expect_equal(board_claim(db, "w1")$prompt, "first")
+  expect_equal(board_claim(db, "w1")$prompt, "second")
+})
+
+test_that("board_claim handles a diamond DAG in dependency order", {
+  db <- board_create(); on.exit(unlink(db), add = TRUE)
+  a <- board_add_task(db, "A")
+  b <- board_add_task(db, "B", blocked_by = a)
+  cc <- board_add_task(db, "C", blocked_by = a)
+  d <- board_add_task(db, "D", blocked_by = c(b, cc))
+
+  expect_equal(board_claim(db, "w")$prompt, "A")   # only A unblocked
+  expect_null(board_claim(db, "w"))                 # B,C,D blocked
+  board_complete(db, a, "ra")
+  got <- c(board_claim(db, "w")$prompt, board_claim(db, "w")$prompt)
+  expect_setequal(got, c("B", "C"))                 # both unblocked, D still waits
+  expect_null(board_claim(db, "w"))                 # D needs B and C done
+})
+
+test_that(".task_toposort orders by dependency and detects cycles", {
+  deps <- data.frame(task_id = c(2L, 3L), blocker_id = c(1L, 2L))
+  ord  <- codeagent:::.task_toposort(c(1L, 2L, 3L), deps)
+  expect_equal(ord, c(1L, 2L, 3L))
+  # index of a blocker must precede the task it blocks
+  expect_lt(match(1L, ord), match(2L, ord))
+
+  # a 2-cycle -> error
+  cyc <- data.frame(task_id = c(1L, 2L), blocker_id = c(2L, 1L))
+  expect_error(codeagent:::.task_toposort(c(1L, 2L), cyc), "cycle")
+})
+
+test_that(".claimable_ids mirrors the SQL claim eligibility", {
+  tasks <- data.frame(
+    id     = 1:3,
+    owner  = c(NA_character_, NA_character_, NA_character_),
+    status = c("done", "pending", "pending"),
+    stringsAsFactors = FALSE
+  )
+  deps <- data.frame(task_id = c(3L), blocker_id = c(2L))  # 3 waits for 2
+  # 2 is claimable (no blockers), 3 is not (blocker 2 not done), 1 is done.
+  expect_equal(codeagent:::.claimable_ids(tasks, deps), 2L)
+
+  # Mark 2 done -> 3 becomes claimable.
+  tasks$status[2] <- "done"
+  expect_equal(codeagent:::.claimable_ids(tasks, deps), 3L)
+})

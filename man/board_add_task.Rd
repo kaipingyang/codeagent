@@ -4,12 +4,16 @@
 \alias{board_add_task}
 \title{Add a task to the board}
 \usage{
-board_add_task(db_path, prompt)
+board_add_task(db_path, prompt, blocked_by = integer(0))
 }
 \arguments{
 \item{db_path}{Character. Board path.}
 
 \item{prompt}{Character. The task prompt.}
+
+\item{blocked_by}{Integer vector. Task ids that must be \code{done} before this
+task can be claimed (DAG edges). Default none. Blockers must already exist
+on the board (a new task cannot create a cycle by construction).}
 }
 \value{
 Integer. The new task id.

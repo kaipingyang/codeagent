@@ -2,7 +2,7 @@
 % Please edit documentation in R/team_board.R
 \name{board_claim}
 \alias{board_claim}
-\title{Atomically claim the next pending task}
+\title{Atomically claim the next claimable task (dependency-aware)}
 \usage{
 board_claim(db_path, worker_id)
 }
@@ -12,10 +12,14 @@ board_claim(db_path, worker_id)
 \item{worker_id}{Character. Identifier for the claiming worker.}
 }
 \value{
-A one-row data.frame (id, prompt) for the claimed task, or NULL if
-no pending task remains.
+A one-row data.frame (id, prompt) for the claimed task, or NULL.
 }
 \description{
-Uses a single \verb{UPDATE ... WHERE owner IS NULL} so concurrent workers never
-claim the same row.
+Runs inside a \verb{BEGIN IMMEDIATE} transaction (SQLite serialises writers) and
+claims the lowest-id task that is unowned, \code{pending}, and has \strong{no
+unfinished blocker} (all its \code{deps} blockers are \code{done}). With no deps this
+is exactly the old FIFO claim (backward compatible). Returns \code{NULL} when
+nothing is currently claimable -- which may mean "all done" OR "remaining
+tasks are still blocked", so a worker should back off and retry rather than
+exit (see \code{team_coordinate}).
 }
