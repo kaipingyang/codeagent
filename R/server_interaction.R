@@ -62,6 +62,70 @@ NULL
   invisible(TRUE)
 }
 
+# Build the in-chat interaction bar for a pending approval / question. PURE:
+# takes the `pending` list (or NULL) and returns an htmltools tag (or NULL); no
+# Shiny input/output/session, so the bar's layout is unit-testable. The
+# observers below own all side effects (append messages, resolve the promise).
+.interaction_bar_ui <- function(pending) {
+  if (is.null(pending)) return(NULL)
+
+  if (identical(pending$type, "approval")) {
+    p    <- pending$payload
+    tin  <- p$tool_input %||% list()
+    desc <- as.character(tin$command %||% tin$file_path %||% "")
+    htmltools::tags$div(
+      style = paste(
+        "border-top:2px solid var(--bs-warning,#f0ad4e);",
+        "background:var(--bs-body-bg,#fff);",
+        "padding:8px 16px; display:flex; align-items:center; gap:12px;",
+        "text-align:left;",   # footer sets text-align:center; override it
+        "box-shadow:0 -2px 8px rgba(0,0,0,.08);"
+      ),
+      htmltools::tags$span(
+        style = "font-weight:600; flex:1; font-size:0.9em;",
+        "\u26a0\ufe0f Allow tool: ", htmltools::tags$code(p$tool_name %||% "?"),
+        htmltools::tags$small(
+          style = "color:#666; font-weight:400;",
+          if (nzchar(desc)) paste0(" \u2014 ", substr(desc, 1L, 80L)) else ""
+        )
+      ),
+      shiny::actionButton("ca_tool_allow", "\u2714 Allow",
+                          class = "btn-success btn-sm"),
+      shiny::actionButton("ca_tool_deny", "\u2716 Deny",
+                          class = "btn-danger btn-sm")
+    )
+  } else if (identical(pending$type, "question")) {
+    p       <- pending$payload
+    choices <- p$choices
+    htmltools::tags$div(
+      style = paste(
+        "border-top:2px solid var(--bs-info,#0dcaf0);",
+        "background:var(--bs-body-bg,#fff);",
+        "padding:8px 16px; text-align:left;",   # override footer centering
+        "box-shadow:0 -2px 8px rgba(0,0,0,.08);"
+      ),
+      htmltools::tags$p(style = "font-weight:600; margin-bottom:6px;",
+                        "\u2753 ", p$question %||% ""),
+      if (length(choices) > 0L)
+        shiny::radioButtons("ca_q_choice", NULL, choices = choices,
+                            inline = FALSE)
+      else
+        shiny::textInput("ca_q_text", NULL,
+                         placeholder = "Type your answer..."),
+      shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm")
+    )
+  } else {
+    NULL
+  }
+}
+
+# Value to resolve a pending interaction with when the user hits ESC: deny
+# (FALSE) an approval, or an empty answer ("") a question. PURE.
+.interaction_cancel_value <- function(pending) {
+  if (is.null(pending)) return(NULL)
+  if (identical(pending$type, "approval")) FALSE else ""
+}
+
 #' Wire the interaction bar UI + observers into a Shiny session
 #'
 #' @param input,output,session Standard Shiny server args.
@@ -71,58 +135,10 @@ NULL
 server_interaction <- function(input, output, session, state) {
 
   # ---- Interaction bar (approval OR question) ----
+  # The bar's layout is built by the pure .interaction_bar_ui(); this observer
+  # just re-renders it whenever the pending slot changes.
   output$ca_interaction_ui <- shiny::renderUI({
-    pending <- state$pending_interaction
-    if (is.null(pending)) return(NULL)
-
-    if (identical(pending$type, "approval")) {
-      p    <- pending$payload
-      tin  <- p$tool_input %||% list()
-      desc <- as.character(tin$command %||% tin$file_path %||% "")
-      htmltools::tags$div(
-        style = paste(
-          "border-top:2px solid var(--bs-warning,#f0ad4e);",
-          "background:var(--bs-body-bg,#fff);",
-          "padding:8px 16px; display:flex; align-items:center; gap:12px;",
-          "text-align:left;",   # footer sets text-align:center; override it
-          "box-shadow:0 -2px 8px rgba(0,0,0,.08);"
-        ),
-        htmltools::tags$span(
-          style = "font-weight:600; flex:1; font-size:0.9em;",
-          "\u26a0\ufe0f Allow tool: ", htmltools::tags$code(p$tool_name %||% "?"),
-          htmltools::tags$small(
-            style = "color:#666; font-weight:400;",
-            if (nzchar(desc)) paste0(" \u2014 ", substr(desc, 1L, 80L)) else ""
-          )
-        ),
-        shiny::actionButton("ca_tool_allow", "\u2714 Allow",
-                            class = "btn-success btn-sm"),
-        shiny::actionButton("ca_tool_deny", "\u2716 Deny",
-                            class = "btn-danger btn-sm")
-      )
-    } else if (identical(pending$type, "question")) {
-      p       <- pending$payload
-      choices <- p$choices
-      htmltools::tags$div(
-        style = paste(
-          "border-top:2px solid var(--bs-info,#0dcaf0);",
-          "background:var(--bs-body-bg,#fff);",
-          "padding:8px 16px; text-align:left;",   # override footer centering
-          "box-shadow:0 -2px 8px rgba(0,0,0,.08);"
-        ),
-        htmltools::tags$p(style = "font-weight:600; margin-bottom:6px;",
-                          "\u2753 ", p$question %||% ""),
-        if (length(choices) > 0L)
-          shiny::radioButtons("ca_q_choice", NULL, choices = choices,
-                              inline = FALSE)
-        else
-          shiny::textInput("ca_q_text", NULL,
-                           placeholder = "Type your answer..."),
-        shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm")
-      )
-    } else {
-      NULL
-    }
+    .interaction_bar_ui(state$pending_interaction)
   })
 
   # ---- Allow / Deny (permission approval) ----
@@ -152,8 +168,7 @@ server_interaction <- function(input, output, session, state) {
   shiny::observeEvent(input$esc, {
     pending <- shiny::isolate(state$pending_interaction)
     if (is.null(pending)) return()
-    cancel_value <- if (identical(pending$type, "approval")) FALSE else ""
-    .resolve_pending(state, cancel_value)
+    .resolve_pending(state, .interaction_cancel_value(pending))
   })
 
   list(
