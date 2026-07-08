@@ -15,18 +15,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   })
 
   n_agents <- shiny::reactive({
-    tryCatch({
-      paths <- c(
-        file.path(cwd, ".claude/agents"),
-        file.path(cwd, ".btw"),
-        file.path("~/.claude/agents")
-      )
-      files <- unlist(lapply(paths, function(p) {
-        if (dir.exists(p)) list.files(p, pattern = "\\.md$", full.names = FALSE)
-        else character(0)
-      }))
-      length(files)
-    }, error = function(e) 0L)
+    tryCatch(length(.load_agents(cwd)), error = function(e) 0L)
   })
 
   n_hooks <- shiny::reactive({
@@ -34,11 +23,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   })
 
   n_mcp <- shiny::reactive({
-    tryCatch({
-      cfg <- file.path(cwd, "mcp.json")
-      if (!file.exists(cfg)) return(0L)
-      length(jsonlite::read_json(cfg)$mcpServers %||% list())
-    }, error = function(e) 0L)
+    tryCatch(length(.load_mcp_servers(cwd)), error = function(e) 0L)
   })
 
   output$ca_open_agents_badge    <- shiny::renderUI(.count_badge(n_agents()))
@@ -49,26 +34,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   # -- Agents modal ----------------------------------------------------------
 
   shiny::observeEvent(input$ca_open_agents, {
-    agent_list <- tryCatch({
-      paths <- c(
-        file.path(cwd, ".claude/agents"),
-        file.path(cwd, ".btw"),
-        path.expand("~/.claude/agents")
-      )
-      mds <- unlist(lapply(paths, function(p) {
-        if (dir.exists(p)) list.files(p, pattern = "\\.md$", full.names = TRUE)
-        else character(0)
-      }))
-      lapply(mds, function(f) {
-        lines <- readLines(f, n = 20, warn = FALSE)
-        list(
-          name        = sub("\\.md$", "", basename(f)),
-          description = .extract_yaml_field(lines, "description"),
-          model       = .extract_yaml_field(lines, "model")
-        )
-      })
-    }, error = function(e) list())
-    shiny::showModal(modal_agents_ui(agent_list))
+    shiny::showModal(modal_agents_ui(.load_agents(cwd)))
   })
 
   # -- Skills modal ----------------------------------------------------------
@@ -120,17 +86,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   # -- Instructions modal ----------------------------------------------------
 
   shiny::observeEvent(input$ca_open_instructions, {
-    files <- tryCatch({
-      candidates <- c(
-        file.path(cwd, "CLAUDE.md"),
-        file.path(cwd, ".claude/instructions.md"),
-        path.expand("~/.claude/CLAUDE.md")
-      )
-      lapply(candidates[file.exists(candidates)], function(f) {
-        list(path = f, active = TRUE)
-      })
-    }, error = function(e) list())
-    shiny::showModal(modal_instructions_ui(files))
+    shiny::showModal(modal_instructions_ui(.load_instructions(cwd)))
   })
 
   # -- Hooks modal -----------------------------------------------------------
@@ -149,21 +105,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   # -- MCP modal -------------------------------------------------------------
 
   shiny::observeEvent(input$ca_open_mcp, {
-    mcp_list <- tryCatch({
-      cfg <- file.path(cwd, "mcp.json")
-      if (!file.exists(cfg)) return(list())
-      servers <- jsonlite::read_json(cfg)$mcpServers %||% list()
-      lapply(names(servers), function(nm) {
-        s <- servers[[nm]]
-        list(
-          name    = nm,
-          command = if (!is.null(s$command)) paste(c(s$command, s$args), collapse = " ") else NULL,
-          url     = s$url,
-          status  = "unknown"
-        )
-      })
-    }, error = function(e) list())
-    shiny::showModal(modal_mcp_ui(mcp_list))
+    shiny::showModal(modal_mcp_ui(.load_mcp_servers(cwd)))
   })
 
   # -- Plugins modal ---------------------------------------------------------
@@ -174,12 +116,66 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
 }
 
 # ---------------------------------------------------------------------------
-# Internal helper: extract a YAML front-matter field from lines
+# Internal helpers: data loading for the Customizations panel (PURE)
 # ---------------------------------------------------------------------------
+# These read the filesystem only (no Shiny). Each is used by BOTH the count
+# badge reactive and the modal observer, so extracting them removes the former
+# duplication and makes the scanning logic unit-testable with a temp dir.
 
 .extract_yaml_field <- function(lines, field) {
   pat <- paste0("^", field, ":\\s*['\"]?(.+?)['\"]?\\s*$")
   m   <- regmatches(lines, regexpr(pat, lines, perl = TRUE))
   if (length(m) == 0L) return(NULL)
   sub(pat, "\\1", m[[1]])
+}
+
+# Discover agent definitions (`*.md`) under the standard project + user dirs.
+# Returns a list of list(name, description, model).
+.load_agents <- function(cwd = getwd()) {
+  paths <- c(
+    file.path(cwd, ".claude/agents"),
+    file.path(cwd, ".btw"),
+    path.expand("~/.claude/agents")
+  )
+  mds <- unlist(lapply(paths, function(p) {
+    if (dir.exists(p)) list.files(p, pattern = "\\.md$", full.names = TRUE)
+    else character(0)
+  }))
+  lapply(mds, function(f) {
+    lines <- tryCatch(readLines(f, n = 20L, warn = FALSE),
+                      error = function(e) character(0))
+    list(
+      name        = sub("\\.md$", "", basename(f)),
+      description = .extract_yaml_field(lines, "description"),
+      model       = .extract_yaml_field(lines, "model")
+    )
+  })
+}
+
+# Read MCP server definitions from `<cwd>/mcp.json`. Returns a list of
+# list(name, command, url, status); empty list when the file is missing/invalid.
+.load_mcp_servers <- function(cwd = getwd()) {
+  cfg <- file.path(cwd, "mcp.json")
+  if (!file.exists(cfg)) return(list())
+  servers <- tryCatch(jsonlite::read_json(cfg)$mcpServers,
+                      error = function(e) NULL) %||% list()
+  lapply(names(servers), function(nm) {
+    s <- servers[[nm]]
+    list(
+      name    = nm,
+      command = if (!is.null(s$command)) paste(c(s$command, s$args), collapse = " ") else NULL,
+      url     = s$url,
+      status  = "unknown"
+    )
+  })
+}
+
+# Locate active instruction files (CLAUDE.md etc.). Returns list(list(path, active)).
+.load_instructions <- function(cwd = getwd()) {
+  candidates <- c(
+    file.path(cwd, "CLAUDE.md"),
+    file.path(cwd, ".claude/instructions.md"),
+    path.expand("~/.claude/CLAUDE.md")
+  )
+  lapply(candidates[file.exists(candidates)], function(f) list(path = f, active = TRUE))
 }

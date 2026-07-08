@@ -30,12 +30,7 @@ server_sessions <- function(input, output, session, chat, cwd,
   shiny::observeEvent(input$new_session, {
     if (!is.null(stream_task) && stream_task$status() == "running") return()
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
-    state$session_id  <- tryCatch(.generate_uuid_v4(), error = function(e) "default")
-    state$iteration   <- 0L
-    state$main_output <- NULL
-    state$compaction_ctrl$reset_failures()
-    state$resource_state$reset()
-    state$budget_tracker$reset()
+    .reset_session_state(state)
     shinychat::chat_clear("chat", session)
   })
 
@@ -47,12 +42,7 @@ server_sessions <- function(input, output, session, chat, cwd,
       tryCatch(delete_session(sid, directory = cwd), error = function(e) NULL)
     }
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
-    state$session_id  <- tryCatch(.generate_uuid_v4(), error = function(e) "default")
-    state$iteration   <- 0L
-    state$main_output <- NULL
-    state$compaction_ctrl$reset_failures()
-    state$resource_state$reset()
-    state$budget_tracker$reset()
+    .reset_session_state(state)
     shinychat::chat_clear("chat", session)
     .ui_toast("Session deleted.", "message")
   })
@@ -97,6 +87,26 @@ server_sessions <- function(input, output, session, chat, cwd,
       })
     })
   })
+}
+
+# ---------------------------------------------------------------------------
+# Fresh-session state reset (shared by New + Delete)
+# ---------------------------------------------------------------------------
+
+# Reset the per-conversation slots of the shared `state` container to a fresh
+# session: a new session_id, zeroed iteration, cleared output, and reset
+# compaction / resource / budget controllers. Kept separate (and free of chat /
+# session side effects) so the reset is unit-testable with a stub state and so
+# New + Delete cannot drift apart. Callers still handle chat$set_turns() +
+# chat_clear() (Shiny/chat side effects) around it.
+.reset_session_state <- function(state) {
+  state$session_id  <- tryCatch(.generate_uuid_v4(), error = function(e) "default")
+  state$iteration   <- 0L
+  state$main_output <- NULL
+  tryCatch(state$compaction_ctrl$reset_failures(), error = function(e) NULL)
+  tryCatch(state$resource_state$reset(),           error = function(e) NULL)
+  tryCatch(state$budget_tracker$reset(),           error = function(e) NULL)
+  invisible(state)
 }
 
 # ---------------------------------------------------------------------------
