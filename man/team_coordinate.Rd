@@ -13,6 +13,7 @@ team_coordinate(
   blocked_by = NULL,
   worktree = FALSE,
   backoff = 0.5,
+  reclaim_timeout = 300,
   db_path = tempfile(fileext = ".sqlite")
 )
 }

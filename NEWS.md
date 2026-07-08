@@ -5,6 +5,21 @@ command-line coding agent, built on `ellmer` and `btw`. It provides the agent
 harness (loop, tools, permissions, compaction, hooks, skills) plus a CLI REPL
 and a `shiny` user interface.
 
+## Multi-agent teams (post-0.1.0 additions)
+
+* **Task DAG.** `team_coordinate()` gains `blocked_by` — task dependencies given
+  by 1-based index. A task is only claimed once all its blockers are `done`, so
+  workers respect ordering while still parallelising independent tasks. Cyclic
+  graphs are rejected up front. The shared board's claim is now dependency-aware
+  and atomic (`BEGIN IMMEDIATE`).
+* **Worktree isolation + crash recovery.** `worktree = TRUE` runs each worker in
+  its own git worktree; `board_reclaim_stale()` (wired into the worker loop)
+  resets a crashed worker's timed-out task back to pending so its dependents are
+  never blocked forever.
+* **Event-driven board.** `board_watch()` (built on the `watcher` package) reacts
+  to board changes without polling, powering an event-driven coordinator / live
+  board view (falls back to polling when watcher is unavailable).
+
 ## Shiny app UX (post-0.1.0 additions)
 
 * **Instant startup.** The UI shell now renders immediately; the slower tool +

@@ -202,6 +202,52 @@ board_status <- function(db_path) {
   length(.claimable_ids(tasks, deps)) == 0L
 }
 
+#' Reclaim tasks whose worker died mid-flight
+#'
+#' Resets `claimed` tasks that have been held longer than `timeout` seconds back
+#' to `pending` (clearing owner + claimed_at) so another worker can pick them up.
+#' This is the crash-recovery half of the coordinator: a worker that dies after
+#' claiming a task would otherwise block its dependents forever. Called from the
+#' worker loop's idle branch, so recovery happens without a separate lead.
+#'
+#' @param db_path Character. Board path.
+#' @param timeout Numeric. Seconds a `claimed` task may be held before it is
+#'   considered stale (default 300).
+#' @return Integer. Number of tasks reclaimed.
+#' @export
+board_reclaim_stale <- function(db_path, timeout = 300) {
+  con <- .board_connect(db_path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  cutoff <- format(Sys.time() - timeout, "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
+  DBI::dbExecute(con,
+    "UPDATE tasks SET owner = NULL, status = 'pending', claimed_at = NULL
+       WHERE status = 'claimed' AND claimed_at IS NOT NULL AND claimed_at < ?",
+    params = list(cutoff))
+}
+
+#' Watch a task board for changes (event-driven coordinator engine)
+#'
+#' Wraps [watcher::watcher()] on the board file so a coordinator / live Shiny
+#' view reacts to board changes the instant they land, instead of polling.
+#' `callback` is invoked (with the changed paths) on every write to the board.
+#' Returns the started watcher (call `$stop()` when done), or `NULL` when the
+#' watcher package is unavailable -- callers then fall back to polling (mirrors
+#' how Shiny uses watcher when present and polls otherwise).
+#'
+#' @param db_path Character. Board path.
+#' @param callback Function of one argument (changed paths).
+#' @param latency Numeric. Debounce seconds (default 0.3).
+#' @return A started `watcher` R6 object, or `NULL` if watcher is unavailable.
+#' @export
+board_watch <- function(db_path, callback, latency = 0.3) {
+  if (!requireNamespace("watcher", quietly = TRUE)) return(NULL)
+  tryCatch({
+    w <- watcher::watcher(path = db_path, callback = callback, latency = latency)
+    w$start()
+    w
+  }, error = function(e) NULL)
+}
+
 #' Post a message to the team message log
 #'
 #' @param db_path Character. Board path.
@@ -320,6 +366,7 @@ board_messages <- function(db_path, recipient = NULL) {
 team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
                             permission_mode = "bypass", cwd = getwd(),
                             blocked_by = NULL, worktree = FALSE, backoff = 0.5,
+                            reclaim_timeout = 300,
                             db_path = tempfile(fileext = ".sqlite")) {
   if (!length(tasks)) return(board_status(board_create(db_path)))
   if (!is.character(tasks))
@@ -361,7 +408,8 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
   # Each worker loops: claim -> run -> complete, backing off while tasks remain
   # blocked by an in-progress task, until the board drains or stalls.
   worker_loop <- function(worker_id, db_path, model, base_url, api_key,
-                          permission_mode, cwd, worktree, backoff) {
+                          permission_mode, cwd, worktree, backoff,
+                          reclaim_timeout) {
     Sys.setenv(CODEAGENT_BASE_URL = base_url, CODEAGENT_API_KEY = api_key,
                CODEAGENT_MODEL = model)
     # Team-level isolation: each worker gets its own git worktree so concurrent
@@ -378,8 +426,10 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
                           error = function(e) NULL)
       if (is.null(claimed)) {
         # Nothing claimable: stop if the board is fully done or truly stalled;
-        # otherwise a blocker is still in progress -- wait and retry.
+        # otherwise a blocker is still in progress -- reclaim any task whose
+        # worker died mid-flight (crash recovery), then wait and retry.
         if (codeagent:::.board_pending_count(db_path) == 0L) break
+        codeagent::board_reclaim_stale(db_path, timeout = reclaim_timeout)
         if (codeagent:::.board_stalled(db_path)) break
         Sys.sleep(backoff)
         next
@@ -405,7 +455,8 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
     worker_ids, worker_loop,
     .args = list(db_path = db_path, model = model, base_url = base_url,
                  api_key = api_key, permission_mode = permission_mode,
-                 cwd = cwd, worktree = isTRUE(worktree), backoff = backoff))
+                 cwd = cwd, worktree = isTRUE(worktree), backoff = backoff,
+                 reclaim_timeout = reclaim_timeout))
   tryCatch(m[], error = function(e) NULL)   # wait for all workers
 
   board_status(db_path)

@@ -189,3 +189,41 @@ test_that("team_coordinate rejects a cyclic blocked_by graph", {
                     db_path = tempfile(fileext = ".sqlite")),
     "cyclic")
 })
+
+# ---------------------------------------------------------------------------
+# Phase 3: crash recovery (reclaim) + event-driven watch
+# ---------------------------------------------------------------------------
+
+test_that("board_reclaim_stale resets timed-out claimed tasks to pending", {
+  db <- board_create(); on.exit(unlink(db), add = TRUE)
+  board_add_task(db, "A")
+  cl <- board_claim(db, "w1")             # A now 'claimed' with claimed_at = now
+  expect_equal(board_status(db)$status, "claimed")
+
+  # Nothing is stale yet (huge timeout) -> no reclaim.
+  expect_equal(board_reclaim_stale(db, timeout = 1e6), 0L)
+
+  # timeout = -1 makes "now" already past the cutoff -> A is reclaimed.
+  n <- board_reclaim_stale(db, timeout = -1)
+  expect_equal(n, 1L)
+  st <- board_status(db)
+  expect_equal(st$status, "pending")
+  expect_true(is.na(st$owner))
+  # Reclaimed task is claimable again.
+  expect_false(is.null(board_claim(db, "w2")))
+})
+
+test_that("board_watch fires the callback on a board change (or degrades to NULL)", {
+  skip_if_not_installed("watcher")
+  db <- board_create(); on.exit(unlink(db), add = TRUE)
+  hits <- new.env(parent = emptyenv()); hits$n <- 0L
+  w <- board_watch(db, callback = function(paths) hits$n <- hits$n + 1L, latency = 0.05)
+  skip_if(is.null(w), "watcher unavailable in this environment")
+  on.exit(try(w$stop(), silent = TRUE), add = TRUE)
+  expect_true(w$is_running())
+
+  board_add_task(db, "trigger a write")   # writes the sqlite file
+  # Pump the event loop a few times to let the debounced callback fire.
+  for (i in 1:40) { later::run_now(0.1); if (hits$n > 0L) break }
+  expect_gt(hits$n, 0L)
+})
