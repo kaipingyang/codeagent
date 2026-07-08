@@ -93,6 +93,56 @@ test_that("list_skills_meta caches and invalidates on SKILL.md change", {
   expect_equal(metas3[["myskill"]]$description, "v2")
 })
 
+test_that("list_skills_meta reads the on-disk cache in a fresh process", {
+  home <- withr::local_tempdir()
+  withr::local_envvar(CODEAGENT_HOME = home)
+  withr::local_options(codeagent._migrated = TRUE)  # skip config migration
+  tmp_dir    <- withr::local_tempdir()
+  skills_dir <- file.path(tmp_dir, ".btw", "skills", "myskill")
+  dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
+  writeLines(c("---", "name: myskill", "description: disk", "---", "body"),
+             file.path(skills_dir, "SKILL.md"))
+
+  # First call: full scan + persists to disk.
+  metas1 <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_true("myskill" %in% names(metas1))
+  cache_key <- codeagent:::.sanitize_path(codeagent:::.canonicalize_path(tmp_dir))
+  expect_true(file.exists(codeagent:::.skill_cache_file(cache_key)))
+
+  # Simulate a fresh process: drop the in-memory cache, then overwrite the disk
+  # copy with a sentinel at the SAME signature. A disk HIT must return it
+  # (a rescan would not know about SENTINEL).
+  rm(list = cache_key, envir = codeagent:::.skill_cache)
+  sig <- codeagent:::.skill_dirs_mtime_sig(codeagent:::.skill_dirs(tmp_dir))
+  sentinel <- list(SENTINEL = codeagent:::SkillMeta(name = "SENTINEL", description = "x"))
+  codeagent:::.skill_cache_write(cache_key, sig, sentinel)
+
+  metas2 <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_true("SENTINEL" %in% names(metas2))
+})
+
+test_that("on-disk skill cache invalidates when a SKILL.md changes", {
+  home <- withr::local_tempdir()
+  withr::local_envvar(CODEAGENT_HOME = home)
+  withr::local_options(codeagent._migrated = TRUE)
+  tmp_dir    <- withr::local_tempdir()
+  skills_dir <- file.path(tmp_dir, ".btw", "skills", "myskill")
+  dir.create(skills_dir, recursive = TRUE, showWarnings = FALSE)
+  skill_path <- file.path(skills_dir, "SKILL.md")
+  writeLines(c("---", "name: myskill", "description: v1", "---", "body"), skill_path)
+
+  metas1 <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_equal(metas1[["myskill"]]$description, "v1")
+
+  # Fresh process (drop in-memory) + changed file -> stale disk sig -> rescan.
+  cache_key <- codeagent:::.sanitize_path(codeagent:::.canonicalize_path(tmp_dir))
+  rm(list = cache_key, envir = codeagent:::.skill_cache)
+  Sys.sleep(0.1)
+  writeLines(c("---", "name: myskill", "description: v2", "---", "body"), skill_path)
+  metas2 <- codeagent:::list_skills_meta(cwd = tmp_dir)
+  expect_equal(metas2[["myskill"]]$description, "v2")
+})
+
 test_that("list_skills_meta discovers .claude/skills/ directory", {
   tmp_dir    <- withr::local_tempdir()
   skills_dir <- file.path(tmp_dir, ".claude", "skills", "claude-skill")

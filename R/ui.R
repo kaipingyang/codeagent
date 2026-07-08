@@ -77,18 +77,13 @@ codeagent_app <- function(
   if (nzchar(www_dir))
     shiny::addResourcePath("codeagent-www", www_dir)
 
-  # Skill picker footer: use a fast built-in list so the UI renders instantly.
-  # The full skill scan (list_skills_meta) is slow (~20s, see startup profiling)
-  # and is intentionally skipped here; real skills still work via `/<name>` and
-  # the use_skill tool. (Restored to the full fast list once skill metadata is
-  # cached -- see plan step 2.)
-  skill_meta <- data.frame(
-    key   = c("plan", "compact", "verify", "explore", "report", "remember"),
-    label = c("/plan", "/compact", "/verify", "/explore", "/report", "/remember"),
-    desc  = c("Break work into steps", "Make replies shorter", "Verify last action",
-              "Explore data (WEAR)", "Generate a report", "Remember a fact"),
-    stringsAsFactors = FALSE
-  )
+  # NOTE: this value is vestigial. The skill picker footer
+  # (.skill_picker_footer) no longer consumes it -- the real, FULL skill list is
+  # served by shinychat's slash-command typeahead (type "/"; see
+  # R/server_slash.R -> list_skills_meta), which is now backed by an on-disk
+  # metadata cache so it is near-instant even on a cold app launch. Kept as an
+  # empty stub for the chat_codeagent_ui() signature.
+  skill_meta <- NULL
 
   # btw groups for Settings panel
   btw_available_groups <- tryCatch({
