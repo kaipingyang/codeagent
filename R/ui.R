@@ -114,6 +114,8 @@ codeagent_app <- function(
     fillable = TRUE,
     theme    = bslib::bs_theme(version = 5),
     head_assets(),
+    # Prominent full-window init overlay shown while tools/skills load in-app.
+    shiny::uiOutput("ca_init_overlay"),
     sidebar  = bslib::sidebar(
       id        = "ca_left_sidebar",
       width     = 240,
@@ -162,6 +164,7 @@ codeagent_app <- function(
     state <- shiny::reactiveValues(
       session_id      = tryCatch(.generate_uuid_v4(), error = function(e) "default"),
       initializing    = TRUE,       # deferred tool registration in progress -> gate input
+      init_step       = "Loading tools & skills\u2026",
       iteration       = 0L,
       interrupt       = FALSE,
       main_output     = NULL,
@@ -197,14 +200,16 @@ codeagent_app <- function(
     chat_server_mod <- NULL
 
     # Phase 3: wire the interaction bar (approval / question) and build the
-    # promise-returning Shiny ask callbacks. Stash them in `settings` so that
-    # .register_all_tools() (here AND on later permission-mode changes in
-    # server_settings) rebuilds the interactive tools (Write/Edit/MultiEdit/
-    # Bash/RunR + AskUserQuestion) as async, UI-gated variants.
+    # promise-returning Shiny ask callbacks. Stash them in `settings` BEFORE the
+    # deferred registration below, so .register_all_tools() (in onFlushed) builds
+    # the interactive tools (Write/Edit/MultiEdit/Bash/RunR + AskUserQuestion) as
+    # async, UI-gated variants.
     interaction <- server_interaction(input, output, session, state)
     settings$shiny_ask_fn          <- interaction$ask_fn
     settings$shiny_ask_question_fn <- interaction$ask_question_fn
-    tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
+    # NB: tools are registered LAZILY in the onFlushed() init below (after the UI
+    # + progress overlay render). Registering here would block the first flush and
+    # defeat the instant-UI / overlay. (server_settings re-registers on mode change.)
 
     stream_task <- server_chat(input, output, session,
                                chat            = chat_obj,
@@ -220,20 +225,34 @@ codeagent_app <- function(
                     stream_task = stream_task,
                     settings    = settings)
 
+    # Prominent init overlay: a full-window splash shown while the deferred
+    # initialization runs, so the user sees clear progress instead of a frozen or
+    # blank UI. Hidden once state$initializing flips to FALSE.
+    output$ca_init_overlay <- shiny::renderUI({
+      if (!isTRUE(state$initializing)) return(NULL)
+      htmltools::div(
+        style = paste0(
+          "position:fixed; inset:0; z-index:2000;",
+          "background:var(--bs-body-bg,#fff);",
+          "display:flex; flex-direction:column; align-items:center;",
+          "justify-content:center; gap:18px;"),
+        htmltools::tags$div(class = "spinner-border text-primary",
+                            style = "width:3rem;height:3rem;", role = "status"),
+        htmltools::tags$h4(style = "margin:0;", "Initializing codeagent\u2026"),
+        htmltools::tags$p(style = "color:var(--bs-secondary-color,#666);margin:0;",
+                          state$init_step %||% "Loading tools & skills\u2026")
+      )
+    })
+
     # Deferred initialization: register tools (btw + skills, ~15-40s) AFTER the UI
-    # has rendered, with a progress bar. Input stays gated (state$initializing)
-    # until ready. A pre-built client already has its tools (tools_ready) -> quick.
-    shiny::observe({
-      shiny::req(TRUE)
-      if (!isTRUE(tools_ready)) {
-        shiny::withProgress(message = "Starting codeagent\u2026", value = 0.05, {
-          shiny::setProgress(0.25, detail = "Loading tools (btw, skills)\u2026")
-          tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
-          shiny::setProgress(0.95, detail = "Ready")
-        })
-      }
+    # (incl. the overlay above) has been flushed to the client, so the overlay is
+    # visible throughout. Input stays gated (state$initializing) until ready. A
+    # pre-built client already has its tools (tools_ready) -> overlay clears fast.
+    session$onFlushed(function() {
+      if (!isTRUE(tools_ready))
+        tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
       state$initializing <- FALSE
-    }) |> shiny::bindEvent(session$clientData$url_hostname, once = TRUE)
+    }, once = TRUE)
 
     # Auto-continue: restore the most recent session on startup so users
     # pick up where they left off (mirrors `codeagent chat --continue`).
