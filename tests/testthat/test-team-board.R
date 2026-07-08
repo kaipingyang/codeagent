@@ -149,3 +149,43 @@ test_that(".claimable_ids mirrors the SQL claim eligibility", {
   tasks$status[2] <- "done"
   expect_equal(codeagent:::.claimable_ids(tasks, deps), 3L)
 })
+
+# ---------------------------------------------------------------------------
+# Phase 2: dependency helpers + stall detection + cycle rejection
+# ---------------------------------------------------------------------------
+
+test_that(".board_add_dep + .board_deps round-trip", {
+  db <- board_create(); on.exit(unlink(db), add = TRUE)
+  a <- board_add_task(db, "A")
+  b <- board_add_task(db, "B")
+  codeagent:::.board_add_dep(db, b, a)          # B blocked by A
+  codeagent:::.board_add_dep(db, b, a)          # idempotent (INSERT OR IGNORE)
+  d <- codeagent:::.board_deps(db)
+  expect_equal(nrow(d), 1L)
+  expect_equal(as.integer(d$task_id), b)
+  expect_equal(as.integer(d$blocker_id), a)
+})
+
+test_that(".board_stalled is FALSE for an empty or progressable board", {
+  db <- board_create(); on.exit(unlink(db), add = TRUE)
+  expect_false(codeagent:::.board_stalled(db))          # empty
+  board_add_task(db, "A")
+  expect_false(codeagent:::.board_stalled(db))          # A claimable -> progress
+})
+
+test_that(".board_stalled is TRUE when the only pending task is permanently blocked", {
+  db <- board_create(); on.exit(unlink(db), add = TRUE)
+  b <- board_add_task(db, "B")
+  codeagent:::.board_add_dep(db, b, 999L)               # blocked by a nonexistent task
+  # pending>0, nobody claimed, nothing claimable -> stalled dead-end.
+  expect_true(codeagent:::.board_stalled(db))
+})
+
+test_that("team_coordinate rejects a cyclic blocked_by graph", {
+  skip_if_not_installed("mirai")
+  # A depends on B and B depends on A -> cycle -> abort before launching workers.
+  expect_error(
+    team_coordinate(c("A", "B"), blocked_by = list(2L, 1L),
+                    db_path = tempfile(fileext = ".sqlite")),
+    "cyclic")
+})
