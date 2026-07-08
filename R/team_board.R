@@ -37,12 +37,20 @@ board_create <- function(db_path = tempfile(fileext = ".sqlite")) {
   on.exit(DBI::dbDisconnect(con), add = TRUE)
   DBI::dbExecute(con, "
     CREATE TABLE IF NOT EXISTS tasks (
-      id      INTEGER PRIMARY KEY AUTOINCREMENT,
-      prompt  TEXT    NOT NULL,
-      owner   TEXT,
-      status  TEXT    NOT NULL DEFAULT 'pending',
-      result  TEXT,
-      created TEXT
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      prompt     TEXT    NOT NULL,
+      owner      TEXT,
+      status     TEXT    NOT NULL DEFAULT 'pending',
+      result     TEXT,
+      created    TEXT,
+      claimed_at TEXT
+    )")
+  # Task dependency edges (DAG): `task_id` is blocked until `blocker_id` is done.
+  DBI::dbExecute(con, "
+    CREATE TABLE IF NOT EXISTS deps (
+      task_id    INTEGER NOT NULL,
+      blocker_id INTEGER NOT NULL,
+      PRIMARY KEY (task_id, blocker_id)
     )")
   DBI::dbExecute(con, "
     CREATE TABLE IF NOT EXISTS messages (
@@ -59,41 +67,68 @@ board_create <- function(db_path = tempfile(fileext = ".sqlite")) {
 #'
 #' @param db_path Character. Board path.
 #' @param prompt Character. The task prompt.
+#' @param blocked_by Integer vector. Task ids that must be `done` before this
+#'   task can be claimed (DAG edges). Default none. Blockers must already exist
+#'   on the board (a new task cannot create a cycle by construction).
 #' @return Integer. The new task id.
 #' @export
-board_add_task <- function(db_path, prompt) {
+board_add_task <- function(db_path, prompt, blocked_by = integer(0)) {
   con <- .board_connect(db_path)
   on.exit(DBI::dbDisconnect(con), add = TRUE)
   DBI::dbExecute(con,
     "INSERT INTO tasks (prompt, status, created) VALUES (?, 'pending', ?)",
     params = list(as.character(prompt),
                   format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")))
-  DBI::dbGetQuery(con, "SELECT last_insert_rowid() AS id")$id[[1L]]
+  id <- DBI::dbGetQuery(con, "SELECT last_insert_rowid() AS id")$id[[1L]]
+  blocked_by <- as.integer(blocked_by[!is.na(blocked_by)])
+  for (b in blocked_by) {
+    DBI::dbExecute(con,
+      "INSERT OR IGNORE INTO deps (task_id, blocker_id) VALUES (?, ?)",
+      params = list(as.integer(id), as.integer(b)))
+  }
+  id
 }
 
-#' Atomically claim the next pending task
+#' Atomically claim the next claimable task (dependency-aware)
 #'
-#' Uses a single `UPDATE ... WHERE owner IS NULL` so concurrent workers never
-#' claim the same row.
+#' Runs inside a `BEGIN IMMEDIATE` transaction (SQLite serialises writers) and
+#' claims the lowest-id task that is unowned, `pending`, and has **no
+#' unfinished blocker** (all its `deps` blockers are `done`). With no deps this
+#' is exactly the old FIFO claim (backward compatible). Returns `NULL` when
+#' nothing is currently claimable -- which may mean "all done" OR "remaining
+#' tasks are still blocked", so a worker should back off and retry rather than
+#' exit (see `team_coordinate`).
 #'
 #' @param db_path Character. Board path.
 #' @param worker_id Character. Identifier for the claiming worker.
-#' @return A one-row data.frame (id, prompt) for the claimed task, or NULL if
-#'   no pending task remains.
+#' @return A one-row data.frame (id, prompt) for the claimed task, or NULL.
 #' @export
 board_claim <- function(db_path, worker_id) {
   con <- .board_connect(db_path)
   on.exit(DBI::dbDisconnect(con), add = TRUE)
-  n <- DBI::dbExecute(con,
-    "UPDATE tasks SET owner = ?, status = 'claimed'
-       WHERE id = (SELECT id FROM tasks WHERE owner IS NULL
-                   ORDER BY id LIMIT 1)",
-    params = list(as.character(worker_id)))
-  if (n == 0L) return(NULL)
-  DBI::dbGetQuery(con,
-    "SELECT id, prompt FROM tasks WHERE owner = ? AND status = 'claimed'
-       ORDER BY id DESC LIMIT 1",
-    params = list(as.character(worker_id)))
+  DBI::dbExecute(con, "BEGIN IMMEDIATE")
+  tryCatch({
+    elig <- DBI::dbGetQuery(con,
+      "SELECT t.id, t.prompt FROM tasks t
+         WHERE t.owner IS NULL AND t.status = 'pending'
+           AND NOT EXISTS (
+             SELECT 1 FROM deps d JOIN tasks b ON b.id = d.blocker_id
+               WHERE d.task_id = t.id AND b.status != 'done')
+         ORDER BY t.id LIMIT 1")
+    if (nrow(elig) > 0L) {
+      DBI::dbExecute(con,
+        "UPDATE tasks SET owner = ?, status = 'claimed', claimed_at = ?
+           WHERE id = ? AND owner IS NULL",
+        params = list(as.character(worker_id),
+                      format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC"),
+                      as.integer(elig$id[[1L]])))
+    }
+    DBI::dbExecute(con, "COMMIT")
+    if (nrow(elig) > 0L) elig[, c("id", "prompt")] else NULL
+  }, error = function(e) {
+    tryCatch(DBI::dbExecute(con, "ROLLBACK"), error = function(e2) NULL)
+    NULL
+  })
 }
 
 #' Mark a claimed task complete with its result
@@ -167,6 +202,60 @@ board_messages <- function(db_path, recipient = NULL) {
     "SELECT sender, recipient, body, created FROM messages
        WHERE recipient = ? OR recipient IS NULL ORDER BY id",
     params = list(as.character(recipient)))
+}
+
+# ---------------------------------------------------------------------------
+# Pure DAG helpers (no DB / no Shiny -- unit-testable)
+# ---------------------------------------------------------------------------
+
+# Topologically sort task ids given dependency edges. `deps` is a data.frame
+# with `task_id` (blocked) + `blocker_id` (prerequisite). Kahn's algorithm;
+# errors on a cycle (which would otherwise deadlock the board). Edges whose
+# endpoints are not in `ids` are ignored. PURE.
+.task_toposort <- function(ids, deps) {
+  ids <- as.integer(ids)
+  key <- as.character(ids)
+  indeg <- stats::setNames(integer(length(ids)), key)
+  adj   <- stats::setNames(vector("list", length(ids)), key)   # blocker -> blocked[]
+  if (!is.null(deps) && nrow(deps) > 0L) {
+    for (i in seq_len(nrow(deps))) {
+      t <- as.character(deps$task_id[i])
+      b <- as.character(deps$blocker_id[i])
+      if (!(t %in% key) || !(b %in% key)) next   # ignore edges outside `ids`
+      indeg[t] <- indeg[t] + 1L
+      adj[[b]] <- c(adj[[b]], t)
+    }
+  }
+  queue <- key[indeg == 0L]
+  order <- integer(0)
+  while (length(queue)) {
+    n <- queue[[1L]]; queue <- queue[-1L]
+    order <- c(order, as.integer(n))
+    for (m in adj[[n]]) {
+      indeg[m] <- indeg[m] - 1L
+      if (indeg[m] == 0L) queue <- c(queue, m)
+    }
+  }
+  if (length(order) != length(ids))
+    stop("Task dependency cycle detected.", call. = FALSE)
+  order
+}
+
+# Which tasks are claimable right now: unowned + pending + all blockers done.
+# `tasks_df` needs columns id/owner/status; `deps_df` needs task_id/blocker_id.
+# PURE (mirrors the SQL in board_claim, for UI + tests).
+.claimable_ids <- function(tasks_df, deps_df) {
+  if (is.null(tasks_df) || nrow(tasks_df) == 0L) return(integer(0))
+  done <- as.integer(tasks_df$id[tasks_df$status == "done"])
+  cand <- as.integer(tasks_df$id[is.na(tasks_df$owner) & tasks_df$status == "pending"])
+  if (!length(cand)) return(integer(0))
+  has_deps <- !is.null(deps_df) && nrow(deps_df) > 0L
+  ok <- vapply(cand, function(tid) {
+    if (!has_deps) return(TRUE)
+    blockers <- as.integer(deps_df$blocker_id[deps_df$task_id == tid])
+    all(blockers %in% done)
+  }, logical(1))
+  cand[ok]
 }
 
 # ---------------------------------------------------------------------------
