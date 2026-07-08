@@ -148,3 +148,19 @@ test_that(".line_diff detects add/del/ctx", {
   expect_true("del" %in% types)
   expect_true("ctx" %in% types)
 })
+
+test_that(".output_title strips HTML and follows the fallback chain", {
+  # Plain title with markup -> tags stripped.
+  expect_equal(
+    codeagent:::.output_title(list(title = "<b>Read</b> file.R")),
+    "Read file.R"
+  )
+  # Falls back to toolcard$title when top-level title is absent.
+  expect_equal(
+    codeagent:::.output_title(list(toolcard = list(title = "<i>Bash</i>"))),
+    "Bash"
+  )
+  # Nothing usable -> "Output".
+  expect_equal(codeagent:::.output_title(NULL), "Output")
+  expect_equal(codeagent:::.output_title(list()), "Output")
+})

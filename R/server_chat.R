@@ -23,10 +23,7 @@ server_chat <- function(input, output, session, chat, settings,
   # Returns the (possibly adapted) result so callers can store it.
   .push_output <- function(result, immediate = TRUE) {
     display <- tryCatch(result@extra$display, error = function(e) NULL)
-    title   <- tryCatch(
-      gsub("<[^>]+>", "", as.character(display$title %||% display$toolcard$title %||% "Output")),
-      error = function(e) "Output"
-    )
+    title   <- .output_title(display)
     content <- tryCatch(render_tool_output(display), error = function(e) NULL)
     if (is.null(content)) return(invisible(result))
 
@@ -274,65 +271,73 @@ server_chat <- function(input, output, session, chat, settings,
 
 # Execute a local command parsed by .preprocess_input(type="command").
 # Mirrors the REPL's built-in command switch so both UIs behave identically.
-# Appends a feedback message to the chat so the user sees the result inline.
+# THIN INTERPRETER: gathers read-only facts, calls the pure
+# `.chat_command_result()` (chat_commands.R) for the decision, then applies the
+# side effects (append / clear / rewind / modal / model switch / compact).
 .handle_chat_command <- function(parsed, chat, settings, state, session, cwd) {
   name <- parsed$name %||% ""
   args <- parsed$args %||% ""
 
-  feedback <- switch(name,
+  # Read-only facts the pure decision needs (gathered lazily -- only compute the
+  # expensive token estimate for /budget).
+  n_turns  <- length(tryCatch(chat$get_turns(), error = function(e) list()))
+  n_tokens <- if (identical(name, "budget"))
+    tryCatch(estimate_tokens(chat), error = function(e) 0L) else 0L
+  sessions <- if (identical(name, "sessions"))
+    tryCatch(list_sessions(cwd, limit = 10L), error = function(e) list()) else list()
 
-    model = {
+  res <- .chat_command_result(
+    name, args,
+    n_tokens    = n_tokens,
+    model_limit = settings$model_limit %||% 200000L,
+    n_turns     = n_turns,
+    sessions    = sessions
+  )
+  feedback <- res$feedback
+
+  switch(res$action %||% "append",
+
+    modal_model = {
       cur   <- tryCatch(chat$get_model(), error = function(e) settings$model %||% "?")
       tiers <- settings$tier_models %||% list()
-      if (!nzchar(args)) {
-        # No arg: open modal picker.
-        # Labels show "tier (endpoint)" so user knows what they're picking.
-        if (length(tiers)) {
-          choices <- stats::setNames(
-            unlist(tiers),
-            vapply(names(tiers), function(nm)
-              sprintf("%s  (%s)", nm, tiers[[nm]]), character(1)))
-        } else {
-          choices <- stats::setNames(cur, cur)
-        }
-        shiny::showModal(shiny::modalDialog(
-          title = "Switch model",
-          shiny::radioButtons("ca_model_pick", NULL,
-            choices  = choices,
-            selected = if (cur %in% unlist(tiers)) cur else unlist(tiers)[1L] %||% cur),
-          footer = shiny::tagList(
-            shiny::modalButton("Cancel"),
-            shiny::actionButton("ca_model_pick_confirm", "Switch",
-                                class = "btn-primary")
-          ),
-          easyClose = TRUE
-        ))
-        # CRITICAL: shinychat shows a pending bubble + disables input whenever
-        # a user message is submitted (JS-side, before the server responds).
-        # For local commands we must send a chat_append_message to clear it --
-        # "message" action is the only thing that sets inputDisabled=false.
-        sprintf("**/model** -- pick a model in the popup to switch.")
+      choices <- if (length(tiers)) {
+        stats::setNames(unlist(tiers),
+          vapply(names(tiers), function(nm)
+            sprintf("%s  (%s)", nm, tiers[[nm]]), character(1)))
+      } else stats::setNames(cur, cur)
+      shiny::showModal(shiny::modalDialog(
+        title = "Switch model",
+        shiny::radioButtons("ca_model_pick", NULL,
+          choices  = choices,
+          selected = if (cur %in% unlist(tiers)) cur else unlist(tiers)[1L] %||% cur),
+        footer = shiny::tagList(
+          shiny::modalButton("Cancel"),
+          shiny::actionButton("ca_model_pick_confirm", "Switch",
+                              class = "btn-primary")
+        ),
+        easyClose = TRUE
+      ))
+      # shinychat disables the input on submit; a "message" action re-enables it.
+      feedback <- "**/model** -- pick a model in the popup to switch."
+    },
+
+    model_switch = {
+      new_chat <- tryCatch(.resolve_model_chat(res$args, cwd), error = function(e) NULL)
+      if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
+        new_model <- tryCatch(chat$get_model(), error = function(e) res$args)
+        state$settings_changed <- state$settings_changed + 1L
+        feedback <- paste0("OK Switched to `", new_model, "`")
       } else {
-        new_chat <- tryCatch(
-          .resolve_model_chat(args, cwd),
-          error = function(e) NULL)
-        if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
-          new_model <- tryCatch(chat$get_model(), error = function(e) args)
-          state$settings_changed <- state$settings_changed + 1L
-          paste0("OK Switched to `", new_model, "`")
-        } else {
-          paste0("ERR Could not switch to `", args, "` -- check the model spec.")
-        }
+        feedback <- paste0("ERR Could not switch to `", res$args,
+                           "` -- check the model spec.")
       }
     },
 
     compact = {
       # Show an immediate progress indicator, then run the (blocking) compaction
-      # on the next event-loop tick so the indicator renders first. Set state$busy
-      # so input submits are ignored until compaction finishes (see the input +
-      # slash observers). Result is appended from the deferred callback below, so
-      # we return NULL here (caller appends nothing now).
-      instr <- trimws(args)
+      # on the next event-loop tick so the indicator renders first. state$busy
+      # ignores input submits until compaction finishes. Appends its own result.
+      instr <- res$args %||% ""
       cm    <- .resolve_compact_model(chat, settings)
       if (!is.null(state)) shiny::isolate(state$busy <- TRUE)
       tryCatch(shiny::showNotification(
@@ -352,65 +357,20 @@ server_chat <- function(input, output, session, chat, settings,
           role = "assistant", session = session), error = function(e) NULL)
         if (!is.null(state)) shiny::isolate(state$busy <- FALSE)
       }, delay = 0.15)
-      NULL
+      return(invisible(NULL))   # feedback appended from the deferred callback
     },
 
-    clear = {
-      tryCatch(chat$set_turns(list()), error = function(e) NULL)
-      "OK History cleared."
-    },
+    clear = tryCatch(chat$set_turns(list()), error = function(e) NULL),
 
-    rewind = {
-      n_back <- suppressWarnings(as.integer(args))
-      if (is.na(n_back) || n_back < 1L) n_back <- 1L
-      cur  <- length(tryCatch(chat$get_turns(), error = function(e) list()))
-      keep <- max(0L, cur - 2L * n_back)
-      kept <- tryCatch(truncate_chat_turns(chat, keep), error = function(e) cur)
-      sprintf("<<< Rewound %d exchange(s); %d turns kept.", n_back, kept)
-    },
+    rewind = tryCatch(truncate_chat_turns(chat, res$keep), error = function(e) NULL),
 
-    budget = {
-      n     <- tryCatch(estimate_tokens(chat), error = function(e) 0L)
-      limit <- settings$model_limit %||% 200000L
-      pct   <- if (limit > 0L) round(n / limit * 100) else 0L
-      sprintf("**Token budget**: %s / %s tokens (%d%%)",
-              format(n, big.mark = ","), format(limit, big.mark = ","), pct)
-    },
-
-    sessions = {
-      sl <- tryCatch(list_sessions(cwd, limit = 10L), error = function(e) list())
-      if (!length(sl)) {
-        "No saved sessions."
-      } else {
-        lines <- vapply(sl, function(s)
-          sprintf("- `%s`  %s", substr(s$session_id, 1L, 8L),
-                  s$title %||% s$timestamp %||% ""), character(1))
-        paste0("**Recent sessions**\n", paste(lines, collapse = "\n"))
-      }
-    },
-
-    help = ,
-    exit = ,
-    quit = paste0(
-      "**Slash commands**\n",
-      "- `/model [spec]` -- switch model (popup if no arg)\n",
-      "- `/compact` -- compact the context now\n",
-      "- `/clear` -- clear the conversation\n",
-      "- `/rewind [N]` -- rewind the last N exchange(s)\n",
-      "- `/budget` -- show token usage\n",
-      "- `/sessions` -- list recent saved sessions\n",
-      "- `/<skill> [args]` -- invoke a skill (sent to the model)"
-    ),
-
-    # Unknown local command -- show help
-    paste0("Unknown command: `/", name, "`.\n\n",
-           "Built-in commands: `/model`, `/compact`, `/clear`, `/rewind [N]`, ",
-           "`/budget`, `/sessions`, `/help`")
+    # "append": nothing to do here; feedback appended below.
+    NULL
   )
 
-  # Append feedback to chat (NULL means the command handled its own UI, e.g. modal).
-  # Use the string + role form (NOT a Turn object): in shinychat's React build
-  # chat_append() renders a plain string reliably, whereas a Turn object may not.
+  # Append feedback to chat (NULL means the command handled its own UI, e.g. modal
+  # returned early). Use the string + role form (NOT a Turn object): shinychat's
+  # React build renders a plain string reliably.
   if (!is.null(feedback) && nzchar(feedback)) {
     tryCatch(
       shinychat::chat_append("chat", feedback, role = "assistant",
