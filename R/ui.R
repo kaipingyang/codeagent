@@ -86,8 +86,13 @@ codeagent_app <- function(
   skill_meta <- NULL
 
   # btw groups for Settings panel
+  # Group names come from codeagent's own .BTW_GROUPS constant; we only need to
+  # know btw is INSTALLED (not load it). requireNamespace("btw") here cost ~2.4s
+  # of cold namespace load on the critical path to first paint -- system.file()
+  # checks the installed package without loading it, so the UI shell serves
+  # sooner (btw is loaded later, under the init overlay, at tool registration).
   btw_available_groups <- tryCatch({
-    if (requireNamespace("btw", quietly = TRUE)) sort(names(.BTW_GROUPS))
+    if (nzchar(system.file(package = "btw"))) sort(names(.BTW_GROUPS))
     else character(0)
   }, error = function(e) character(0))
 
