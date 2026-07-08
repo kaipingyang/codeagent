@@ -85,7 +85,15 @@ server_right <- function(input, output, session, cwd, state,
     card_ui <- bslib::card(
       full_screen = TRUE,
       class       = "ca-file-card",
-      bslib::card_body(padding = 0, preview)
+      bslib::card_body(
+        padding = 0,
+        # Scroll the file content WITHIN its tab panel; without this a tall
+        # preview overflowed and covered the tab strip / interface.
+        htmltools::div(
+          style = "height:100%; min-height:0; overflow:auto;",
+          preview
+        )
+      )
     )
 
     # Tab title with a close "x". stopPropagation so clicking x doesn't just
@@ -234,6 +242,9 @@ server_right <- function(input, output, session, cwd, state,
     line_numbers = TRUE,
     word_wrap    = FALSE,
     fill         = TRUE,
-    height       = "calc(100vh - 160px)"
+    # Fill the enclosing tab panel (NOT the viewport). `calc(100vh - ...)` made the
+    # editor as tall as the whole window inside a 50%-width sidebar tab, so it
+    # overflowed and covered the tab bar + the rest of the interface.
+    height       = "100%"
   )
 }
