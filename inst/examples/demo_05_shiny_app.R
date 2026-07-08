@@ -53,20 +53,19 @@ chat <- ellmer::chat_openai_compatible(
 # ---------------------------------------------------------------------------
 # Step 2: Wrap into a codeagent client (injects tools + system prompt)
 # ---------------------------------------------------------------------------
-client <- codeagent_client(
-  chat,
-  permission_mode = "bypass",
-  btw_groups      = c("docs", "env", "pkg"),
-  cwd             = getwd()
-)
-
 # ---------------------------------------------------------------------------
-# Step 3: Launch the app (pure UI params only)
+# Step 3: Launch the app directly from the chat.
 # ---------------------------------------------------------------------------
-cat(sprintf("Launching codeagent_app with: %s\n", client$settings$model))
+# codeagent_app() builds the client LAZILY, AFTER the UI renders: the UI shell
+# appears instantly and the expensive setup (tools/skills) runs in-app behind a
+# visible "Initializing codeagent" progress overlay. Do NOT pre-build the client
+# with codeagent_client() here -- that blocks before the UI and skips the overlay.
+cat("Launching codeagent_app (lazy init)...\n")
 cat("Press Ctrl-C to stop.\n\n")
 
 codeagent_app(
-  client,
-  pinned_skills = c("plan", "compact")
+  chat            = chat,
+  permission_mode = "bypass",
+  btw_groups      = c("docs", "env", "pkg"),
+  pinned_skills   = c("plan", "compact")
 )
