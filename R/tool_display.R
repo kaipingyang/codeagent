@@ -128,6 +128,18 @@ NULL
 # Render dispatcher
 # ---------------------------------------------------------------------------
 
+# Extract a plain-text Output-panel card title from a tool-result `display`
+# object. PURE: strips any HTML tags and falls back through
+# display$title -> display$toolcard$title -> "Output". Used by server_chat's
+# .push_output; separated out so the title logic is unit-testable.
+.output_title <- function(display) {
+  tryCatch(
+    gsub("<[^>]+>", "",
+         as.character(display$title %||% display$toolcard$title %||% "Output")),
+    error = function(e) "Output"
+  )
+}
+
 #' Render a typed tool-result display into an htmltools tag
 #'
 #' Branches on `display$toolcard$kind`. Falls back to `right_output`, then markdown,

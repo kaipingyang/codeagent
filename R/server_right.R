@@ -72,45 +72,7 @@ server_right <- function(input, output, session, cwd, state,
     fname <- sub(paste0("^", normalizePath(cwd, winslash = "/", mustWork = FALSE), "/?"), "", path)
     key   <- gsub("[^A-Za-z0-9]+", "_", path)
 
-    preview <- tryCatch({
-      switch(tolower(ext),
-        csv = {
-          if (requireNamespace("reactable", quietly = TRUE)) {
-            df <- tryCatch(utils::read.csv(path, nrows = 200L),
-                           error = function(e) NULL)
-            if (!is.null(df)) reactable::reactable(df, compact = TRUE)
-            else htmltools::tags$p("Could not read CSV.")
-          } else {
-            htmltools::tags$pre(paste(readLines(path, warn = FALSE, n = 20L),
-                                     collapse = "\n"))
-          }
-        },
-        png = ,
-        jpg = ,
-        jpeg = ,
-        gif = {
-          b64 <- tryCatch(
-            base64enc::dataURI(file = path),
-            error = function(e) NULL)
-          if (!is.null(b64))
-            htmltools::tags$img(src = b64,
-                                style = "max-width:100%; height:auto;")
-          else htmltools::tags$p("Cannot preview image.")
-        },
-        md = htmltools::div(
-          style = "padding:0 10px;",
-          htmltools::HTML(
-            tryCatch(
-              commonmark::markdown_html(
-                paste(readLines(path, warn = FALSE), collapse = "\n")),
-              error = function(e) paste(readLines(path, warn = FALSE, n = 100), collapse = "\n")
-            ))),
-        # Default: code/text files -> syntax-highlighted read-only editor.
-        .code_preview(path, ext, id = paste0("ced__", key))
-      )
-    }, error = function(e) {
-      htmltools::tags$p(paste("[Error]", conditionMessage(e)))
-    })
+    preview <- .build_file_preview(path, ext, id = paste0("ced__", key))
 
     current_file(list(fname = basename(fname), preview = preview))
     bslib::nav_select("main_tab", "file_view", session = session)
@@ -195,6 +157,50 @@ server_right <- function(input, output, session, cwd, state,
 # ---------------------------------------------------------------------------
 # Code file preview (Output panel)
 # ---------------------------------------------------------------------------
+
+# Build the preview UI for an opened file, dispatched by extension. PURE: takes
+# a path + extension (+ an editor id) and returns an htmltools tag; no Shiny
+# input/output/session, so it is unit-testable directly. The `File` viewer tab
+# (server_right observeEvent) just calls this and stores the result. Any read
+# error degrades to a visible "[Error] ..." paragraph rather than crashing the
+# observer.
+.build_file_preview <- function(path, ext, id = "ced__preview") {
+  tryCatch(
+    switch(tolower(ext),
+      csv = {
+        if (requireNamespace("reactable", quietly = TRUE)) {
+          df <- tryCatch(utils::read.csv(path, nrows = 200L),
+                         error = function(e) NULL)
+          if (!is.null(df)) reactable::reactable(df, compact = TRUE)
+          else htmltools::tags$p("Could not read CSV.")
+        } else {
+          htmltools::tags$pre(paste(readLines(path, warn = FALSE, n = 20L),
+                                   collapse = "\n"))
+        }
+      },
+      png = ,
+      jpg = ,
+      jpeg = ,
+      gif = {
+        b64 <- tryCatch(base64enc::dataURI(file = path), error = function(e) NULL)
+        if (!is.null(b64))
+          htmltools::tags$img(src = b64, style = "max-width:100%; height:auto;")
+        else htmltools::tags$p("Cannot preview image.")
+      },
+      md = htmltools::div(
+        style = "padding:0 10px;",
+        htmltools::HTML(
+          tryCatch(
+            commonmark::markdown_html(
+              paste(readLines(path, warn = FALSE), collapse = "\n")),
+            error = function(e) paste(readLines(path, warn = FALSE, n = 100), collapse = "\n")
+          ))),
+      # Default: code/text files -> syntax-highlighted read-only editor.
+      .code_preview(path, ext, id = id)
+    ),
+    error = function(e) htmltools::tags$p(paste("[Error]", conditionMessage(e)))
+  )
+}
 
 # Map a file extension to a prism-code-editor language id for input_code_editor.
 .editor_language <- function(ext) {
