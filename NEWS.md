@@ -5,6 +5,24 @@ command-line coding agent, built on `ellmer` and `btw`. It provides the agent
 harness (loop, tools, permissions, compaction, hooks, skills) plus a CLI REPL
 and a `shiny` user interface.
 
+## Shiny app UX (post-0.1.0 additions)
+
+* **Instant startup.** The UI shell now renders immediately; the slower tool +
+  skill registration runs in the background behind a prominent "Initializing
+  codeagent…" overlay, with the chat input gated until it completes. Pass a bare
+  `ellmer::Chat` to `codeagent_app()` for this lazy path.
+
+* **Skill metadata disk cache.** `list_skills_meta()` now caches parsed skill
+  metadata on disk (`<config>/cache/skills/`, keyed by cwd + a `SKILL.md`
+  mtime/count signature), so the slash typeahead and skill tool are near-instant
+  on every launch after the first (a disk hit skips the ~20s directory scan). The
+  cache self-invalidates when any `SKILL.md` changes or a skill is added/removed.
+
+* **Single-file viewer.** Clicking a file in the Files tree now opens it in one
+  static, scrollable "File" tab (code / Markdown / image / CSV) with a filename
+  header and close button, replacing the old per-file tabs that could overflow
+  and cover the tab strip.
+
 ## Security & testing improvements (post-0.1.0 additions)
 
 * **keyring integration** (`R/keyring.R`): Optional API key storage via the OS

@@ -155,6 +155,13 @@ Two trigger paths:
 - **User** types `/name [args]` → `load_skill_prompt()` injects full body
 - **LLM semantic match** → calls `use_skill(name)` tool automatically
 
+**Metadata cache.** Scanning every skill directory (`list_skills_meta()`) is
+slow enough to notice on startup, so the parsed metadata is cached both
+in-memory and on disk (under `<config>/cache/skills/`, keyed by cwd + a
+`SKILL.md` mtime/count signature). The cache self-invalidates whenever any
+`SKILL.md` changes or a skill is added/removed, so the slash typeahead and
+skill tool are near-instant on every launch after the first.
+
 Built-in skills: `/compact`, `/plan`, `/verify`, `/simplify`, `/loop`, `/remember`,
 `/explore`, `/report`
 
@@ -284,7 +291,7 @@ codeagent info --json
 
 ### Shiny app
 
-Four themes, three-panel accordion sidebar:
+Four themes, an accordion sidebar, and a tabbed output panel:
 
 ```r
 codeagent_app(
@@ -295,9 +302,25 @@ codeagent_app(
 )
 ```
 
-**Sessions** panel: save/load/fork/rename conversations, rewind turns.
-**Skills** panel: searchable, scrollable, one-click fill, + install button.
-**Settings** panel: permission mode, btw tool group toggles, theme switch.
+**Instant startup.** The UI shell renders immediately; the (slower) tool +
+skill registration runs in the background behind a prominent "Initializing
+codeagent…" overlay, with the chat input gated until it completes. Skill
+metadata is cached on disk (see *Skill system*), so after the first launch the
+init step is near-instant.
+
+**Sidebar accordions:** **Sessions** (save/load/fork/rename conversations,
+rewind turns), **Customizations**, and **Settings** (permission mode, btw tool
+group toggles, theme switch). Skills are invoked from the chat input itself —
+type `/` for the slash-command typeahead (see *Skill system*), no separate
+picker.
+
+**Output panel** (right, tabbed):
+- **Output** — live tool-call output / results.
+- **Files** — a lazy-loading project file tree (jsTreeR).
+- **File** — clicking a file in the tree opens it here in a single, scrollable
+  viewer (syntax-highlighted code, rendered Markdown, image, or CSV table) with
+  a header showing the filename and a close (×) button; closing returns to the
+  tree.
 
 **Interactive pauses** (in-chat bar above the input):
 - **Permission approval** — in `default` mode, risky tools (Write/Edit/MultiEdit/Bash/RunR)
