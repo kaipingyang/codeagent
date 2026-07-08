@@ -205,9 +205,25 @@ client <- codeagent_client(chat, worktree_isolation = TRUE)
 # Fixed fan-out: one worker per task
 team_run(c("review R/a.R", "review R/b.R", "review R/c.R"))
 
-# Work-stealing over shared SQLite board (balances uneven task sizes)
+# Work-stealing over a shared SQLite board (balances uneven task sizes)
 team_coordinate(c("task 1", "task 2", "task 3", "task 4"))
+
+# Task DAG: `blocked_by` gives dependencies by 1-based task index. A task is
+# only claimed once all its blockers are done, so workers respect ordering
+# while still running independent tasks in parallel. Cyclic graphs are rejected.
+team_coordinate(
+  tasks      = c("build schema", "seed data", "run report"),
+  blocked_by = list(integer(0), 1L, c(1L, 2L)),   # 2 waits for 1; 3 waits for 1+2
+  worktree   = TRUE                                 # each worker in its own git worktree
+)
 ```
+
+The board is dependency-aware and atomic (`BEGIN IMMEDIATE`), workers back off
+while a blocker is still in progress, and a crashed worker's task is
+auto-reclaimed after `reclaim_timeout` so its dependents aren't blocked forever
+(`board_reclaim_stale()`). `board_watch()` (built on
+[watcher](https://watcher.r-lib.org)) drives an event-driven coordinator / live
+board view, falling back to polling when unavailable.
 
 ### Sandboxed R execution
 

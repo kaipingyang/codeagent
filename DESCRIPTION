@@ -33,7 +33,8 @@ Imports:
     bsicons,
     reactable,
     later,
-    rlang
+    rlang,
+    watcher
 Suggests:
     otel,
     otelsdk,
