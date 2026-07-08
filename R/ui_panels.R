@@ -258,15 +258,23 @@ output_panel_ui <- function() {
           jsTreeR::treeNavigatorUI("file_tree", height = "100%")
         )
       ),
-      # Pushed to the right: close every opened file tab at once. Handled in
-      # server_right (input$close_all_files).
-      bslib::nav_spacer(),
-      bslib::nav_item(
-        shiny::actionLink(
-          "close_all_files", label = NULL,
-          icon  = shiny::icon("xmark"),
-          class = "ca-close-all-tabs text-muted",
-          title = "Close all file tabs"
+      # A single STATIC "File" viewer tab. Clicking a file in the tree renders
+      # its preview into `ca_file_view` (server_right) and selects this tab.
+      # This replaces the old per-file `nav_insert()` design: a dynamically
+      # inserted card landed OUTSIDE the navset tab-content (bslib fill quirk)
+      # and covered the tab strip. A static nav_panel mirrors the working
+      # "Files" tab's fill chain, so the preview stays contained + scrollable.
+      bslib::nav_panel(
+        title = "File",
+        value = "file_view",
+        htmltools::div(
+          class = "html-fill-container html-fill-item",
+          style = "height:100%;min-height:0;",
+          shiny::uiOutput(
+            "ca_file_view",
+            class = "html-fill-container html-fill-item",
+            style = "height:100%;min-height:0;"
+          )
         )
       )
     )

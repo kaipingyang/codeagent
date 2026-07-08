@@ -19,11 +19,48 @@ server_right <- function(input, output, session, cwd, state,
     exclude    = exclude
   )
 
-  # Click a file -> open it in its OWN tab in the main panel. The "Files" tree
-  # tab and the "Output" (live tool output) tab persist; opened files accumulate
-  # as named tabs. Re-clicking an already-open file just focuses its tab
-  # (deduped by path) instead of overwriting in place.
-  open_files <- shiny::reactiveVal(character(0))
+  # Click a file -> render its preview into the single static "File" viewer tab
+  # (ca_file_view) and switch to it. Viewing another file replaces the content;
+  # the "x" in the viewer header closes it and returns to the Files tree.
+  # (Replaces the old per-file nav_insert() tabs, which mis-rendered outside the
+  # navset and covered the tab strip.)
+  current_file <- shiny::reactiveVal(NULL)
+
+  output$ca_file_view <- shiny::renderUI({
+    cf <- current_file()
+    if (is.null(cf)) {
+      return(htmltools::div(
+        class = "text-muted",
+        style = "padding:1rem;",
+        "No file open. Click a file in the Files tab to view it here."
+      ))
+    }
+    htmltools::tagList(
+      # Fixed header: filename + close.
+      htmltools::div(
+        class = "ca-file-view-header",
+        style = paste(
+          "flex:0 0 auto; display:flex; align-items:center; gap:8px;",
+          "padding:4px 10px; border-bottom:1px solid var(--bs-border-color);"),
+        htmltools::tags$strong(cf$fname),
+        htmltools::tags$span(style = "flex:1 1 auto;"),
+        htmltools::tags$a(
+          href    = "#",
+          title   = "Close file",
+          class   = "text-muted",
+          style   = "text-decoration:none;",
+          onclick = "event.preventDefault();Shiny.setInputValue('ca_close_file', Math.random(), {priority:'event'});",
+          htmltools::HTML("&times;")
+        )
+      ),
+      # Body: fills the remaining height and scrolls internally.
+      htmltools::div(
+        class = "html-fill-item ca-file-view-body",
+        style = "flex:1 1 auto; min-height:0; overflow:auto;",
+        cf$preview
+      )
+    )
+  })
 
   shiny::observeEvent(selected_paths(), {
     paths <- selected_paths()
@@ -31,16 +68,9 @@ server_right <- function(input, output, session, cwd, state,
     path <- normalizePath(paths[[length(paths)]], winslash = "/", mustWork = FALSE)
     if (!file.exists(path) || dir.exists(path)) return()
 
-    ext       <- tools::file_ext(path)
-    fname     <- sub(paste0("^", normalizePath(cwd, winslash = "/", mustWork = FALSE), "/?"), "", path)
-    key       <- gsub("[^A-Za-z0-9]+", "_", path)
-    tab_value <- paste0("file__", key)
-
-    # Already open -> focus that tab, don't rebuild or duplicate.
-    if (tab_value %in% open_files()) {
-      bslib::nav_select("main_tab", tab_value, session = session)
-      return()
-    }
+    ext   <- tools::file_ext(path)
+    fname <- sub(paste0("^", normalizePath(cwd, winslash = "/", mustWork = FALSE), "/?"), "", path)
+    key   <- gsub("[^A-Za-z0-9]+", "_", path)
 
     preview <- tryCatch({
       switch(tolower(ext),
@@ -67,12 +97,14 @@ server_right <- function(input, output, session, cwd, state,
                                 style = "max-width:100%; height:auto;")
           else htmltools::tags$p("Cannot preview image.")
         },
-        md = htmltools::HTML(
-          tryCatch(
-            commonmark::markdown_html(
-              paste(readLines(path, warn = FALSE), collapse = "\n")),
-            error = function(e) paste(readLines(path, warn = FALSE, n=100), collapse="\n")
-          )),
+        md = htmltools::div(
+          style = "padding:0 10px;",
+          htmltools::HTML(
+            tryCatch(
+              commonmark::markdown_html(
+                paste(readLines(path, warn = FALSE), collapse = "\n")),
+              error = function(e) paste(readLines(path, warn = FALSE, n = 100), collapse = "\n")
+            ))),
         # Default: code/text files -> syntax-highlighted read-only editor.
         .code_preview(path, ext, id = paste0("ced__", key))
       )
@@ -80,64 +112,20 @@ server_right <- function(input, output, session, cwd, state,
       htmltools::tags$p(paste("[Error]", conditionMessage(e)))
     })
 
-    # Wrap in a card(full_screen = TRUE) so the opened file gets the same
-    # expand-to-fullscreen affordance as the tool-output card.
-    card_ui <- bslib::card(
-      full_screen = TRUE,
-      class       = "ca-file-card",
-      bslib::card_body(
-        padding = 0,
-        # Scroll the file content WITHIN its tab panel; without this a tall
-        # preview overflowed and covered the tab strip / interface.
-        htmltools::div(
-          style = "height:100%; min-height:0; overflow:auto;",
-          preview
-        )
-      )
-    )
-
-    # Tab title with a close "x". stopPropagation so clicking x doesn't just
-    # select the tab; setInputValue drives the ca_close_tab observer below.
-    title_ui <- htmltools::tags$span(
-      class = "ca-file-tab", basename(fname),
-      htmltools::tags$span(
-        class = "ca-tab-close",
-        style = "margin-left:8px; cursor:pointer; opacity:0.55;",
-        title = "Close",
-        onclick = sprintf(
-          "event.stopPropagation();event.preventDefault();Shiny.setInputValue('ca_close_tab','%s',{priority:'event'});",
-          tab_value),
-        htmltools::HTML("&times;")
-      )
-    )
-
-    bslib::nav_insert(
-      "main_tab",
-      nav     = bslib::nav_panel(title = title_ui, value = tab_value, card_ui),
-      select  = TRUE,
-      session = session
-    )
-    open_files(c(open_files(), tab_value))
+    current_file(list(fname = basename(fname), preview = preview))
+    bslib::nav_select("main_tab", "file_view", session = session)
   }, ignoreInit = TRUE)
 
-  # Close a file tab via its "x" button.
-  shiny::observeEvent(input$ca_close_tab, {
-    tv <- input$ca_close_tab
-    bslib::nav_remove("main_tab", tv, session = session)
-    open_files(setdiff(open_files(), tv))
+  # Close the open file -> clear the viewer and return to the Files tree.
+  shiny::observeEvent(input$ca_close_file, {
+    current_file(NULL)
+    bslib::nav_select("main_tab", "files", session = session)
   }, ignoreInit = TRUE)
 
-  # Close ALL opened file tabs at once (the "x" in the tab strip).
-  shiny::observeEvent(input$close_all_files, {
-    for (tv in open_files()) bslib::nav_remove("main_tab", tv, session = session)
-    open_files(character(0))
-  }, ignoreInit = TRUE)
-
-  # Session transition (new / delete / restore all change session_id) -> close
-  # opened file tabs so stale files from the previous session don't linger.
+  # Session transition (new / delete / restore) -> clear any open file so a
+  # stale preview from the previous session doesn't linger.
   shiny::observeEvent(state$session_id, {
-    for (tv in open_files()) bslib::nav_remove("main_tab", tv, session = session)
-    open_files(character(0))
+    current_file(NULL)
   }, ignoreInit = TRUE)
 }
 
