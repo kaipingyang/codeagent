@@ -10,6 +10,9 @@ team_coordinate(
   n_workers = NULL,
   permission_mode = "bypass",
   cwd = getwd(),
+  blocked_by = NULL,
+  worktree = FALSE,
+  backoff = 0.5,
   db_path = tempfile(fileext = ".sqlite")
 )
 }

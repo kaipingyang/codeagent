@@ -166,6 +166,42 @@ board_status <- function(db_path) {
     "SELECT COUNT(*) AS n FROM tasks WHERE status != 'done'")$n[[1L]]
 }
 
+# Record a DAG edge: `task_id` is blocked until `blocker_id` is done. Used by
+# team_coordinate's two-pass seeding (add all tasks, then wire deps by index).
+.board_add_dep <- function(db_path, task_id, blocker_id) {
+  con <- .board_connect(db_path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  DBI::dbExecute(con,
+    "INSERT OR IGNORE INTO deps (task_id, blocker_id) VALUES (?, ?)",
+    params = list(as.integer(task_id), as.integer(blocker_id)))
+  invisible(TRUE)
+}
+
+# Read all dependency edges as a data.frame(task_id, blocker_id).
+.board_deps <- function(db_path) {
+  con <- .board_connect(db_path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  DBI::dbGetQuery(con, "SELECT task_id, blocker_id FROM deps")
+}
+
+# TRUE when the board is stalled: pending tasks remain, nobody is working on one
+# (no 'claimed'), and none is currently claimable. Distinguishes a real
+# dead-end from "just waiting for an in-progress blocker to finish" (in which
+# case a worker should back off and retry, not exit).
+.board_stalled <- function(db_path) {
+  con <- .board_connect(db_path)
+  on.exit(DBI::dbDisconnect(con), add = TRUE)
+  pending <- DBI::dbGetQuery(con,
+    "SELECT COUNT(*) AS n FROM tasks WHERE status = 'pending'")$n[[1L]]
+  if (pending == 0L) return(FALSE)
+  inprog <- DBI::dbGetQuery(con,
+    "SELECT COUNT(*) AS n FROM tasks WHERE status = 'claimed'")$n[[1L]]
+  if (inprog > 0L) return(FALSE)   # someone is working -> a blocker may resolve
+  tasks <- DBI::dbGetQuery(con, "SELECT id, owner, status FROM tasks")
+  deps  <- DBI::dbGetQuery(con, "SELECT task_id, blocker_id FROM deps")
+  length(.claimable_ids(tasks, deps)) == 0L
+}
+
 #' Post a message to the team message log
 #'
 #' @param db_path Character. Board path.
@@ -283,6 +319,7 @@ board_messages <- function(db_path, recipient = NULL) {
 #' @export
 team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
                             permission_mode = "bypass", cwd = getwd(),
+                            blocked_by = NULL, worktree = FALSE, backoff = 0.5,
                             db_path = tempfile(fileext = ".sqlite")) {
   if (!length(tasks)) return(board_status(board_create(db_path)))
   if (!is.character(tasks))
@@ -299,26 +336,57 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
   base_url  <- Sys.getenv("CODEAGENT_BASE_URL", "")
   api_key   <- Sys.getenv("CODEAGENT_API_KEY", "")
 
-  # Seed the board.
+  # Seed the board. Two passes so `blocked_by` can reference tasks by their
+  # 1-based INDEX in `tasks` (the caller doesn't know DB ids yet): pass 1 adds
+  # every task and records its id; pass 2 wires the DAG edges by index.
   board_create(db_path)
-  for (tk in tasks) board_add_task(db_path, tk)
+  ids <- integer(length(tasks))
+  for (i in seq_along(tasks)) ids[i] <- board_add_task(db_path, tasks[[i]])
+  if (!is.null(blocked_by)) {
+    for (i in seq_along(tasks)) {
+      for (j in as.integer(blocked_by[[i]] %||% integer(0))) {
+        if (!is.na(j) && j >= 1L && j <= length(ids) && j != i)
+          .board_add_dep(db_path, ids[i], ids[j])
+      }
+    }
+    # Reject a cyclic dependency graph up front (it would deadlock the board).
+    ok <- tryCatch({ .task_toposort(ids, .board_deps(db_path)); TRUE },
+                   error = function(e) FALSE)
+    if (!ok) cli::cli_abort("{.arg blocked_by} defines a cyclic task dependency graph.")
+  }
 
   mirai::daemons(n_workers)
   on.exit(mirai::daemons(0L), add = TRUE)
 
-  # Each worker loops: claim -> run -> complete, until the board drains.
+  # Each worker loops: claim -> run -> complete, backing off while tasks remain
+  # blocked by an in-progress task, until the board drains or stalls.
   worker_loop <- function(worker_id, db_path, model, base_url, api_key,
-                          permission_mode, cwd) {
+                          permission_mode, cwd, worktree, backoff) {
     Sys.setenv(CODEAGENT_BASE_URL = base_url, CODEAGENT_API_KEY = api_key,
                CODEAGENT_MODEL = model)
+    # Team-level isolation: each worker gets its own git worktree so concurrent
+    # edits never collide. Falls back to cwd if worktrees aren't available.
+    wt <- if (isTRUE(worktree))
+      tryCatch(codeagent:::.create_worktree(cwd), error = function(e) NULL) else NULL
+    run_cwd <- if (is.null(wt)) cwd else wt
+    on.exit(if (!is.null(wt))
+      tryCatch(codeagent:::.cleanup_worktree(wt, cwd), error = function(e) NULL), add = TRUE)
+
     done <- 0L
     repeat {
       claimed <- tryCatch(codeagent::board_claim(db_path, worker_id),
                           error = function(e) NULL)
-      if (is.null(claimed)) break
+      if (is.null(claimed)) {
+        # Nothing claimable: stop if the board is fully done or truly stalled;
+        # otherwise a blocker is still in progress -- wait and retry.
+        if (codeagent:::.board_pending_count(db_path) == 0L) break
+        if (codeagent:::.board_stalled(db_path)) break
+        Sys.sleep(backoff)
+        next
+      }
       res <- tryCatch({
         client <- codeagent::codeagent_client(
-          permission_mode = permission_mode, cwd = cwd, btw_groups = NULL)
+          permission_mode = permission_mode, cwd = run_cwd, btw_groups = NULL)
         codeagent::codeagent(client, claimed$prompt)
       }, error = function(e) paste0("[Error] ", conditionMessage(e)))
       codeagent::board_complete(db_path, claimed$id, res)
@@ -330,10 +398,14 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
   }
 
   worker_ids <- paste0("worker-", seq_len(n_workers))
+  # Constant args must go through `.args` (mirai >= 2.x): passing them via `...`
+  # does NOT bind them in the worker, so the loop would error out (swallowed) and
+  # never claim a task, leaving the board untouched.
   m <- mirai::mirai_map(
     worker_ids, worker_loop,
-    db_path = db_path, model = model, base_url = base_url, api_key = api_key,
-    permission_mode = permission_mode, cwd = cwd)
+    .args = list(db_path = db_path, model = model, base_url = base_url,
+                 api_key = api_key, permission_mode = permission_mode,
+                 cwd = cwd, worktree = isTRUE(worktree), backoff = backoff))
   tryCatch(m[], error = function(e) NULL)   # wait for all workers
 
   board_status(db_path)
