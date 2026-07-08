@@ -99,6 +99,10 @@ reference:
       - board_status
       - board_send_message
       - board_messages
+      - team_lead
+      - team_dashboard
+      - board_reclaim_stale
+      - board_watch
 
   - title: "Skills"
     desc: "Skill discovery and loading."

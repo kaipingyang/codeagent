@@ -19,6 +19,14 @@ and a `shiny` user interface.
 * **Event-driven board.** `board_watch()` (built on the `watcher` package) reacts
   to board changes without polling, powering an event-driven coordinator / live
   board view (falls back to polling when watcher is unavailable).
+* **LLM-lead coordinator.** `team_lead(goal, max_rounds =)` faithfully ports
+  Claude Code's COORDINATOR_MODE: a lead model decomposes the goal into a task
+  DAG, the work-stealing team runs it, then the lead reviews results and either
+  finishes or adds a follow-up round (bounded loop; decompose/review/coordinate
+  steps are injectable for testing).
+* **Live dashboard.** `team_dashboard(db_path)` is a standalone Shiny app that
+  monitors a running team's board in real time — task table (coloured by
+  status), a progress bar, and the inter-agent message log.
 
 ## Shiny app UX (post-0.1.0 additions)
 

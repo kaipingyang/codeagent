@@ -225,6 +225,16 @@ auto-reclaimed after `reclaim_timeout` so its dependents aren't blocked forever
 [watcher](https://watcher.r-lib.org)) drives an event-driven coordinator / live
 board view, falling back to polling when unavailable.
 
+```r
+# LLM-lead coordinator: a lead model decomposes a goal into a task DAG, the team
+# runs it, then the lead reviews results and re-plans -- up to max_rounds.
+team_lead("Refactor the parser and add tests for it", max_rounds = 3)
+
+# Live dashboard: point it at a running team's board for a real-time view
+# (task table + progress + inter-agent messages), event-driven via watcher.
+team_dashboard(db_path)
+```
+
 ### Sandboxed R execution
 
 `RunR` executes R code in a `callr` subprocess with a scrubbed environment (no API
