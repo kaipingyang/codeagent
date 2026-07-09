@@ -7,6 +7,11 @@ server_sessions <- function(input, output, session, chat, cwd,
                               state, stream_task, settings = list()) {
 
   output$session_list_ui <- shiny::renderUI({
+    # Re-render whenever a session is saved (sessions_dirty, bumped after
+    # save_session in server_chat) or the current session changes (New / Delete
+    # / load), so the list stays fresh instead of a startup-only snapshot.
+    state$sessions_dirty
+    state$session_id
     sessions <- tryCatch(list_sessions(cwd, limit = 10L),
                          error = function(e) list())
     if (length(sessions) == 0L)
@@ -14,12 +19,18 @@ server_sessions <- function(input, output, session, chat, cwd,
         style = "color:var(--bs-secondary-color, #6c757d); font-size:0.75rem; padding:4px 0;",
         "No saved sessions"))
 
+    # Delegated click -> single observeEvent(input$ca_load_session) below (no
+    # per-button observers, which only covered startup sessions). session_id is
+    # a UUID, safe to embed in the onclick.
     buttons <- lapply(sessions, function(s) {
-      label <- substr(s$summary %||% s$session_id, 1L, 32L)
-      shiny::actionButton(
-        inputId = paste0("load_sess_", s$session_id),
-        label   = label,
-        class   = "ca-session-btn w-100 mb-1 btn-sm"
+      sid   <- s$session_id
+      label <- substr(s$summary %||% sid, 1L, 32L)
+      htmltools::tags$button(
+        type    = "button",
+        class   = "ca-session-btn btn btn-outline-secondary btn-sm w-100 mb-1 text-start",
+        onclick = sprintf(
+          "Shiny.setInputValue('ca_load_session','%s',{priority:'event'});", sid),
+        label
       )
     })
     htmltools::tagList(buttons)
@@ -32,6 +43,7 @@ server_sessions <- function(input, output, session, chat, cwd,
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .reset_session_state(state)
     shinychat::chat_clear("chat", session)
+    state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
   })
 
   # Delete session: remove the current session file and start fresh.
@@ -44,49 +56,42 @@ server_sessions <- function(input, output, session, chat, cwd,
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .reset_session_state(state)
     shinychat::chat_clear("chat", session)
+    state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
     .ui_toast("Session deleted.", "message")
   })
 
-  # Session load buttons
-  shiny::observe({
-    sessions <- tryCatch(list_sessions(cwd, limit = 10L),
-                         error = function(e) list())
-    lapply(sessions, function(s) {
-      btn_id <- paste0("load_sess_", s$session_id)
-      local({
-        sid <- s$session_id
-        shiny::observeEvent(input[[btn_id]], {
-          if (!is.null(stream_task) && stream_task$status() == "running") return()
-          # Restore lossless chat state (tool calls preserved).
-          ok <- tryCatch({
-            restore_session_into_chat(chat, session_id = sid, cwd = cwd)
-            TRUE
-          }, error = function(e) FALSE)
-          if (!isTRUE(ok)) {
-            shiny::showNotification("Session could not be loaded.",
-                                    type = "warning", duration = 3)
-            return()
-          }
-          state$session_id <- sid
-          shinychat::chat_clear("chat", session)
-          # Replay via contents_shinychat -- native tool card rendering.
-          .replay_turns_to_ui(chat, session)
-          # Refresh the CONTEXT token meter for the restored conversation
-          # (the stream task only updates it on new turns, so a freshly
-          # restored session would otherwise read 0 tokens).
-          tryCatch({
-            n_tokens    <- token_count_with_estimation(chat)
-            model_limit <- settings$model_limit %||% 200000L
-            session$sendCustomMessage("update_budget",
-              .budget_payload(n_tokens, model_limit, settings$model %||% ""))
-          }, error = function(e) NULL)
-          shiny::showNotification(
-            paste0("Session loaded: ", substr(sid, 1L, 8L), "..."),
-            type = "message", duration = 3)
-        }, ignoreNULL = TRUE, ignoreInit = TRUE)
-      })
-    })
-  })
+  # Session load (delegated): one observer handles any session button click.
+  shiny::observeEvent(input$ca_load_session, {
+    if (!is.null(stream_task) && stream_task$status() == "running") return()
+    sid <- input$ca_load_session
+    if (is.null(sid) || !nzchar(sid)) return()
+    # Restore lossless chat state (tool calls preserved).
+    ok <- tryCatch({
+      restore_session_into_chat(chat, session_id = sid, cwd = cwd)
+      TRUE
+    }, error = function(e) FALSE)
+    if (!isTRUE(ok)) {
+      shiny::showNotification("Session could not be loaded.",
+                              type = "warning", duration = 3)
+      return()
+    }
+    state$session_id <- sid
+    shinychat::chat_clear("chat", session)
+    # Replay via contents_shinychat -- native tool card rendering.
+    .replay_turns_to_ui(chat, session)
+    # Refresh the CONTEXT token meter for the restored conversation (the stream
+    # task only updates it on new turns, so a freshly restored session would
+    # otherwise read 0 tokens).
+    tryCatch({
+      n_tokens    <- token_count_with_estimation(chat)
+      model_limit <- settings$model_limit %||% 200000L
+      session$sendCustomMessage("update_budget",
+        .budget_payload(n_tokens, model_limit, settings$model %||% ""))
+    }, error = function(e) NULL)
+    shiny::showNotification(
+      paste0("Session loaded: ", substr(sid, 1L, 8L), "..."),
+      type = "message", duration = 3)
+  }, ignoreInit = TRUE)
 }
 
 # ---------------------------------------------------------------------------

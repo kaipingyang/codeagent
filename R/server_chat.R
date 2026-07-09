@@ -146,6 +146,9 @@ server_chat <- function(input, output, session, chat, settings,
       # Auto-save every turn (session_id is always set from startup).
       sid <- shiny::isolate(state$session_id)
       tryCatch(save_session(chat, cwd, sid), error = function(e) NULL)
+      # Signal the Sessions list to refresh (bump AFTER the save, so the newly
+      # written session is on disk when session_list_ui re-renders).
+      shiny::isolate(state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L)
 
       "done"
     })()
