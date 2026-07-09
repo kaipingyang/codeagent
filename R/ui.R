@@ -5,10 +5,47 @@
 #' @keywords internal
 NULL
 
+# Map a theme name (README "default/flatly/darkly/glass" + CLI
+# "light/dark/glassmorphism" vocabularies) to a bslib bs_theme. Unknown names
+# fall back to the default light theme (never errors).
+.resolve_app_theme <- function(theme = "default") {
+  key <- switch(tolower(theme %||% "default"),
+    light  = , default = "default",
+    dark   = , darkly  = "darkly",
+    flatly = "flatly",
+    glass  = , glassmorphism = "glass",
+    "default")
+  switch(key,
+    flatly = bslib::bs_theme(version = 5, bootswatch = "flatly"),
+    darkly = bslib::bs_theme(version = 5, bootswatch = "darkly"),
+    glass  = bslib::bs_add_rules(
+      bslib::bs_theme(
+        version = 5, bg = "#0e1230", fg = "#e9ecff",
+        primary = "#8ab4ff", secondary = "#9aa0c4"
+      ),
+      paste(
+        "body { background:",
+        "radial-gradient(1200px 800px at 15% 0%, #1b2350 0%, #0e1230 55%) fixed; }",
+        ".card, .accordion, .accordion-item, .bslib-sidebar-layout > .sidebar,",
+        ".modal-content {",
+        "background-color: rgba(255,255,255,0.06) !important;",
+        "backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);",
+        "border: 1px solid rgba(255,255,255,0.12) !important; }",
+        sep = "\n")
+    ),
+    bslib::bs_theme(version = 5)
+  )
+}
+
 #' Launch the codeagent Shiny application
 #'
 #' @param client A `CodeagentClient` from [codeagent_client()], an
 #'   `ellmer::Chat`, or NULL (legacy mode).
+#' @param theme UI theme. One of `"default"` (light Bootstrap 5), `"flatly"`,
+#'   `"darkly"` (dark), or `"glass"` (dark glassmorphism). The CLI aliases
+#'   `"light"` -> `"default"`, `"dark"` -> `"darkly"`, and `"glassmorphism"` ->
+#'   `"glass"` are also accepted. Set at launch; the live dark-mode toggle in the
+#'   sidebar still flips light/dark on top of the chosen theme.
 #' @param pinned_skills Character vector. Retained for backward compatibility;
 #'   the old Skills picker panel was replaced by the slash-command typeahead
 #'   (type `/` in the chat input), so this argument is currently unused.
@@ -35,6 +72,7 @@ NULL
 #' @export
 codeagent_app <- function(
   client          = NULL,
+  theme           = "default",
   pinned_skills   = character(0),
   greeting        = NULL,
   port            = NULL,
@@ -112,9 +150,10 @@ codeagent_app <- function(
   # UI
   # ---------------------------------------------------------------------------
   chat_submit_key <- match.arg(chat_submit_key)
+  ca_bs_theme <- .resolve_app_theme(theme)
   ui <- bslib::page_sidebar(
     fillable = TRUE,
-    theme    = bslib::bs_theme(version = 5),
+    theme    = ca_bs_theme,
     head_assets(),
     # Prominent full-window init overlay shown while tools/skills load in-app.
     shiny::uiOutput("ca_init_overlay"),
