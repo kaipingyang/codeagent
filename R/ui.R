@@ -171,6 +171,8 @@ codeagent_app <- function(
       interrupt       = FALSE,
       main_output     = NULL,
       settings_changed = 0L,
+      sessions_dirty  = 0L,         # bumped after a session is saved/new/deleted
+                                    # -> the Sessions list re-renders (see server_sessions)
       pending_interaction = NULL,   # Phase 3: approval / question pause slot
       compaction_ctrl = CompactionController$new(),
       budget_tracker  = BudgetTracker$new(),
