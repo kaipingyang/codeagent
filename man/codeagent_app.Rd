@@ -24,7 +24,9 @@ codeagent_app(
 \item{client}{A \code{CodeagentClient} from \code{\link[=codeagent_client]{codeagent_client()}}, an
 \code{ellmer::Chat}, or NULL (legacy mode).}
 
-\item{pinned_skills}{Character vector. Skill names pinned at top of Skills panel.}
+\item{pinned_skills}{Character vector. Retained for backward compatibility;
+the old Skills picker panel was replaced by the slash-command typeahead
+(type \code{/} in the chat input), so this argument is currently unused.}
 
 \item{greeting}{Character or NULL. If provided, pre-fills the chat input box
 with this text on startup (used by the "Chat about selection" IDE addin to

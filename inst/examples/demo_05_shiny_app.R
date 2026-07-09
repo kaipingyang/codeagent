@@ -22,13 +22,30 @@
 # Or in RStudio:
 #   source("inst/examples/demo_05_shiny_app.R")
 #
-# What to try in the app:
-#   - Basic chat: "List the R files in R/ directory"
-#   - Tool use:   "Read R/utils.R and count how many functions it defines"
-#   - Skill:      "/plan add a new tool to the package"
-#   - Skill:      "/compact"
-#   - Permission: switch to 'plan' mode, then ask to create a file (should deny)
-#   - ESC:        send a long prompt, press ESC to interrupt streaming
+# What to try in the app (a full walkthrough of the current UI):
+#   Chat + tools
+#   - Basic chat:   "List the R files in R/ directory"
+#   - Tool use:     "Read R/utils.R and count how many functions it defines"
+#   - ESC:          send a long prompt, press ESC to interrupt streaming
+#   Slash commands (type "/" for the typeahead)
+#   - /plan add a new tool     (skill -> injected prompt)
+#   - /compact                 (compact the context now)
+#   - /budget                  (show token usage)
+#   - /model                   (popup model picker) ; /clear ; /rewind ; /sessions
+#   Output panel (right, tabbed)
+#   - Output: live tool-call results
+#   - Files:  expand the tree, then click a file -> opens in the "File" tab
+#             (syntax-highlighted code / rendered Markdown / image / CSV) with a
+#             close (x) button
+#   Sidebar accordions
+#   - Sessions: New / Delete / click a saved session to load it (history replays)
+#   - Customizations: Agents / Skills / Instructions / Hooks / MCP / Plugins modals
+#   - Settings: permission mode, btw tool-group toggles, model switch
+#   - top-right: light/dark mode toggle
+#   Permission approval (switch Settings -> permission mode to "default")
+#   - ask to create a file -> an Allow/Deny bar appears above the input
+#   Startup: the UI shell renders instantly behind an "Initializing codeagent"
+#   overlay while tools/skills load (chat input is gated until ready).
 
 readRenviron(".Renviron")
 devtools::load_all(quiet = TRUE)
