@@ -9,7 +9,9 @@ NULL
 #'
 #' @param client A `CodeagentClient` from [codeagent_client()], an
 #'   `ellmer::Chat`, or NULL (legacy mode).
-#' @param pinned_skills Character vector. Skill names pinned at top of Skills panel.
+#' @param pinned_skills Character vector. Retained for backward compatibility;
+#'   the old Skills picker panel was replaced by the slash-command typeahead
+#'   (type `/` in the chat input), so this argument is currently unused.
 #' @param greeting Character or NULL. If provided, pre-fills the chat input box
 #'   with this text on startup (used by the "Chat about selection" IDE addin to
 #'   seed the first message with the selected code). NULL leaves the input empty.
