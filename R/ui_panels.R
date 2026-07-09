@@ -94,11 +94,21 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
     # read-only badge + a duplicate selectInput buried in Settings). Reuses the
     # "model_select" input id, so the existing server observer handles it.
     if (length(model_choices) > 0L) {
+      # Guard: `selected` MUST be one of the choice VALUES or toolbar_input_select
+      # aborts ("`selected` value ... is not in `choices`"). current_model may be a
+      # raw model name while choices are "provider/model" specs, so map it: exact
+      # value -> model-component match -> first choice.
+      sel <- if (!is.null(current_model) && current_model %in% model_choices) {
+        current_model
+      } else {
+        hit <- match(current_model %||% "", sub("^[^/]+/", "", model_choices))
+        if (!is.na(hit)) unname(model_choices[[hit]]) else unname(model_choices[[1L]])
+      }
       bslib::toolbar(
         class = "ca-model-toolbar mb-2",
         bslib::toolbar_input_select(
           "model_select", label = "Model",
-          choices = model_choices, selected = current_model,
+          choices = model_choices, selected = sel,
           show_label = FALSE, icon = shiny::icon("robot"),
           tooltip = "Switch model -- history preserved"
         )
