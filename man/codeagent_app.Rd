@@ -6,6 +6,7 @@
 \usage{
 codeagent_app(
   client = NULL,
+  theme = "default",
   pinned_skills = character(0),
   greeting = NULL,
   port = NULL,
@@ -23,6 +24,12 @@ codeagent_app(
 \arguments{
 \item{client}{A \code{CodeagentClient} from \code{\link[=codeagent_client]{codeagent_client()}}, an
 \code{ellmer::Chat}, or NULL (legacy mode).}
+
+\item{theme}{UI theme. One of \code{"default"} (light Bootstrap 5), \code{"flatly"},
+\code{"darkly"} (dark), or \code{"glass"} (dark glassmorphism). The CLI aliases
+\code{"light"} -> \code{"default"}, \code{"dark"} -> \code{"darkly"}, and \code{"glassmorphism"} ->
+\code{"glass"} are also accepted. Set at launch; the live dark-mode toggle in the
+sidebar still flips light/dark on top of the chosen theme.}
 
 \item{pinned_skills}{Character vector. Retained for backward compatibility;
 the old Skills picker panel was replaced by the slash-command typeahead
