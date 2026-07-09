@@ -67,15 +67,22 @@ NULL
 )
 
 # Print a one-line token-budget status (only when usage is notable).
-.repl_budget_line <- function(chat, settings) {
+.repl_budget_line <- function(chat, settings, force = FALSE) {
   n     <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
   model <- settings$model %||% ""
   ws    <- tryCatch(calculate_token_warning_state(n, model),
                     error = function(e) NULL)
-  if (is.null(ws)) return(invisible(NULL))
+  if (is.null(ws)) {
+    # No window info: still answer an explicit /budget with the raw token count.
+    if (isTRUE(force))
+      cat(sprintf("  [%s tokens]\n", format(n, big.mark = ",")))
+    return(invisible(NULL))
+  }
   left <- ws$percent_left
-  # Only surface when context is getting tight or a warning line is crossed.
-  if (left > 50L && !isTRUE(ws$above_warning)) return(invisible(NULL))
+  # The AUTOMATIC post-turn line only surfaces when context is getting tight, to
+  # avoid noise. An explicit `/budget` (force = TRUE) always prints.
+  if (!isTRUE(force) && left > 50L && !isTRUE(ws$above_warning))
+    return(invisible(NULL))
   label <- sprintf("%d%% context left", left)
   label <- if (isTRUE(ws$above_error))
              tryCatch(cli::col_red(label), error = function(e) label)
@@ -363,7 +370,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
                       s$title %||% s$timestamp %||% ""))
         TRUE
       },
-      budget = { .repl_budget_line(client$chat, settings); TRUE },
+      budget = { .repl_budget_line(client$chat, settings, force = TRUE); TRUE },
       rewind = {
         # Drop the last N exchanges (default 1). One exchange = 2 turns
         # (user + assistant), so keep = current_turns - 2*N.
