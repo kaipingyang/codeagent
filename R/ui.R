@@ -37,6 +37,50 @@ NULL
   )
 }
 
+# Build the Model-dropdown choices from a codeagent.md `client:` alias map plus
+# the currently-active model. Returns a named character vector (label -> spec)
+# safe for shiny::selectInput (never NA/empty names). Empty when there is nothing
+# to offer. NOTE: reads only `$client_spec` -- unlisting the whole config yields
+# NA names and crashes selectInput's choice processing.
+.config_model_choices <- function(cwd = getwd(), cur_model = NULL) {
+  spec <- tryCatch(.read_codeagent_config(cwd)$client_spec,
+                   error = function(e) NULL)
+  ch <- character(0)
+  if (is.list(spec) && length(spec)) {
+    ch <- stats::setNames(as.character(unlist(spec, use.names = FALSE)),
+                          names(spec))
+  } else if (is.character(spec) && length(spec) == 1L && nzchar(spec)) {
+    ch <- stats::setNames(spec, spec)
+  }
+  # Drop any entry with a missing/empty name or value (selectInput rejects NAs).
+  if (length(ch)) {
+    nm   <- names(ch)
+    if (is.null(nm)) nm <- rep(NA_character_, length(ch))
+    keep <- !is.na(nm) & nzchar(nm) & !is.na(ch) & nzchar(ch)
+    ch   <- ch[keep]
+  }
+  # Prepend the active model only if it isn't already represented -- either as a
+  # full spec value or as the model component ("provider/MODEL") of one, so the
+  # current model doesn't show up twice (raw + alias).
+  spec_models <- sub("^[^/]+/", "", ch)
+  if (!is.null(cur_model) && nzchar(cur_model) &&
+      !(cur_model %in% ch) && !(cur_model %in% spec_models))
+    ch <- c(stats::setNames(cur_model, cur_model), ch)
+  ch
+}
+
+# Pick the dropdown's `selected` value for the active model. It MUST be one of
+# the choice values (a "provider/model" spec), else selectInput errors with
+# "`selected` value ... is not in `choices`". Matches by exact value first, then
+# by the model component, and falls back to the first choice.
+.config_selected_model <- function(choices, cur_model = NULL) {
+  if (is.null(cur_model) || !length(choices)) return(cur_model)
+  if (cur_model %in% choices) return(cur_model)
+  hit <- match(cur_model, sub("^[^/]+/", "", choices))
+  if (!is.na(hit)) return(unname(choices[[hit]]))
+  unname(choices[[1L]])
+}
+
 #' Launch the codeagent Shiny application
 #'
 #' @param client A `CodeagentClient` from [codeagent_client()], an
@@ -136,15 +180,11 @@ codeagent_app <- function(
     else character(0)
   }, error = function(e) character(0))
 
-  # Model choices for the Settings panel: codeagent.md aliases + current model.
+  # Model choices for the sidebar dropdown: codeagent.md `client:` aliases +
+  # current model (see .config_model_choices -- must read only $client_spec).
   cur_model     <- settings$model %||% tryCatch(chat_obj$get_model(), error = function(e) NULL)
-  model_choices <- tryCatch({
-    aliases <- .read_codeagent_config(cwd)
-    ch <- character(0)
-    if (length(aliases)) ch <- stats::setNames(unlist(aliases), names(aliases))
-    if (!is.null(cur_model) && !(cur_model %in% ch)) ch <- c(stats::setNames(cur_model, cur_model), ch)
-    ch
-  }, error = function(e) if (!is.null(cur_model)) stats::setNames(cur_model, cur_model) else character(0))
+  model_choices <- .config_model_choices(cwd, cur_model)
+  sel_model     <- .config_selected_model(model_choices, cur_model)
 
   # ---------------------------------------------------------------------------
   # UI
@@ -169,7 +209,7 @@ codeagent_app <- function(
           btw_available_groups = btw_available_groups,
           btw_groups_selected  = btw_groups,
           model_choices        = model_choices,
-          current_model        = cur_model
+          current_model        = sel_model
         )
       )
     ),
