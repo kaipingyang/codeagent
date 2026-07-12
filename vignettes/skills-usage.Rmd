@@ -95,31 +95,52 @@ a two-level cache, extra compatibility paths (`.claude/`, `.codex/`), two
 invocation paths, and progressive disclosure (only skill *names + descriptions*
 go into the system prompt; the full body is loaded on demand).
 
-```mermaid
-flowchart TD
-  U["User types /name args"] --> PP[".preprocess_input()"]
-  PP -->|"name is a built-in command<br/>(model/compact/clear/…)"| LOCAL["Handled client-side<br/>(not sent to the model)"]
-  PP -->|"otherwise → skill"| LOAD["load_skill_prompt(name, args)"]
+```
+                    User types  /name args
+                            |
+                            v
+                   .preprocess_input()
+        +-------------------+--------------------+
+ built-in command                        otherwise -> skill
+ (model/compact/clear/...)                     |
+        |                                       v
+ handled client-side                 load_skill_prompt(name, args)
+ (NOT sent to the model)                       ^
+                                               | (tool call)
+   System prompt . build_skill_hint()          |
+   <available_skills> = names + descriptions    |
+        |                                       |
+        v                                       |
+      Model --- semantic match --> use_skill() -+   .make_skill_tool()
+                                               |
+                                               v
+                   btw:::find_skill() + read body via frontmatter
+                   (fallback: read file + strip frontmatter)
+                                               |
+                                               v
+                   substitute_args:  $ARGUMENTS / $ARG1 ...
+                                               |
+                                               v
+                   full skill body injected --> agent follows it
 
-  SP["System prompt · build_skill_hint()<br/>&lt;available_skills&gt;: names + descriptions only"] --> LLM["Model"]
-  LLM -->|"semantic match → tool call"| TOOL["use_skill(name, args)<br/>.make_skill_tool()"]
-  TOOL --> LOAD
 
-  LOAD --> FIND["btw:::find_skill() + read body via frontmatter<br/>(fallback: read file + strip frontmatter)"]
-  FIND --> SUB["substitute_args: $ARGUMENTS / $ARG1 …"]
-  SUB --> BODY["Full skill body injected → agent follows it"]
+ Discovery + two-level cache . list_skills_meta()
 
-  subgraph DISC["Discovery + two-level cache · list_skills_meta()"]
-    MEM["in-memory .skill_cache"] -->|miss| DISK["on-disk cache/skills/*.rds"]
-    DISK -->|"miss (cold btw scan ~20s)"| DIRS
-    subgraph DIRS[".skill_dirs()"]
-      BTW["btw backend<br/>btw_skills_directories() / btw_skills_list()"]
-      EXT["codeagent extensions<br/>.claude · .codex · inst/skills"]
-    end
-    DIRS --> METAS["SkillMeta list → written back to cache"]
-  end
-  METAS -.-> SP
-  METAS -.-> TOOL
+   in-memory .skill_cache
+        | miss
+        v
+   on-disk  <config>/cache/skills/*.rds
+        | miss  (cold btw scan ~20s)
+        v
+   .skill_dirs()
+     - btw backend      : btw_skills_directories() / btw_skills_list()
+     - codeagent extras : .claude/skills . .codex/skills . inst/skills
+        |
+        v
+   SkillMeta list --> written back to (in-memory + on-disk) cache
+
+   cache signature = count + sum(mtime) of every SKILL.md
+   -> self-invalidates on any add / remove / edit
 ```
 
 The cache signature is `count + sum(mtime)` of every `SKILL.md`, so it
