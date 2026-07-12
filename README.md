@@ -375,10 +375,12 @@ Precedence (low to high): package defaults < `~/.codeagent/settings.json` <
 ```json
 {
   "provider": "openai_compatible",
-  "model": "your-model",
+  "model": "main",
   "env": {
-    "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE/serving-endpoints",
-    "CODEAGENT_FAST_MODEL": "your-fast-endpoint"
+    "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints",
+    "CODEAGENT_MODEL": "your-main-endpoint-name",
+    "CODEAGENT_HEAVY_MODEL": "your-heavy-endpoint-name",
+    "CODEAGENT_FAST_MODEL": "your-fast-endpoint-name"
   },
   "permissions": { "allow": [], "deny": [], "ask": [], "defaultMode": "default" },
   "tools": {
