@@ -18,10 +18,12 @@ use_codeagent_settings(scope = "user")     # ~/.codeagent/settings.json
 ``` json
 {
   "provider": "openai_compatible",
-  "model": "your-model",
+  "model": "main",
   "env": {
-    "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE/serving-endpoints",
-    "CODEAGENT_SMALL_FAST_MODEL": "your-haiku-endpoint"
+    "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints",
+    "CODEAGENT_MODEL": "your-main-endpoint-name",
+    "CODEAGENT_HEAVY_MODEL": "your-heavy-endpoint-name",
+    "CODEAGENT_FAST_MODEL": "your-fast-endpoint-name"
   },
   "permissions": { "allow": [], "deny": [], "ask": [], "defaultMode": "default" },
   "sandbox": { "enabled": false, "allow_network": true },
@@ -37,9 +39,10 @@ works even under `Rscript --vanilla`.
 | Variable | Purpose |
 |----|----|
 | `CODEAGENT_BASE_URL` | OpenAI-compatible endpoint |
-| `CODEAGENT_MODEL` | Default model |
+| `CODEAGENT_MODEL` | Default model (the `"main"` tier) |
+| `CODEAGENT_HEAVY_MODEL` | `"heavy"` tier — most capable model |
+| `CODEAGENT_FAST_MODEL` | `"fast"` tier — compaction / classification model |
 | `CODEAGENT_API_KEY` | API key (never put this in `settings.json`) |
-| `CODEAGENT_SMALL_FAST_MODEL` | Compaction / classification model |
 | `CODEAGENT_MAX_CONTEXT_TOKENS` | Override the context window |
 | `CODEAGENT_DISABLE_COMPACT` | Disable auto-compaction |
 | `CODEAGENT_PERMISSION_MODE` | Default permission mode |

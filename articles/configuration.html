@@ -87,15 +87,17 @@
 </h2>
 <div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"your-model"</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
 <span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_SMALL_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-haiku-endpoint"</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <p>The <code>env</code> block is applied before environment variables
 are read, so it works even under <code>Rscript --vanilla</code>.</p>
 </div>
@@ -103,6 +105,10 @@ are read, so it works even under <code>Rscript --vanilla</code>.</p>
 <h2 id="environment-variables">Environment variables<a class="anchor" aria-label="anchor" href="#environment-variables"></a>
 </h2>
 <table class="table">
+<colgroup>
+<col width="52%">
+<col width="47%">
+</colgroup>
 <thead><tr class="header">
 <th>Variable</th>
 <th>Purpose</th>
@@ -114,25 +120,31 @@ are read, so it works even under <code>Rscript --vanilla</code>.</p>
 </tr>
 <tr class="even">
 <td><code>CODEAGENT_MODEL</code></td>
-<td>Default model</td>
+<td>Default model (the <code>"main"</code> tier)</td>
+</tr>
+<tr class="odd">
+<td><code>CODEAGENT_HEAVY_MODEL</code></td>
+<td>
+<code>"heavy"</code> tier — most capable model</td>
+</tr>
+<tr class="even">
+<td><code>CODEAGENT_FAST_MODEL</code></td>
+<td>
+<code>"fast"</code> tier — compaction / classification model</td>
 </tr>
 <tr class="odd">
 <td><code>CODEAGENT_API_KEY</code></td>
 <td>API key (never put this in <code>settings.json</code>)</td>
 </tr>
 <tr class="even">
-<td><code>CODEAGENT_SMALL_FAST_MODEL</code></td>
-<td>Compaction / classification model</td>
-</tr>
-<tr class="odd">
 <td><code>CODEAGENT_MAX_CONTEXT_TOKENS</code></td>
 <td>Override the context window</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>CODEAGENT_DISABLE_COMPACT</code></td>
 <td>Disable auto-compaction</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>CODEAGENT_PERMISSION_MODE</code></td>
 <td>Default permission mode</td>
 </tr>

@@ -46,4 +46,4 @@ collapsible block in the Shiny UI).
 ## Small/fast model
 
 Compaction and permission classification use a cheaper model. Set it via
-`CODEAGENT_SMALL_FAST_MODEL` (mirrors `ANTHROPIC_SMALL_FAST_MODEL`).
+`CODEAGENT_FAST_MODEL` (the `"fast"` tier).
