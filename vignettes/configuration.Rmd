@@ -67,7 +67,7 @@ Keep API keys in `~/.Renviron` as `CODEAGENT_API_KEY`, or use the OS keyring
 # codeagent.md
 ---
 client:
-  gpt41:    openai/gsds-gpt41
+  gpt41:    openai/gpt-4.1
   deepseek: openai/deepseek-r1
 btw_groups: [docs, git, pkg]
 permission_mode: bypass

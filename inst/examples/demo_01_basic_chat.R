@@ -13,7 +13,7 @@ devtools::load_all(quiet = TRUE)
 
 cat("=== Demo 1: Basic Chat ===\n\n")
 
-models <- c("gsds-gpt41", "gsds-gpt-54", "gsds-gpt-55")
+models <- strsplit(Sys.getenv("CODEAGENT_MODELS", "gpt-4.1"), ",")[[1]]
 
 for (model in models) {
   cat(sprintf("--- %s (new style) ---\n", model))
@@ -30,10 +30,10 @@ for (model in models) {
 }
 
 # Legacy style still works (backward-compatible)
-cat("--- gsds-gpt41 (legacy style) ---\n")
+cat("--- legacy style ---\n")
 resp <- codeagent(
   "In one sentence, what is R programming language?",
-  model           = "gsds-gpt41",
+  model           = Sys.getenv("CODEAGENT_MODEL", "gpt-4.1"),
   permission_mode = "bypass"
 )
 cat(resp, "\n\n")

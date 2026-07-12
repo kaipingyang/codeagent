@@ -31,7 +31,7 @@ cat(substr(body, 1, 400), "...\n\n")
 cat("--- Invoking /plan via codeagent() (user /name trigger) ---\n")
 resp <- codeagent(
   "/plan refactor the utils module",
-  model           = "gsds-gpt41",
+  model           = Sys.getenv("CODEAGENT_MODEL", "gpt-4.1"),
   permission_mode = "bypass"
 )
 cat(resp, "\n\n")
@@ -40,7 +40,7 @@ cat(resp, "\n\n")
 cat("--- Invoking /compact via codeagent() ---\n")
 resp2 <- codeagent(
   "/compact",
-  model           = "gsds-gpt41",
+  model           = Sys.getenv("CODEAGENT_MODEL", "gpt-4.1"),
   permission_mode = "bypass"
 )
 cat(resp2, "\n\n")
@@ -50,7 +50,7 @@ cat(resp2, "\n\n")
 cat("--- LLM semantic trigger: 'check if my code is correct' → use_skill(verify) ---\n")
 resp3 <- codeagent(
   "Can you check if the last code I wrote is correct and complete?",
-  model           = "gsds-gpt41",
+  model           = Sys.getenv("CODEAGENT_MODEL", "gpt-4.1"),
   permission_mode = "bypass"
 )
 cat(resp3, "\n")

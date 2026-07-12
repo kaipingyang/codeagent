@@ -9,7 +9,7 @@
 #
 # This demo wires up a `codeagent.md` config with several models so the dropdown
 # lists them all -- pick another to switch live (chat history is preserved). The
-# `/model <name>` command works too (e.g. `/model gsds-gpt-55`).
+# `/model <name>` command works too (e.g. `/model gpt-4o-mini`).
 #
 # Run from the package root:
 #   Rscript inst/examples/demo_07_multi_model.R
@@ -19,7 +19,7 @@
 # What to try:
 #   - Top-left "Model" dropdown -> pick "gpt55" / "deepseek-pro" -> a toast
 #     confirms the switch; keep chatting, the conversation carries over.
-#   - Type `/model gsds-deepseek-v4-flash` in the chat input to switch by name.
+#   - Type `/model deepseek-v3` in the chat input to switch by name.
 #   - Type `/model` (no arg) for the tier popup.
 
 readRenviron(".Renviron")
@@ -30,8 +30,7 @@ devtools::load_all(quiet = TRUE)
 #    dedicated dir keeps this demo from changing demo_05's single-model dropdown.
 #    All specs are "openai/<model>", which resolves to chat_openai_compatible()
 #    against CODEAGENT_BASE_URL (your serving endpoint) with CODEAGENT_API_KEY.
-#    (Model names verified available on the gateway: gsds-gpt-54 / gsds-gpt-55 /
-#    gsds-deepseek-v4-pro / gsds-deepseek-v4-flash. ai-gateway needs lowercase.)
+#    (Set these to endpoint names available on your own provider / gateway.)
 # ---------------------------------------------------------------------------
 demo_dir <- file.path(tempdir(), "codeagent_multimodel_demo")
 dir.create(demo_dir, showWarnings = FALSE)
@@ -39,10 +38,10 @@ dir.create(demo_dir, showWarnings = FALSE)
 writeLines(c(
   "---",
   "client:",
-  "  gpt54:          openai/gsds-gpt-54",
-  "  gpt55:          openai/gsds-gpt-55",
-  "  deepseek-pro:   openai/gsds-deepseek-v4-pro",
-  "  deepseek-flash: openai/gsds-deepseek-v4-flash",
+  "  gpt54:          openai/gpt-4o",
+  "  gpt55:          openai/gpt-4o-mini",
+  "  deepseek-pro:   openai/deepseek-r1",
+  "  deepseek-flash: openai/deepseek-v3",
   "permission_mode: bypass",
   "btw_groups: [docs, env, pkg]",
   "---",
@@ -71,5 +70,5 @@ client <- codeagent_client_config(alias = "gpt54", cwd = demo_dir)
 cat("Launching multi-model demo\n")
 cat("  working dir:", demo_dir, "\n")
 cat("  models:      gpt54 / gpt55 / deepseek-pro / deepseek-flash\n")
-cat("  Try the top-left Model dropdown, or /model gsds-gpt-55\n")
+cat("  Try the top-left Model dropdown, or /model gpt-4o-mini\n")
 codeagent_app(client, cwd = demo_dir, permission_mode = "bypass")

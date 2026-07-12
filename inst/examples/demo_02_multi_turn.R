@@ -11,7 +11,7 @@ cat("=== Demo 2: Multi-turn Conversation ===\n\n")
 # New style: create client once, pass to agent_loop each turn
 chat <- ellmer::chat_openai_compatible(
   base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
-  model       = "gsds-gpt41",
+  model       = "gpt-4.1",
   credentials = function() Sys.getenv("CODEAGENT_API_KEY")
 )
 client <- codeagent_client(chat, permission_mode = "bypass", max_turns = 10L)
