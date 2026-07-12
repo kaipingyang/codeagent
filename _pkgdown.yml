@@ -39,7 +39,7 @@ reference:
   - title: "CLI"
     desc: "Terminal REPL and command-line interface."
     contents:
-      - codeagent_repl
+      - codeagent_console
       - install_codeagent_cli
 
   - title: "Tools"
@@ -136,6 +136,8 @@ reference:
     contents:
       - switch_model
       - verify_r_tests
+      - verify_r_lints
+      - codeagent_otel_status
       - use_codeagent_md
 
   - title: "Tools"
@@ -189,6 +191,20 @@ reference:
       - ThinkingBlock
       - ToolResultBlock
       - ToolUseBlock
+
+  - title: "Streaming"
+    desc: "Per-turn streaming primitives with typed content callbacks."
+    contents:
+      - codeagent_stream
+      - codeagent_stream_async
+
+  - title: "Guided tasks"
+    desc: "One-shot guided workflows (reuse btw tasks)."
+    contents:
+      - codeagent_task
+      - codeagent_create_skill
+      - codeagent_create_readme
+      - codeagent_init_context
 
 articles:
   - title: "Getting Started"
