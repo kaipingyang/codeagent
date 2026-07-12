@@ -59,6 +59,28 @@ Write/Execute/Analyze/Regroup loop. On every turn the agent:
 3. **A** — interprets results, flags patterns and outliers
 4. **R** — proposes 3-5 follow-up questions
 
+```
+wear_explore(data = ...)
+  - resolve data into an environment
+  - register ExploreData tool (read-only, sandboxed child env)
+  - register /report (GenerateReport) tool
+  - inject the WEAR system prompt
+  - enter codeagent_console()  or  codeagent_app()
+
+Each turn the agent runs the W-E-A-R cycle:
+  W  Write     model writes dplyr / base R code
+  E  Execute   ExploreData: eval in new.env(parent = data env)
+               (read-only: your source data is never mutated)
+                 - code given -> returns table / printed value
+                 - no code    -> returns ellmer::df_schema(df) to plan next step
+  A  Analyze   model interprets the result, flags patterns / outliers
+  R  Regroup   model ends the turn with a "Next steps" list (3-5 items)
+       |
+       v  (repeat until you stop)
+  /report -> generate_wear_report(): turns -> Quarto .qmd
+             user Q = "##" heading, tool code -> an {r} chunk, analysis = prose
+```
+
 ```{r, purl=FALSE, purl=FALSE}
 # CLI session (blocks until you type /exit or Ctrl+C)
 wear_explore(data = list(mtcars = mtcars))
