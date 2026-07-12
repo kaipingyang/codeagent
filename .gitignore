@@ -6,6 +6,10 @@
 *.tar.gz
 *.Rproj
 
+# pkgdown site (built + deployed by CI, not committed)
+docs/
+pkgdown/
+
 # renv
 renv/library/
 renv/staging/
