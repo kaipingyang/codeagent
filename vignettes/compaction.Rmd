@@ -48,6 +48,34 @@ A circuit breaker stops auto-compaction after repeated failures, and a 413 /
 prompt-too-long error triggers a reactive fallback that drops the oldest turns
 (parsing the real context limit from the error when present).
 
+## Compaction flow
+
+```
+token count = Chat$get_tokens() (real usage)  else char/3.5 estimate
+
+TIER 1 -- turn boundary, before each chat$chat()   [maybe_compact()]
+  tokens >= model_limit - 33K margin ?
+    | yes           (circuit breaker: stop after 3 consecutive failures)
+    v  compact_now()
+  snip_old_tools()               clear old tool results (cheap, no LLM)
+    v
+  session_memory_compact()   L1: incremental summary of the earliest turns
+    | did not run (too few turns)
+    v
+  full_compact()             L2: one 9-section structured summary replaces history
+
+TIER 2 -- between tool rounds, on ellmer on_tool_result  [.midloop_compact_step()]
+  settings$midloop_compact (default ON) AND tokens >= midloop_trigger ?
+    +- default:  snip_old_tools(target_tokens)   budget-aware micro-snip (no LLM)
+    +- opt-in (settings$midloop_full_compact):    compact_now()  (same L1 -> L2)
+
+REACTIVE -- on send error 413 / prompt_too_long   [ptl_fallback()]
+    drop oldest turns until under the parsed real limit, then retry chat$chat() once
+```
+
+The mid-loop step currently rides ellmer's `on_tool_result` (fires between tool
+rounds); the cleaner upstream target is `on_turn_start` (ellmer PR #1052).
+
 ## Context-left indicator
 
 Both the REPL banner and the Shiny status bar show "N% context left", turning
