@@ -75,6 +75,42 @@
     
 <p>Every tool call passes through a permission gate before it runs.</p>
 <div class="section level2">
+<h2 id="how-the-gate-decides">How the gate decides<a class="anchor" aria-label="anchor" href="#how-the-gate-decides"></a>
+</h2>
+<pre><code>model requests a tool
+    |
+    v
+chat$on_tool_request  -&gt;  permission gate (.tool_gate_fn)
+    |
+    +- PreToolUse hook (fires for every call)
+    |
+    +- read-only tool AND no override?  -- yes --&gt;  ALLOW (short-circuit)
+    |
+    v  .gate_decide  (precedence, highest first)
+  1. settings$tools$overrides[tool]      -&gt; allow / deny / ask
+  2. settings$tools$capabilities[class]  -&gt; read|write|exec|net -&gt; allow/deny/ask
+  3. fallback -&gt; check_permission(mode, rules):
+       plan          -&gt; deny (non-read)
+       user rules    -&gt; first glob match wins (allow/deny/ask)
+       accept_edits  -&gt; edit tools allow
+       bypass        -&gt; allow
+       bubble        -&gt; ask (bubbles to parent agent)
+       dont_ask      -&gt; read-only allow, else deny
+       auto          -&gt; small-model classifier -&gt; allow/deny/ask
+       default       -&gt; read-only (&amp; read-only Bash) allow, else ask
+    |
+    v
+  decision --+-- allow --&gt; tool runs --&gt; on_tool_result --&gt; PostToolUse hook
+             +-- deny  --&gt; PermissionDenied hook --&gt; ellmer::tool_reject()
+             |                                       (loop gets an error result)
+             +-- ask   --&gt; ask_fn():  console prompt (CLI)
+                                    |  promise -&gt; Shiny Allow/Deny bar (async)
+                           approved -&gt; run   /   rejected -&gt; deny</code></pre>
+<p><code>settings$tools$sets</code> (<code>"A"</code> = codeagent core,
+<code>"B"</code> = btw) decides which tool <em>sets</em> get registered;
+it does not affect the per-call decision above.</p>
+</div>
+<div class="section level2">
 <h2 id="modes">Modes<a class="anchor" aria-label="anchor" href="#modes"></a>
 </h2>
 <table class="table">
@@ -118,7 +154,7 @@
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, permission_mode <span class="op">=</span> <span class="st">"default"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -126,14 +162,14 @@
 </h2>
 <p>Rules match tool arguments (mirroring Claude Code’s
 <code>Bash(git *)</code> syntax) and are evaluated first, in order:</p>
-<div class="sourceCode" id="cb2"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(git status)"</span><span class="ot">,</span> <span class="st">"Read(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[</span><span class="st">"Bash(rm -rf *)"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[</span><span class="st">"Write(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
-<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(git status)"</span><span class="ot">,</span> <span class="st">"Read(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[</span><span class="st">"Bash(rm -rf *)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[</span><span class="st">"Write(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="interactive-approval-shiny">Interactive approval (Shiny)<a class="anchor" aria-label="anchor" href="#interactive-approval-shiny"></a>

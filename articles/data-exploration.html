@@ -165,7 +165,26 @@ outliers</li>
 <li>
 <strong>R</strong> — proposes 3-5 follow-up questions</li>
 </ol>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<pre><code>wear_explore(data = ...)
+  - resolve data into an environment
+  - register ExploreData tool (read-only, sandboxed child env)
+  - register /report (GenerateReport) tool
+  - inject the WEAR system prompt
+  - enter codeagent_console()  or  codeagent_app()
+
+Each turn the agent runs the W-E-A-R cycle:
+  W  Write     model writes dplyr / base R code
+  E  Execute   ExploreData: eval in new.env(parent = data env)
+               (read-only: your source data is never mutated)
+                 - code given -&gt; returns table / printed value
+                 - no code    -&gt; returns ellmer::df_schema(df) to plan next step
+  A  Analyze   model interprets the result, flags patterns / outliers
+  R  Regroup   model ends the turn with a "Next steps" list (3-5 items)
+       |
+       v  (repeat until you stop)
+  /report -&gt; generate_wear_report(): turns -&gt; Quarto .qmd
+             user Q = "##" heading, tool code -&gt; an {r} chunk, analysis = prose</code></pre>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># CLI session (blocks until you type /exit or Ctrl+C)</span></span>
 <span><span class="fu"><a href="../reference/wear_explore.html">wear_explore</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mtcars <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -182,7 +201,7 @@ to save the session as a reproducible <code>.qmd</code> file. The
 <code>/report</code> command is <strong>only available inside a
 <code><a href="../reference/wear_explore.html">wear_explore()</a></code> session</strong> — it is not registered in
 standard sessions.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Capture the client to generate the report after the session ends</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wear_explore.html">wear_explore</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mtcars <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -213,10 +232,10 @@ by default)</li>
 <p>Enable automatic schema injection so the agent always knows what
 data.frames are in <code>.GlobalEnv</code> without an explicit tool
 call:</p>
-<div class="sourceCode" id="cb4"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="dt">"inject_r_env"</span><span class="fu">:</span> <span class="kw">true</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="dt">"inject_r_env"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">

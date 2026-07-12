@@ -80,11 +80,38 @@
 parallel for tasks that can be divided and executed concurrently.</p>
 </div>
 <div class="section level2">
+<h2 id="coordination-at-a-glance">Coordination at a glance<a class="anchor" aria-label="anchor" href="#coordination-at-a-glance"></a>
+</h2>
+<pre><code>team_run(tasks)                    FIXED FAN-OUT (worker i = task i)
+  crew / mirai: run_one(task) = codeagent_client() + codeagent(task)
+  -&gt; collect results in order
+
+team_coordinate(tasks, blocked_by)   WORK-STEALING over a SQLite board
+  board_create(): tasks + deps (DAG) + messages tables
+  seed tasks (add, then wire blocked_by by index) + toposort (reject cycles)
+  N workers, each:  repeat {
+     board_claim()  -- BEGIN IMMEDIATE: lowest pending id whose blockers are done
+        | none claimable
+        +- pending == 0            -&gt; all done, break
+        +- board_reclaim_stale()   -&gt; reclaim a crashed worker's task
+        +- stalled (dead-end)      -&gt; break
+        +- else Sys.sleep(backoff) -&gt; retry   (a blocker still running)
+     run codeagent(task) -&gt; board_complete(result) -&gt; board_send_message()
+  }
+  -&gt; board_status() data.frame (id, prompt, owner, status, result)
+
+team_lead(goal, max_rounds)        LLM-LEAD loop
+  decompose (chat_structured -&gt; tasks + DAG)
+    -&gt; team_coordinate(...)              (runs the work-stealing board above)
+    -&gt; review (chat_structured: done? follow-up tasks?)
+    -&gt; replan -&gt; next round              (until done or max_rounds)</code></pre>
+</div>
+<div class="section level2">
 <h2 id="fixed-fan-out-team_run">Fixed fan-out: team_run()<a class="anchor" aria-label="anchor" href="#fixed-fan-out-team_run"></a>
 </h2>
 <p><code><a href="../reference/team_run.html">team_run()</a></code> assigns one task per worker and collects all
 results:</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/kaipingyang/codeagent">codeagent</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Review multiple files in parallel</span></span>
@@ -105,7 +132,7 @@ container CPU limits.</p>
 </h2>
 <p><code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> uses a shared SQLite task board where
 workers claim tasks dynamically – faster workers take more tasks:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span></span>
 <span>  tasks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"task 1"</span>, <span class="st">"task 2"</span>, <span class="st">"task 3"</span>, <span class="st">"task 4"</span>, <span class="st">"task 5"</span><span class="op">)</span>,</span>
 <span>  n_workers <span class="op">=</span> <span class="fl">2</span></span>
@@ -116,7 +143,7 @@ workers claim tasks dynamically – faster workers take more tasks:</p>
 <h3 id="inter-agent-messaging">Inter-agent messaging<a class="anchor" aria-label="anchor" href="#inter-agent-messaging"></a>
 </h3>
 <p>The shared board also supports messages between agents:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/board_create.html">board_create</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/board_add_task.html">board_add_task</a></span><span class="op">(</span><span class="va">db</span>, <span class="st">"analyse the sales data"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/board_add_task.html">board_add_task</a></span><span class="op">(</span><span class="va">db</span>, <span class="st">"generate the summary report"</span><span class="op">)</span></span>
@@ -135,7 +162,7 @@ workers claim tasks dynamically – faster workers take more tasks:</p>
 </h2>
 <p>The agent can invoke sub-agents via the <code>Agent</code> tool
 directly from the chat. Enable it by registering the agent tool:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>,</span>
 <span>  permission_mode <span class="op">=</span> <span class="st">"bypass"</span>,</span>
 <span>  worktree_isolation <span class="op">=</span> <span class="cn">TRUE</span>   <span class="co"># each sub-agent in its own git worktree</span></span>

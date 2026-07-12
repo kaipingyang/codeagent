@@ -5,6 +5,32 @@
 codeagent supports running multiple independent sub-agents in parallel
 for tasks that can be divided and executed concurrently.
 
+## Coordination at a glance
+
+    team_run(tasks)                    FIXED FAN-OUT (worker i = task i)
+      crew / mirai: run_one(task) = codeagent_client() + codeagent(task)
+      -> collect results in order
+
+    team_coordinate(tasks, blocked_by)   WORK-STEALING over a SQLite board
+      board_create(): tasks + deps (DAG) + messages tables
+      seed tasks (add, then wire blocked_by by index) + toposort (reject cycles)
+      N workers, each:  repeat {
+         board_claim()  -- BEGIN IMMEDIATE: lowest pending id whose blockers are done
+            | none claimable
+            +- pending == 0            -> all done, break
+            +- board_reclaim_stale()   -> reclaim a crashed worker's task
+            +- stalled (dead-end)      -> break
+            +- else Sys.sleep(backoff) -> retry   (a blocker still running)
+         run codeagent(task) -> board_complete(result) -> board_send_message()
+      }
+      -> board_status() data.frame (id, prompt, owner, status, result)
+
+    team_lead(goal, max_rounds)        LLM-LEAD loop
+      decompose (chat_structured -> tasks + DAG)
+        -> team_coordinate(...)              (runs the work-stealing board above)
+        -> review (chat_structured: done? follow-up tasks?)
+        -> replan -> next round              (until done or max_rounds)
+
 ## Fixed fan-out: team_run()
 
 [`team_run()`](https://github.com/kaipingyang/codeagent/reference/team_run.md)

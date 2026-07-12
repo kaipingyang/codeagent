@@ -2,6 +2,42 @@
 
 Every tool call passes through a permission gate before it runs.
 
+## How the gate decides
+
+    model requests a tool
+        |
+        v
+    chat$on_tool_request  ->  permission gate (.tool_gate_fn)
+        |
+        +- PreToolUse hook (fires for every call)
+        |
+        +- read-only tool AND no override?  -- yes -->  ALLOW (short-circuit)
+        |
+        v  .gate_decide  (precedence, highest first)
+      1. settings$tools$overrides[tool]      -> allow / deny / ask
+      2. settings$tools$capabilities[class]  -> read|write|exec|net -> allow/deny/ask
+      3. fallback -> check_permission(mode, rules):
+           plan          -> deny (non-read)
+           user rules    -> first glob match wins (allow/deny/ask)
+           accept_edits  -> edit tools allow
+           bypass        -> allow
+           bubble        -> ask (bubbles to parent agent)
+           dont_ask      -> read-only allow, else deny
+           auto          -> small-model classifier -> allow/deny/ask
+           default       -> read-only (& read-only Bash) allow, else ask
+        |
+        v
+      decision --+-- allow --> tool runs --> on_tool_result --> PostToolUse hook
+                 +-- deny  --> PermissionDenied hook --> ellmer::tool_reject()
+                 |                                       (loop gets an error result)
+                 +-- ask   --> ask_fn():  console prompt (CLI)
+                                        |  promise -> Shiny Allow/Deny bar (async)
+                               approved -> run   /   rejected -> deny
+
+`settings$tools$sets` (`"A"` = codeagent core, `"B"` = btw) decides
+which tool *sets* get registered; it does not affect the per-call
+decision above.
+
 ## Modes
 
 | Mode | Behaviour |

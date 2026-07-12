@@ -123,6 +123,33 @@ the oldest turns (parsing the real context limit from the error when
 present).</p>
 </div>
 <div class="section level2">
+<h2 id="compaction-flow">Compaction flow<a class="anchor" aria-label="anchor" href="#compaction-flow"></a>
+</h2>
+<pre><code>token count = Chat$get_tokens() (real usage)  else char/3.5 estimate
+
+TIER 1 -- turn boundary, before each chat$chat()   [maybe_compact()]
+  tokens &gt;= model_limit - 33K margin ?
+    | yes           (circuit breaker: stop after 3 consecutive failures)
+    v  compact_now()
+  snip_old_tools()               clear old tool results (cheap, no LLM)
+    v
+  session_memory_compact()   L1: incremental summary of the earliest turns
+    | did not run (too few turns)
+    v
+  full_compact()             L2: one 9-section structured summary replaces history
+
+TIER 2 -- between tool rounds, on ellmer on_tool_result  [.midloop_compact_step()]
+  settings$midloop_compact (default ON) AND tokens &gt;= midloop_trigger ?
+    +- default:  snip_old_tools(target_tokens)   budget-aware micro-snip (no LLM)
+    +- opt-in (settings$midloop_full_compact):    compact_now()  (same L1 -&gt; L2)
+
+REACTIVE -- on send error 413 / prompt_too_long   [ptl_fallback()]
+    drop oldest turns until under the parsed real limit, then retry chat$chat() once</code></pre>
+<p>The mid-loop step currently rides ellmer’s
+<code>on_tool_result</code> (fires between tool rounds); the cleaner
+upstream target is <code>on_turn_start</code> (ellmer PR #1052).</p>
+</div>
+<div class="section level2">
 <h2 id="context-left-indicator">Context-left indicator<a class="anchor" aria-label="anchor" href="#context-left-indicator"></a>
 </h2>
 <p>Both the REPL banner and the Shiny status bar show “N% context left”,
@@ -132,7 +159,7 @@ line (<code><a href="../reference/calculate_token_warning_state.html">calculate_
 <div class="section level2">
 <h2 id="controls">Controls<a class="anchor" aria-label="anchor" href="#controls"></a>
 </h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>CODEAGENT_DISABLE_COMPACT <span class="op">=</span> <span class="st">"1"</span><span class="op">)</span>     <span class="co"># disable auto-compaction</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>CODEAGENT_MAX_CONTEXT_TOKENS <span class="op">=</span> <span class="st">"500000"</span><span class="op">)</span>  <span class="co"># override the window</span></span>
 <span><span class="co"># Manual compaction from the REPL / Shiny:</span></span>
