@@ -332,7 +332,7 @@ All core subsystems are complete. 281 tests pass.
 
 **目标**：`default` 权限模式下，Shiny app 对"需要确认"的工具请求弹出审批 UI，用户点 Allow/Deny，结果异步返回给权限门。
 
-**实现思路**（参考 `/usrfiles/shared-projects/users/kaiping_yang/ClaudeAgentSDK/examples/16_shinychat_tool_approval_inline.R` 的 UI 设计，但底层机制完全不同）：
+**实现思路**（UI 设计参考 shinychat 的 inline tool-approval 示例，但底层机制完全不同）：
 ```r
 # R/server_chat.R 里构造 Shiny ask_fn，注入 codeagent_client()
 .shiny_ask_fn <- function(session, state) {

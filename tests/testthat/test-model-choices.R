@@ -42,17 +42,17 @@ test_that(".config_model_choices never yields NA/empty names (selectInput-safe)"
 })
 
 test_that(".config_selected_model always yields a value present in choices", {
-  ch <- c(gpt54 = "openai/gsds-gpt-54", gpt55 = "openai/gsds-gpt-55")
+  ch <- c(gpt54 = "openai/gpt-4o", gpt55 = "openai/gpt-4o-mini")
   # model-component match -> the matching spec value
-  expect_equal(.config_selected_model(ch, "gsds-gpt-55"), "openai/gsds-gpt-55")
+  expect_equal(.config_selected_model(ch, "gpt-4o-mini"), "openai/gpt-4o-mini")
   # exact value match
-  expect_equal(.config_selected_model(ch, "openai/gsds-gpt-54"), "openai/gsds-gpt-54")
+  expect_equal(.config_selected_model(ch, "openai/gpt-4o"), "openai/gpt-4o")
   # no match -> falls back to first choice (still valid for selectInput)
   expect_true(.config_selected_model(ch, "nope") %in% ch)
   # single-model case (choice value == current model)
-  ch2 <- c("gsds-gpt-54" = "gsds-gpt-54")
-  expect_equal(.config_selected_model(ch2, "gsds-gpt-54"), "gsds-gpt-54")
+  ch2 <- c("gpt-4o" = "gpt-4o")
+  expect_equal(.config_selected_model(ch2, "gpt-4o"), "gpt-4o")
   # the selected value is always in choices (the invariant selectInput needs)
-  for (cm in c("gsds-gpt-55", "openai/gsds-gpt-54", "nope"))
+  for (cm in c("gpt-4o-mini", "openai/gpt-4o", "nope"))
     expect_true(.config_selected_model(ch, cm) %in% ch)
 })

@@ -233,7 +233,7 @@ codeagent_client <- function(
 #'
 #' **Legacy (backward-compatible):** omit client, pass model etc. directly.
 #' ```r
-#' codeagent("List all .R files", model = "gsds-gpt41", permission_mode = "bypass")
+#' codeagent("List all .R files", model = "gpt-4.1", permission_mode = "bypass")
 #' ```
 #'
 #' @param client_or_prompt Either a `CodeagentClient` (from [codeagent_client()])

@@ -2,12 +2,12 @@
 # codeagent.md — project configuration for codeagent
 #
 # Single client:
-#   client: openai/gsds-gpt41
+#   client: openai/gpt-4.1
 #
 # Multiple clients with aliases:
 client:
-  gpt41:    openai/gsds-gpt41
-  gpt55:    openai/gsds-gpt-55
+  gpt41:    openai/gpt-4.1
+  gpt55:    openai/gpt-4o
   deepseek: openai/deepseek-r1
 
 # btw tool groups to enable (docs, env, files, git, ide, pkg, cran, sessioninfo, web, agent)

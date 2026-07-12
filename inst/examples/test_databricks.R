@@ -2,7 +2,7 @@
 # inst/examples/test_databricks.R
 #
 # End-to-end smoke tests for codeagent with Databricks OpenAI-compatible endpoints.
-# Tests gsds-gpt41, gsds-gpt-54, gsds-gpt-55 models.
+# Set CODEAGENT_MODEL / CODEAGENT_MODELS to your own endpoint name(s).
 # No ANTHROPIC_API_KEY needed.
 #
 # Prerequisites (set in ~/.Renviron or export in shell):
@@ -81,7 +81,7 @@ section("B. codeagent_client() -- chat_openai_compatible branch")
 chat_raw <- tryCatch(
   ellmer::chat_openai_compatible(
     base_url    = base_url,
-    model       = "gsds-gpt41",
+    model       = Sys.getenv("CODEAGENT_MODEL", "gpt-4.1"),
     credentials = function() api_key
   ),
   error = function(e) { cat("  [ERROR]", conditionMessage(e), "\n"); NULL }
@@ -102,9 +102,9 @@ ok(is.list(client_b$settings),                  "client$settings is a list")
 # C. One-shot query: three models
 # ---------------------------------------------------------------------------
 
-section("C. codeagent() one-shot -- gsds-gpt41 / gsds-gpt-54 / gsds-gpt-55")
+section("C. codeagent() one-shot -- iterate configured models")
 
-models <- c("gsds-gpt41", "gsds-gpt-54", "gsds-gpt-55")
+models <- strsplit(Sys.getenv("CODEAGENT_MODELS", "gpt-4.1"), ",")[[1]]
 
 for (model in models) {
   # New style: explicit client
@@ -131,7 +131,7 @@ for (model in models) {
 section("D. agent_loop() multi-turn and max_turns enforcement")
 
 chat_loop_raw <- ellmer::chat_openai_compatible(
-  base_url    = base_url, model = "gsds-gpt41",
+  base_url    = base_url, model = Sys.getenv("CODEAGENT_MODEL", "gpt-4.1"),
   credentials = function() api_key
 )
 client_loop <- codeagent:::codeagent_client(
@@ -178,7 +178,7 @@ ok(grepl("use_skill", hint),               "hint instructs LLM to use use_skill 
 skill_resp <- tryCatch(
   codeagent:::codeagent(
     "/compact",
-    model           = "gsds-gpt41",
+    model           = Sys.getenv("CODEAGENT_MODEL", "gpt-4.1"),
     permission_mode = "bypass",
     cwd             = tempdir()
   ),

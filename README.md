@@ -54,7 +54,7 @@ use_codeagent_setup()   # guides provider selection + API key + settings.json
 # codeagent.md
 ---
 client:
-  gpt41:    openai/gsds-gpt41
+  gpt41:    openai/gpt-4.1
   deepseek: openai/deepseek-r1
 btw_groups: [docs, git, pkg]
 permission_mode: bypass
@@ -378,7 +378,7 @@ Precedence (low to high): package defaults < `~/.codeagent/settings.json` <
   "model": "your-model",
   "env": {
     "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE/serving-endpoints",
-    "CODEAGENT_SMALL_FAST_MODEL": "your-haiku-endpoint"
+    "CODEAGENT_FAST_MODEL": "your-fast-endpoint"
   },
   "permissions": { "allow": [], "deny": [], "ask": [], "defaultMode": "default" },
   "tools": {

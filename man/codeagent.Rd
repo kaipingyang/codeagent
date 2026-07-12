@@ -52,6 +52,6 @@ codeagent(client, "List all .R files")
 
 \strong{Legacy (backward-compatible):} omit client, pass model etc. directly.
 
-\if{html}{\out{<div class="sourceCode r">}}\preformatted{codeagent("List all .R files", model = "gsds-gpt41", permission_mode = "bypass")
+\if{html}{\out{<div class="sourceCode r">}}\preformatted{codeagent("List all .R files", model = "gpt-4.1", permission_mode = "bypass")
 }\if{html}{\out{</div>}}
 }
