@@ -122,3 +122,21 @@ test_that(".render_markdown highlights code + degrades to plain off-tty", {
   # empty input safe
   expect_identical(.render_markdown(""), "")
 })
+
+# ---------------------------------------------------------------------------
+# Ctrl+C / interrupt + callback deduplication (Step 2)
+# ---------------------------------------------------------------------------
+
+test_that(".register_repl_tool_callbacks does not stack via .chat_once", {
+  skip_if_not_installed("ellmer")
+  ch <- ellmer::chat_anthropic(model = "claude-haiku-4-5-20251001",
+                               credentials = function() "fake")
+
+  # First call: registers and returns TRUE
+  r1 <- codeagent:::.chat_once(ch, "repl_display")
+  if (isTRUE(r1)) codeagent:::.register_repl_tool_callbacks(ch)
+
+  # Second call: .chat_once returns FALSE -> no second registration
+  r2 <- codeagent:::.chat_once(ch, "repl_display")
+  expect_false(r2)   # guard prevents stacking
+})

@@ -293,8 +293,10 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 
   # Tool execution visibility: print tool name when a tool is requested, and a
   # one-line summary when it completes.  Mirrors Claude Code's CLI behaviour
-  # (tool_use pauses text, shows the tool, resumes).  Registered once.
-  .register_repl_tool_callbacks(client$chat)
+  # (tool_use pauses text, shows the tool, resumes).  Registered at most once
+  # per chat object via .chat_once() to prevent callback stacking on re-entry.
+  if (.chat_once(client$chat, "repl_display"))
+    .register_repl_tool_callbacks(client$chat)
 
   cat("\n")
   ver <- tryCatch(as.character(utils::packageVersion("codeagent")),
@@ -396,7 +398,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
               cat(sprintf("  %-10s -> %s%s\n", nm, tiers[[nm]],
                           if (identical(tiers[[nm]], cur)) "  (active)" else ""))
           }
-          cat("Usage: /model <tier-or-endpoint>  e.g. /model sonnet\n")
+          cat("Usage: /model <tier-or-endpoint>  e.g. /model main\n")
         } else {
           client <- tryCatch(switch_model(client, act$arg), error = function(e) {
             cat("[model switch failed: ", conditionMessage(e), "]\n", sep = ""); client
@@ -422,63 +424,61 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       }
     }
 
-    # 1. Compaction + resource management (per turn, like agent_loop)
-    tryCatch(compaction_ctrl$maybe_compact(client$chat,
-             settings$model_limit %||% 200000L,
-             compact_model = .resolve_compact_model(client$chat, settings)),
-             error = function(e) NULL)
-    tryCatch(resource_state$maybe_replace(client$chat), error = function(e) NULL)
-
-    # 2. system-reminder injection (date/iteration/cwd/memory)
-    reminder <- tryCatch(.build_system_reminder(settings, iteration, cwd,
-                                                query = user_input),
-                         error = function(e) "")
-    actual_input <- if (nzchar(reminder))
-      paste0(user_input, "\n\n", reminder) else user_input
+    # 1+2. Compaction + resource management + system-reminder injection
+    actual_input <- .turn_setup(client, user_input, iteration, cwd,
+                                compaction_ctrl, resource_state)
 
     # 3. Stream / send (with full error recovery: PTL/rate-limit/network/auth)
-    ok <- if (isTRUE(stream)) {
-      tryCatch({
-        # stream="content" yields S7 Content objects (ContentText /
-        # ContentThinking) instead of raw strings, so reasoning blocks can be
-        # rendered distinctly. Models without extended thinking only emit
-        # ContentText -> identical output to before.
-        s <- client$chat$stream(actual_input, stream = "content")
-        # Progress: show a dim "thinking" hint during the initial latency, then
-        # clear it (\r + erase-line) as soon as the first token arrives. TTY-only
-        # so piped/non-interactive output stays clean.
-        show_hint   <- tryCatch(isatty(stdout()), error = function(e) FALSE)
-        hint_active <- FALSE
-        if (show_hint) {
-          cat(tryCatch(cli::style_dim("\u22ef thinking"),
-                       error = function(e) "... thinking"))
-          hint_active <- TRUE
-        }
-        first_chunk <- TRUE
-        coro::loop(for (chunk in s) {
-          if (hint_active) { cat("\r\033[K"); hint_active <- FALSE }
-          if (S7::S7_inherits(chunk, ellmer::ContentThinking)) {
-            th <- tryCatch(chunk@thinking, error = function(e) "")
-            cat(.fmt_thinking(th))
-            first_chunk <- FALSE
-          } else {
-            txt <- .chunk_text(chunk)
-            if (nzchar(txt)) {
-              cat(txt)
-              first_chunk <- FALSE
+    if (isTRUE(stream)) {
+      # codeagent_stream() runs .turn_setup + stream loop + .turn_teardown
+      # and handles Ctrl+C gracefully (interrupt handler inside).
+      # "thinking" hint: show once before first chunk, clear on first text.
+      show_hint   <- tryCatch(isatty(stdout()), error = function(e) FALSE)
+      hint_active <- FALSE
+      if (show_hint) {
+        cat(tryCatch(cli::style_dim("\u22ef thinking"),
+                     error = function(e) "... thinking"))
+        hint_active <- TRUE
+      }
+
+      result <- codeagent_stream(
+        client, actual_input,
+        on_delta    = function(txt) {
+          if (hint_active) { cat("\r\033[K"); hint_active <<- FALSE }
+          cat(txt)
+        },
+        on_thinking = function(th) {
+          if (hint_active) { cat("\r\033[K"); hint_active <<- FALSE }
+          cat(.fmt_thinking(th))
+        },
+        on_error    = function(msg, rec) {
+          cat(if (nzchar(msg)) msg else "[no response]", "\n")
+        },
+        on_usage    = function(usage) {
+          n  <- usage$n_tokens  %||% 0L
+          ws <- usage$warning_state
+          if (!is.null(ws)) {
+            left <- ws$percent_left
+            if (isTRUE(ws$above_warning) || left <= 50L) {
+              label <- sprintf("%d%% context left", left)
+              label <- if (isTRUE(ws$above_error))
+                         tryCatch(cli::col_red(label), error = function(e) label)
+                       else if (isTRUE(ws$above_warning))
+                         tryCatch(cli::col_yellow(label), error = function(e) label)
+                       else label
+              cat(sprintf("\n  [%s tokens / %s]\n",
+                          format(as.integer(n), big.mark = ","), label))
             }
           }
-        })
-        if (hint_active) cat("\r\033[K")
-        cat("\n"); TRUE
-      }, error = function(e) {
-        recovered <- tryCatch(
-          .handle_agent_error(e, client$chat, actual_input, compaction_ctrl),
-          error = function(e2) paste0("[error] ", conditionMessage(e2))
-        )
-        cat(if (is.character(recovered)) recovered else "[no response]", "\n")
-        TRUE
-      })
+        },
+        session_id      = session_id,
+        iteration       = iteration,
+        cwd             = cwd,
+        compaction_ctrl = compaction_ctrl,
+        resource_state  = resource_state)
+
+      if (hint_active) cat("\r\033[K")
+      if (!identical(result$stop_reason, "error")) cat("\n")
     } else {
       # Non-streaming: spinner while waiting for the response.
       resp <- NULL
@@ -492,13 +492,15 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         resp <<- tryCatch(client$chat$chat(actual_input),
                           error = function(e2)
                             .handle_agent_error(e2, client$chat, actual_input, compaction_ctrl)))
-      cat(if (is.character(resp)) .render_markdown(resp) else "[no response]", "\n"); TRUE
+      cat(if (is.character(resp)) .render_markdown(resp) else "[no response]", "\n")
+      # Non-streaming path still needs teardown (save + budget).
+      tryCatch(save_session(client$chat, cwd, session_id), error = function(e) NULL)
+      .repl_budget_line(client$chat, settings)
     }
 
-    # 4. Housekeeping: auto-save + budget line
+    # 4. Housekeeping (streaming path: codeagent_stream already saved session
+    # and reported usage via on_usage; non-streaming handled above).
     iteration <- iteration + 1L
-    tryCatch(save_session(client$chat, cwd, session_id), error = function(e) NULL)
-    if (isTRUE(ok)) .repl_budget_line(client$chat, settings)
   }
 
   tryCatch(save_session(client$chat, cwd, session_id), error = function(e) NULL)

@@ -14,8 +14,8 @@ NULL
 #   client: openai/gpt-5.4              # single client
 #   # OR
 #   client:                             # multiple with aliases
-#     gpt41:   openai/gsds-gpt41
-#     gpt55:   openai/gsds-gpt-55
+#     gpt41:   openai/gpt-4.1
+#     gpt55:   openai/gpt-4o
 #     deepseek: openai/deepseek-r1
 #
 #   btw_groups:                         # btw tool groups to enable
@@ -154,8 +154,8 @@ NULL
   # Resolve alias
   if (!is.null(aliases[[spec]])) spec <- aliases[[spec]]
 
-  # Resolve tier alias (sonnet/opus/haiku) via env vars set by settings.json env block.
-  # Mirrors Claude Code's ANTHROPIC_DEFAULT_SONNET_MODEL / ANTHROPIC_SMALL_FAST_MODEL.
+  # Resolve tier alias (main/heavy/fast) via env vars.
+  # Tier keys: "main" (everyday), "heavy" (most capable), "fast" (cheap/quick).
   tier_map <- .build_tier_models()
   if (!is.null(tier_map[[spec]])) spec <- tier_map[[spec]]
 

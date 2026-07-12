@@ -24,8 +24,8 @@ NULL
                                   # NULL -> auto-detect from base_url
   base_url          = NULL,      # non-NULL -> OpenAI-compatible endpoint
   api_key_env       = NULL,      # env var name for the API key (auto-detect)
-  small_fast_model  = NULL,      # set by CODEAGENT_SMALL_FAST_MODEL; NULL -> .HAIKU_MODEL
-  tier_models       = list(),    # named list: sonnet/opus/haiku -> real endpoint
+  small_fast_model  = NULL,      # set by CODEAGENT_FAST_MODEL; NULL -> .HAIKU_MODEL
+  tier_models       = list(),    # named list: main/heavy/fast -> real endpoint
   fallback_model    = NULL,      # character vector, not merged across files
 
   # Context / turns
@@ -168,8 +168,8 @@ load_settings <- function(cwd = getwd()) {
   env_base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")
   if (nzchar(env_base_url)) settings$base_url <- env_base_url
 
-  # Small/fast model for compaction/classification (mirrors ANTHROPIC_SMALL_FAST_MODEL)
-  env_small <- Sys.getenv("CODEAGENT_SMALL_FAST_MODEL", "")
+  # Fast model for compaction/classification (CODEAGENT_FAST_MODEL)
+  env_small <- Sys.getenv("CODEAGENT_FAST_MODEL", "")
   if (nzchar(env_small)) settings$small_fast_model <- env_small
 
   # Tier -> real-endpoint map (built from env vars, used by /model sonnet etc.)
@@ -224,16 +224,17 @@ load_settings <- function(cwd = getwd()) {
 # ---------------------------------------------------------------------------
 
 # Build named list of tier -> real endpoint from env vars.
-# Mirrors: ANTHROPIC_DEFAULT_SONNET_MODEL / ANTHROPIC_DEFAULT_OPUS_MODEL /
-#          ANTHROPIC_SMALL_FAST_MODEL  in Claude Code's ~/.claude/settings.json
+# Keys: "main" (everyday model), "heavy" (most capable), "fast" (cheap/quick).
+# Set via CODEAGENT_MODEL / CODEAGENT_HEAVY_MODEL / CODEAGENT_FAST_MODEL.
+# CODEAGENT_MODEL doubles as both the default model and the "main" tier alias.
 .build_tier_models <- function() {
   tiers <- list()
-  sonnet <- Sys.getenv("CODEAGENT_DEFAULT_SONNET_MODEL", "")
-  opus   <- Sys.getenv("CODEAGENT_DEFAULT_OPUS_MODEL",   "")
-  haiku  <- Sys.getenv("CODEAGENT_SMALL_FAST_MODEL",     "")
-  if (nzchar(sonnet)) tiers[["sonnet"]] <- sonnet
-  if (nzchar(opus))   tiers[["opus"]]   <- opus
-  if (nzchar(haiku))  tiers[["haiku"]]  <- haiku
+  main  <- Sys.getenv("CODEAGENT_MODEL",       "")
+  heavy <- Sys.getenv("CODEAGENT_HEAVY_MODEL",  "")
+  fast  <- Sys.getenv("CODEAGENT_FAST_MODEL",   "")
+  if (nzchar(main))  tiers[["main"]]  <- main
+  if (nzchar(heavy)) tiers[["heavy"]] <- heavy
+  if (nzchar(fast))  tiers[["fast"]]  <- fast
   tiers
 }
 

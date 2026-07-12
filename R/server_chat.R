@@ -90,12 +90,14 @@ server_chat <- function(input, output, session, chat, settings,
       user_contents  # "normal" or anything else -> send as-is (text or contents list)
     }
 
-    shiny::isolate(state$compaction_ctrl$maybe_compact(
-      chat,
-      settings$model_limit %||% 200000L,
-      compact_model = .resolve_compact_model(chat, settings)
-    ))
-    shiny::isolate(state$resource_state$maybe_replace(chat))
+    # Compaction + resource management + system-reminder injection.
+    # .turn_setup handles char/list input uniformly (list = text + attachments).
+    # shiny::isolate needed because compaction_ctrl/resource_state live in
+    # reactiveValues; .turn_setup itself is a plain function, not reactive-aware.
+    ctrl <- shiny::isolate(state$compaction_ctrl)
+    rs   <- shiny::isolate(state$resource_state)
+    iter <- shiny::isolate(state$iteration %||% 1L)
+    actual_input <- .turn_setup(chat, actual_input, iter, cwd, ctrl, rs)
 
     # Resolve the positional turn contents ONCE, out here -- not inside the
     # coro::async body. coro rewrites `if` as control flow and cannot assign the
@@ -106,7 +108,8 @@ server_chat <- function(input, output, session, chat, settings,
     stream_contents <- if (is.list(actual_input)) actual_input else list(actual_input)
 
     coro::async(function() {
-      if (!is.null(stream_ctrl)) stream_ctrl$reset()
+      # stream_controller resets automatically when passed to a new stream call
+      # (ellmer 0.4.1 docs confirmed), so explicit reset() is not needed.
       # Wrap the stream so an unreachable endpoint / auth failure / mid-stream
       # error surfaces as a visible message and the task leaves the "running"
       # state (which re-enables the input) instead of leaving the user staring
@@ -141,7 +144,7 @@ server_chat <- function(input, output, session, chat, settings,
       session$sendCustomMessage("update_budget",
         .budget_payload(n_tokens, model_limit, settings$model %||% ""))
 
-      shiny::isolate(state$iteration <- state$iteration + 1L)
+      shiny::isolate(state$iteration <- (state$iteration %||% 0L) + 1L)
 
       # Auto-save every turn (session_id is always set from startup).
       sid <- shiny::isolate(state$session_id)
@@ -208,7 +211,8 @@ server_chat <- function(input, output, session, chat, settings,
     if (stream_task$status() == "running") {
       state$interrupt <- TRUE
       if (!is.null(stream_ctrl)) stream_ctrl$cancel()
-      tryCatch(.patch_interrupted_chat(chat), error = function(e) NULL)
+      # ellmer 0.4.0+ (#840) + 0.4.1+ (#643) handle orphan tool requests and
+      # AssistantPartialTurn automatically -- .patch_interrupted_chat not needed.
     }
   })
 
@@ -217,7 +221,7 @@ server_chat <- function(input, output, session, chat, settings,
     if (stream_task$status() == "running") {
       state$interrupt <- TRUE
       if (!is.null(stream_ctrl)) stream_ctrl$cancel()
-      tryCatch(.patch_interrupted_chat(chat), error = function(e) NULL)
+      # See note above: ellmer handles interrupts automatically.
     }
   })
 
@@ -381,52 +385,6 @@ server_chat <- function(input, output, session, chat, settings,
       error = function(e) NULL)
   }
 
-  invisible(NULL)
-}
-
-# ---------------------------------------------------------------------------
-# Interrupted chat repair  (ported from side::patch_interrupted_chat)
-# ---------------------------------------------------------------------------
-
-# When streaming is cancelled, a ContentToolRequest may exist in the turns
-# without a matching ContentToolResult. This leaves the chat in an invalid
-# state -- the next API call will error because the model expects results for
-# every request it issued. Replace orphaned requests with a ContentText
-# explaining the interruption so the conversation can continue cleanly.
-.patch_interrupted_chat <- function(chat) {
-  turns <- tryCatch(chat$get_turns(), error = function(e) list())
-  if (!length(turns)) return(invisible(NULL))
-
-  request_ids <- character(0)
-  result_ids  <- character(0)
-  for (turn in turns) {
-    contents <- tryCatch(turn@contents, error = function(e) list())
-    for (ct in contents) {
-      cls <- class(ct)[1L]
-      if (grepl("ContentToolRequest", cls, fixed = FALSE))
-        request_ids <- c(request_ids, tryCatch(ct@id, error = function(e) ""))
-      if (grepl("ContentToolResult", cls, fixed = FALSE))
-        result_ids <- c(result_ids,
-          tryCatch(ct@request@id, error = function(e) ""))
-    }
-  }
-  orphan_ids <- request_ids[!request_ids %in% result_ids]
-  if (!length(orphan_ids)) return(invisible(NULL))
-
-  new_turns <- lapply(turns, function(turn) {
-    contents <- tryCatch(turn@contents, error = function(e) list())
-    new_contents <- lapply(contents, function(ct) {
-      cls <- class(ct)[1L]
-      if (!grepl("ContentToolRequest", cls, fixed = FALSE)) return(ct)
-      id <- tryCatch(ct@id, error = function(e) "")
-      if (!id %in% orphan_ids) return(ct)
-      name <- tryCatch(ct@name, error = function(e) "tool")
-      ellmer::ContentText(paste0("_Tool call to `", name, "` interrupted._"))
-    })
-    tryCatch(turn@contents <- new_contents, error = function(e) NULL)
-    turn
-  })
-  tryCatch(chat$set_turns(new_turns), error = function(e) NULL)
   invisible(NULL)
 }
 

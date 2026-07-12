@@ -1,16 +1,15 @@
 {
   "$schema": "https://json.schemastore.org/codeagent-settings.json",
 
-  "model": "sonnet",
+  "model": "main",
 
   "provider": "openai_compatible",
 
   "env": {
     "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints",
-    "CODEAGENT_MODEL": "your-sonnet-endpoint-name",
-    "CODEAGENT_DEFAULT_SONNET_MODEL": "your-sonnet-endpoint-name",
-    "CODEAGENT_DEFAULT_OPUS_MODEL": "your-opus-endpoint-name",
-    "CODEAGENT_SMALL_FAST_MODEL": "your-haiku-endpoint-name"
+    "CODEAGENT_MODEL": "your-main-endpoint-name",
+    "CODEAGENT_HEAVY_MODEL": "your-heavy-endpoint-name",
+    "CODEAGENT_FAST_MODEL": "your-fast-endpoint-name"
   },
 
   "permissions": {

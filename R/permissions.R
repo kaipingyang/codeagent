@@ -182,7 +182,7 @@ check_permission <- function(tool_name, mode = "default",
   # (Previously hardcoded chat_anthropic(.HAIKU_MODEL), which errors -> "ask" on
   #  OpenAI-compatible/Databricks gateways where that model id is unknown.)
   if (is.null(model) || !nzchar(model))
-    model <- Sys.getenv("CODEAGENT_SMALL_FAST_MODEL",
+    model <- Sys.getenv("CODEAGENT_FAST_MODEL",
                unset = Sys.getenv("CODEAGENT_MODEL", unset = .HAIKU_MODEL))
 
   # Structured output: ask for a typed {decision, reason} rather than parsing

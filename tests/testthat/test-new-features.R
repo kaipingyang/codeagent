@@ -286,8 +286,11 @@ test_that("server_chat isolates shared state access inside ExtendedTask", {
   f <- test_path("..", "..", "R", "server_chat.R")
   skip_if_not(file.exists(f), "source tree only (skipped in R CMD check)")
   src <- paste(readLines(f), collapse = "\n")
-  expect_match(src, "shiny::isolate\\(state\\$compaction_ctrl\\$maybe_compact")
-  expect_match(src, "shiny::isolate\\(state\\$resource_state\\$maybe_replace")
+  # compaction_ctrl and resource_state are extracted via shiny::isolate before
+  # being passed to .turn_setup (pattern changed from direct method call to
+  # isolated variable extraction for cleaner .turn_setup signature).
+  expect_match(src, "shiny::isolate\\(state\\$compaction_ctrl\\)")
+  expect_match(src, "shiny::isolate\\(state\\$resource_state\\)")
 })
 
 # ---------------------------------------------------------------------------
