@@ -53,7 +53,7 @@ Terminal REPL and command-line interface.
 - [`install_codeagent_cli()`](https://github.com/kaipingyang/codeagent/reference/install_codeagent_cli.md)
   : Install the codeagent CLI
 
-## Tools
+## Core tools
 
 Built-in tool factories registered on the Chat.
 
@@ -228,7 +228,7 @@ Miscellaneous helpers.
 - [`use_codeagent_md()`](https://github.com/kaipingyang/codeagent/reference/use_codeagent_md.md)
   : Create a codeagent.md configuration file
 
-## Tools
+## Additional tools & registration
 
 Tool factories and registration.
 
