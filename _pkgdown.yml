@@ -42,7 +42,7 @@ reference:
       - codeagent_console
       - install_codeagent_cli
 
-  - title: "Tools"
+  - title: "Core tools"
     desc: "Built-in tool factories registered on the Chat."
     contents:
       - bash_tool
@@ -140,7 +140,7 @@ reference:
       - codeagent_otel_status
       - use_codeagent_md
 
-  - title: "Tools"
+  - title: "Additional tools & registration"
     desc: "Tool factories and registration."
     contents:
       - agent_tool
