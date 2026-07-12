@@ -22,22 +22,22 @@ test_that(".CODEAGENT_DEFAULTS has all required Claude Code keys", {
 
 test_that(".build_tier_models builds map from env vars", {
   withr::with_envvar(c(
-    CODEAGENT_DEFAULT_SONNET_MODEL = "gsds-gpt-54",
-    CODEAGENT_DEFAULT_OPUS_MODEL   = "gsds-gpt-55",
-    CODEAGENT_SMALL_FAST_MODEL     = "gsds-gpt41"
+    CODEAGENT_MODEL       = "gpt-4o",
+    CODEAGENT_HEAVY_MODEL = "gpt-4o-mini",
+    CODEAGENT_FAST_MODEL  = "gpt-4.1"
   ), {
     tiers <- codeagent:::.build_tier_models()
-    expect_equal(tiers[["sonnet"]], "gsds-gpt-54")
-    expect_equal(tiers[["opus"]],   "gsds-gpt-55")
-    expect_equal(tiers[["haiku"]],  "gsds-gpt41")
+    expect_equal(tiers[["main"]],  "gpt-4o")
+    expect_equal(tiers[["heavy"]], "gpt-4o-mini")
+    expect_equal(tiers[["fast"]],  "gpt-4.1")
   })
 })
 
 test_that(".build_tier_models returns empty list when no env vars set", {
   withr::with_envvar(c(
-    CODEAGENT_DEFAULT_SONNET_MODEL = "",
-    CODEAGENT_DEFAULT_OPUS_MODEL   = "",
-    CODEAGENT_SMALL_FAST_MODEL     = ""
+    CODEAGENT_MODEL       = "",
+    CODEAGENT_HEAVY_MODEL = "",
+    CODEAGENT_FAST_MODEL  = ""
   ), {
     tiers <- codeagent:::.build_tier_models()
     expect_equal(length(tiers), 0L)
@@ -129,32 +129,27 @@ test_that("load_settings applies env block before reading env-var layer", {
 })
 
 # ---------------------------------------------------------------------------
-# small_fast_model env override
+# fast_model env override (CODEAGENT_FAST_MODEL)
 # ---------------------------------------------------------------------------
 
-test_that("load_settings picks up CODEAGENT_SMALL_FAST_MODEL", {
-  # Use a project .codeagent/settings.json that sets env block directly,
-  # so ~/.codeagent/settings.json env block cannot override our value.
+test_that("load_settings picks up CODEAGENT_FAST_MODEL", {
   tmp <- tempfile(); dir.create(file.path(tmp, ".codeagent"), recursive = TRUE)
   on.exit(unlink(tmp, TRUE), add = TRUE)
   sentinel <- "test-fast-model-xyz123"
-  cfg <- list(env = list(CODEAGENT_SMALL_FAST_MODEL = sentinel))
+  cfg <- list(env = list(CODEAGENT_FAST_MODEL = sentinel))
   writeLines(jsonlite::toJSON(cfg, auto_unbox = TRUE, pretty = TRUE),
              file.path(tmp, ".codeagent", "settings.json"))
-  # Project settings override user settings (project loaded after user).
   s <- load_settings(tmp)
   expect_equal(s$small_fast_model, sentinel)
 })
 
 test_that("load_settings leaves small_fast_model NULL when not set anywhere", {
-  # Use a clean project with no settings and no env var.
   tmp <- tempfile(); dir.create(tmp); on.exit(unlink(tmp, TRUE), add = TRUE)
-  # Project settings.json with empty env (overrides user settings env block)
-  cfg <- list(env = list(CODEAGENT_SMALL_FAST_MODEL = ""))
+  cfg <- list(env = list(CODEAGENT_FAST_MODEL = ""))
   dir.create(file.path(tmp, ".codeagent"), recursive = TRUE)
   writeLines(jsonlite::toJSON(cfg, auto_unbox = TRUE, pretty = TRUE),
              file.path(tmp, ".codeagent", "settings.json"))
-  withr::with_envvar(c(CODEAGENT_SMALL_FAST_MODEL = ""), {
+  withr::with_envvar(c(CODEAGENT_FAST_MODEL = ""), {
     s <- load_settings(tmp)
     expect_null(s$small_fast_model)
   })
@@ -192,9 +187,9 @@ test_that("settings.json template is valid JSON and contains required keys", {
   expect_true("model"       %in% names(parsed))
   expect_true("env"         %in% names(parsed))
   expect_true("permissions" %in% names(parsed))
-  # Template must not contain real credentials
+  # Template must not contain real credentials or a real workspace id
   raw <- paste(readLines(tmpl, warn = FALSE), collapse = "\n")
-  expect_false(grepl("dapi|adb-7234", raw, ignore.case = TRUE))
+  expect_false(grepl("dapi[0-9a-f]{4}|adb-[0-9]{4}", raw, ignore.case = TRUE))
 })
 
 test_that("use_codeagent_settings creates file at user scope", {

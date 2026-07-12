@@ -106,7 +106,9 @@ ContentReplacementState <- R6::R6Class(
             error = function(e) FALSE
           )
           if (!is_tr) next
-          tid   <- tryCatch(c@tool_use_id %||% "", error = function(e) "")
+          # Use request@id (ellmer current API); @tool_use_id is a legacy slot
+          # that no longer exists on ContentToolResult -- tryCatch returns "".
+          tid <- tryCatch(c@request@id %||% "", error = function(e) "")
           if (tid %in% private$replaced) next
           if (tid %in% private$frozen)   next
           txt   <- tryCatch(as.character(c@value %||% ""), error = function(e) "")
