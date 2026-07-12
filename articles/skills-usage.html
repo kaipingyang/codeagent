@@ -86,6 +86,10 @@ the agent will auto-trigger matching skills based on your request.</p>
 <p>codeagent ships with skills for common R package development
 tasks:</p>
 <table class="table">
+<colgroup>
+<col width="35%">
+<col width="65%">
+</colgroup>
 <thead><tr class="header">
 <th>Skill</th>
 <th>Description</th>
@@ -93,43 +97,80 @@ tasks:</p>
 <tbody>
 <tr class="odd">
 <td><code>/plan</code></td>
-<td>Enter read-only planning mode</td>
+<td>Read-only planning mode — analysis + step-by-step plan</td>
 </tr>
 <tr class="even">
 <td><code>/verify</code></td>
-<td>Run tests and check the package</td>
+<td>Structured verification of the last action (correctness,
+completeness)</td>
 </tr>
 <tr class="odd">
+<td><code>/simplify</code></td>
+<td>Review and simplify the last code/output</td>
+</tr>
+<tr class="even">
 <td><code>/compact</code></td>
-<td>Compact the context window</td>
+<td>Manually trigger context compaction</td>
+</tr>
+<tr class="odd">
+<td><code>/remember</code></td>
+<td>Save information to persistent cross-session memory</td>
+</tr>
+<tr class="even">
+<td><code>/loop</code></td>
+<td>Run a skill/task periodically
+(e.g. <code>/loop 5m /verify</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>/document</code></td>
+<td>Run <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code> (rebuild
+<code>NAMESPACE</code> + <code>man/</code>)</td>
 </tr>
 <tr class="even">
 <td><code>/roxygen</code></td>
-<td>Generate roxygen2 documentation</td>
+<td>Generate a roxygen2 documentation skeleton</td>
 </tr>
 <tr class="odd">
 <td><code>/testthat</code></td>
-<td>Write unit tests</td>
+<td>Write testthat unit tests</td>
 </tr>
 <tr class="even">
-<td><code>/document</code></td>
-<td>Run <code><a href="https://devtools.r-lib.org/reference/document.html" class="external-link">devtools::document()</a></code>
-</td>
+<td><code>/style</code></td>
+<td>Format + lint to a consistent style (styler / lintr / air)</td>
 </tr>
 <tr class="odd">
 <td><code>/lint</code></td>
-<td>Style and lint R code</td>
+<td>Lint and style R code with lintr and styler</td>
 </tr>
 <tr class="even">
 <td><code>/news</code></td>
-<td>Update NEWS.md</td>
+<td>Update <code>NEWS.md</code> for a release</td>
 </tr>
 <tr class="odd">
+<td><code>/pkgdown</code></td>
+<td>Build or update a pkgdown website</td>
+</tr>
+<tr class="even">
 <td><code>/explore</code></td>
-<td>Explore a data.frame</td>
+<td>Explore and analyse a data.frame in natural language</td>
+</tr>
+<tr class="odd">
+<td><code>/report</code></td>
+<td>Export the exploration session to a Quarto document</td>
+</tr>
+<tr class="even">
+<td><code>/no-secrets</code></td>
+<td>Guardrail: never commit or print secrets</td>
+</tr>
+<tr class="odd">
+<td><code>/posit-dev-packages</code></td>
+<td>Update ellmer/btw/shinychat to latest dev versions</td>
 </tr>
 </tbody>
 </table>
+<p>(The live list is always available via
+<code><a href="../reference/list_skills_meta.html">list_skills_meta()</a></code> or by typing <code>/</code> in the chat
+for the slash-command typeahead.)</p>
 </div>
 <div class="section level2">
 <h2 id="using-skills-from-the-chat">Using skills from the chat<a class="anchor" aria-label="anchor" href="#using-skills-from-the-chat"></a>
@@ -142,12 +183,19 @@ tasks:</p>
 <div class="section level2">
 <h2 id="creating-custom-skills">Creating custom skills<a class="anchor" aria-label="anchor" href="#creating-custom-skills"></a>
 </h2>
-<p>Skills are <code>name/SKILL.md</code> directories in any of the
-search paths:</p>
-<pre><code>~/.codeagent/skills/my-skill/SKILL.md
-.codeagent/skills/my-skill/SKILL.md    # project-local
-.btw/skills/my-skill/SKILL.md
-.claude/skills/my-skill/SKILL.md</code></pre>
+<p>Skills are <code>name/SKILL.md</code> directories. codeagent uses
+<strong>btw</strong> as the discovery backend, so the search paths are
+btw’s directories plus a couple of compatibility paths. Put custom
+skills in any of:</p>
+<pre><code># User-global (btw native):
+~/.btw/skills/my-skill/SKILL.md
+~/.config/btw/skills/my-skill/SKILL.md
+
+# Project-local:
+.btw/skills/my-skill/SKILL.md          # btw native
+.agents/skills/my-skill/SKILL.md       # btw agents dir
+.claude/skills/my-skill/SKILL.md       # Claude Code compat
+.codex/skills/my-skill/SKILL.md        # Codex compat</code></pre>
 <p><strong>SKILL.md format</strong>:</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode markdown"><code class="sourceCode markdown"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co">---</span></span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="an">name:</span><span class="co"> my-skill</span></span>
@@ -163,9 +211,45 @@ search paths:</p>
 <span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>Use $ARGUMENTS to insert the user-supplied arguments.</span></code></pre></div>
 </div>
 <div class="section level2">
+<h2 id="architecture-flow">Architecture / flow<a class="anchor" aria-label="anchor" href="#architecture-flow"></a>
+</h2>
+<p>codeagent uses <strong>btw</strong> as the discovery and loading
+backend, and wraps it with a two-level cache, extra compatibility paths
+(<code>.claude/</code>, <code>.codex/</code>), two invocation paths, and
+progressive disclosure (only skill <em>names + descriptions</em> go into
+the system prompt; the full body is loaded on demand).</p>
+<pre class="mermaid"><code>flowchart TD
+  U["User types /name args"] --&gt; PP[".preprocess_input()"]
+  PP --&gt;|"name is a built-in command&lt;br/&gt;(model/compact/clear/…)"| LOCAL["Handled client-side&lt;br/&gt;(not sent to the model)"]
+  PP --&gt;|"otherwise → skill"| LOAD["load_skill_prompt(name, args)"]
+
+  SP["System prompt · build_skill_hint()&lt;br/&gt;&amp;lt;available_skills&amp;gt;: names + descriptions only"] --&gt; LLM["Model"]
+  LLM --&gt;|"semantic match → tool call"| TOOL["use_skill(name, args)&lt;br/&gt;.make_skill_tool()"]
+  TOOL --&gt; LOAD
+
+  LOAD --&gt; FIND["btw:::find_skill() + read body via frontmatter&lt;br/&gt;(fallback: read file + strip frontmatter)"]
+  FIND --&gt; SUB["substitute_args: $ARGUMENTS / $ARG1 …"]
+  SUB --&gt; BODY["Full skill body injected → agent follows it"]
+
+  subgraph DISC["Discovery + two-level cache · list_skills_meta()"]
+    MEM["in-memory .skill_cache"] --&gt;|miss| DISK["on-disk cache/skills/*.rds"]
+    DISK --&gt;|"miss (cold btw scan ~20s)"| DIRS
+    subgraph DIRS[".skill_dirs()"]
+      BTW["btw backend&lt;br/&gt;btw_skills_directories() / btw_skills_list()"]
+      EXT["codeagent extensions&lt;br/&gt;.claude · .codex · inst/skills"]
+    end
+    DIRS --&gt; METAS["SkillMeta list → written back to cache"]
+  end
+  METAS -.-&gt; SP
+  METAS -.-&gt; TOOL</code></pre>
+<p>The cache signature is <code>count + sum(mtime)</code> of every
+<code>SKILL.md</code>, so it self-invalidates whenever a skill is added,
+removed, or edited.</p>
+</div>
+<div class="section level2">
 <h2 id="skill-discovery">Skill discovery<a class="anchor" aria-label="anchor" href="#skill-discovery"></a>
 </h2>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># List all available skills</span></span>
 <span><span class="fu"><a href="../reference/list_skills_meta.html">list_skills_meta</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
