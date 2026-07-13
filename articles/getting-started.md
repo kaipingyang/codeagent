@@ -53,6 +53,38 @@ The streaming path
 [`.turn_teardown()`](https://kaipingyang.github.io/codeagent/reference/dot-turn_teardown.md)
 and the same callbacks.
 
+## Installation
+
+``` r
+
+# Install from GitHub (pak handles all dependencies including Rapp)
+pak::pak(c("tidyverse/ellmer", "kaipingyang/codeagent"))
+```
+
+Configure your endpoint in `~/.Renviron` (all `CODEAGENT_*` vars are
+loaded automatically, even under `--vanilla`):
+
+``` ini
+CODEAGENT_BASE_URL=https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints
+CODEAGENT_MODEL=your-main-endpoint
+CODEAGENT_API_KEY=your-token
+```
+
+Then restart R (or run `readRenviron("~/.Renviron")`).
+
+### CLI
+
+``` r
+
+install_codeagent_cli()   # installs the `codeagent` terminal command
+```
+
+``` bash
+codeagent           # interactive REPL (default permission mode)
+codeagent -y        # REPL in bypass mode (skip all permission prompts)
+codeagent "query"   # one-shot query
+```
+
 ## 1. Build a client
 
 A `codeagent` client wraps an

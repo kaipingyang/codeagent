@@ -450,17 +450,21 @@
 <span><span class="co">#   "args": ["-e", "codeagent::codeagent_mcp_server()"]}}}</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="cli-requires-rapp">CLI (requires Rapp)<a class="anchor" aria-label="anchor" href="#cli-requires-rapp"></a>
+<h3 id="cli">CLI<a class="anchor" aria-label="anchor" href="#cli"></a>
 </h3>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/install_codeagent_cli.html">install_codeagent_cli</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb21"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="ex">codeagent</span> run <span class="st">"List all .R files"</span></span>
-<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="ex">codeagent</span> chat                      <span class="co"># interactive REPL</span></span>
-<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="ex">codeagent</span> app <span class="at">--theme</span> glass</span>
-<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="ex">codeagent</span> skills list</span>
-<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="ex">codeagent</span> skills install <span class="at">--package</span> btw</span>
-<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a><span class="ex">codeagent</span> mcp</span>
-<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="ex">codeagent</span> info <span class="at">--json</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu"><a href="reference/install_codeagent_cli.html">install_codeagent_cli</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># installs the `codeagent` terminal command</span></span></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" tabindex="-1"></a><span class="ex">codeagent</span>                 <span class="co"># interactive REPL (default permission mode)</span></span>
+<span id="cb21-2"><a href="#cb21-2" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-y</span>              <span class="co"># REPL in bypass mode (skip all permission prompts)</span></span>
+<span id="cb21-3"><a href="#cb21-3" tabindex="-1"></a><span class="ex">codeagent</span> <span class="st">"List .R files"</span> <span class="co"># one-shot query</span></span>
+<span id="cb21-4"><a href="#cb21-4" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-p</span> <span class="st">"query"</span>      <span class="co"># one-shot, non-interactive</span></span>
+<span id="cb21-5"><a href="#cb21-5" tabindex="-1"></a><span class="ex">codeagent</span> app             <span class="co"># Shiny UI</span></span>
+<span id="cb21-6"><a href="#cb21-6" tabindex="-1"></a><span class="ex">codeagent</span> app <span class="at">-y</span>          <span class="co"># Shiny UI in bypass mode</span></span>
+<span id="cb21-7"><a href="#cb21-7" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-m</span> sonnet       <span class="co"># override model</span></span>
+<span id="cb21-8"><a href="#cb21-8" tabindex="-1"></a><span class="ex">codeagent</span> skills list</span>
+<span id="cb21-9"><a href="#cb21-9" tabindex="-1"></a><span class="ex">codeagent</span> skills install <span class="at">--package</span> btw</span>
+<span id="cb21-10"><a href="#cb21-10" tabindex="-1"></a><span class="ex">codeagent</span> mcp</span>
+<span id="cb21-11"><a href="#cb21-11" tabindex="-1"></a><span class="ex">codeagent</span> info <span class="at">--json</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="shiny-app">Shiny app<a class="anchor" aria-label="anchor" href="#shiny-app"></a>

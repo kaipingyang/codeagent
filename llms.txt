@@ -333,17 +333,21 @@ codeagent_mcp_server()
 #   "args": ["-e", "codeagent::codeagent_mcp_server()"]}}}
 ```
 
-### CLI (requires Rapp)
+### CLI
 
 ``` r
 
-install_codeagent_cli()
+install_codeagent_cli()   # installs the `codeagent` terminal command
 ```
 
 ``` bash
-codeagent run "List all .R files"
-codeagent chat                      # interactive REPL
-codeagent app --theme glass
+codeagent                 # interactive REPL (default permission mode)
+codeagent -y              # REPL in bypass mode (skip all permission prompts)
+codeagent "List .R files" # one-shot query
+codeagent -p "query"      # one-shot, non-interactive
+codeagent app             # Shiny UI
+codeagent app -y          # Shiny UI in bypass mode
+codeagent -m sonnet       # override model
 codeagent skills list
 codeagent skills install --package btw
 codeagent mcp
