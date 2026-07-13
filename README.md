@@ -7,7 +7,7 @@ An R-native agentic coding assistant built on [ellmer](https://ellmer.tidyverse.
 ## Installation
 
 ```r
-# Install from GitHub (requires ellmer dev version for set_model())
+# pak handles all dependencies including Rapp (from r-lib/Rapp on GitHub)
 pak::pak(c("tidyverse/ellmer", "kaipingyang/codeagent"))
 
 # Optional: btw for R-environment tools (docs, git, pkg, env, etc.)
