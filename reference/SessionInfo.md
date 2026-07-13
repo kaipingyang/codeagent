@@ -21,45 +21,45 @@ SessionInfo(
 
 ## Arguments
 
-  - session\_id:
-    
-    Character. UUID.
+- session_id:
 
-  - summary:
-    
-    Character. Short summary.
+  Character. UUID.
 
-  - last\_modified:
-    
-    Numeric. mtime in ms.
+- summary:
 
-  - file\_size:
-    
-    Numeric or NULL. File size in bytes.
+  Character. Short summary.
 
-  - custom\_title:
-    
-    Character or NULL.
+- last_modified:
 
-  - first\_prompt:
-    
-    Character or NULL.
+  Numeric. mtime in ms.
 
-  - git\_branch:
-    
-    Character or NULL.
+- file_size:
 
-  - cwd:
-    
-    Character or NULL.
+  Numeric or NULL. File size in bytes.
 
-  - tag:
-    
-    Character or NULL.
+- custom_title:
 
-  - created\_at:
-    
-    Numeric or NULL. Creation timestamp in ms.
+  Character or NULL.
+
+- first_prompt:
+
+  Character or NULL.
+
+- git_branch:
+
+  Character or NULL.
+
+- cwd:
+
+  Character or NULL.
+
+- tag:
+
+  Character or NULL.
+
+- created_at:
+
+  Numeric or NULL. Creation timestamp in ms.
 
 ## Value
 

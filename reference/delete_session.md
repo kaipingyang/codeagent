@@ -10,13 +10,13 @@ delete_session(session_id, directory = NULL)
 
 ## Arguments
 
-  - session\_id:
-    
-    Character. UUID.
+- session_id:
 
-  - directory:
-    
-    Character or NULL. Project working directory.
+  Character. UUID.
+
+- directory:
+
+  Character or NULL. Project working directory.
 
 ## Value
 

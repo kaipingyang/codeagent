@@ -13,7 +13,8 @@ an interactive Shiny UI.
 ## Installation
 
 ``` r
-# Install from GitHub (requires ellmer dev version for set_model())
+
+# pak handles all dependencies including Rapp (from r-lib/Rapp on GitHub)
 pak::pak(c("tidyverse/ellmer", "kaipingyang/codeagent"))
 
 # Optional: btw for R-environment tools (docs, git, pkg, env, etc.)
@@ -26,6 +27,7 @@ pak::pak("posit-dev/shinychat/pkg-r")
 ## Quick start
 
 ``` r
+
 library(codeagent)
 
 # Step 1: create any ellmer Chat (Databricks, Anthropic, Ollama, ...)
@@ -51,6 +53,7 @@ codeagent_console(client)
 ### Interactive setup wizard
 
 ``` r
+
 use_codeagent_setup()   # guides provider selection + API key + settings.json
 ```
 
@@ -69,6 +72,7 @@ Follow tidyverse style.
 ```
 
 ``` r
+
 client <- codeagent_client_config(alias = "gpt41")
 codeagent_app(client)
 ```
@@ -77,36 +81,36 @@ codeagent_app(client)
 
 ### Agent harness
 
-| Feature             | Details                                                                                                                                                                                                                                                                                                                                           |
-| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Agent loop**      | `agent_loop()` with max\_turns, budget tracking, compaction                                                                                                                                                                                                                                                                                       |
-| **Permissions**     | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments                                                                                                                                                                                                                       |
-| **Hooks**           | 12 lifecycle events (tool, permission, message, session), configurable from `settings.json`                                                                                                                                                                                                                                                       |
-| **Compaction**      | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds — budget-aware micro-snip on by default, opt-in full compact (`midloop_full_compact`) |
-| **System prompt**   | Tone, task, convention, tool-use, and R-specific behavioural guidance                                                                                                                                                                                                                                                                             |
-| **Error recovery**  | PTL/rate-limit/network/auth classification; exponential backoff                                                                                                                                                                                                                                                                                   |
-| **system-reminder** | Ephemeral per-turn context injection preserves prompt cache                                                                                                                                                                                                                                                                                       |
-| **Verification**    | `verify_fn` param + `verify_r_tests()` re-enters loop on test failures                                                                                                                                                                                                                                                                            |
-| **Plan mode**       | Model enters/exits read-only planning mid-turn                                                                                                                                                                                                                                                                                                    |
-| **Rewind**          | `truncate_chat_turns()` / REPL `/rewind` roll the conversation back                                                                                                                                                                                                                                                                               |
-| **Model switch**    | `switch_model(client, model)` swaps provider/model mid-session                                                                                                                                                                                                                                                                                    |
+| Feature | Details |
+|----|----|
+| **Agent loop** | [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md) with max_turns, budget tracking, compaction |
+| **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
+| **Hooks** | 12 lifecycle events (tool, permission, message, session), configurable from `settings.json` |
+| **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds — budget-aware micro-snip on by default, opt-in full compact (`midloop_full_compact`) |
+| **System prompt** | Tone, task, convention, tool-use, and R-specific behavioural guidance |
+| **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff |
+| **system-reminder** | Ephemeral per-turn context injection preserves prompt cache |
+| **Verification** | `verify_fn` param + [`verify_r_tests()`](https://kaipingyang.github.io/codeagent/reference/verify_r_tests.md) re-enters loop on test failures |
+| **Plan mode** | Model enters/exits read-only planning mid-turn |
+| **Rewind** | [`truncate_chat_turns()`](https://kaipingyang.github.io/codeagent/reference/truncate_chat_turns.md) / REPL `/rewind` roll the conversation back |
+| **Model switch** | `switch_model(client, model)` swaps provider/model mid-session |
 
 ### Tools
 
-| Group       | Source    | Tools                                                    |
-| ----------- | --------- | -------------------------------------------------------- |
-| Core        | codeagent | Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS       |
-| docs        | btw       | help pages, vignettes, NEWS                              |
-| env         | btw       | describe data frames / R environment                     |
-| files       | btw       | hashline-based precise editing + atomic multi-file patch |
-| git         | btw       | status, diff, log, commit, branches                      |
-| ide         | btw       | read current editor                                      |
-| pkg         | btw       | document, check, test, coverage, load\_all               |
-| cran        | btw       | search, package info                                     |
-| sessioninfo | btw       | platform, package versions                               |
-| web         | btw       | URL → Markdown                                           |
-| agent       | btw       | hierarchical subagent delegation                         |
-| data        | codeagent | `ExploreData` — sandboxed data.frame queries             |
+| Group | Source | Tools |
+|----|----|----|
+| Core | codeagent | Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS |
+| docs | btw | help pages, vignettes, NEWS |
+| env | btw | describe data frames / R environment |
+| files | btw | hashline-based precise editing + atomic multi-file patch |
+| git | btw | status, diff, log, commit, branches |
+| ide | btw | read current editor |
+| pkg | btw | document, check, test, coverage, load_all |
+| cran | btw | search, package info |
+| sessioninfo | btw | platform, package versions |
+| web | btw | URL → Markdown |
+| agent | btw | hierarchical subagent delegation |
+| data | codeagent | `ExploreData` — sandboxed data.frame queries |
 
 All tools return `ContentToolResult` with HTML title + markdown for
 shinychat tool cards.
@@ -114,17 +118,18 @@ shinychat tool cards.
 **Selectable file tools.** Two read/write tool sets coexist and are
 chosen via `settings$file_tools`:
 
-| `file_tools`       | Set                                              | Scope                               |
-| ------------------ | ------------------------------------------------ | ----------------------------------- |
+| `file_tools` | Set | Scope |
+|----|----|----|
 | `"core"` (default) | codeagent Read/Write/Edit/MultiEdit/Glob/Grep/LS | **any path** (absolute or relative) |
-| `"btw"`            | btw file tools (hash-anchored, atomic patch)     | **project cwd only**                |
-| `"both"`           | both sets                                        | LLM picks per task                  |
+| `"btw"` | btw file tools (hash-anchored, atomic patch) | **project cwd only** |
+| `"both"` | both sets | LLM picks per task |
 
 **Reusing btw tasks/agents (not reinvented).** Sub-agents use btw’s
 `btw_tool_agent_subagent`; custom agents are discovered via
 `btw_agent_tool()`. btw’s guided tasks are reused directly:
 
 ``` r
+
 codeagent_create_skill(client)    # -> btw_task_create_skill
 codeagent_create_readme(client)   # -> btw_task_create_readme
 codeagent_init_context(client)    # -> btw_task_create_btw_md (btw.md)
@@ -138,6 +143,7 @@ Interactive data analysis with the Write/Execute/Analyze/Regroup
 pattern:
 
 ``` r
+
 # Start a WEAR session -- agent writes code, executes via ExploreData,
 # analyzes results, proposes 3-5 follow-up questions each turn
 wear_explore(data = list(sales = my_df))
@@ -160,16 +166,18 @@ directories).
       → .codeagent/skills/ → .claude/skills/ → .codex/skills/
 
 Two trigger paths: - **User** types `/name [args]` →
-`load_skill_prompt()` injects full body - **LLM semantic match** → calls
-`use_skill(name)` tool automatically
+[`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)
+injects full body - **LLM semantic match** → calls `use_skill(name)`
+tool automatically
 
 **Metadata cache.** Scanning every skill directory
-(`list_skills_meta()`) is slow enough to notice on startup, so the
-parsed metadata is cached both in-memory and on disk (under
-`<config>/cache/skills/`, keyed by cwd + a `SKILL.md` mtime/count
-signature). The cache self-invalidates whenever any `SKILL.md` changes
-or a skill is added/removed, so the slash typeahead and skill tool are
-near-instant on every launch after the first.
+([`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md))
+is slow enough to notice on startup, so the parsed metadata is cached
+both in-memory and on disk (under `<config>/cache/skills/`, keyed by
+cwd + a `SKILL.md` mtime/count signature). The cache self-invalidates
+whenever any `SKILL.md` changes or a skill is added/removed, so the
+slash typeahead and skill tool are near-instant on every launch after
+the first.
 
 Built-in skills: `/compact`, `/plan`, `/verify`, `/simplify`, `/loop`,
 `/remember`, `/explore`, `/report`
@@ -177,6 +185,7 @@ Built-in skills: `/compact`, `/plan`, `/verify`, `/simplify`, `/loop`,
 Install btw skills:
 
 ``` r
+
 btw::btw_skill_install_package("btw")     # installs skill-creator
 btw::btw_skill_install_github("org/repo") # from GitHub
 
@@ -189,6 +198,7 @@ install_ds_skills()                       # Posit's data-science skill
 ### Security: API key storage
 
 ``` r
+
 # Option 1: OS keyring (macOS Keychain / Windows Credential Store / Linux Secret Service)
 # Offered automatically in setup wizard when keyring is available
 use_codeagent_setup()
@@ -203,6 +213,7 @@ keyring probe returns `FALSE` and all functions fall back to
 ### Sub-agents
 
 ``` r
+
 # Sub-agent with isolated, resumable session
 client <- codeagent_client(chat, permission_mode = "bypass")
 
@@ -213,6 +224,7 @@ client <- codeagent_client(chat, worktree_isolation = TRUE)
 ### Multi-agent teams
 
 ``` r
+
 # Fixed fan-out: one worker per task
 team_run(c("review R/a.R", "review R/b.R", "review R/c.R"))
 
@@ -232,11 +244,14 @@ team_coordinate(
 The board is dependency-aware and atomic (`BEGIN IMMEDIATE`), workers
 back off while a blocker is still in progress, and a crashed worker’s
 task is auto-reclaimed after `reclaim_timeout` so its dependents aren’t
-blocked forever (`board_reclaim_stale()`). `board_watch()` (built on
-[watcher](https://watcher.r-lib.org)) drives an event-driven coordinator
-/ live board view, falling back to polling when unavailable.
+blocked forever
+([`board_reclaim_stale()`](https://kaipingyang.github.io/codeagent/reference/board_reclaim_stale.md)).
+[`board_watch()`](https://kaipingyang.github.io/codeagent/reference/board_watch.md)
+(built on [watcher](https://watcher.r-lib.org)) drives an event-driven
+coordinator / live board view, falling back to polling when unavailable.
 
 ``` r
+
 # LLM-lead coordinator: a lead model decomposes a goal into a task DAG, the team
 # runs it, then the lead reviews results and re-plans -- up to max_rounds.
 team_lead("Refactor the parser and add tests for it", max_rounds = 3)
@@ -259,6 +274,7 @@ environment (no API keys visible) and wall-clock timeout:
 ### Eval harness (vitals)
 
 ``` r
+
 # Run all eval tasks (measures tool use, permissions, data exploration)
 source("inst/evals/setup_eval_client.R")
 source("inst/evals/eval.R")
@@ -275,6 +291,7 @@ codeagent-owned parent (mirroring an `invoke_agent -> chat -> tool`
 hierarchy).
 
 ``` r
+
 codeagent_otel_status()   # reports whether otel/otelsdk are installed + tracing is active
 ```
 
@@ -282,6 +299,7 @@ To enable, install the SDK and configure an exporter *before* launching
 codeagent:
 
 ``` r
+
 install.packages(c("otel", "otelsdk"))   # otelsdk needs system Protobuf
 Sys.setenv(OTEL_TRACES_EXPORTER = "stdout")               # or an OTLP endpoint:
 # Sys.setenv(OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318")
@@ -300,6 +318,7 @@ current request are recalled (selected by a small fast model).
 ### IDE Addin
 
 ``` r
+
 # Run from RStudio / Positron Addins menu:
 # "codeagent: Open chat" -- opens Shiny app for current file/project
 # "codeagent: Chat about selection" -- sends selected text as context
@@ -308,6 +327,7 @@ current request are recalled (selected by a small fast model).
 ### MCP server
 
 ``` r
+
 codeagent_mcp_server()
 # Claude Desktop: {"mcpServers": {"codeagent": {"command": "Rscript",
 #   "args": ["-e", "codeagent::codeagent_mcp_server()"]}}}
@@ -316,6 +336,7 @@ codeagent_mcp_server()
 ### CLI (requires Rapp)
 
 ``` r
+
 install_codeagent_cli()
 ```
 
@@ -334,6 +355,7 @@ codeagent info --json
 Four themes, an accordion sidebar, and a tabbed output panel:
 
 ``` r
+
 codeagent_app(
   client,
   theme         = "default",   # "default" | "flatly" | "darkly" | "glass"
@@ -342,8 +364,8 @@ codeagent_app(
 )
 ```
 
-**Instant startup.** The UI shell renders immediately; the (slower) tool
-+ skill registration runs in the background behind a prominent
+**Instant startup.** The UI shell renders immediately; the (slower)
+tool + skill registration runs in the background behind a prominent
 “Initializing codeagent…” overlay, with the chat input gated until it
 completes. Skill metadata is cached on disk (see *Skill system*), so
 after the first launch the init step is near-instant.
@@ -376,6 +398,7 @@ prompt).
 ## Configuration (settings.json)
 
 ``` r
+
 use_codeagent_settings(scope = "user")   # scaffold ~/.codeagent/settings.json
 ```
 
@@ -388,7 +411,8 @@ environment variables.
 > e.g. `~/.config/codeagent` on Linux). A legacy `~/.codeagent` is
 > migrated automatically on first use (non-destructive copy), and still
 > read as a fallback. Override with `CODEAGENT_HOME`, or migrate
-> manually via `migrate_config_dir()`.
+> manually via
+> [`migrate_config_dir()`](https://kaipingyang.github.io/codeagent/reference/migrate_config_dir.md).
 
 ``` json
 {
@@ -423,11 +447,11 @@ automatically.
 
 `settings$tools` gives three precedence levels (highest first):
 
-| Key            | Purpose                            | Values                                                  |
-| -------------- | ---------------------------------- | ------------------------------------------------------- |
-| `overrides`    | Decide a **specific tool** by name | `"allow"` / `"deny"` / `"ask"`                          |
-| `capabilities` | Decide by **capability class**     | keys `read`/`write`/`exec`/`net` → `allow`/`deny`/`ask` |
-| `sets`         | Which tool **sets** to register    | `"A"` (codeagent core) and/or `"B"` (btw)               |
+| Key | Purpose | Values |
+|----|----|----|
+| `overrides` | Decide a **specific tool** by name | `"allow"` / `"deny"` / `"ask"` |
+| `capabilities` | Decide by **capability class** | keys `read`/`write`/`exec`/`net` → `allow`/`deny`/`ask` |
+| `sets` | Which tool **sets** to register | `"A"` (codeagent core) and/or `"B"` (btw) |
 
 When none matches, the decision falls back to the `permissions`
 mode/rules. This is how you express “allow reads, ask on writes, deny
@@ -441,20 +465,20 @@ use keyring (see above).
 
 ## Supported providers
 
-| Provider          | `settings.json` `"provider"` | Notes                                |
-| ----------------- | ---------------------------- | ------------------------------------ |
-| OpenAI-compatible | `"openai_compatible"`        | Databricks, Azure, vLLM, custom      |
-| Anthropic         | `"anthropic"`                |                                      |
-| OpenAI            | `"openai"`                   |                                      |
-| Google Gemini     | `"google_gemini"`            |                                      |
-| DeepSeek          | `"deepseek"`                 | reasoning\_content → ContentThinking |
-| Groq              | `"groq"`                     |                                      |
-| GitHub Copilot    | `"github"`                   |                                      |
-| Ollama            | `"ollama"`                   | local                                |
-| Posit AI          | `"posit"`                    | OAuth device flow                    |
-| Databricks        | `"databricks"`               |                                      |
-| AWS Bedrock       | `"aws_bedrock"`              |                                      |
-| Azure OpenAI      | `"azure_openai"`             |                                      |
+| Provider | `settings.json` `"provider"` | Notes |
+|----|----|----|
+| OpenAI-compatible | `"openai_compatible"` | Databricks, Azure, vLLM, custom |
+| Anthropic | `"anthropic"` |  |
+| OpenAI | `"openai"` |  |
+| Google Gemini | `"google_gemini"` |  |
+| DeepSeek | `"deepseek"` | reasoning_content → ContentThinking |
+| Groq | `"groq"` |  |
+| GitHub Copilot | `"github"` |  |
+| Ollama | `"ollama"` | local |
+| Posit AI | `"posit"` | OAuth device flow |
+| Databricks | `"databricks"` |  |
+| AWS Bedrock | `"aws_bedrock"` |  |
+| Azure OpenAI | `"azure_openai"` |  |
 
 ## Architecture
 
@@ -476,11 +500,11 @@ use keyring (see above).
 
 ## Related
 
-  - [ellmer](https://ellmer.tidyverse.org) — LLM client for R
-  - [btw](https://btw.posit.co) — R-environment tools for LLMs
-  - [shinychat](https://posit-dev.github.io/shinychat/) — Chat UI
-    components
-  - [vitals](https://vitals.tidymodels.org) — LLM eval framework
+- [ellmer](https://ellmer.tidyverse.org) — LLM client for R
+- [btw](https://btw.posit.co) — R-environment tools for LLMs
+- [shinychat](https://posit-dev.github.io/shinychat/) — Chat UI
+  components
+- [vitals](https://vitals.tidymodels.org) — LLM eval framework
 
 ## License
 

@@ -17,30 +17,30 @@ codeagent_console(
 
 ## Arguments
 
-  - client:
-    
-    A `CodeagentClient`.
+- client:
 
-  - stream:
-    
-    Logical. Stream responses token-by-token.
+  A `CodeagentClient`.
 
-  - prompt\_str:
-    
-    Character. The input prompt shown each turn.
+- stream:
 
-  - con:
-    
-    Connection to read lines from (default stdin; override in tests).
+  Logical. Stream responses token-by-token.
 
-  - session\_id:
-    
-    Character or NULL. Session id for auto-save (generated if NULL).
+- prompt_str:
 
-  - quiet:
-    
-    Logical. Suppress the startup banner and settings warnings (used in
-    tests and non-interactive contexts where the output would be noise).
+  Character. The input prompt shown each turn.
+
+- con:
+
+  Connection to read lines from (default stdin; override in tests).
+
+- session_id:
+
+  Character or NULL. Session id for auto-save (generated if NULL).
+
+- quiet:
+
+  Logical. Suppress the startup banner and settings warnings (used in
+  tests and non-interactive contexts where the output would be noise).
 
 ## Value
 

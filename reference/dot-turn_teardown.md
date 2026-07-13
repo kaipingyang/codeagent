@@ -10,26 +10,29 @@ Run per-turn teardown: save session and return usage + cost.
 
 ## Arguments
 
-  - client:
-    
-    A `CodeagentClient` or bare `ellmer::Chat`.
+- client:
 
-  - cwd:
-    
-    Character or NULL.
+  A `CodeagentClient` or bare
+  [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
 
-  - session\_id:
-    
-    Character or NULL.
+- cwd:
+
+  Character or NULL.
+
+- session_id:
+
+  Character or NULL.
 
 ## Value
 
 Named list with elements:
 
-  - `n_tokens`: integer token count (real or estimated)
+- `n_tokens`: integer token count (real or estimated)
 
-  - `model_limit`: integer context window limit
+- `model_limit`: integer context window limit
 
-  - `warning_state`: list from `calculate_token_warning_state()` or NULL
+- `warning_state`: list from
+  [`calculate_token_warning_state()`](https://kaipingyang.github.io/codeagent/reference/calculate_token_warning_state.md)
+  or NULL
 
-  - `cost_last`: numeric cost of the last turn in USD, or NA\_real\_
+- `cost_last`: numeric cost of the last turn in USD, or NA_real\_

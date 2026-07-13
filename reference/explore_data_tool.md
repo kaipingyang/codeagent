@@ -10,11 +10,11 @@ explore_data_tool(envir = .GlobalEnv)
 
 ## Arguments
 
-  - envir:
-    
-    Environment from which to read data.frames. Defaults to
-    `.GlobalEnv`.
+- envir:
+
+  Environment from which to read data.frames. Defaults to `.GlobalEnv`.
 
 ## Value
 
-An `ellmer::tool()` object.
+An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
+object.

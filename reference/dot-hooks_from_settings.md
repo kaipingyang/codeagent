@@ -21,9 +21,11 @@ Each entry's `command` is run via the shell when the event fires;
 
 ## Arguments
 
-  - settings:
-    
-    List from `load_settings()` (uses `settings$hooks`).
+- settings:
+
+  List from
+  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md)
+  (uses `settings$hooks`).
 
 ## Value
 

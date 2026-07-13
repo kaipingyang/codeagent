@@ -13,18 +13,19 @@ restore_session_into_chat(chat, session_id = NULL, cwd = getwd())
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` to populate.
+- chat:
 
-  - session\_id:
-    
-    Character. Session UUID. If `NULL`, the most recent session under
-    `cwd` is used (for `--continue`).
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  to populate.
 
-  - cwd:
-    
-    Character. Project directory for session lookup.
+- session_id:
+
+  Character. Session UUID. If `NULL`, the most recent session under
+  `cwd` is used (for `--continue`).
+
+- cwd:
+
+  Character. Project directory for session lookup.
 
 ## Value
 

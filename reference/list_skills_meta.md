@@ -13,9 +13,9 @@ list_skills_meta(cwd = getwd())
 
 ## Arguments
 
-  - cwd:
-    
-    Character. Project working directory.
+- cwd:
+
+  Character. Project working directory.
 
 ## Value
 

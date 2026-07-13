@@ -14,10 +14,10 @@ therefore not evaluated when the vignette is built.
       - injects tools (built mode="bypass") + system prompt
       - register_midloop_compaction()  -> chat$on_tool_result
       - .install_permission_gate()     -> chat$on_tool_request   (sole authority)
-    
+
     One user turn = agent_loop(input, client, iteration)
     (the REPL / app / one-shot re-invokes with iteration+1 for the next turn)
-    
+
       iteration > max_turns? ---- yes ---> stop "max_turns"
         | no
       SessionStart hook (first turn)
@@ -45,16 +45,23 @@ therefore not evaluated when the vignette is built.
 The multi-tool “agent loop” is ellmer-internal (inside `chat$chat()`);
 codeagent steers it entirely through the two registered callbacks
 (`on_tool_request` gate, `on_tool_result` mid-loop compaction + hooks).
-The streaming path (`codeagent_stream()` / REPL / Shiny) shares the same
-pipeline via `.turn_setup()` / `.turn_teardown()` and the same
-callbacks.
+The streaming path
+([`codeagent_stream()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream.md)
+/ REPL / Shiny) shares the same pipeline via
+[`.turn_setup()`](https://kaipingyang.github.io/codeagent/reference/dot-turn_setup.md)
+/
+[`.turn_teardown()`](https://kaipingyang.github.io/codeagent/reference/dot-turn_teardown.md)
+and the same callbacks.
 
-## 1\. Build a client
+## 1. Build a client
 
-A `codeagent` client wraps an `ellmer::Chat`. Bring your own backend –
-Databricks, Anthropic, OpenAI-compatible, or Ollama:
+A `codeagent` client wraps an
+[`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
+Bring your own backend – Databricks, Anthropic, OpenAI-compatible, or
+Ollama:
 
 ``` r
+
 library(codeagent)
 
 chat <- ellmer::chat_openai_compatible(
@@ -66,30 +73,34 @@ chat <- ellmer::chat_openai_compatible(
 client <- codeagent_client(chat, permission_mode = "bypass")
 ```
 
-`codeagent_client()` injects the tool set (Bash, Read, Write, Edit,
-Glob, Grep, LS, plus `btw` tool groups) and builds the system prompt.
-The `permission_mode` controls how tool calls are gated – see section 5.
+[`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
+injects the tool set (Bash, Read, Write, Edit, Glob, Grep, LS, plus
+`btw` tool groups) and builds the system prompt. The `permission_mode`
+controls how tool calls are gated – see section 5.
 
-## 2\. One-shot queries
+## 2. One-shot queries
 
 ``` r
+
 codeagent(client, "List the .R files in R/ and summarise what each does")
 ```
 
 The agent plans, calls tools, and returns a final answer. History
 accumulates on the client, so follow-up calls keep context.
 
-## 3\. Interactive REPL
+## 3. Interactive REPL
 
 From R:
 
 ``` r
+
 codeagent_console(client)
 ```
 
 Or install the command-line executable and use it from a terminal:
 
 ``` r
+
 install_codeagent_cli()
 ```
 
@@ -102,22 +113,23 @@ codeagent app           # launch the Shiny UI
 Inside the REPL, slash commands include `/model`, `/compact`, `/clear`,
 `/rewind`, `/sessions`, and `/budget`; `/name` invokes a skill.
 
-## 4\. Shiny app
+## 4. Shiny app
 
 ``` r
+
 codeagent_app(client, theme = "default")
 ```
 
 The app streams output, renders tool cards, and provides session
 management and a searchable skill panel.
 
-## 5\. Permissions
+## 5. Permissions
 
 Permission mode decides whether a tool call is allowed, denied, or
 requires confirmation:
 
 | Mode           | Behaviour                                               |
-| -------------- | ------------------------------------------------------- |
+|----------------|---------------------------------------------------------|
 | `default`      | reads auto-allow; writes and shell require confirmation |
 | `plan`         | read-only; all mutating tools denied                    |
 | `accept_edits` | file edits auto-allow; Bash still asks                  |
@@ -129,6 +141,7 @@ Fine-grained rules match on tool arguments – for example, allow only a
 specific command:
 
 ``` r
+
 client <- codeagent_client(
   chat,
   permission_mode = "default",
@@ -136,11 +149,12 @@ client <- codeagent_client(
 )
 ```
 
-## 6\. Configuration with settings.json
+## 6. Configuration with settings.json
 
 Scaffold a settings file:
 
 ``` r
+
 use_codeagent_settings(scope = "user")
 ```
 
@@ -153,7 +167,7 @@ environment variables.
 Keep API keys in `.Renviron` (as `CODEAGENT_API_KEY`), never in
 `settings.json`.
 
-## 7\. Sandboxed R execution
+## 7. Sandboxed R execution
 
 The `RunR` tool executes R code behind the permission gate. Enable
 sandboxing to run each call in an isolated `callr` subprocess with a
@@ -168,11 +182,12 @@ Sandboxing is opt-in because spawning a subprocess has a small cost.
 Turn it on when executing less-trusted code; leave it off for fast,
 local, trusted use.
 
-## 8\. Multi-agent teams
+## 8. Multi-agent teams
 
 Run independent tasks in parallel, capped to the container’s CPU quota:
 
 ``` r
+
 # Fixed fan-out
 team_run(c("review R/a.R", "review R/b.R"))
 
@@ -182,7 +197,8 @@ team_coordinate(c("task 1", "task 2", "task 3", "task 4"))
 
 ## Where to go next
 
-  - `?codeagent_client` – all client options (tool groups, verification,
-    MCP).
-  - `?codeagent_app` – Shiny app themes and panels.
-  - `README` – feature overview and architecture.
+- [`?codeagent_client`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
+  – all client options (tool groups, verification, MCP).
+- [`?codeagent_app`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
+  – Shiny app themes and panels.
+- `README` – feature overview and architecture.

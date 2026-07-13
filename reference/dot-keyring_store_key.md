@@ -16,19 +16,19 @@ back to appending `KEY=value` to `~/.Renviron` via `.append_renviron()`.
 
 ## Arguments
 
-  - key\_name:
-    
-    Character. Environment variable name (e.g. `"OPENAI_API_KEY"`).
+- key_name:
 
-  - key\_value:
-    
-    Character. The secret value.
+  Character. Environment variable name (e.g. `"OPENAI_API_KEY"`).
 
-  - backend:
-    
-    Character. `"auto"` (default) tries keyring then .Renviron;
-    `"keyring"` forces keyring (errors if unavailable); `"renviron"`
-    forces .Renviron.
+- key_value:
+
+  Character. The secret value.
+
+- backend:
+
+  Character. `"auto"` (default) tries keyring then .Renviron;
+  `"keyring"` forces keyring (errors if unavailable); `"renviron"`
+  forces .Renviron.
 
 ## Value
 

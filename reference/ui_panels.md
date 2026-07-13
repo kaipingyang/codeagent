@@ -1,3 +1,3 @@
 # UI Panel Definitions
 
-Pure UI functions for codeagent\_app(). No server logic here.
+Pure UI functions for codeagent_app(). No server logic here.

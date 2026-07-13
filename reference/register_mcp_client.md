@@ -10,13 +10,15 @@ register_mcp_client(chat, config = NULL)
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - config:
-    
-    MCP config (path or inline list). See `mcp_client_tools()`.
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
+
+- config:
+
+  MCP config (path or inline list). See
+  [`mcp_client_tools()`](https://kaipingyang.github.io/codeagent/reference/mcp_client_tools.md).
 
 ## Value
 
