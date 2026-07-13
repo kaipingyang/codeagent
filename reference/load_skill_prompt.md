@@ -11,17 +11,17 @@ load_skill_prompt(name, args = "", cwd = getwd())
 
 ## Arguments
 
-  - name:
-    
-    Character. Skill name.
+- name:
 
-  - args:
-    
-    Character. Arguments passed after the skill name.
+  Character. Skill name.
 
-  - cwd:
-    
-    Character. Project working directory.
+- args:
+
+  Character. Arguments passed after the skill name.
+
+- cwd:
+
+  Character. Project working directory.
 
 ## Value
 

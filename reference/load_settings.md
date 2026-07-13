@@ -12,10 +12,11 @@ load_settings(cwd = getwd())
 
 ## Arguments
 
-  - cwd:
-    
-    Character. Working directory (used to locate
-    `.codeagent/settings.json` and `CLAUDE.md`). Defaults to `getwd()`.
+- cwd:
+
+  Character. Working directory (used to locate
+  `.codeagent/settings.json` and `CLAUDE.md`). Defaults to
+  [`getwd()`](https://rdrr.io/r/base/getwd.html).
 
 ## Value
 

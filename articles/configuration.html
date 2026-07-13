@@ -8,8 +8,8 @@
 <title>Configuration • codeagent</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
-<link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Configuration">
 </head>
 <body>
@@ -60,13 +60,14 @@
 
 
 
-<script src="configuration_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
+
+<div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Configuration</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/HEAD/vignettes/configuration.Rmd" class="external-link"><code>vignettes/configuration.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/main/vignettes/configuration.Rmd" class="external-link"><code>vignettes/configuration.Rmd</code></a></small>
       <div class="d-none name"><code>configuration.Rmd</code></div>
     </div>
 
@@ -84,25 +85,30 @@
 <div class="section level2">
 <h2 id="settings-json">settings.json<a class="anchor" aria-label="anchor" href="#settings-json"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="fu">{</span></span>
-<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
-<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
-<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
-<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a>  <span class="fu">},</span></span>
-<span id="cb3-10"><a href="#cb3-10" aria-hidden="true"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
-<span id="cb3-11"><a href="#cb3-11" aria-hidden="true"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
-<span id="cb3-12"><a href="#cb3-12" aria-hidden="true"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
-<span id="cb3-13"><a href="#cb3-13" aria-hidden="true"></a><span class="fu">}</span></span></code></pre></div>
-<p>The <code>env</code> block is applied before environment variables are read, so it works even under <code>Rscript --vanilla</code>.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
+<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
+<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
+<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>The <code>env</code> block is applied before environment variables
+are read, so it works even under <code>Rscript --vanilla</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="environment-variables">Environment variables<a class="anchor" aria-label="anchor" href="#environment-variables"></a>
 </h2>
 <table class="table">
+<colgroup>
+<col width="52%">
+<col width="47%">
+</colgroup>
 <thead><tr class="header">
 <th>Variable</th>
 <th>Purpose</th>
@@ -148,20 +154,23 @@
 <div class="section level2">
 <h2 id="api-keys">API keys<a class="anchor" aria-label="anchor" href="#api-keys"></a>
 </h2>
-<p>Keep API keys in <code>~/.Renviron</code> as <code>CODEAGENT_API_KEY</code>, or use the OS keyring (offered by <code><a href="../reference/use_codeagent_setup.html">use_codeagent_setup()</a></code>). Never store keys in <code>settings.json</code>.</p>
+<p>Keep API keys in <code>~/.Renviron</code> as
+<code>CODEAGENT_API_KEY</code>, or use the OS keyring (offered by
+<code><a href="../reference/use_codeagent_setup.html">use_codeagent_setup()</a></code>). Never store keys in
+<code>settings.json</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="per-project-multi-client-config">Per-project multi-client config<a class="anchor" aria-label="anchor" href="#per-project-multi-client-config"></a>
 </h2>
-<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="co"># codeagent.md</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="pp">---</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a><span class="fu">client</span><span class="kw">:</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a><span class="at">  </span><span class="fu">gpt41</span><span class="kw">:</span><span class="at">    openai/gpt-4.1</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a><span class="at">  </span><span class="fu">deepseek</span><span class="kw">:</span><span class="at"> openai/deepseek-r1</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a><span class="fu">btw_groups</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">docs</span><span class="kw">,</span><span class="at"> git</span><span class="kw">,</span><span class="at"> pkg</span><span class="kw">]</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a><span class="fu">permission_mode</span><span class="kw">:</span><span class="at"> bypass</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a><span class="pp">---</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a><span class="at">Follow tidyverse style.</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># codeagent.md</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="fu">client</span><span class="kw">:</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="at">  </span><span class="fu">gpt41</span><span class="kw">:</span><span class="at">    openai/gpt-4.1</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="at">  </span><span class="fu">deepseek</span><span class="kw">:</span><span class="at"> openai/deepseek-r1</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="fu">btw_groups</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">docs</span><span class="kw">,</span><span class="at"> git</span><span class="kw">,</span><span class="at"> pkg</span><span class="kw">]</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="fu">permission_mode</span><span class="kw">:</span><span class="at"> bypass</span></span>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="at">Follow tidyverse style.</span></span></code></pre></div>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client_config.html">codeagent_client_config</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"gpt41"</span><span class="op">)</span></span></code></pre></div>
 </div>

@@ -12,18 +12,19 @@ calculate_token_warning_state(token_usage, model, chat = NULL)
 
 ## Arguments
 
-  - token\_usage:
-    
-    Integer. Current token usage (see
-    [token\_count\_with\_estimation](https://kaipingyang.github.io/codeagent/reference/token_count_with_estimation.md)).
+- token_usage:
 
-  - model:
-    
-    Character. Model id/name.
+  Integer. Current token usage (see
+  [token_count_with_estimation](https://kaipingyang.github.io/codeagent/reference/token_count_with_estimation.md)).
 
-  - chat:
-    
-    An `ellmer::Chat` or NULL.
+- model:
+
+  Character. Model id/name.
+
+- chat:
+
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  or NULL.
 
 ## Value
 

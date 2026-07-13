@@ -10,4 +10,5 @@ grep_tool()
 
 ## Value
 
-An `ellmer::tool()` object.
+An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
+object.

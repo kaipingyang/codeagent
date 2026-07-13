@@ -11,13 +11,13 @@ truncate_tool_result(content, tool_name = "default")
 
 ## Arguments
 
-  - content:
-    
-    Character(1). Tool output.
+- content:
 
-  - tool\_name:
-    
-    Character(1). Tool name for limit lookup.
+  Character(1). Tool output.
+
+- tool_name:
+
+  Character(1). Tool name for limit lookup.
 
 ## Value
 

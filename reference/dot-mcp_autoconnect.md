@@ -16,13 +16,15 @@ by looking (in order) at:
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - settings:
-    
-    List from `load_settings()`.
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
+
+- settings:
+
+  List from
+  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
 
 ## Value
 
@@ -32,5 +34,6 @@ Invisibly, the number of tools registered.
 
 `enabled_mcp_json_servers` / `disabled_mcp_json_servers` (Claude Code
 schema) filter which named servers are connected. Servers already
-provided via the `mcp_config` parameter to `codeagent_client()` are
-handled separately and not duplicated here.
+provided via the `mcp_config` parameter to
+[`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
+are handled separately and not duplicated here.

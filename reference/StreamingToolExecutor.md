@@ -12,34 +12,34 @@ non-concurrent-safe tools. Mirrors Claude Code's
 
 Rules:
 
-  - Concurrent-safe tools run immediately (in parallel with other safe
-    tools).
+- Concurrent-safe tools run immediately (in parallel with other safe
+  tools).
 
-  - Non-concurrent-safe tools wait for all running tools to finish,
-    execute exclusively, then release the queue.
+- Non-concurrent-safe tools wait for all running tools to finish,
+  execute exclusively, then release the queue.
 
-  - Tool calls submitted while an unsafe tool is running are queued and
-    executed in order when the unsafe tool completes.
+- Tool calls submitted while an unsafe tool is running are queued and
+  executed in order when the unsafe tool completes.
 
 ## Methods
 
 ### Public methods
 
-  - [`StreamingToolExecutor$new()`](#method-StreamingToolExecutor-new)
+- [`StreamingToolExecutor$new()`](#method-StreamingToolExecutor-new)
 
-  - [`StreamingToolExecutor$submit()`](#method-StreamingToolExecutor-submit)
+- [`StreamingToolExecutor$submit()`](#method-StreamingToolExecutor-submit)
 
-  - [`StreamingToolExecutor$drain_queue()`](#method-StreamingToolExecutor-drain_queue)
+- [`StreamingToolExecutor$drain_queue()`](#method-StreamingToolExecutor-drain_queue)
 
-  - [`StreamingToolExecutor$collect_results()`](#method-StreamingToolExecutor-collect_results)
+- [`StreamingToolExecutor$collect_results()`](#method-StreamingToolExecutor-collect_results)
 
-  - [`StreamingToolExecutor$execute_batch()`](#method-StreamingToolExecutor-execute_batch)
+- [`StreamingToolExecutor$execute_batch()`](#method-StreamingToolExecutor-execute_batch)
 
-  - [`StreamingToolExecutor$execute_batch_async()`](#method-StreamingToolExecutor-execute_batch_async)
+- [`StreamingToolExecutor$execute_batch_async()`](#method-StreamingToolExecutor-execute_batch_async)
 
-  - [`StreamingToolExecutor$clone()`](#method-StreamingToolExecutor-clone)
+- [`StreamingToolExecutor$clone()`](#method-StreamingToolExecutor-clone)
 
------
+------------------------------------------------------------------------
 
 ### Method `new()`
 
@@ -49,7 +49,7 @@ Create a new executor.
 
     StreamingToolExecutor$new()
 
------
+------------------------------------------------------------------------
 
 ### Method `submit()`
 
@@ -61,20 +61,20 @@ Submit a tool call for execution.
 
 #### Arguments
 
-  - `tool_call`:
-    
-    Named list with `id`, `name`, `input`.
+- `tool_call`:
 
-  - `exec_fn`:
-    
-    Function `(tool_call) -> character`. Executes the tool and returns
-    the result string.
+  Named list with `id`, `name`, `input`.
+
+- `exec_fn`:
+
+  Function `(tool_call) -> character`. Executes the tool and returns the
+  result string.
 
 #### Returns
 
 Invisibly NULL (result will appear in `collect_results()`).
 
------
+------------------------------------------------------------------------
 
 ### Method `drain_queue()`
 
@@ -87,11 +87,11 @@ marking the unsafe tool as complete.
 
 #### Arguments
 
-  - `exec_fn`:
-    
-    Function `(tool_call) -> character`. Executor function.
+- `exec_fn`:
 
------
+  Function `(tool_call) -> character`. Executor function.
+
+------------------------------------------------------------------------
 
 ### Method `collect_results()`
 
@@ -105,7 +105,7 @@ Collect all completed results and reset the accumulator.
 
 List of result objects (each with `id`, `name`, `result`).
 
------
+------------------------------------------------------------------------
 
 ### Method `execute_batch()`
 
@@ -117,33 +117,35 @@ Execute a batch of tool calls, respecting concurrency rules.
 
 #### Arguments
 
-  - `tool_calls`:
-    
-    List of tool call objects.
+- `tool_calls`:
 
-  - `exec_fn`:
-    
-    Function `(tool_call) -> character`.
+  List of tool call objects.
+
+- `exec_fn`:
+
+  Function `(tool_call) -> character`.
 
 #### Returns
 
 List of result objects.
 
------
+------------------------------------------------------------------------
 
 ### Method `execute_batch_async()`
 
-Async variant of `execute_batch()` for use inside `coro::async` / Shiny
+Async variant of `execute_batch()` for use inside
+[`coro::async`](https://coro.r-lib.org/reference/async.html) / Shiny
 `ExtendedTask` contexts.
 
 Concurrent-safe tools are dispatched as a group via
-`promises::promise_all()`, so the Shiny event loop can interleave other
-work while they run. Unsafe tools execute serially after all safe tools
-have resolved.
+[`promises::promise_all()`](https://rstudio.github.io/promises/reference/promise_all.html),
+so the Shiny event loop can interleave other work while they run. Unsafe
+tools execute serially after all safe tools have resolved.
 
 If the `promises` package is not installed the method falls back to
 `execute_batch()` and returns the result directly (not wrapped in a
-promise); `coro::await()` handles plain values transparently.
+promise); [`coro::await()`](https://coro.r-lib.org/reference/async.html)
+handles plain values transparently.
 
 #### Usage
 
@@ -151,21 +153,23 @@ promise); `coro::await()` handles plain values transparently.
 
 #### Arguments
 
-  - `tool_calls`:
-    
-    List of tool call objects (each with `id`, `name`, `input`).
+- `tool_calls`:
 
-  - `exec_fn`:
-    
-    Function `(tool_call) -> character`. Must be callable from the
-    current R process.
+  List of tool call objects (each with `id`, `name`, `input`).
+
+- `exec_fn`:
+
+  Function `(tool_call) -> character`. Must be callable from the current
+  R process.
 
 #### Returns
 
-A `promises::promise` resolving to the same list that `execute_batch()`
-returns, or that list directly when `promises` is unavailable.
+A
+[`promises::promise`](https://rstudio.github.io/promises/reference/promise.html)
+resolving to the same list that `execute_batch()` returns, or that list
+directly when `promises` is unavailable.
 
------
+------------------------------------------------------------------------
 
 ### Method `clone()`
 
@@ -177,6 +181,6 @@ The objects of this class are cloneable with this method.
 
 #### Arguments
 
-  - `deep`:
-    
-    Whether to make a deep clone.
+- `deep`:
+
+  Whether to make a deep clone.

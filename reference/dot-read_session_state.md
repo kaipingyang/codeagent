@@ -13,17 +13,19 @@ restoration.
 
 ## Arguments
 
-  - session\_id:
-    
-    Character. Session UUID.
+- session_id:
 
-  - cwd:
-    
-    Character. Project directory.
+  Character. Session UUID.
 
-  - tools:
-    
-    List of `ellmer::tool()` objects to rebind on replay.
+- cwd:
+
+  Character. Project directory.
+
+- tools:
+
+  List of
+  [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
+  objects to rebind on replay.
 
 ## Value
 
