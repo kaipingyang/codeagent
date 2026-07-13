@@ -179,3 +179,86 @@ test_that(".register_repl_tool_callbacks does not stack via .chat_once", {
   r2 <- codeagent:::.chat_once(ch, "repl_display")
   expect_false(r2)   # guard prevents stacking
 })
+
+# ---------------------------------------------------------------------------
+# Ctrl+R history search (plan #23)
+# ---------------------------------------------------------------------------
+
+.mk_search_state <- function(history = character(0)) {
+  list(chars = character(0), pos = 0L, history = history,
+       hist_pos = length(history) + 1L, stash = character(0),
+       action = NULL, last_cancel_time = NULL,
+       search_mode = FALSE, search_query = character(0),
+       search_match = NULL)
+}
+
+test_that("ctrl-r enters search_mode", {
+  s <- .mk_search_state(c("list.files()", "head(mtcars)"))
+  s <- codeagent:::.console_apply_key(s, "ctrl-r")
+  expect_true(s$search_mode)
+  expect_equal(s$search_query, character(0))
+})
+
+test_that(".search_update finds most-recent match", {
+  s <- .mk_search_state(c("list.files()", "head(mtcars)", "list.dirs()"))
+  s$search_mode  <- TRUE
+  s$search_query <- character(0)
+  s$stash        <- character(0)
+  # Type "list"
+  for (k in strsplit("list", "")[[1]]) s$search_query <- c(s$search_query, k)
+  s <- codeagent:::.search_update(s)
+  # Most recent match: "list.dirs()" (index 3)
+  expect_equal(paste(s$chars, collapse=""), "list.dirs()")
+})
+
+test_that(".search_next finds older match", {
+  s <- .mk_search_state(c("list.files()", "head(mtcars)", "list.dirs()"))
+  s$search_mode  <- TRUE
+  s$search_query <- strsplit("list", "")[[1]]
+  s$stash        <- character(0)
+  s <- codeagent:::.search_update(s)
+  s$search_match <- 3L  # most recent match is index 3
+  s <- codeagent:::.search_next(s)
+  # Next older match: "list.files()" (index 1)
+  expect_equal(paste(s$chars, collapse=""), "list.files()")
+})
+
+test_that("escape in search_mode restores stash", {
+  s <- .mk_search_state(c("list.files()"))
+  s$stash        <- strsplit("original", "")[[1]]
+  s$search_mode  <- TRUE
+  s$search_query <- strsplit("li", "")[[1]]
+  s <- codeagent:::.console_apply_key(s, "escape")
+  expect_false(s$search_mode)
+  expect_equal(paste(s$chars, collapse=""), "original")
+})
+
+test_that("enter in search_mode submits", {
+  s <- .mk_search_state(c("list.files()"))
+  s$search_mode  <- TRUE
+  s$chars        <- strsplit("list.files()", "")[[1]]
+  s$pos          <- length(s$chars)
+  s <- codeagent:::.console_apply_key(s, "enter")
+  expect_false(s$search_mode)
+  expect_equal(s$action, "submit")
+})
+
+# ---------------------------------------------------------------------------
+# .repl_dispatch new commands (plan #23)
+# ---------------------------------------------------------------------------
+
+test_that(".repl_dispatch recognises /cost", {
+  r <- codeagent:::.repl_dispatch("/cost")
+  expect_equal(r$action, "cost")
+})
+
+test_that(".repl_dispatch recognises /copy", {
+  r <- codeagent:::.repl_dispatch("/copy")
+  expect_equal(r$action, "copy")
+})
+
+test_that(".repl_dispatch recognises /export with path", {
+  r <- codeagent:::.repl_dispatch("/export myfile.md")
+  expect_equal(r$action, "export")
+  expect_equal(r$arg, "myfile.md")
+})
