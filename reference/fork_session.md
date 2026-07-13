@@ -12,14 +12,14 @@ fork_session(session_id, directory = NULL)
 
 ## Arguments
 
-  - session\_id:
-    
-    Character. UUID of the session to fork.
+- session_id:
 
-  - directory:
-    
-    Character or NULL. Project working directory used to locate the
-    source file and write the fork.
+  Character. UUID of the session to fork.
+
+- directory:
+
+  Character or NULL. Project working directory used to locate the source
+  file and write the fork.
 
 ## Value
 

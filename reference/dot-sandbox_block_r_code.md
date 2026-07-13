@@ -13,13 +13,14 @@ the environment (always, since those would sidestep the Bash sandbox).
 
 ## Arguments
 
-  - code:
-    
-    Character. The R code to run.
+- code:
 
-  - profile:
-    
-    List from `.sandbox_profile()`.
+  Character. The R code to run.
+
+- profile:
+
+  List from
+  [`.sandbox_profile()`](https://kaipingyang.github.io/codeagent/reference/dot-sandbox_profile.md).
 
 ## Value
 

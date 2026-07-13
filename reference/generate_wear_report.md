@@ -1,9 +1,10 @@
 # Export the current WEAR exploration session to a Quarto document
 
 Generates a reproducible `.qmd` file from the conversation history of a
-`wear_explore()` session. Each user message becomes a `##` section
-heading; assistant text is written as prose; code from `ExploreData`
-tool results is written as fenced R code chunks.
+[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+session. Each user message becomes a `##` section heading; assistant
+text is written as prose; code from `ExploreData` tool results is
+written as fenced R code chunks.
 
 ## Usage
 
@@ -17,19 +18,20 @@ generate_wear_report(
 
 ## Arguments
 
-  - client:
-    
-    A `CodeagentClient` whose `chat` has been used in a `wear_explore()`
-    session.
+- client:
 
-  - path:
-    
-    Character. Output file path (default: `exploration-YYYYMMDD.qmd` in
-    the current directory).
+  A `CodeagentClient` whose `chat` has been used in a
+  [`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+  session.
 
-  - title:
-    
-    Character. Quarto document title.
+- path:
+
+  Character. Output file path (default: `exploration-YYYYMMDD.qmd` in
+  the current directory).
+
+- title:
+
+  Character. Quarto document title.
 
 ## Value
 
@@ -42,12 +44,13 @@ the LLM queries. Set `eval: true` in the YAML front-matter to make it
 fully reproducible.
 
 This function is also registered as the `GenerateReport` tool inside a
-`wear_explore()` session, so the agent can call it when the user types
-`/report`.
+[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+session, so the agent can call it when the user types `/report`.
 
 ## See also
 
-`wear_explore()` to start a WEAR exploration session.
+[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+to start a WEAR exploration session.
 
 ## Examples
 

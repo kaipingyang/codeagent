@@ -16,9 +16,9 @@ are de-duplicated.
 
 ## Arguments
 
-  - cwd:
-    
-    Character. Starting directory.
+- cwd:
+
+  Character. Starting directory.
 
 ## Value
 

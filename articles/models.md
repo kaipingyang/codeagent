@@ -5,6 +5,7 @@ codeagent wraps any `ellmer` Chat, so it is provider-agnostic.
 ## Any ellmer backend
 
 ``` r
+
 chat <- ellmer::chat_openai_compatible(   # Databricks / Azure / vLLM / custom
   base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
   model       = Sys.getenv("CODEAGENT_MODEL"),
@@ -20,6 +21,7 @@ Supported `provider` values include `openai_compatible`, `anthropic`,
 ## Switching models mid-session
 
 ``` r
+
 switch_model(client, "openai/deepseek-r1")   # CLI / one-shot
 # In the Shiny app: the Settings panel model picker, or /model
 ```
@@ -32,6 +34,7 @@ object identity — and every callback/closure bound to it — stays valid.
 Models with extended thinking are controlled natively via ellmer:
 
 ``` r
+
 # settings.json: "effortLevel": "high"  ->  params(reasoning_effort = "high")
 ```
 

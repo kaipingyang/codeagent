@@ -14,15 +14,15 @@ use_codeagent_settings(scope = c("user", "project"), open = interactive())
 
 ## Arguments
 
-  - scope:
-    
-    Character. `"user"` (default) writes to `~/.codeagent/`; `"project"`
-    writes to `.codeagent/` in the current directory.
+- scope:
 
-  - open:
-    
-    Logical. Open the file after creation when running in RStudio/
-    Positron (requires rstudioapi).
+  Character. `"user"` (default) writes to `~/.codeagent/`; `"project"`
+  writes to `.codeagent/` in the current directory.
+
+- open:
+
+  Logical. Open the file after creation when running in RStudio/
+  Positron (requires rstudioapi).
 
 ## Value
 

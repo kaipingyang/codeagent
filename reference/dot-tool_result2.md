@@ -2,8 +2,9 @@
 
 Superset of the legacy `.tool_result()`: in addition to
 `title`/`markdown`, carries a typed `card` payload consumed by
-`render_tool_output()` and eagerly precomputes `right_output` so the
-existing server push path keeps working.
+[`render_tool_output()`](https://kaipingyang.github.io/codeagent/reference/render_tool_output.md)
+and eagerly precomputes `right_output` so the existing server push path
+keeps working.
 
 ## Usage
 
@@ -21,35 +22,35 @@ existing server push path keeps working.
 
 ## Arguments
 
-  - text:
-    
-    Character. LLM-facing value.
+- text:
 
-  - kind:
-    
-    One of `"code"`, `"image"`, `"table"`, `"diff"`, `"text"`,
-    `"error"`.
+  Character. LLM-facing value.
 
-  - status:
-    
-    One of `"success"`, `"error"`, `"denied"`.
+- kind:
 
-  - icon:
-    
-    bsicons name (character) for the in-chat card + right panel.
+  One of `"code"`, `"image"`, `"table"`, `"diff"`, `"text"`, `"error"`.
 
-  - title:
-    
-    Character or HTML. Card title (HTML allowed for the in-chat card).
+- status:
 
-  - payload:
-    
-    List. Kind-specific data (see file docs).
+  One of `"success"`, `"error"`, `"denied"`.
 
-  - markdown:
-    
-    Character. In-chat card body + two-phase fallback.
+- icon:
+
+  bsicons name (character) for the in-chat card + right panel.
+
+- title:
+
+  Character or HTML. Card title (HTML allowed for the in-chat card).
+
+- payload:
+
+  List. Kind-specific data (see file docs).
+
+- markdown:
+
+  Character. In-chat card body + two-phase fallback.
 
 ## Value
 
-An `ellmer::ContentToolResult`.
+An
+[`ellmer::ContentToolResult`](https://ellmer.tidyverse.org/reference/Content.html).

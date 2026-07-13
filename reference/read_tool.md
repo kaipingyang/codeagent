@@ -10,14 +10,15 @@ read_tool(mode = "default", rules = list())
 
 ## Arguments
 
-  - mode:
-    
-    Character. Permission mode.
+- mode:
 
-  - rules:
-    
-    List. Permission rules.
+  Character. Permission mode.
+
+- rules:
+
+  List. Permission rules.
 
 ## Value
 
-An `ellmer::tool()` object.
+An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
+object.

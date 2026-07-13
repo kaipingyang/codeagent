@@ -11,13 +11,13 @@ build_skill_hint(cwd = getwd(), max_tokens = 1000L)
 
 ## Arguments
 
-  - cwd:
-    
-    Character. Project working directory.
+- cwd:
 
-  - max\_tokens:
-    
-    Integer. Approximate token budget.
+  Character. Project working directory.
+
+- max_tokens:
+
+  Integer. Approximate token budget.
 
 ## Value
 

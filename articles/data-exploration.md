@@ -7,25 +7,27 @@ depends on whether you want a focused, stateful exploration session or
 just an occasional data query inside a general-purpose agent
 conversation.
 
-|                    | Standard session                            | WEAR session (`wear_explore()`)                    |
-| ------------------ | ------------------------------------------- | -------------------------------------------------- |
-| Entry point        | `codeagent_app()` / `codeagent_console()`   | `wear_explore(data = ...)`                         |
-| `ExploreData` tool | Not registered by default                   | Automatically registered                           |
-| `/report` command  | Not available                               | Exports session to `.qmd`                          |
-| WEAR system prompt | Not injected                                | Injected: agent ends each turn with **Next steps** |
-| Typical use        | Occasional data questions amid coding tasks | Dedicated analysis / EDA session                   |
+|  | Standard session | WEAR session ([`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)) |
+|----|----|----|
+| Entry point | [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md) / [`codeagent_console()`](https://kaipingyang.github.io/codeagent/reference/codeagent_console.md) | `wear_explore(data = ...)` |
+| `ExploreData` tool | Not registered by default | Automatically registered |
+| `/report` command | Not available | Exports session to `.qmd` |
+| WEAR system prompt | Not injected | Injected: agent ends each turn with **Next steps** |
+| Typical use | Occasional data questions amid coding tasks | Dedicated analysis / EDA session |
 
-**Rule of thumb:** use `wear_explore()` when data exploration *is* the
-task. Use a standard session when data questions are one of many things
-you need.
+**Rule of thumb:** use
+[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+when data exploration *is* the task. Use a standard session when data
+questions are one of many things you need.
 
------
+------------------------------------------------------------------------
 
 ## Standard session: ExploreData on demand
 
 You can register `ExploreData` manually on any client:
 
 ``` r
+
 library(codeagent)
 
 client <- codeagent_client(permission_mode = "bypass", btw_groups = NULL)
@@ -38,19 +40,20 @@ codeagent(client, "What is the average mpg per cylinder count?")
 `ExploreData` is read-only (sandboxed sub-environment of `.GlobalEnv`)
 and is allowed automatically in `default` permission mode.
 
------
+------------------------------------------------------------------------
 
 ## WEAR session: dedicated exploration
 
-`wear_explore()` starts a full exploration session with the
-Write/Execute/Analyze/Regroup loop. On every turn the agent:
+[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+starts a full exploration session with the Write/Execute/Analyze/Regroup
+loop. On every turn the agent:
 
 1.  **W** — writes dplyr/base R code to answer your question
 2.  **E** — runs it via `ExploreData`
 3.  **A** — interprets results, flags patterns and outliers
 4.  **R** — proposes 3-5 follow-up questions
 
-<!-- end list -->
+&nbsp;
 
     wear_explore(data = ...)
       - resolve data into an environment
@@ -58,7 +61,7 @@ Write/Execute/Analyze/Regroup loop. On every turn the agent:
       - register /report (GenerateReport) tool
       - inject the WEAR system prompt
       - enter codeagent_console()  or  codeagent_app()
-    
+
     Each turn the agent runs the W-E-A-R cycle:
       W  Write     model writes dplyr / base R code
       E  Execute   ExploreData: eval in new.env(parent = data env)
@@ -73,6 +76,7 @@ Write/Execute/Analyze/Regroup loop. On every turn the agent:
                  user Q = "##" heading, tool code -> an {r} chunk, analysis = prose
 
 ``` r
+
 # CLI session (blocks until you type /exit or Ctrl+C)
 wear_explore(data = list(mtcars = mtcars))
 
@@ -87,10 +91,12 @@ wear_explore(
 
 Type `/report` in the chat (or say “export my analysis”) to save the
 session as a reproducible `.qmd` file. The `/report` command is **only
-available inside a `wear_explore()` session** — it is not registered in
-standard sessions.
+available inside a
+[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+session** — it is not registered in standard sessions.
 
 ``` r
+
 # Capture the client to generate the report after the session ends
 client <- wear_explore(data = list(mtcars = mtcars))
 
@@ -106,12 +112,12 @@ system(paste("quarto render", path))
 
 The generated `.qmd` contains:
 
-  - Each user question as a `##` section heading
-  - Agent code as ` ```{r} ` chunks (`eval: false` by default)
-  - Agent analysis as prose
-  - YAML front-matter with `code-fold: true` and `toc: true`
+- Each user question as a `##` section heading
+- Agent code as ```` ```{r} ```` chunks (`eval: false` by default)
+- Agent analysis as prose
+- YAML front-matter with `code-fold: true` and `toc: true`
 
------
+------------------------------------------------------------------------
 
 ## Environment context injection
 
@@ -125,7 +131,7 @@ data.frames are in `.GlobalEnv` without an explicit tool call:
 }
 ```
 
------
+------------------------------------------------------------------------
 
 ## Security
 

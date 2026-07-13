@@ -10,14 +10,14 @@ board_messages(db_path, recipient = NULL)
 
 ## Arguments
 
-  - db\_path:
-    
-    Character. Board path.
+- db_path:
 
-  - recipient:
-    
-    Character or NULL. If set, returns messages addressed to this
-    recipient or broadcast (NULL recipient); otherwise all messages.
+  Character. Board path.
+
+- recipient:
+
+  Character or NULL. If set, returns messages addressed to this
+  recipient or broadcast (NULL recipient); otherwise all messages.
 
 ## Value
 
