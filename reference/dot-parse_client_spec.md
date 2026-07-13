@@ -2,12 +2,12 @@
 
 Supports:
 
-- `"openai/model-name"` -\> `chat_openai_compatible()` using
-  `CODEAGENT_BASE_URL`
+  - `"openai/model-name"` -\> `chat_openai_compatible()` using
+    `CODEAGENT_BASE_URL`
 
-- `"anthropic/model-name"` -\> `chat_anthropic(model = "model-name")`
+  - `"anthropic/model-name"` -\> `chat_anthropic(model = "model-name")`
 
-- `"alias"` -\> looked up in `aliases` named list
+  - `"alias"` -\> looked up in `aliases` named list
 
 ## Usage
 
@@ -17,19 +17,18 @@ Supports:
 
 ## Arguments
 
-- spec:
+  - spec:
+    
+    Character. Client spec string or alias key.
 
-  Character. Client spec string or alias key.
+  - aliases:
+    
+    Named list. Alias -\> spec mapping.
 
-- aliases:
-
-  Named list. Alias -\> spec mapping.
-
-- cwd:
-
-  Character. Working directory (for settings).
+  - cwd:
+    
+    Character. Working directory (for settings).
 
 ## Value
 
-An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-object.
+An `ellmer::Chat` object.

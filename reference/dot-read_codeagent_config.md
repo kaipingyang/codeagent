@@ -12,9 +12,9 @@ Returns a named list with fields: `client_spec`, `btw_groups`,
 
 ## Arguments
 
-- cwd:
-
-  Character. Project directory to search.
+  - cwd:
+    
+    Character. Project directory to search.
 
 ## Value
 

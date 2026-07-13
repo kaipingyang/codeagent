@@ -8,8 +8,8 @@
 <title>codeagent — R-native coding agent • codeagent</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
-<link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
+<link href="deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="codeagent — R-native coding agent">
 <meta name="description" content="An R-native agentic coding assistant built on ellmer and btw. Full-featured harness with streaming, tool execution, permissions, compaction, skills, multi-agent coordination, a CLI REPL, and a Shiny app.
 ">
@@ -66,21 +66,19 @@
 <div class="page-header"><h1 id="codeagent">codeagent<a class="anchor" aria-label="anchor" href="#codeagent"></a>
 </h1></div>
 <p>An R-native agentic coding assistant built on <a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a> and <a href="https://btw.posit.co" class="external-link">btw</a>. It reimplements a coding-agent <strong>harness</strong> in R: the agent loop, permission system, context compaction, hook system, skill system, tool execution, session management, multi-agent coordination, a CLI REPL, and an interactive Shiny UI.</p>
-<blockquote>
-<p><strong>Not a wrapper.</strong> codeagent reimplements the harness from scratch rather than shelling out to an external CLI.</p>
-</blockquote>
+<blockquote><p><strong>Not a wrapper.</strong> codeagent reimplements the harness from scratch rather than shelling out to an external CLI.</p></blockquote>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># pak handles all dependencies including Rapp (from r-lib/Rapp on GitHub)</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"tidyverse/ellmer"</span>, <span class="st">"kaipingyang/codeagent"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu">pak</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"tidyverse/ellmer"</span>, <span class="st">"kaipingyang/codeagent"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Optional: btw for R-environment tools (docs, git, pkg, env, etc.)</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"posit-dev/btw"</span><span class="op">)</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu">pak</span><span class="op">(</span><span class="st">"posit-dev/btw"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Optional: shinychat dev for latest chat UI</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"posit-dev/shinychat/pkg-r"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu">pak</span><span class="op">(</span><span class="st">"posit-dev/shinychat/pkg-r"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="configuration">Configuration<a class="anchor" aria-label="anchor" href="#configuration"></a>
 </h3>
@@ -88,23 +86,23 @@
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="reference/use_codeagent_md.html">use_codeagent_md</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># creates ~/.codeagent/settings.json</span></span></code></pre></div>
 <p>Minimal <code>~/.codeagent/settings.json</code>:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_API_KEY"</span><span class="fu">:</span> <span class="st">"your-token"</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_API_KEY"</span><span class="fu">:</span> <span class="st">"your-token"</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a>  <span class="fu">}</span></span>
+<span id="cb3-9"><a href="#cb3-9" aria-hidden="true"></a><span class="fu">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="install-cli-once">Install CLI (once)<a class="anchor" aria-label="anchor" href="#install-cli-once"></a>
 </h3>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="reference/install_codeagent_cli.html">install_codeagent_cli</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># puts `codeagent` on your PATH</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">codeagent</span>       <span class="co"># interactive REPL</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-y</span>    <span class="co"># bypass mode (skip permission prompts)</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="ex">codeagent</span>       # interactive REPL</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a><span class="ex">codeagent</span> -y    # bypass mode (skip permission prompts)</span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
@@ -140,15 +138,15 @@
 <div class="section level3">
 <h3 id="from-a-config-file">From a config file<a class="anchor" aria-label="anchor" href="#from-a-config-file"></a>
 </h3>
-<div class="sourceCode" id="cb8"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># codeagent.md</span></span>
-<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="pp">---</span></span>
-<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="fu">client</span><span class="kw">:</span></span>
-<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="at">  </span><span class="fu">gpt41</span><span class="kw">:</span><span class="at">    openai/gpt-4.1</span></span>
-<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="at">  </span><span class="fu">deepseek</span><span class="kw">:</span><span class="at"> openai/deepseek-r1</span></span>
-<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="fu">btw_groups</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">docs</span><span class="kw">,</span><span class="at"> git</span><span class="kw">,</span><span class="at"> pkg</span><span class="kw">]</span></span>
-<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="fu">permission_mode</span><span class="kw">:</span><span class="at"> bypass</span></span>
-<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="pp">---</span></span>
-<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="at">Follow tidyverse style.</span></span></code></pre></div>
+<div class="sourceCode" id="cb8"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true"></a><span class="co"># codeagent.md</span></span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true"></a><span class="pp">---</span></span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true"></a><span class="fu">client</span><span class="kw">:</span></span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true"></a><span class="at">  </span><span class="fu">gpt41</span><span class="kw">:</span><span class="at">    openai/gpt-4.1</span></span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true"></a><span class="at">  </span><span class="fu">deepseek</span><span class="kw">:</span><span class="at"> openai/deepseek-r1</span></span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true"></a><span class="fu">btw_groups</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">docs</span><span class="kw">,</span><span class="at"> git</span><span class="kw">,</span><span class="at"> pkg</span><span class="kw">]</span></span>
+<span id="cb8-7"><a href="#cb8-7" aria-hidden="true"></a><span class="fu">permission_mode</span><span class="kw">:</span><span class="at"> bypass</span></span>
+<span id="cb8-8"><a href="#cb8-8" aria-hidden="true"></a><span class="pp">---</span></span>
+<span id="cb8-9"><a href="#cb8-9" aria-hidden="true"></a><span class="at">Follow tidyverse style.</span></span></code></pre></div>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_client_config.html">codeagent_client_config</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"gpt41"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span></code></pre></div>
@@ -165,56 +163,56 @@
 <col width="50%">
 <col width="50%">
 </colgroup>
-<thead><tr>
+<thead><tr class="header">
 <th>Feature</th>
 <th>Details</th>
 </tr></thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><strong>Agent loop</strong></td>
 <td>
 <code><a href="reference/agent_loop.html">agent_loop()</a></code> with max_turns, budget tracking, compaction</td>
 </tr>
-<tr>
+<tr class="even">
 <td><strong>Permissions</strong></td>
 <td>7 modes: <code>default</code>, <code>plan</code>, <code>accept_edits</code>, <code>bypass</code>, <code>dont_ask</code>, <code>auto</code>, <code>bubble</code>; fine-grained rules match tool arguments</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><strong>Hooks</strong></td>
 <td>12 lifecycle events (tool, permission, message, session), configurable from <code>settings.json</code>
 </td>
 </tr>
-<tr>
+<tr class="even">
 <td><strong>Compaction</strong></td>
 <td>Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via <code>get_tokens()</code>, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and <strong>mid-loop compaction</strong> between tool rounds — budget-aware micro-snip on by default, opt-in full compact (<code>midloop_full_compact</code>)</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><strong>System prompt</strong></td>
 <td>Tone, task, convention, tool-use, and R-specific behavioural guidance</td>
 </tr>
-<tr>
+<tr class="even">
 <td><strong>Error recovery</strong></td>
 <td>PTL/rate-limit/network/auth classification; exponential backoff</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><strong>system-reminder</strong></td>
 <td>Ephemeral per-turn context injection preserves prompt cache</td>
 </tr>
-<tr>
+<tr class="even">
 <td><strong>Verification</strong></td>
 <td>
 <code>verify_fn</code> param + <code><a href="reference/verify_r_tests.html">verify_r_tests()</a></code> re-enters loop on test failures</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><strong>Plan mode</strong></td>
 <td>Model enters/exits read-only planning mid-turn</td>
 </tr>
-<tr>
+<tr class="even">
 <td><strong>Rewind</strong></td>
 <td>
 <code><a href="reference/truncate_chat_turns.html">truncate_chat_turns()</a></code> / REPL <code>/rewind</code> roll the conversation back</td>
 </tr>
-<tr>
+<tr class="odd">
 <td><strong>Model switch</strong></td>
 <td>
 <code>switch_model(client, model)</code> swaps provider/model mid-session</td>
@@ -226,73 +224,68 @@
 <h3 id="tools">Tools<a class="anchor" aria-label="anchor" href="#tools"></a>
 </h3>
 <table class="table">
-<colgroup>
-<col width="31%">
-<col width="36%">
-<col width="31%">
-</colgroup>
-<thead><tr>
+<thead><tr class="header">
 <th>Group</th>
 <th>Source</th>
 <th>Tools</th>
 </tr></thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>Core</td>
 <td>codeagent</td>
 <td>Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS</td>
 </tr>
-<tr>
+<tr class="even">
 <td>docs</td>
 <td>btw</td>
 <td>help pages, vignettes, NEWS</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>env</td>
 <td>btw</td>
 <td>describe data frames / R environment</td>
 </tr>
-<tr>
+<tr class="even">
 <td>files</td>
 <td>btw</td>
 <td>hashline-based precise editing + atomic multi-file patch</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>git</td>
 <td>btw</td>
 <td>status, diff, log, commit, branches</td>
 </tr>
-<tr>
+<tr class="even">
 <td>ide</td>
 <td>btw</td>
 <td>read current editor</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>pkg</td>
 <td>btw</td>
 <td>document, check, test, coverage, load_all</td>
 </tr>
-<tr>
+<tr class="even">
 <td>cran</td>
 <td>btw</td>
 <td>search, package info</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>sessioninfo</td>
 <td>btw</td>
 <td>platform, package versions</td>
 </tr>
-<tr>
+<tr class="even">
 <td>web</td>
 <td>btw</td>
 <td>URL → Markdown</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>agent</td>
 <td>btw</td>
 <td>hierarchical subagent delegation</td>
 </tr>
-<tr>
+<tr class="even">
 <td>data</td>
 <td>codeagent</td>
 <td>
@@ -308,25 +301,25 @@
 <col width="33%">
 <col width="33%">
 </colgroup>
-<thead><tr>
+<thead><tr class="header">
 <th><code>file_tools</code></th>
 <th>Set</th>
 <th>Scope</th>
 </tr></thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>
 <code>"core"</code> (default)</td>
 <td>codeagent Read/Write/Edit/MultiEdit/Glob/Grep/LS</td>
 <td>
 <strong>any path</strong> (absolute or relative)</td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>"btw"</code></td>
 <td>btw file tools (hash-anchored, atomic patch)</td>
 <td><strong>project cwd only</strong></td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>"both"</code></td>
 <td>both sets</td>
 <td>LLM picks per task</td>
@@ -428,8 +421,8 @@
 <h3 id="sandboxed-r-execution">Sandboxed R execution<a class="anchor" aria-label="anchor" href="#sandboxed-r-execution"></a>
 </h3>
 <p><code>RunR</code> executes R code in a <code>callr</code> subprocess with a scrubbed environment (no API keys visible) and wall-clock timeout:</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
-<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a><span class="fu">{</span> <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">false</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true"></a><span class="fu">{</span> <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">false</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="eval-harness-vitals">Eval harness (vitals)<a class="anchor" aria-label="anchor" href="#eval-harness-vitals"></a>
@@ -479,17 +472,17 @@
 </h3>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/install_codeagent_cli.html">install_codeagent_cli</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># installs the `codeagent` terminal command</span></span></code></pre></div>
-<div class="sourceCode" id="cb25"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="ex">codeagent</span>                 <span class="co"># interactive REPL (default permission mode)</span></span>
-<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-y</span>              <span class="co"># REPL in bypass mode (skip all permission prompts)</span></span>
-<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a><span class="ex">codeagent</span> <span class="st">"List .R files"</span> <span class="co"># one-shot query</span></span>
-<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-p</span> <span class="st">"query"</span>      <span class="co"># one-shot, non-interactive</span></span>
-<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a><span class="ex">codeagent</span> app             <span class="co"># Shiny UI</span></span>
-<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a><span class="ex">codeagent</span> app <span class="at">-y</span>          <span class="co"># Shiny UI in bypass mode</span></span>
-<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-m</span> sonnet       <span class="co"># override model</span></span>
-<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a><span class="ex">codeagent</span> skills list</span>
-<span id="cb25-9"><a href="#cb25-9" tabindex="-1"></a><span class="ex">codeagent</span> skills install <span class="at">--package</span> btw</span>
-<span id="cb25-10"><a href="#cb25-10" tabindex="-1"></a><span class="ex">codeagent</span> mcp</span>
-<span id="cb25-11"><a href="#cb25-11" tabindex="-1"></a><span class="ex">codeagent</span> info <span class="at">--json</span></span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true"></a><span class="ex">codeagent</span>                 # interactive REPL (default permission mode)</span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true"></a><span class="ex">codeagent</span> -y              # REPL in bypass mode (skip all permission prompts)</span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true"></a><span class="ex">codeagent</span> <span class="st">"List .R files"</span> # one-shot query</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true"></a><span class="ex">codeagent</span> -p <span class="st">"query"</span>      # one-shot, non-interactive</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true"></a><span class="ex">codeagent</span> app             # Shiny UI</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true"></a><span class="ex">codeagent</span> app -y          # Shiny UI in bypass mode</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true"></a><span class="ex">codeagent</span> -m sonnet       # override model</span>
+<span id="cb25-8"><a href="#cb25-8" aria-hidden="true"></a><span class="ex">codeagent</span> skills list</span>
+<span id="cb25-9"><a href="#cb25-9" aria-hidden="true"></a><span class="ex">codeagent</span> skills install --package btw</span>
+<span id="cb25-10"><a href="#cb25-10" aria-hidden="true"></a><span class="ex">codeagent</span> mcp</span>
+<span id="cb25-11"><a href="#cb25-11" aria-hidden="true"></a><span class="ex">codeagent</span> info --json</span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="shiny-app">Shiny app<a class="anchor" aria-label="anchor" href="#shiny-app"></a>
@@ -515,28 +508,26 @@
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/use_codeagent_settings.html">use_codeagent_settings</a></span><span class="op">(</span>scope <span class="op">=</span> <span class="st">"user"</span><span class="op">)</span>   <span class="co"># scaffold ~/.codeagent/settings.json</span></span></code></pre></div>
 <p>Precedence (low to high): package defaults &lt; <code>~/.codeagent/settings.json</code> &lt; <code>.codeagent/settings.json</code> &lt; environment variables.</p>
-<blockquote>
-<p><strong>Config directory.</strong> User-global config/sessions live in the OS-standard location (<code>rappdirs::user_config_dir("codeagent")</code>; e.g. <code>~/.config/codeagent</code> on Linux). A legacy <code>~/.codeagent</code> is migrated automatically on first use (non-destructive copy), and still read as a fallback. Override with <code>CODEAGENT_HOME</code>, or migrate manually via <code><a href="reference/migrate_config_dir.html">migrate_config_dir()</a></code>.</p>
-</blockquote>
-<div class="sourceCode" id="cb28"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb28-3"><a href="#cb28-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb28-4"><a href="#cb28-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb28-5"><a href="#cb28-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb28-6"><a href="#cb28-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
-<span id="cb28-7"><a href="#cb28-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
-<span id="cb28-8"><a href="#cb28-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
-<span id="cb28-9"><a href="#cb28-9" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb28-10"><a href="#cb28-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
-<span id="cb28-11"><a href="#cb28-11" tabindex="-1"></a>  <span class="dt">"tools"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb28-12"><a href="#cb28-12" tabindex="-1"></a>    <span class="dt">"sets"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"A"</span><span class="ot">,</span> <span class="st">"B"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb28-13"><a href="#cb28-13" tabindex="-1"></a>    <span class="dt">"capabilities"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"read"</span><span class="fu">:</span> <span class="st">"allow"</span><span class="fu">,</span> <span class="dt">"write"</span><span class="fu">:</span> <span class="st">"ask"</span><span class="fu">,</span> <span class="dt">"exec"</span><span class="fu">:</span> <span class="st">"ask"</span><span class="fu">,</span> <span class="dt">"net"</span><span class="fu">:</span> <span class="st">"deny"</span> <span class="fu">},</span></span>
-<span id="cb28-14"><a href="#cb28-14" tabindex="-1"></a>    <span class="dt">"overrides"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"btw_tool_git_commit"</span><span class="fu">:</span> <span class="st">"deny"</span><span class="fu">,</span> <span class="dt">"Format"</span><span class="fu">:</span> <span class="st">"ask"</span> <span class="fu">}</span></span>
-<span id="cb28-15"><a href="#cb28-15" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb28-16"><a href="#cb28-16" tabindex="-1"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
-<span id="cb28-17"><a href="#cb28-17" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{},</span></span>
-<span id="cb28-18"><a href="#cb28-18" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
-<span id="cb28-19"><a href="#cb28-19" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<blockquote><p><strong>Config directory.</strong> User-global config/sessions live in the OS-standard location (<code>rappdirs::user_config_dir("codeagent")</code>; e.g. <code>~/.config/codeagent</code> on Linux). A legacy <code>~/.codeagent</code> is migrated automatically on first use (non-destructive copy), and still read as a fallback. Override with <code>CODEAGENT_HOME</code>, or migrate manually via <code><a href="reference/migrate_config_dir.html">migrate_config_dir()</a></code>.</p></blockquote>
+<div class="sourceCode" id="cb28"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true"></a><span class="fu">{</span></span>
+<span id="cb28-2"><a href="#cb28-2" aria-hidden="true"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb28-3"><a href="#cb28-3" aria-hidden="true"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true"></a>  <span class="fu">},</span></span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true"></a>  <span class="dt">"tools"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true"></a>    <span class="dt">"sets"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"A"</span><span class="ot">,</span> <span class="st">"B"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true"></a>    <span class="dt">"capabilities"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"read"</span><span class="fu">:</span> <span class="st">"allow"</span><span class="fu">,</span> <span class="dt">"write"</span><span class="fu">:</span> <span class="st">"ask"</span><span class="fu">,</span> <span class="dt">"exec"</span><span class="fu">:</span> <span class="st">"ask"</span><span class="fu">,</span> <span class="dt">"net"</span><span class="fu">:</span> <span class="st">"deny"</span> <span class="fu">},</span></span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true"></a>    <span class="dt">"overrides"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"btw_tool_git_commit"</span><span class="fu">:</span> <span class="st">"deny"</span><span class="fu">,</span> <span class="dt">"Format"</span><span class="fu">:</span> <span class="st">"ask"</span> <span class="fu">}</span></span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true"></a>  <span class="fu">},</span></span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{},</span></span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true"></a><span class="fu">}</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="tool-permission-control-settingstools">Tool permission control (<code>settings$tools</code>)<a class="anchor" aria-label="anchor" href="#tool-permission-control-settingstools"></a>
 </h3>
@@ -548,27 +539,27 @@
 <col width="40%">
 <col width="36%">
 </colgroup>
-<thead><tr>
+<thead><tr class="header">
 <th>Key</th>
 <th>Purpose</th>
 <th>Values</th>
 </tr></thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td><code>overrides</code></td>
 <td>Decide a <strong>specific tool</strong> by name</td>
 <td>
 <code>"allow"</code> / <code>"deny"</code> / <code>"ask"</code>
 </td>
 </tr>
-<tr>
+<tr class="even">
 <td><code>capabilities</code></td>
 <td>Decide by <strong>capability class</strong>
 </td>
 <td>keys <code>read</code>/<code>write</code>/<code>exec</code>/<code>net</code> → <code>allow</code>/<code>deny</code>/<code>ask</code>
 </td>
 </tr>
-<tr>
+<tr class="odd">
 <td><code>sets</code></td>
 <td>Which tool <strong>sets</strong> to register</td>
 <td>
@@ -584,12 +575,7 @@
 <h2 id="supported-providers">Supported providers<a class="anchor" aria-label="anchor" href="#supported-providers"></a>
 </h2>
 <table class="table">
-<colgroup>
-<col width="43%">
-<col width="26%">
-<col width="30%">
-</colgroup>
-<thead><tr>
+<thead><tr class="header">
 <th>Provider</th>
 <th>
 <code>settings.json</code> <code>"provider"</code>
@@ -597,62 +583,62 @@
 <th>Notes</th>
 </tr></thead>
 <tbody>
-<tr>
+<tr class="odd">
 <td>OpenAI-compatible</td>
 <td><code>"openai_compatible"</code></td>
 <td>Databricks, Azure, vLLM, custom</td>
 </tr>
-<tr>
+<tr class="even">
 <td>Anthropic</td>
 <td><code>"anthropic"</code></td>
 <td></td>
 </tr>
-<tr>
+<tr class="odd">
 <td>OpenAI</td>
 <td><code>"openai"</code></td>
 <td></td>
 </tr>
-<tr>
+<tr class="even">
 <td>Google Gemini</td>
 <td><code>"google_gemini"</code></td>
 <td></td>
 </tr>
-<tr>
+<tr class="odd">
 <td>DeepSeek</td>
 <td><code>"deepseek"</code></td>
 <td>reasoning_content → ContentThinking</td>
 </tr>
-<tr>
+<tr class="even">
 <td>Groq</td>
 <td><code>"groq"</code></td>
 <td></td>
 </tr>
-<tr>
+<tr class="odd">
 <td>GitHub Copilot</td>
 <td><code>"github"</code></td>
 <td></td>
 </tr>
-<tr>
+<tr class="even">
 <td>Ollama</td>
 <td><code>"ollama"</code></td>
 <td>local</td>
 </tr>
-<tr>
+<tr class="odd">
 <td>Posit AI</td>
 <td><code>"posit"</code></td>
 <td>OAuth device flow</td>
 </tr>
-<tr>
+<tr class="even">
 <td>Databricks</td>
 <td><code>"databricks"</code></td>
 <td></td>
 </tr>
-<tr>
+<tr class="odd">
 <td>AWS Bedrock</td>
 <td><code>"aws_bedrock"</code></td>
 <td></td>
 </tr>
-<tr>
+<tr class="even">
 <td>Azure OpenAI</td>
 <td><code>"azure_openai"</code></td>
 <td></td>

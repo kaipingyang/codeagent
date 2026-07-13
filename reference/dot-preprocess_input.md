@@ -10,20 +10,20 @@ Detects `/skillname [args]` patterns.
 
 ## Arguments
 
-- input:
+  - input:
+    
+    Character(1). Raw user input.
 
-  Character(1). Raw user input.
-
-- cwd:
-
-  Character. Working directory.
+  - cwd:
+    
+    Character. Working directory.
 
 ## Value
 
 Named list:
 
-- `type = "normal"`: plain text, send to LLM.
+  - `type = "normal"`: plain text, send to LLM.
 
-- `type = "command"`: built-in local command (not sent to LLM).
+  - `type = "command"`: built-in local command (not sent to LLM).
 
-- `type = "skill"`: skill invocation (load prompt, then send to LLM).
+  - `type = "skill"`: skill invocation (load prompt, then send to LLM).

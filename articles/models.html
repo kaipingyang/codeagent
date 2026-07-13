@@ -8,8 +8,8 @@
 <title>Models and providers • codeagent</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
-<link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Models and providers">
 </head>
 <body>
@@ -60,21 +60,19 @@
 
 
 
-
-<div class="row">
+<script src="models_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Models and providers</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/main/vignettes/models.Rmd" class="external-link"><code>vignettes/models.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/HEAD/vignettes/models.Rmd" class="external-link"><code>vignettes/models.Rmd</code></a></small>
       <div class="d-none name"><code>models.Rmd</code></div>
     </div>
 
     
     
-<p>codeagent wraps any <code>ellmer</code> Chat, so it is
-provider-agnostic.</p>
+<p>codeagent wraps any <code>ellmer</code> Chat, so it is provider-agnostic.</p>
 <div class="section level2">
 <h2 id="any-ellmer-backend">Any ellmer backend<a class="anchor" aria-label="anchor" href="#any-ellmer-backend"></a>
 </h2>
@@ -85,12 +83,7 @@ provider-agnostic.</p>
 <span>  credentials <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_API_KEY"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, permission_mode <span class="op">=</span> <span class="st">"bypass"</span><span class="op">)</span></span></code></pre></div>
-<p>Supported <code>provider</code> values include
-<code>openai_compatible</code>, <code>anthropic</code>,
-<code>openai</code>, <code>google_gemini</code>, <code>deepseek</code>,
-<code>groq</code>, <code>github</code>, <code>ollama</code>,
-<code>posit</code>, <code>databricks</code>, <code>aws_bedrock</code>,
-and <code>azure_openai</code>.</p>
+<p>Supported <code>provider</code> values include <code>openai_compatible</code>, <code>anthropic</code>, <code>openai</code>, <code>google_gemini</code>, <code>deepseek</code>, <code>groq</code>, <code>github</code>, <code>ollama</code>, <code>posit</code>, <code>databricks</code>, <code>aws_bedrock</code>, and <code>azure_openai</code>.</p>
 </div>
 <div class="section level2">
 <h2 id="switching-models-mid-session">Switching models mid-session<a class="anchor" aria-label="anchor" href="#switching-models-mid-session"></a>
@@ -98,9 +91,7 @@ and <code>azure_openai</code>.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/switch_model.html">switch_model</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"openai/deepseek-r1"</span><span class="op">)</span>   <span class="co"># CLI / one-shot</span></span>
 <span><span class="co"># In the Shiny app: the Settings panel model picker, or /model</span></span></code></pre></div>
-<p>The Shiny path swaps the provider in place (Route A) so the
-<code>Chat</code> object identity — and every callback/closure bound to
-it — stays valid.</p>
+<p>The Shiny path swaps the provider in place (Route A) so the <code>Chat</code> object identity — and every callback/closure bound to it — stays valid.</p>
 </div>
 <div class="section level2">
 <h2 id="reasoning-thinking">Reasoning / thinking<a class="anchor" aria-label="anchor" href="#reasoning-thinking"></a>
@@ -108,18 +99,12 @@ it — stays valid.</p>
 <p>Models with extended thinking are controlled natively via ellmer:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># settings.json: "effortLevel": "high"  -&gt;  params(reasoning_effort = "high")</span></span></code></pre></div>
-<p>For OpenAI-compatible endpoints (Databricks Claude, DeepSeek),
-codeagent sets <code>preserve_thinking = TRUE</code>, so
-<code>reasoning_content</code> is parsed into ellmer
-<code>ContentThinking</code> and rendered distinctly (dimmed in the
-REPL, a collapsible block in the Shiny UI).</p>
+<p>For OpenAI-compatible endpoints (Databricks Claude, DeepSeek), codeagent sets <code>preserve_thinking = TRUE</code>, so <code>reasoning_content</code> is parsed into ellmer <code>ContentThinking</code> and rendered distinctly (dimmed in the REPL, a collapsible block in the Shiny UI).</p>
 </div>
 <div class="section level2">
 <h2 id="smallfast-model">Small/fast model<a class="anchor" aria-label="anchor" href="#smallfast-model"></a>
 </h2>
-<p>Compaction and permission classification use a cheaper model. Set it
-via <code>CODEAGENT_FAST_MODEL</code> (the <code>"fast"</code>
-tier).</p>
+<p>Compaction and permission classification use a cheaper model. Set it via <code>CODEAGENT_FAST_MODEL</code> (the <code>"fast"</code> tier).</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

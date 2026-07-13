@@ -12,13 +12,13 @@ testable.
 
 ## Arguments
 
-- argv:
+  - argv:
+    
+    Character vector of positional arguments (no flags).
 
-  Character vector of positional arguments (no flags).
-
-- print_mode:
-
-  Logical. TRUE when `-p`/`--print` was passed.
+  - print\_mode:
+    
+    Logical. TRUE when `-p`/`--print` was passed.
 
 ## Value
 

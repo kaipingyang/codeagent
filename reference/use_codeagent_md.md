@@ -11,13 +11,13 @@ use_codeagent_md(path = "codeagent.md", open = interactive())
 
 ## Arguments
 
-- path:
+  - path:
+    
+    Character. Destination path. Defaults to `"codeagent.md"`.
 
-  Character. Destination path. Defaults to `"codeagent.md"`.
-
-- open:
-
-  Logical. Open the file after creation (requires rstudioapi).
+  - open:
+    
+    Logical. Open the file after creation (requires rstudioapi).
 
 ## Value
 

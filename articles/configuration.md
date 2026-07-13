@@ -9,7 +9,6 @@ Settings resolve from lowest to highest priority:
 Scaffold a settings file:
 
 ``` r
-
 use_codeagent_settings(scope = "user")     # ~/.codeagent/settings.json
 ```
 
@@ -36,23 +35,22 @@ works even under `Rscript --vanilla`.
 
 ## Environment variables
 
-| Variable | Purpose |
-|----|----|
-| `CODEAGENT_BASE_URL` | OpenAI-compatible endpoint |
-| `CODEAGENT_MODEL` | Default model (the `"main"` tier) |
-| `CODEAGENT_HEAVY_MODEL` | `"heavy"` tier — most capable model |
-| `CODEAGENT_FAST_MODEL` | `"fast"` tier — compaction / classification model |
-| `CODEAGENT_API_KEY` | API key (never put this in `settings.json`) |
-| `CODEAGENT_MAX_CONTEXT_TOKENS` | Override the context window |
-| `CODEAGENT_DISABLE_COMPACT` | Disable auto-compaction |
-| `CODEAGENT_PERMISSION_MODE` | Default permission mode |
+| Variable                       | Purpose                                           |
+| ------------------------------ | ------------------------------------------------- |
+| `CODEAGENT_BASE_URL`           | OpenAI-compatible endpoint                        |
+| `CODEAGENT_MODEL`              | Default model (the `"main"` tier)                 |
+| `CODEAGENT_HEAVY_MODEL`        | `"heavy"` tier — most capable model               |
+| `CODEAGENT_FAST_MODEL`         | `"fast"` tier — compaction / classification model |
+| `CODEAGENT_API_KEY`            | API key (never put this in `settings.json`)       |
+| `CODEAGENT_MAX_CONTEXT_TOKENS` | Override the context window                       |
+| `CODEAGENT_DISABLE_COMPACT`    | Disable auto-compaction                           |
+| `CODEAGENT_PERMISSION_MODE`    | Default permission mode                           |
 
 ## API keys
 
 Keep API keys in `~/.Renviron` as `CODEAGENT_API_KEY`, or use the OS
-keyring (offered by
-[`use_codeagent_setup()`](https://kaipingyang.github.io/codeagent/reference/use_codeagent_setup.md)).
-Never store keys in `settings.json`.
+keyring (offered by `use_codeagent_setup()`). Never store keys in
+`settings.json`.
 
 ## Per-project multi-client config
 
@@ -69,6 +67,5 @@ Follow tidyverse style.
 ```
 
 ``` r
-
 client <- codeagent_client_config(alias = "gpt41")
 ```

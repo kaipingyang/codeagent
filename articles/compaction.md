@@ -14,8 +14,9 @@ Resolution order (highest priority first):
     or a provider-reported window when available.
 4.  A 200,000-token default.
 
-``` r
+<!-- end list -->
 
+``` r
 # The effective window reserves output tokens; the auto-compaction threshold
 # sits one buffer below that (e.g. ~167K for a 200K Claude model).
 ```
@@ -23,10 +24,9 @@ Resolution order (highest priority first):
 ## When compaction triggers
 
 Compaction runs when the estimated token usage crosses the
-auto-compaction threshold
-(`effective window - output reserve - buffer`). Token usage prefers the
-*real* usage from the last API exchange (`Chat$get_tokens()`), falling
-back to a character estimate.
+auto-compaction threshold (`effective window - output reserve -
+buffer`). Token usage prefers the *real* usage from the last API
+exchange (`Chat$get_tokens()`), falling back to a character estimate.
 
 ## Two-level flow
 
@@ -45,7 +45,7 @@ present).
 ## Compaction flow
 
     token count = Chat$get_tokens() (real usage)  else char/3.5 estimate
-
+    
     TIER 1 -- turn boundary, before each chat$chat()   [maybe_compact()]
       tokens >= model_limit - 33K margin ?
         | yes           (circuit breaker: stop after 3 consecutive failures)
@@ -56,12 +56,12 @@ present).
         | did not run (too few turns)
         v
       full_compact()             L2: one 9-section structured summary replaces history
-
+    
     TIER 2 -- between tool rounds, on ellmer on_tool_result  [.midloop_compact_step()]
       settings$midloop_compact (default ON) AND tokens >= midloop_trigger ?
         +- default:  snip_old_tools(target_tokens)   budget-aware micro-snip (no LLM)
         +- opt-in (settings$midloop_full_compact):    compact_now()  (same L1 -> L2)
-
+    
     REACTIVE -- on send error 413 / prompt_too_long   [ptl_fallback()]
         drop oldest turns until under the parsed real limit, then retry chat$chat() once
 
@@ -73,13 +73,11 @@ between tool rounds); the cleaner upstream target is `on_turn_start`
 
 Both the REPL banner and the Shiny status bar show “N% context left”,
 turning yellow near the warning line and red near the error/blocking
-line
-([`calculate_token_warning_state()`](https://kaipingyang.github.io/codeagent/reference/calculate_token_warning_state.md)).
+line (`calculate_token_warning_state()`).
 
 ## Controls
 
 ``` r
-
 Sys.setenv(CODEAGENT_DISABLE_COMPACT = "1")     # disable auto-compaction
 Sys.setenv(CODEAGENT_MAX_CONTEXT_TOKENS = "500000")  # override the window
 # Manual compaction from the REPL / Shiny:

@@ -11,9 +11,9 @@ render_tool_output(display)
 
 ## Arguments
 
-- display:
-
-  A `display` list (the `extra$display` of a ContentToolResult).
+  - display:
+    
+    A `display` list (the `extra$display` of a ContentToolResult).
 
 ## Value
 

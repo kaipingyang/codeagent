@@ -15,15 +15,13 @@ register_midloop_compaction(chat, settings = list())
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
-
-- settings:
-
-  Named list from
-  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
+  - settings:
+    
+    Named list from `load_settings()`.
 
 ## Value
 

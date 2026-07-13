@@ -10,17 +10,17 @@ board_complete(db_path, id, result)
 
 ## Arguments
 
-- db_path:
+  - db\_path:
+    
+    Character. Board path.
 
-  Character. Board path.
+  - id:
+    
+    Integer. Task id.
 
-- id:
-
-  Integer. Task id.
-
-- result:
-
-  Character. The task result.
+  - result:
+    
+    Character. The task result.
 
 ## Value
 
