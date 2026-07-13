@@ -184,6 +184,7 @@ codeagent_stream_async <- function(
 #' @seealso [codeagent_stream_async()] for the async variant.
 #' @export
 codeagent_stream <- function(client, input, ...,
+                              on_tick         = NULL,
                               controller      = NULL,
                               session_id      = NULL,
                               iteration       = 1L,
@@ -214,6 +215,7 @@ codeagent_stream <- function(client, input, ...,
     timeout <- Sys.time() + 60L * 30L   # 30-minute safety ceiling
     while (!isTRUE(done) && Sys.time() < timeout) {
       later::run_now(timeoutSecs = 0.1)  # 100 ms -> responsive Ctrl+C
+      if (!is.null(on_tick)) tryCatch(on_tick(), error = function(e) NULL)
     }
   }, interrupt = function(e) {
     # Ctrl+C: cancel the stream gracefully.
