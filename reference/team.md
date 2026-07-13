@@ -9,7 +9,6 @@ independent (no shared mutable state). Results are returned in input
 order.
 
 For dependent / interactive multi-agent work prefer the serial
-`agent_tool` (sub-agent) path;
-[`team_run()`](https://kaipingyang.github.io/codeagent/reference/team_run.md)
-is for embarrassingly-parallel fan-out (e.g. "review these 5 files",
-"research these 3 questions").
+`agent_tool` (sub-agent) path; `team_run()` is for
+embarrassingly-parallel fan-out (e.g. "review these 5 files", "research
+these 3 questions").

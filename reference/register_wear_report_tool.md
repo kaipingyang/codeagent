@@ -10,10 +10,9 @@ register_wear_report_tool(chat)
 
 ## Arguments
 
-- chat:
-
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - chat:
+    
+    An `ellmer::Chat` object.
 
 ## Value
 

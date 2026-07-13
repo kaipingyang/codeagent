@@ -12,9 +12,9 @@ migrate_config_dir(quiet = FALSE)
 
 ## Arguments
 
-- quiet:
-
-  Logical. Suppress the migration message.
+  - quiet:
+    
+    Logical. Suppress the migration message.
 
 ## Value
 

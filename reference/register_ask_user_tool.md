@@ -10,18 +10,17 @@ register_ask_user_tool(chat, ask_question_fn = NULL, async = FALSE)
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - ask\_question\_fn:
+    
+    Function or NULL. Shiny callback for Phase 3.
 
-- ask_question_fn:
-
-  Function or NULL. Shiny callback for Phase 3.
-
-- async:
-
-  Logical. Build the async (promise-awaiting) variant (Shiny).
+  - async:
+    
+    Logical. Build the async (promise-awaiting) variant (Shiny).
 
 ## Value
 

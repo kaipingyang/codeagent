@@ -9,7 +9,7 @@ dynamically, instead of hard-coding 200K. Mirrors Claude Code:
 Resolution order for the raw window (highest priority first):
 
 1.  `CODEAGENT_MAX_CONTEXT_TOKENS` env override (=
-    CLAUDE_CODE_MAX_CONTEXT_TOKENS)
+    CLAUDE\_CODE\_MAX\_CONTEXT\_TOKENS)
 
 2.  `[1m]` suffix in the model name -\> 1,000,000 (= has1mContext)
 

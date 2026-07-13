@@ -16,15 +16,13 @@ success, FALSE if inaccessible.
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` to mutate.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  to mutate.
-
-- new_chat:
-
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  whose provider to adopt.
+  - new\_chat:
+    
+    An `ellmer::Chat` whose provider to adopt.
 
 ## Value
 

@@ -10,19 +10,18 @@ write_tool(mode = "default", rules = list(), ask_fn = NULL)
 
 ## Arguments
 
-- mode:
+  - mode:
+    
+    Character. Permission mode.
 
-  Character. Permission mode.
+  - rules:
+    
+    List. Permission rules.
 
-- rules:
-
-  List. Permission rules.
-
-- ask_fn:
-
-  Function or NULL.
+  - ask\_fn:
+    
+    Function or NULL.
 
 ## Value
 
-An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
-object.
+An `ellmer::tool()` object.

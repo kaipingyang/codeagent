@@ -18,35 +18,35 @@ SkillMeta(
 
 ## Arguments
 
-- name:
+  - name:
+    
+    Character. Skill name.
 
-  Character. Skill name.
+  - description:
+    
+    Character. One-line description shown in skill list.
 
-- description:
+  - argument\_hint:
+    
+    Character. Hint shown after skill name (e.g. "
+    
+    ").
 
-  Character. One-line description shown in skill list.
+  - auto\_trigger:
+    
+    Logical. Whether LLM may auto-invoke this skill.
 
-- argument_hint:
+  - allowed\_tools:
+    
+    Character vector or NULL. Tools this skill may use.
 
-  Character. Hint shown after skill name (e.g. "
+  - base\_dir:
+    
+    Character. Directory containing SKILL.md.
 
-  ").
-
-- auto_trigger:
-
-  Logical. Whether LLM may auto-invoke this skill.
-
-- allowed_tools:
-
-  Character vector or NULL. Tools this skill may use.
-
-- base_dir:
-
-  Character. Directory containing SKILL.md.
-
-- path:
-
-  Character. Absolute path to SKILL.md.
+  - path:
+    
+    Character. Absolute path to SKILL.md.
 
 ## Value
 

@@ -10,10 +10,10 @@ Build a sandbox profile from settings
 
 ## Arguments
 
-- settings:
-
-  List or NULL. Reads `settings$sandbox` (a list with optional
-  `enabled`, `allow_network`, `keep_env`).
+  - settings:
+    
+    List or NULL. Reads `settings$sandbox` (a list with optional
+    `enabled`, `allow_network`, `keep_env`).
 
 ## Value
 

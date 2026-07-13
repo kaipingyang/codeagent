@@ -12,9 +12,9 @@ estimate_tokens_text(text)
 
 ## Arguments
 
-- text:
-
-  Character vector or single string.
+  - text:
+    
+    Character vector or single string.
 
 ## Value
 

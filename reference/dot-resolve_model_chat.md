@@ -1,9 +1,7 @@
 # Resolve a model spec/alias into a fresh ellmer Chat
 
-Thin wrapper over
-[`.parse_client_spec()`](https://kaipingyang.github.io/codeagent/reference/dot-parse_client_spec.md)
-so model switching reuses the same alias + provider-prefix resolution as
-[`codeagent_client_config()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client_config.md).
+Thin wrapper over `.parse_client_spec()` so model switching reuses the
+same alias + provider-prefix resolution as `codeagent_client_config()`.
 
 ## Usage
 
@@ -13,16 +11,15 @@ so model switching reuses the same alias + provider-prefix resolution as
 
 ## Arguments
 
-- model:
+  - model:
+    
+    Character. `"anthropic/..."`, `"openai/..."`, `"ollama/..."`, a
+    plain model name, or an alias defined in `codeagent.md`.
 
-  Character. `"anthropic/..."`, `"openai/..."`, `"ollama/..."`, a plain
-  model name, or an alias defined in `codeagent.md`.
-
-- cwd:
-
-  Character. Working directory (for alias lookup).
+  - cwd:
+    
+    Character. Working directory (for alias lookup).
 
 ## Value
 
-A fresh
-[`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
+A fresh `ellmer::Chat`.

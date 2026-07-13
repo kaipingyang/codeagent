@@ -10,21 +10,21 @@ get_session_messages(session_id, directory = NULL, limit = NULL, offset = 0L)
 
 ## Arguments
 
-- session_id:
+  - session\_id:
+    
+    Character. UUID.
 
-  Character. UUID.
+  - directory:
+    
+    Character or NULL. Project directory.
 
-- directory:
+  - limit:
+    
+    Integer or NULL. Max messages.
 
-  Character or NULL. Project directory.
-
-- limit:
-
-  Integer or NULL. Max messages.
-
-- offset:
-
-  Integer. Messages to skip.
+  - offset:
+    
+    Integer. Messages to skip.
 
 ## Value
 

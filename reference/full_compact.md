@@ -11,18 +11,17 @@ full_compact(chat, model = .HAIKU_MODEL, instructions = NULL)
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - model:
+    
+    Character. Haiku model for compaction.
 
-- model:
-
-  Character. Haiku model for compaction.
-
-- instructions:
-
-  Character or NULL. Optional user instructions to bias the summary.
+  - instructions:
+    
+    Character or NULL. Optional user instructions to bias the summary.
 
 ## Value
 

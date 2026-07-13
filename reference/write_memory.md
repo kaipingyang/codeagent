@@ -10,17 +10,17 @@ write_memory(title, content, description = "")
 
 ## Arguments
 
-- title:
+  - title:
+    
+    Character. Short human title (also the filename slug).
 
-  Character. Short human title (also the filename slug).
+  - content:
+    
+    Character. The fact to remember.
 
-- content:
-
-  Character. The fact to remember.
-
-- description:
-
-  Character. One-line summary for the index/recall.
+  - description:
+    
+    Character. One-line summary for the index/recall.
 
 ## Value
 

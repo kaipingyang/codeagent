@@ -13,11 +13,9 @@ returned unchanged. Otherwise inspects the result (and btw's
 
 ## Arguments
 
-- result:
-
-  An
-  [`ellmer::ContentToolResult`](https://ellmer.tidyverse.org/reference/Content.html)
-  (codeagent, RunR, or raw btw).
+  - result:
+    
+    An `ellmer::ContentToolResult` (codeagent, RunR, or raw btw).
 
 ## Value
 

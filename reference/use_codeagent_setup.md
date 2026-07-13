@@ -12,11 +12,11 @@ use_codeagent_setup(scope = c("user", "project"))
 
 ## Arguments
 
-- scope:
-
-  Character. `"user"` writes to `~/.codeagent/settings.json`;
-  `"project"` writes to `.codeagent/settings.json` in the current
-  directory.
+  - scope:
+    
+    Character. `"user"` writes to `~/.codeagent/settings.json`;
+    `"project"` writes to `.codeagent/settings.json` in the current
+    directory.
 
 ## Value
 

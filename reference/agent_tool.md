@@ -20,40 +20,39 @@ agent_tool(
 
 ## Arguments
 
-- model:
+  - model:
+    
+    Character. Model for sub-agents (fallback only).
 
-  Character. Model for sub-agents (fallback only).
+  - mode:
+    
+    Character. Permission mode (inherited from parent).
 
-- mode:
+  - rules:
+    
+    List. Permission rules (inherited).
 
-  Character. Permission mode (inherited from parent).
+  - max\_turns:
+    
+    Integer. Max turns for sub-agent fallback (default 30).
 
-- rules:
+  - worktree\_isolation:
+    
+    Logical. Run sub-agent in an isolated git worktree.
 
-  List. Permission rules (inherited).
+  - hooks:
+    
+    A
+    [HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md)
+    or NULL. Fires SubagentStart/Stop on the codeagent fallback
+    sub-agent. Only applies to the fallback implementation; btw subagent
+    handles its own isolation.
 
-- max_turns:
-
-  Integer. Max turns for sub-agent fallback (default 30).
-
-- worktree_isolation:
-
-  Logical. Run sub-agent in an isolated git worktree.
-
-- hooks:
-
-  A
-  [HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md)
-  or NULL. Fires SubagentStart/Stop on the codeagent fallback sub-agent.
-  Only applies to the fallback implementation; btw subagent handles its
-  own isolation.
-
-- ask_fn:
-
-  Function or NULL. Parent permission callback. Sub-agents run in
-  "bubble" mode, so any "ask" decision is forwarded to this function.
+  - ask\_fn:
+    
+    Function or NULL. Parent permission callback. Sub-agents run in
+    "bubble" mode, so any "ask" decision is forwarded to this function.
 
 ## Value
 
-An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
-object.
+An `ellmer::tool()` object.
