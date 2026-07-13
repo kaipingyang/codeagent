@@ -10,18 +10,18 @@ PostToolHook(fn, tool_pattern = NULL, timeout_ms = 2000L)
 
 ## Arguments
 
-- fn:
+  - fn:
+    
+    Function. `function(tool_name, tool_input, tool_output)` -\> list
+    with `action` (`"allow"`, `"updated_output"`) and optional fields.
 
-  Function. `function(tool_name, tool_input, tool_output)` -\> list with
-  `action` (`"allow"`, `"updated_output"`) and optional fields.
+  - tool\_pattern:
+    
+    Character or NULL. Regex pattern to match tool names.
 
-- tool_pattern:
-
-  Character or NULL. Regex pattern to match tool names.
-
-- timeout_ms:
-
-  Integer. Timeout in milliseconds (default 2000).
+  - timeout\_ms:
+    
+    Integer. Timeout in milliseconds (default 2000).
 
 ## Value
 

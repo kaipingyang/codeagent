@@ -22,59 +22,56 @@ agent_loop(
 
 ## Arguments
 
-- user_input:
+  - user\_input:
+    
+    Character. User message.
 
-  Character. User message.
+  - client:
+    
+    A `CodeagentClient` (from `codeagent_client()`), or an
+    `ellmer::Chat` for legacy use.
 
-- client:
+  - settings:
+    
+    Named list. Only needed in legacy mode (ignored when `client` is a
+    `CodeagentClient`).
 
-  A `CodeagentClient` (from
-  [`codeagent_client()`](https://github.com/kaipingyang/codeagent/reference/codeagent_client.md)),
-  or an
-  [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html) for
-  legacy use.
+  - compaction\_ctrl:
+    
+    A
+    [CompactionController](https://kaipingyang.github.io/codeagent/reference/CompactionController.md)
+    R6 object.
 
-- settings:
+  - budget\_tracker:
+    
+    A
+    [BudgetTracker](https://kaipingyang.github.io/codeagent/reference/BudgetTracker.md)
+    R6 object.
 
-  Named list. Only needed in legacy mode (ignored when `client` is a
-  `CodeagentClient`).
+  - resource\_state:
+    
+    A
+    [ContentReplacementState](https://kaipingyang.github.io/codeagent/reference/ContentReplacementState.md)
+    R6 object.
 
-- compaction_ctrl:
+  - hooks:
+    
+    A
+    [HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md)
+    R6 object or NULL.
 
-  A
-  [CompactionController](https://github.com/kaipingyang/codeagent/reference/CompactionController.md)
-  R6 object.
+  - cwd:
+    
+    Character. Working directory (for session save). Overrides
+    `client$settings$cwd` when provided explicitly.
 
-- budget_tracker:
+  - session\_id:
+    
+    Character or NULL.
 
-  A
-  [BudgetTracker](https://github.com/kaipingyang/codeagent/reference/BudgetTracker.md)
-  R6 object.
-
-- resource_state:
-
-  A
-  [ContentReplacementState](https://github.com/kaipingyang/codeagent/reference/ContentReplacementState.md)
-  R6 object.
-
-- hooks:
-
-  A
-  [HookRegistry](https://github.com/kaipingyang/codeagent/reference/HookRegistry.md)
-  R6 object or NULL.
-
-- cwd:
-
-  Character. Working directory (for session save). Overrides
-  `client$settings$cwd` when provided explicitly.
-
-- session_id:
-
-  Character or NULL.
-
-- iteration:
-
-  Integer. Current loop iteration.
+  - iteration:
+    
+    Integer. Current loop iteration.
 
 ## Value
 

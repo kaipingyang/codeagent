@@ -20,45 +20,43 @@ codeagent(
 
 ## Arguments
 
-- client_or_prompt:
+  - client\_or\_prompt:
+    
+    Either a `CodeagentClient` (from `codeagent_client()`) or a
+    character prompt string (legacy mode).
 
-  Either a `CodeagentClient` (from
-  [`codeagent_client()`](https://github.com/kaipingyang/codeagent/reference/codeagent_client.md))
-  or a character prompt string (legacy mode).
+  - prompt:
+    
+    Character. The user prompt. Required when `client_or_prompt` is a
+    `CodeagentClient`; unused in legacy mode.
 
-- prompt:
+  - model:
+    
+    Character. Legacy: model name.
 
-  Character. The user prompt. Required when `client_or_prompt` is a
-  `CodeagentClient`; unused in legacy mode.
+  - permission\_mode:
+    
+    Character. Legacy: permission mode.
 
-- model:
+  - rules:
+    
+    List. Legacy: permission rules.
 
-  Character. Legacy: model name.
+  - cwd:
+    
+    Character. Legacy: working directory.
 
-- permission_mode:
+  - max\_turns:
+    
+    Integer. Legacy: max turns.
 
-  Character. Legacy: permission mode.
+  - btw\_groups:
+    
+    Character vector or NULL. Legacy: btw tool groups.
 
-- rules:
-
-  List. Legacy: permission rules.
-
-- cwd:
-
-  Character. Legacy: working directory.
-
-- max_turns:
-
-  Integer. Legacy: max turns.
-
-- btw_groups:
-
-  Character vector or NULL. Legacy: btw tool groups.
-
-- ...:
-
-  Legacy: extra args passed to
-  [`.make_chat()`](https://github.com/kaipingyang/codeagent/reference/dot-make_chat.md).
+  - ...:
+    
+    Legacy: extra args passed to `.make_chat()`.
 
 ## Value
 
@@ -66,9 +64,7 @@ Character. The final model response.
 
 ## Details
 
-**New (recommended):** pass a
-[`codeagent_client()`](https://github.com/kaipingyang/codeagent/reference/codeagent_client.md)
-as first argument.
+**New (recommended):** pass a `codeagent_client()` as first argument.
 
     client <- codeagent_client(chat_openai_compatible(...), permission_mode = "bypass")
     codeagent(client, "List all .R files")

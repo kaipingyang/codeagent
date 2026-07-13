@@ -2,7 +2,7 @@
 
 Parses a declarative hooks specification (as loaded from settings.json)
 into a live
-[HookRegistry](https://github.com/kaipingyang/codeagent/reference/HookRegistry.md).
+[HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md).
 The expected shape mirrors Claude Code:
 
     "hooks": {
@@ -21,14 +21,12 @@ Each entry's `command` is run via the shell when the event fires;
 
 ## Arguments
 
-- settings:
-
-  List from
-  [`load_settings()`](https://github.com/kaipingyang/codeagent/reference/load_settings.md)
-  (uses `settings$hooks`).
+  - settings:
+    
+    List from `load_settings()` (uses `settings$hooks`).
 
 ## Value
 
 A
-[HookRegistry](https://github.com/kaipingyang/codeagent/reference/HookRegistry.md),
+[HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md),
 or NULL if no valid hooks are declared.

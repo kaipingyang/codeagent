@@ -40,18 +40,17 @@ decision above.
 
 ## Modes
 
-| Mode | Behaviour |
-|----|----|
-| `default` | Read-only tools auto-allowed; risky tools (Write/Edit/MultiEdit/Bash/RunR) prompt |
-| `plan` | All non-read operations denied (read-only planning) |
-| `accept_edits` | File edit tools auto-allowed; other risky tools still prompt |
-| `bypass` | Everything allowed (use with care) |
-| `dont_ask` | Read-only allowed; anything that would prompt is denied (CI/CD) |
-| `auto` | A small model classifies each call |
-| `bubble` | Sub-agent mode: permission bubbles up to the parent agent |
+| Mode           | Behaviour                                                                         |
+| -------------- | --------------------------------------------------------------------------------- |
+| `default`      | Read-only tools auto-allowed; risky tools (Write/Edit/MultiEdit/Bash/RunR) prompt |
+| `plan`         | All non-read operations denied (read-only planning)                               |
+| `accept_edits` | File edit tools auto-allowed; other risky tools still prompt                      |
+| `bypass`       | Everything allowed (use with care)                                                |
+| `dont_ask`     | Read-only allowed; anything that would prompt is denied (CI/CD)                   |
+| `auto`         | A small model classifies each call                                                |
+| `bubble`       | Sub-agent mode: permission bubbles up to the parent agent                         |
 
 ``` r
-
 client <- codeagent_client(chat, permission_mode = "default")
 ```
 

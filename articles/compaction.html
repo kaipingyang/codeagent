@@ -8,8 +8,8 @@
 <title>Context management and compaction • codeagent</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
-<link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Context management and compaction">
 </head>
 <body>
@@ -50,7 +50,7 @@
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
-<li class="nav-item"><a class="nav-link" href="https://github.com/kaipingyang/codeagent/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item"><a class="external-link nav-link" href="https://github.com/kaipingyang/codeagent/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
       </ul>
 </div>
 
@@ -60,33 +60,28 @@
 
 
 
-
-<div class="row">
+<script src="compaction_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Context management and compaction</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/main/vignettes/compaction.Rmd"><code>vignettes/compaction.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/HEAD/vignettes/compaction.Rmd" class="external-link"><code>vignettes/compaction.Rmd</code></a></small>
       <div class="d-none name"><code>compaction.Rmd</code></div>
     </div>
 
     
     
-<p>codeagent keeps long conversations within the model’s context window
-using an automatic, Claude Code-aligned compaction strategy.</p>
+<p>codeagent keeps long conversations within the model’s context window using an automatic, Claude Code-aligned compaction strategy.</p>
 <div class="section level2">
 <h2 id="dynamic-context-window">Dynamic context window<a class="anchor" aria-label="anchor" href="#dynamic-context-window"></a>
 </h2>
-<p>The context window is resolved from the model rather than hard-coded.
-Resolution order (highest priority first):</p>
+<p>The context window is resolved from the model rather than hard-coded. Resolution order (highest priority first):</p>
 <ol style="list-style-type: decimal">
 <li>
 <code>CODEAGENT_MAX_CONTEXT_TOKENS</code> environment variable.</li>
-<li>A <code>[1m]</code> suffix in the model name (forces a
-1,000,000-token window).</li>
-<li>A built-in capability table (claude / gpt / gemini / deepseek / …),
-or a provider-reported window when available.</li>
+<li>A <code>[1m]</code> suffix in the model name (forces a 1,000,000-token window).</li>
+<li>A built-in capability table (claude / gpt / gemini / deepseek / …), or a provider-reported window when available.</li>
 <li>A 200,000-token default.</li>
 </ol>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -96,12 +91,7 @@ or a provider-reported window when available.</li>
 <div class="section level2">
 <h2 id="when-compaction-triggers">When compaction triggers<a class="anchor" aria-label="anchor" href="#when-compaction-triggers"></a>
 </h2>
-<p>Compaction runs when the estimated token usage crosses the
-auto-compaction threshold
-(<code>effective window - output reserve - buffer</code>). Token usage
-prefers the <em>real</em> usage from the last API exchange
-(<code>Chat$get_tokens()</code>), falling back to a character
-estimate.</p>
+<p>Compaction runs when the estimated token usage crosses the auto-compaction threshold (<code>effective window - output reserve - buffer</code>). Token usage prefers the <em>real</em> usage from the last API exchange (<code>Chat$get_tokens()</code>), falling back to a character estimate.</p>
 </div>
 <div class="section level2">
 <h2 id="two-level-flow">Two-level flow<a class="anchor" aria-label="anchor" href="#two-level-flow"></a>
@@ -110,17 +100,11 @@ estimate.</p>
 <li>
 <strong>Snip</strong> old tool results (cheap pre-step).</li>
 <li>
-<strong>Session-memory compaction</strong> — an incremental summary
-of the earliest turns.</li>
+<strong>Session-memory compaction</strong> — an incremental summary of the earliest turns.</li>
 <li>
-<strong>Full compaction</strong> — a single 9-section structured
-summary (verbatim Claude Code prompt) replacing the conversation, used
-when session-memory can’t run.</li>
+<strong>Full compaction</strong> — a single 9-section structured summary (verbatim Claude Code prompt) replacing the conversation, used when session-memory can’t run.</li>
 </ol>
-<p>A circuit breaker stops auto-compaction after repeated failures, and
-a 413 / prompt-too-long error triggers a reactive fallback that drops
-the oldest turns (parsing the real context limit from the error when
-present).</p>
+<p>A circuit breaker stops auto-compaction after repeated failures, and a 413 / prompt-too-long error triggers a reactive fallback that drops the oldest turns (parsing the real context limit from the error when present).</p>
 </div>
 <div class="section level2">
 <h2 id="compaction-flow">Compaction flow<a class="anchor" aria-label="anchor" href="#compaction-flow"></a>
@@ -145,16 +129,12 @@ TIER 2 -- between tool rounds, on ellmer on_tool_result  [.midloop_compact_step(
 
 REACTIVE -- on send error 413 / prompt_too_long   [ptl_fallback()]
     drop oldest turns until under the parsed real limit, then retry chat$chat() once</code></pre>
-<p>The mid-loop step currently rides ellmer’s
-<code>on_tool_result</code> (fires between tool rounds); the cleaner
-upstream target is <code>on_turn_start</code> (ellmer PR #1052).</p>
+<p>The mid-loop step currently rides ellmer’s <code>on_tool_result</code> (fires between tool rounds); the cleaner upstream target is <code>on_turn_start</code> (ellmer PR #1052).</p>
 </div>
 <div class="section level2">
 <h2 id="context-left-indicator">Context-left indicator<a class="anchor" aria-label="anchor" href="#context-left-indicator"></a>
 </h2>
-<p>Both the REPL banner and the Shiny status bar show “N% context left”,
-turning yellow near the warning line and red near the error/blocking
-line (<code><a href="../reference/calculate_token_warning_state.html">calculate_token_warning_state()</a></code>).</p>
+<p>Both the REPL banner and the Shiny status bar show “N% context left”, turning yellow near the warning line and red near the error/blocking line (<code><a href="../reference/calculate_token_warning_state.html">calculate_token_warning_state()</a></code>).</p>
 </div>
 <div class="section level2">
 <h2 id="controls">Controls<a class="anchor" aria-label="anchor" href="#controls"></a>

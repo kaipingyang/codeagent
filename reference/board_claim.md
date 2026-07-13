@@ -16,13 +16,13 @@ board_claim(db_path, worker_id)
 
 ## Arguments
 
-- db_path:
+  - db\_path:
+    
+    Character. Board path.
 
-  Character. Board path.
-
-- worker_id:
-
-  Character. Identifier for the claiming worker.
+  - worker\_id:
+    
+    Character. Identifier for the claiming worker.
 
 ## Value
 

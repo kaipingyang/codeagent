@@ -3,7 +3,7 @@
 Registers ONE `on_tool_request` callback (+ one `on_tool_result` for
 PostToolUse) that gates every tool by name. Safe to call repeatedly on
 the same chat: the first call installs the callbacks; later calls only
-refresh the live context (mode / ask_fn / policy / hooks), so the Shiny
+refresh the live context (mode / ask\_fn / policy / hooks), so the Shiny
 path can wire `shiny_ask_fn` after the client was built without stacking
 a second (denying) gate.
 
@@ -22,31 +22,31 @@ a second (denying) gate.
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat`.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
+  - settings:
+    
+    Named list (for `settings$tools` policy).
 
-- settings:
+  - mode\_env:
+    
+    Environment with `$mode` (live permission mode) or a string.
 
-  Named list (for `settings$tools` policy).
+  - rules:
+    
+    List of fine-grained permission rules.
 
-- mode_env:
+  - ask\_fn:
+    
+    `function(name, input)` returning logical or promise, or NULL (then
+    `"ask"` becomes deny).
 
-  Environment with `$mode` (live permission mode) or a string.
-
-- rules:
-
-  List of fine-grained permission rules.
-
-- ask_fn:
-
-  `function(name, input)` returning logical or promise, or NULL (then
-  `"ask"` becomes deny).
-
-- hooks:
-
-  A `HookRegistry` or NULL (fires
-  PreToolUse/PostToolUse/PermissionDenied).
+  - hooks:
+    
+    A `HookRegistry` or NULL (fires
+    PreToolUse/PostToolUse/PermissionDenied).
 
 ## Value
 

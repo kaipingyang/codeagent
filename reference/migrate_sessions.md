@@ -12,10 +12,10 @@ migrate_sessions(directory = NULL)
 
 ## Arguments
 
-- directory:
-
-  Character or NULL. Project working directory; `NULL` scans all
-  projects under `~/.codeagent/projects/`.
+  - directory:
+    
+    Character or NULL. Project working directory; `NULL` scans all
+    projects under `~/.codeagent/projects/`.
 
 ## Value
 

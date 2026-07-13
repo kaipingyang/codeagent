@@ -1,11 +1,8 @@
-# Patch codeagent_client() to use btw file tools (Path A)
+# Patch codeagent\_client() to use btw file tools (Path A)
 
 Call this once after loading codeagent to enable btw file tools
-globally. Modifies
-[`.register_all_tools()`](https://github.com/kaipingyang/codeagent/reference/dot-register_all_tools.md)
-behaviour for subsequent
-[`codeagent_client()`](https://github.com/kaipingyang/codeagent/reference/codeagent_client.md)
-calls.
+globally. Modifies `.register_all_tools()` behaviour for subsequent
+`codeagent_client()` calls.
 
 ## Usage
 

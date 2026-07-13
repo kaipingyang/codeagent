@@ -12,20 +12,19 @@ CLI — the harness is reimplemented in R.
 
 ## Project Structure & Module Organization
 
-- `R/`: package source — agent loop, tools, sessions, permissions, and
-  Shiny server/UI modules.
+  - `R/`: package source — agent loop, tools, sessions, permissions, and
+    Shiny server/UI modules.
 
 > **Tool permissions = one central gate.** `R/tools_gate.R`
 > (`.install_permission_gate`) registers a single `on_tool_request`
 > callback that governs every tool (native + btw + Format + MCP)
 > uniformly — tools are built `mode="bypass"` and the gate is the sole
-> authority (enforces via
-> [`ellmer::tool_reject`](https://ellmer.tidyverse.org/reference/tool_reject.html);
-> async/Shiny via `maybe_on_tool_request_async`). Fine-grained control
-> lives in `settings$tools` (`sets`/`capabilities`/`overrides`); see
-> README → *Tool permission control*. When adding a write/exec/net tool,
-> add it to `.TOOL_META` so the gate classifies it.- `tests/testthat/`:
-> unit and integration tests; entrypoint is `tests/testthat.R`. -
+> authority (enforces via `ellmer::tool_reject`; async/Shiny via
+> `maybe_on_tool_request_async`). Fine-grained control lives in
+> `settings$tools` (`sets`/`capabilities`/`overrides`); see README →
+> *Tool permission control*. When adding a write/exec/net tool, add it
+> to `.TOOL_META` so the gate classifies it.- `tests/testthat/`: unit
+> and integration tests; entrypoint is `tests/testthat.R`. -
 > `inst/examples/`: runnable examples and demos; update these when
 > public behavior changes. - `inst/skills/`: built-in skills
 > (`name/SKILL.md` format). - `references/`: exploratory scripts and
@@ -35,18 +34,16 @@ CLI — the harness is reimplemented in R.
 
 ## Build, Test, and Development Commands
 
-- [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html):
-  load the package for interactive development.
-- [`devtools::document()`](https://devtools.r-lib.org/reference/document.html):
-  regenerate `man/` files and `NAMESPACE`.
-- [`devtools::test()`](https://devtools.r-lib.org/reference/test.html):
-  run the full test suite.
-- `testthat::test_file("tests/testthat/test-permissions.R")`: run one
-  focused test file.
-- [`devtools::check()`](https://devtools.r-lib.org/reference/check.html):
-  run full package checks; target zero errors and warnings.
-- `Rscript -e 'codeagent::codeagent_app(client)'`: launch the Shiny app
-  once a `client` is configured.
+  - `devtools::load_all()`: load the package for interactive
+    development.
+  - `devtools::document()`: regenerate `man/` files and `NAMESPACE`.
+  - `devtools::test()`: run the full test suite.
+  - `testthat::test_file("tests/testthat/test-permissions.R")`: run one
+    focused test file.
+  - `devtools::check()`: run full package checks; target zero errors and
+    warnings.
+  - `Rscript -e 'codeagent::codeagent_app(client)'`: launch the Shiny
+    app once a `client` is configured.
 
 ## Security (hard rule): never upload or print secrets
 
@@ -57,8 +54,8 @@ must **never** appear in git-tracked files (source, tests, examples,
 docs, templates). Use placeholders
 (`YOUR-WORKSPACE.cloud.databricks.net`, `sk-...`, `<workspace-id>`);
 keep real values only in `.Renviron`/keyring (git-ignored). Scan the
-staged diff before committing
-(`git diff --cached | grep -iE 'api[_-]?key|token|secret|sk-|ghp_|dapi|azuredatabricks\.net|serving-endpoints'`),
+staged diff before committing (`git diff --cached | grep -iE
+'api[_-]?key|token|secret|sk-|ghp_|dapi|azuredatabricks\.net|serving-endpoints'`),
 mask tokens in printed remote URLs (`sed -E 's#//[^@]*@#//***@#g'`), and
 never echo a full token/key. If a secret was committed, rotate it first,
 then purge with `git filter-repo`. See the `no-secrets` skill.
@@ -66,7 +63,7 @@ then purge with `git filter-repo`. See the `no-secrets` skill.
 ## Coding Style & Naming Conventions
 
 Use the existing base-R style in `R/`: small focused functions,
-descriptive snake_case names, and minimal diffs. Match surrounding
+descriptive snake\_case names, and minimal diffs. Match surrounding
 indentation and spacing exactly. Keep public APIs stable unless the
 change requires it. When modifying exported functions, update roxygen
 comments and regenerate docs.
@@ -80,28 +77,22 @@ comments.
 `CLAUDE.md` → Development Rules for the template and
 `R/tool_run_sql.R`-style reference.
 
-**Async ([`coro::async`](https://coro.r-lib.org/reference/async.html))
-rules:** never `x <- if (...)` inside a coro body — coro can’t assign
-the result of an `if` (assign inside branches, or compute before the
-async body); avoid bare `!!!` (use
-[`do.call()`](https://rdrr.io/r/base/do.call.html)); and
-[`coro::async()`](https://coro.r-lib.org/reference/async.html) needs a
-*literal* anonymous function (can’t wrap a built function — return a
-[`promises::then()`](https://rstudio.github.io/promises/reference/then.html)
-promise from a plain function instead). See
-`lessons/2026-07-03-shiny-async-interaction.md`.
+**Async (`coro::async`) rules:** never `x <- if (...)` inside a coro
+body — coro can’t assign the result of an `if` (assign inside branches,
+or compute before the async body); avoid bare `!!!` (use `do.call()`);
+and `coro::async()` needs a *literal* anonymous function (can’t wrap a
+built function — return a `promises::then()` promise from a plain
+function instead). See `lessons/2026-07-03-shiny-async-interaction.md`.
 
 **Compaction — turn-boundary + mid-loop (two-tier):** compaction runs
 before each `chat$chat()`. Between tool rounds (ellmer’s released
-`on_tool_result`,
-[`register_midloop_compaction()`](https://github.com/kaipingyang/codeagent/reference/register_midloop_compaction.md)),
-a **budget-aware micro snip** runs by default
-(`settings$midloop_compact`, ON) and an **opt-in full two-level
-compact** (`settings$midloop_full_compact`, OFF) escalates when snip
-isn’t enough. Cleaner target: upstream `on_turn_start` (fires before
-*every* request; `on_tool_request` can’t substitute — it fires after the
-request, per-tool). See `references/plan/13-mid-loop-compaction.md` (PR
-tidyverse/ellmer#1052).
+`on_tool_result`, `register_midloop_compaction()`), a **budget-aware
+micro snip** runs by default (`settings$midloop_compact`, ON) and an
+**opt-in full two-level compact** (`settings$midloop_full_compact`, OFF)
+escalates when snip isn’t enough. Cleaner target: upstream
+`on_turn_start` (fires before *every* request; `on_tool_request` can’t
+substitute — it fires after the request, per-tool). See
+`references/plan/13-mid-loop-compaction.md` (PR tidyverse/ellmer\#1052).
 
 **Env vars:** prefer `CODEAGENT_*` (`CODEAGENT_BASE_URL`,
 `CODEAGENT_MODEL`, `CODEAGENT_API_KEY`) over `OPENAI_*` names. Keep
@@ -114,13 +105,10 @@ Tests use `testthat`. Place tests in `tests/testthat/test-*.R` and group
 by subsystem (e.g. `test-permissions.R`). Any change to public APIs,
 tools, or examples should include or update tests covering both the main
 path and any fallback/degraded path. Prefer targeted tests first, then
-broader runs with
-[`devtools::test()`](https://devtools.r-lib.org/reference/test.html).
+broader runs with `devtools::test()`.
 
-> **测试无误 = 要装到本地才算数。**
-> [`devtools::load_all()`](https://devtools.r-lib.org/reference/load_all.html)
-> 只在当前 R session 生效；CLI/launcher (`--vanilla`)
-> 和真实验证跑的是**已安装**的包。改完代码、跑完测试后，务必用
+> **测试无误 = 要装到本地才算数。** `devtools::load_all()` 只在当前 R session
+> 生效；CLI/launcher (`--vanilla`) 和真实验证跑的是**已安装**的包。改完代码、跑完测试后，务必用
 > `pak::local_install(".", ask = FALSE, upgrade = FALSE)`
 > 把**当前版本装到本地**，否则你验的不是最新代码。
 
@@ -128,12 +116,11 @@ broader runs with
 
 1.  **Rebuild the installed package** after code changes — launcher/CLI
     entry points run the installed package, not `load_all()`:
-
+    
     ``` r
-
     pak::local_install(".", ask = FALSE, upgrade = FALSE)
     ```
-
+    
     Then `codegraph sync` to refresh the symbol index for AI/code-review
     tooling.
 
@@ -146,17 +133,15 @@ broader runs with
     `inst/examples/demo_*.R` / `test_databricks.R`.
 
 4.  **Wire new exported tools** — confirm whether they need registering
-    in
-    [`.register_all_tools()`](https://github.com/kaipingyang/codeagent/reference/dot-register_all_tools.md)
-    and its call chain.
+    in `.register_all_tools()` and its call chain.
 
 ## Commit & Pull Request Guidelines
 
 Use Conventional Commit prefixes (`feat:`, `refactor:`, `docs:`). Keep
-commit subjects short and scoped,
-e.g. `feat: add Databricks thinking example`. PRs should explain the
-user-visible change, list affected paths, mention test coverage, and
-include screenshots for Shiny UI updates.
+commit subjects short and scoped, e.g. `feat: add Databricks thinking
+example`. PRs should explain the user-visible change, list affected
+paths, mention test coverage, and include screenshots for Shiny UI
+updates.
 
 ## Shiny UI Rules
 
@@ -166,33 +151,26 @@ a subsystem. - **Layout:** before changing chat/sidebar layout, read
 fill-sensitive — it must live inside a truly fillable parent
 (e.g. `bslib::sidebar(fillable = TRUE, ...)`); extra wrappers/CSS often
 break sticky-bottom input behavior. - **Components:** prefer
-[`bslib::toolbar()`](https://rstudio.github.io/bslib/reference/toolbar.html)
-for horizontal action groups and
-[`bslib::show_toast()`](https://rstudio.github.io/bslib/reference/show_toast.html)
-over
-[`shiny::showNotification()`](https://rdrr.io/pkg/shiny/man/showNotification.html)
-for user-facing notifications. Read `bslib-toolbar-toast.md` and
+`bslib::toolbar()` for horizontal action groups and
+`bslib::show_toast()` over `shiny::showNotification()` for user-facing
+notifications. Read `bslib-toolbar-toast.md` and
 `bslib-toast-vs-notification.md` before adding action bars or
 notifications. - **State:** consolidate shared session state into a
-single
-[`shiny::reactiveValues()`](https://rdrr.io/pkg/shiny/man/reactiveValues.html)
-container (see `ui.R` `state <- reactiveValues(...)`); do not scatter
-standalone `reactiveVal()` objects. - **Output panel / file viewer:**
-the right panel (`ui_panels.R` `output_panel_ui`) has THREE **static**
-navset tabs — Output / Files / File. Opening a file renders its preview
-into the single `File` tab via `server_right.R`’s `ca_file_view`
-reactiveVal. Do **not** reintroduce per-file
-[`bslib::nav_insert()`](https://rstudio.github.io/bslib/reference/nav_select.html)
-tabs: the inserted card renders outside the navset tab-content and
-covers the tab strip. Keep file content in a height-constrained,
-`overflow:auto` body. - **Startup:** keep the shell instant. Expensive
-tool/skill registration is deferred into `session$onFlushed()` behind
-the `ca_init_overlay` (gated on `state$initializing`), and the chat
-input stays disabled until it clears. Pass a bare ellmer `Chat` to
-[`codeagent_app()`](https://github.com/kaipingyang/codeagent/reference/codeagent_app.md)
-for this lazy path; don’t move tool registration back onto the
-UI-construction critical path. - **Slash-command grouping:** when
-mimicking `shinyAssistantUI`, use the canonical 6 sections — `Context`,
-`Model`, `Customize`, `Slash Commands`, `Settings`, `Support`. Do not
-invent replacement group labels unless the user requests a different
-taxonomy.
+single `shiny::reactiveValues()` container (see `ui.R` `state <-
+reactiveValues(...)`); do not scatter standalone `reactiveVal()`
+objects. - **Output panel / file viewer:** the right panel
+(`ui_panels.R` `output_panel_ui`) has THREE **static** navset tabs —
+Output / Files / File. Opening a file renders its preview into the
+single `File` tab via `server_right.R`’s `ca_file_view` reactiveVal. Do
+**not** reintroduce per-file `bslib::nav_insert()` tabs: the inserted
+card renders outside the navset tab-content and covers the tab strip.
+Keep file content in a height-constrained, `overflow:auto` body. -
+**Startup:** keep the shell instant. Expensive tool/skill registration
+is deferred into `session$onFlushed()` behind the `ca_init_overlay`
+(gated on `state$initializing`), and the chat input stays disabled until
+it clears. Pass a bare ellmer `Chat` to `codeagent_app()` for this lazy
+path; don’t move tool registration back onto the UI-construction
+critical path. - **Slash-command grouping:** when mimicking
+`shinyAssistantUI`, use the canonical 6 sections — `Context`, `Model`,
+`Customize`, `Slash Commands`, `Settings`, `Support`. Do not invent
+replacement group labels unless the user requests a different taxonomy.

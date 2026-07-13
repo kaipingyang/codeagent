@@ -11,5 +11,4 @@ web_search_tool()
 
 ## Value
 
-An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
-object.
+An `ellmer::tool()` object.

@@ -2,23 +2,23 @@
 
 ### Getting Started
 
-- [Getting started with
-  codeagent](https://github.com/kaipingyang/codeagent/articles/getting-started.md):
+  - [Getting started with
+    codeagent](https://kaipingyang.github.io/codeagent/articles/getting-started.md):
 
 ### Configuration
 
-- [Configuration](https://github.com/kaipingyang/codeagent/articles/configuration.md):
-- [Permissions](https://github.com/kaipingyang/codeagent/articles/permissions.md):
-- [Models and
-  providers](https://github.com/kaipingyang/codeagent/articles/models.md):
-- [Context management and
-  compaction](https://github.com/kaipingyang/codeagent/articles/compaction.md):
-- [Skills and slash
-  commands](https://github.com/kaipingyang/codeagent/articles/skills-usage.md):
+  - [Configuration](https://kaipingyang.github.io/codeagent/articles/configuration.md):
+  - [Permissions](https://kaipingyang.github.io/codeagent/articles/permissions.md):
+  - [Models and
+    providers](https://kaipingyang.github.io/codeagent/articles/models.md):
+  - [Context management and
+    compaction](https://kaipingyang.github.io/codeagent/articles/compaction.md):
+  - [Skills and slash
+    commands](https://kaipingyang.github.io/codeagent/articles/skills-usage.md):
 
 ### Advanced
 
-- [Multi-agent team
-  coordination](https://github.com/kaipingyang/codeagent/articles/team-coordination.md):
-- [Data exploration with
-  codeagent](https://github.com/kaipingyang/codeagent/articles/data-exploration.md):
+  - [Multi-agent team
+    coordination](https://kaipingyang.github.io/codeagent/articles/team-coordination.md):
+  - [Data exploration with
+    codeagent](https://kaipingyang.github.io/codeagent/articles/data-exploration.md):

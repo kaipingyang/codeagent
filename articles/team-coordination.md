@@ -10,7 +10,7 @@ for tasks that can be divided and executed concurrently.
     team_run(tasks)                    FIXED FAN-OUT (worker i = task i)
       crew / mirai: run_one(task) = codeagent_client() + codeagent(task)
       -> collect results in order
-
+    
     team_coordinate(tasks, blocked_by)   WORK-STEALING over a SQLite board
       board_create(): tasks + deps (DAG) + messages tables
       seed tasks (add, then wire blocked_by by index) + toposort (reject cycles)
@@ -24,20 +24,18 @@ for tasks that can be divided and executed concurrently.
          run codeagent(task) -> board_complete(result) -> board_send_message()
       }
       -> board_status() data.frame (id, prompt, owner, status, result)
-
+    
     team_lead(goal, max_rounds)        LLM-LEAD loop
       decompose (chat_structured -> tasks + DAG)
         -> team_coordinate(...)              (runs the work-stealing board above)
         -> review (chat_structured: done? follow-up tasks?)
         -> replan -> next round              (until done or max_rounds)
 
-## Fixed fan-out: team_run()
+## Fixed fan-out: team\_run()
 
-[`team_run()`](https://github.com/kaipingyang/codeagent/reference/team_run.md)
-assigns one task per worker and collects all results:
+`team_run()` assigns one task per worker and collects all results:
 
 ``` r
-
 library(codeagent)
 
 # Review multiple files in parallel
@@ -54,14 +52,12 @@ cat(results[[1]])
 Worker count defaults to `min(#tasks, parallelly::availableCores())` to
 respect container CPU limits.
 
-## Work-stealing: team_coordinate()
+## Work-stealing: team\_coordinate()
 
-[`team_coordinate()`](https://github.com/kaipingyang/codeagent/reference/team_coordinate.md)
-uses a shared SQLite task board where workers claim tasks dynamically –
-faster workers take more tasks:
+`team_coordinate()` uses a shared SQLite task board where workers claim
+tasks dynamically – faster workers take more tasks:
 
 ``` r
-
 results_df <- team_coordinate(
   tasks = c("task 1", "task 2", "task 3", "task 4", "task 5"),
   n_workers = 2
@@ -75,7 +71,6 @@ print(results_df[, c("prompt", "status", "owner")])
 The shared board also supports messages between agents:
 
 ``` r
-
 db <- board_create()
 board_add_task(db, "analyse the sales data")
 board_add_task(db, "generate the summary report")
@@ -95,7 +90,6 @@ The agent can invoke sub-agents via the `Agent` tool directly from the
 chat. Enable it by registering the agent tool:
 
 ``` r
-
 client <- codeagent_client(chat,
   permission_mode = "bypass",
   worktree_isolation = TRUE   # each sub-agent in its own git worktree

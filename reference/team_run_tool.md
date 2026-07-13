@@ -1,9 +1,7 @@
 # Create the TeamRun tool
 
-Exposes
-[`team_run()`](https://github.com/kaipingyang/codeagent/reference/team_run.md)
-to the model so it can fan out independent subtasks in parallel and get
-all results back at once.
+Exposes `team_run()` to the model so it can fan out independent subtasks
+in parallel and get all results back at once.
 
 ## Usage
 
@@ -13,15 +11,14 @@ team_run_tool(model = NULL, cwd = getwd())
 
 ## Arguments
 
-- model:
+  - model:
+    
+    Character. Default model for team agents.
 
-  Character. Default model for team agents.
-
-- cwd:
-
-  Character. Working directory.
+  - cwd:
+    
+    Character. Working directory.
 
 ## Value
 
-An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
-object.
+An `ellmer::tool()` object.

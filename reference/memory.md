@@ -7,8 +7,8 @@ across sessions. Mirrors Claude Code's auto-memory layer.
 
 Layout:
 
-- `~/.codeagent/memory/<slug>.md` – one fact per file, optional YAML
-  front-matter (`name`, `description`).
+  - `~/.codeagent/memory/<slug>.md` – one fact per file, optional YAML
+    front-matter (`name`, `description`).
 
-- `~/.codeagent/memory/MEMORY.md` – a one-line-per-memory index loaded
-  into context each session.
+  - `~/.codeagent/memory/MEMORY.md` – a one-line-per-memory index loaded
+    into context each session.

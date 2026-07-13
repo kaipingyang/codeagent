@@ -10,14 +10,13 @@ Decide whether a command is blocked by the sandbox
 
 ## Arguments
 
-- command:
+  - command:
+    
+    Character. The shell command.
 
-  Character. The shell command.
-
-- profile:
-
-  List from
-  [`.sandbox_profile()`](https://github.com/kaipingyang/codeagent/reference/dot-sandbox_profile.md).
+  - profile:
+    
+    List from `.sandbox_profile()`.
 
 ## Value
 

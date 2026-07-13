@@ -18,46 +18,42 @@ register_builtin_tools(
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - mode:
+    
+    Character. Permission mode (see
+    [PermissionMode](https://kaipingyang.github.io/codeagent/reference/PermissionMode.md)).
 
-- mode:
+  - rules:
+    
+    List. `PermissionRule()` objects.
 
-  Character. Permission mode (see
-  [PermissionMode](https://github.com/kaipingyang/codeagent/reference/PermissionMode.md)).
+  - ask\_fn:
+    
+    Function or NULL. `function(tool_name, input) -> logical`. Called
+    when permission is `"ask"`.
 
-- rules:
+  - skip\_file\_tools:
+    
+    Logical. If `TRUE`, skip Read/Write/Edit/MultiEdit/Glob/Grep/LS and
+    register only Bash. Advanced use: set this if you want btw file
+    tools to be the *only* file tools (no absolute-path fallback).
+    Default `FALSE` means both codeagent and btw file tools coexist when
+    Path A is enabled.
 
-  List.
-  [`PermissionRule()`](https://github.com/kaipingyang/codeagent/reference/PermissionRule.md)
-  objects.
+  - sandbox:
+    
+    List or NULL. Bash sandbox profile (see `.sandbox_profile()`);
+    passed through to `bash_tool()`.
 
-- ask_fn:
-
-  Function or NULL. `function(tool_name, input) -> logical`. Called when
-  permission is `"ask"`.
-
-- skip_file_tools:
-
-  Logical. If `TRUE`, skip Read/Write/Edit/MultiEdit/Glob/Grep/LS and
-  register only Bash. Advanced use: set this if you want btw file tools
-  to be the *only* file tools (no absolute-path fallback). Default
-  `FALSE` means both codeagent and btw file tools coexist when Path A is
-  enabled.
-
-- sandbox:
-
-  List or NULL. Bash sandbox profile (see
-  [`.sandbox_profile()`](https://github.com/kaipingyang/codeagent/reference/dot-sandbox_profile.md));
-  passed through to
-  [`bash_tool()`](https://github.com/kaipingyang/codeagent/reference/bash_tool.md).
-
-- async:
-
-  Logical. If `TRUE`, register async permission-gated tool variants for
-  the Shiny path (UI-gated approvals). Default `FALSE` (synchronous).
+  - async:
+    
+    Logical. If `TRUE`, register async permission-gated tool variants
+    for the Shiny path (UI-gated approvals). Default `FALSE`
+    (synchronous).
 
 ## Value
 

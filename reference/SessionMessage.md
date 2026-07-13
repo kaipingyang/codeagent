@@ -16,25 +16,25 @@ SessionMessage(
 
 ## Arguments
 
-- type:
+  - type:
+    
+    Character. "user" or "assistant".
 
-  Character. "user" or "assistant".
+  - role:
+    
+    Character. Alias for type.
 
-- role:
+  - text:
+    
+    Character. Message text.
 
-  Character. Alias for type.
+  - uuid:
+    
+    Character. Message UUID.
 
-- text:
-
-  Character. Message text.
-
-- uuid:
-
-  Character. Message UUID.
-
-- session_id:
-
-  Character. Session UUID.
+  - session\_id:
+    
+    Character. Session UUID.
 
 ## Value
 

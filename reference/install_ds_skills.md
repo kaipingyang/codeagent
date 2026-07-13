@@ -3,9 +3,8 @@
 Installs the [posit-dev/skills](https://github.com/posit-dev/skills)
 collection (r-lib / shiny / quarto / tidyverse / open-source domains)
 via btw, into a btw skill directory that codeagent already discovers.
-After installing, the skills appear in
-[`list_skills_meta()`](https://github.com/kaipingyang/codeagent/reference/list_skills_meta.md)
-and as `/name` commands.
+After installing, the skills appear in `list_skills_meta()` and as
+`/name` commands.
 
 ## Usage
 
@@ -19,21 +18,22 @@ install_ds_skills(
 
 ## Arguments
 
-- skill:
+  - skill:
+    
+    Which posit-dev/skills to install: `NULL` (default) installs a
+    curated R / data-science set; `"all"` installs every skill in the
+    repo; or pass one or more skill names (character vector). btw
+    installs one skill at a time, so multiple names are installed in a
+    loop.
 
-  Which posit-dev/skills to install: `NULL` (default) installs a curated
-  R / data-science set; `"all"` installs every skill in the repo; or
-  pass one or more skill names (character vector). btw installs one
-  skill at a time, so multiple names are installed in a loop.
+  - scope:
+    
+    Character. `"user"` (default) installs to the user-global btw skills
+    dir; `"project"` installs to the project's `.btw/skills`.
 
-- scope:
-
-  Character. `"user"` (default) installs to the user-global btw skills
-  dir; `"project"` installs to the project's `.btw/skills`.
-
-- overwrite:
-
-  Logical. Overwrite an existing skill of the same name.
+  - overwrite:
+    
+    Logical. Overwrite an existing skill of the same name.
 
 ## Value
 
@@ -42,14 +42,12 @@ Invisibly `TRUE` if all requested skills installed, else `FALSE`.
 ## Details
 
 This is a thin, documented wrapper over
-[`btw::btw_skill_install_github()`](https://posit-dev.github.io/btw/reference/btw_skill_install_github.html)
-– codeagent does not vendor or re-host the skills; it uses the upstream
-collection directly.
+`btw::btw_skill_install_github()` – codeagent does not vendor or re-host
+the skills; it uses the upstream collection directly.
 
 ## See also
 
-[`btw::btw_skill_install_github()`](https://posit-dev.github.io/btw/reference/btw_skill_install_github.html),
-[`list_skills_meta()`](https://github.com/kaipingyang/codeagent/reference/list_skills_meta.md)
+`btw::btw_skill_install_github()`, `list_skills_meta()`
 
 ## Examples
 

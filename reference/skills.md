@@ -12,7 +12,7 @@ Discovery order (later overrides earlier):
 
 3.  btw built-in skills
 
-4.  btw user dirs (~/.config/btw/skills/, ~/.btw/skills/)
+4.  btw user dirs (\~/.config/btw/skills/, \~/.btw/skills/)
 
 5.  .btw/skills/, .agents/skills/ (btw project dirs)
 
@@ -20,5 +20,5 @@ Discovery order (later overrides earlier):
 
 7.  .codex/skills/ (Codex compat)
 
-User-global custom skills: use ~/.btw/skills/ (btw native).
+User-global custom skills: use \~/.btw/skills/ (btw native).
 Project-local custom skills: use .btw/skills/ (btw native).

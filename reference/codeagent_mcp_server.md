@@ -3,9 +3,8 @@
 Exposes codeagent's tool set as an MCP server. By default uses btw's
 `btw_mcp_server()` over stdio (for Claude Desktop / VS Code MCP config).
 With `transport = "http"` it serves over HTTP via
-[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
-(\>= 0.2.1), enabling remote MCP clients. The server runs in a blocking
-loop.
+`mcptools::mcp_server()` (\>= 0.2.1), enabling remote MCP clients. The
+server runs in a blocking loop.
 
 ## Usage
 
@@ -21,27 +20,26 @@ codeagent_mcp_server(
 
 ## Arguments
 
-- tools:
+  - tools:
+    
+    Character vector of btw tool groups to expose, or a list of
+    `ellmer::tool()` objects. Defaults to all btw tools.
 
-  Character vector of btw tool groups to expose, or a list of
-  [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
-  objects. Defaults to all btw tools.
+  - transport:
+    
+    Character. `"stdio"` (default) or `"http"`.
 
-- transport:
+  - host:
+    
+    Character. Host to bind when `transport = "http"`.
 
-  Character. `"stdio"` (default) or `"http"`.
+  - port:
+    
+    Integer. Port to bind when `transport = "http"`.
 
-- host:
-
-  Character. Host to bind when `transport = "http"`.
-
-- port:
-
-  Integer. Port to bind when `transport = "http"`.
-
-- ...:
-
-  Additional arguments passed to the underlying server function.
+  - ...:
+    
+    Additional arguments passed to the underlying server function.
 
 ## Value
 
