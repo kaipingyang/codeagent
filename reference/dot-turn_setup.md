@@ -18,30 +18,29 @@ injection.
 
 ## Arguments
 
-- client:
+  - client:
+    
+    A `CodeagentClient` or bare `ellmer::Chat`.
 
-  A `CodeagentClient` or bare
-  [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
+  - input:
+    
+    Character scalar (CLI/ink) OR list (Shiny: text + attachments).
 
-- input:
+  - iteration:
+    
+    Integer. Current loop iteration (1 = first).
 
-  Character scalar (CLI/ink) OR list (Shiny: text + attachments).
+  - cwd:
+    
+    Character or NULL. Working directory.
 
-- iteration:
+  - compaction\_ctrl:
+    
+    A `CompactionController` or NULL.
 
-  Integer. Current loop iteration (1 = first).
-
-- cwd:
-
-  Character or NULL. Working directory.
-
-- compaction_ctrl:
-
-  A `CompactionController` or NULL.
-
-- resource_state:
-
-  A `ContentReplacementState` or NULL.
+  - resource\_state:
+    
+    A `ContentReplacementState` or NULL.
 
 ## Value
 

@@ -2,12 +2,12 @@
 
 ## Authors
 
-- **Kaiping Yang**. Author, maintainer.
+  - **Kaiping Yang**. Author, maintainer.
 
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/kaipingyang/codeagent/blob/main/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/kaipingyang/codeagent/blob/HEAD/DESCRIPTION)
 
 Yang K (2026). *codeagent: An R-Native Coding Agent Powered by Large
 Language Models*. R package version 0.1.0,

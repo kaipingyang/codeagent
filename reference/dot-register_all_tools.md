@@ -10,24 +10,22 @@ Register all codeagent tools to a Chat object
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - settings:
+    
+    Named list from `load_settings()`.
 
-- settings:
+  - ask\_fn:
+    
+    Function or NULL.
 
-  Named list from
-  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
-
-- ask_fn:
-
-  Function or NULL.
-
-- ask_question_fn:
-
-  Function or NULL. Shiny callback for AskUserQuestion (Phase 3). NULL
-  uses CLI readline path.
+  - ask\_question\_fn:
+    
+    Function or NULL. Shiny callback for AskUserQuestion (Phase 3). NULL
+    uses CLI readline path.
 
 ## Value
 

@@ -10,9 +10,9 @@ board_status(db_path)
 
 ## Arguments
 
-- db_path:
-
-  Character. Board path.
+  - db\_path:
+    
+    Character. Board path.
 
 ## Value
 

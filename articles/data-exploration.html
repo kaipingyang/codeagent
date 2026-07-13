@@ -8,8 +8,8 @@
 <title>Data exploration with codeagent • codeagent</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
-<link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Data exploration with codeagent">
 </head>
 <body>
@@ -60,14 +60,13 @@
 
 
 
-
-<div class="row">
+<script src="data-exploration_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Data exploration with codeagent</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/main/vignettes/data-exploration.Rmd" class="external-link"><code>vignettes/data-exploration.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/HEAD/vignettes/data-exploration.Rmd" class="external-link"><code>vignettes/data-exploration.Rmd</code></a></small>
       <div class="d-none name"><code>data-exploration.Rmd</code></div>
     </div>
 
@@ -76,10 +75,7 @@
 <div class="section level2">
 <h2 id="two-modes-standard-vs-wear">Two modes: standard vs WEAR<a class="anchor" aria-label="anchor" href="#two-modes-standard-vs-wear"></a>
 </h2>
-<p>codeagent offers two ways to explore data. Choosing the right one
-depends on whether you want a focused, stateful exploration session or
-just an occasional data query inside a general-purpose agent
-conversation.</p>
+<p>codeagent offers two ways to explore data. Choosing the right one depends on whether you want a focused, stateful exploration session or just an occasional data query inside a general-purpose agent conversation.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -125,9 +121,7 @@ conversation.</p>
 </tr>
 </tbody>
 </table>
-<p><strong>Rule of thumb:</strong> use <code><a href="../reference/wear_explore.html">wear_explore()</a></code> when
-data exploration <em>is</em> the task. Use a standard session when data
-questions are one of many things you need.</p>
+<p><strong>Rule of thumb:</strong> use <code><a href="../reference/wear_explore.html">wear_explore()</a></code> when data exploration <em>is</em> the task. Use a standard session when data questions are one of many things you need.</p>
 <hr>
 </div>
 <div class="section level2">
@@ -142,26 +136,21 @@ questions are one of many things you need.</p>
 <span></span>
 <span><span class="fu"><a href="../reference/codeagent.html">codeagent</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"How many rows are in mtcars and what are the columns?"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/codeagent.html">codeagent</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"What is the average mpg per cylinder count?"</span><span class="op">)</span></span></code></pre></div>
-<p><code>ExploreData</code> is read-only (sandboxed sub-environment of
-<code>.GlobalEnv</code>) and is allowed automatically in
-<code>default</code> permission mode.</p>
+<p><code>ExploreData</code> is read-only (sandboxed sub-environment of <code>.GlobalEnv</code>) and is allowed automatically in <code>default</code> permission mode.</p>
 <hr>
 </div>
 <div class="section level2">
 <h2 id="wear-session-dedicated-exploration">WEAR session: dedicated exploration<a class="anchor" aria-label="anchor" href="#wear-session-dedicated-exploration"></a>
 </h2>
-<p><code><a href="../reference/wear_explore.html">wear_explore()</a></code> starts a full exploration session with
-the Write/Execute/Analyze/Regroup loop. On every turn the agent:</p>
+<p><code><a href="../reference/wear_explore.html">wear_explore()</a></code> starts a full exploration session with the Write/Execute/Analyze/Regroup loop. On every turn the agent:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>W</strong> — writes dplyr/base R code to answer your
-question</li>
+<strong>W</strong> — writes dplyr/base R code to answer your question</li>
 <li>
 <strong>E</strong> — runs it via <code>ExploreData</code>
 </li>
 <li>
-<strong>A</strong> — interprets results, flags patterns and
-outliers</li>
+<strong>A</strong> — interprets results, flags patterns and outliers</li>
 <li>
 <strong>R</strong> — proposes 3-5 follow-up questions</li>
 </ol>
@@ -196,11 +185,7 @@ Each turn the agent runs the W-E-A-R cycle:
 <div class="section level3">
 <h3 id="exporting-to-quarto">Exporting to Quarto<a class="anchor" aria-label="anchor" href="#exporting-to-quarto"></a>
 </h3>
-<p>Type <code>/report</code> in the chat (or say “export my analysis”)
-to save the session as a reproducible <code>.qmd</code> file. The
-<code>/report</code> command is <strong>only available inside a
-<code><a href="../reference/wear_explore.html">wear_explore()</a></code> session</strong> — it is not registered in
-standard sessions.</p>
+<p>Type <code>/report</code> in the chat (or say “export my analysis”) to save the session as a reproducible <code>.qmd</code> file. The <code>/report</code> command is <strong>only available inside a <code><a href="../reference/wear_explore.html">wear_explore()</a></code> session</strong> — it is not registered in standard sessions.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Capture the client to generate the report after the session ends</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wear_explore.html">wear_explore</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mtcars <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span><span class="op">)</span></span>
@@ -216,11 +201,9 @@ standard sessions.</p>
 <p>The generated <code>.qmd</code> contains:</p>
 <ul>
 <li>Each user question as a <code>##</code> section heading</li>
-<li>Agent code as <code>```{r}</code> chunks (<code>eval: false</code>
-by default)</li>
+<li>Agent code as <code>```{r}</code> chunks (<code>eval: false</code> by default)</li>
 <li>Agent analysis as prose</li>
-<li>YAML front-matter with <code>code-fold: true</code> and
-<code>toc: true</code>
+<li>YAML front-matter with <code>code-fold: true</code> and <code>toc: true</code>
 </li>
 </ul>
 <hr>
@@ -229,27 +212,18 @@ by default)</li>
 <div class="section level2">
 <h2 id="environment-context-injection">Environment context injection<a class="anchor" aria-label="anchor" href="#environment-context-injection"></a>
 </h2>
-<p>Enable automatic schema injection so the agent always knows what
-data.frames are in <code>.GlobalEnv</code> without an explicit tool
-call:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="dt">"inject_r_env"</span><span class="fu">:</span> <span class="kw">true</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Enable automatic schema injection so the agent always knows what data.frames are in <code>.GlobalEnv</code> without an explicit tool call:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true"></a><span class="fu">{</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true"></a>  <span class="dt">"inject_r_env"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true"></a><span class="fu">}</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">
 <h2 id="security">Security<a class="anchor" aria-label="anchor" href="#security"></a>
 </h2>
-<p><code>ExploreData</code> runs code in a
-<strong>sub-environment</strong> that shares bindings with
-<code>.GlobalEnv</code> but cannot assign back to it (copy-on-modify
-semantics). Mutations (<code>df$x &lt;- ...</code>) affect only the
-sandboxed copy, never your original data.</p>
-<p>The tool is marked <code>read_only_hint = TRUE</code> and does not
-have access to the file system or network. For full capabilities, use
-the standard <code>RunR</code> tool (subject to its own permission
-gate).</p>
+<p><code>ExploreData</code> runs code in a <strong>sub-environment</strong> that shares bindings with <code>.GlobalEnv</code> but cannot assign back to it (copy-on-modify semantics). Mutations (<code>df$x &lt;- ...</code>) affect only the sandboxed copy, never your original data.</p>
+<p>The tool is marked <code>read_only_hint = TRUE</code> and does not have access to the file system or network. For full capabilities, use the standard <code>RunR</code> tool (subject to its own permission gate).</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

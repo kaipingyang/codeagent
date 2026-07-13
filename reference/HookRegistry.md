@@ -13,19 +13,19 @@ registration order.
 
 Returns list with `action`:
 
-- `"allow"` – proceed normally
+  - `"allow"` – proceed normally
 
-- `"deny"` – block execution (add optional `message`)
+  - `"deny"` – block execution (add optional `message`)
 
-- `"updated_input"` – replace input with `input` field
+  - `"updated_input"` – replace input with `input` field
 
 ### PostToolUse callback: `function(tool_name, tool_input, tool_output)`
 
 Returns list with `action`:
 
-- `"allow"` – pass output unchanged
+  - `"allow"` – pass output unchanged
 
-- `"updated_output"` – replace output with `output` field
+  - `"updated_output"` – replace output with `output` field
 
 ### PostToolUseFailure callback: `function(tool_name, tool_input, error_message)`
 
@@ -39,11 +39,11 @@ Return value ignored (informational only).
 
 Returns list with `action`:
 
-- `"allow"` – grant permission
+  - `"allow"` – grant permission
 
-- `"deny"` – reject
+  - `"deny"` – reject
 
-- NULL / `"ask"` – fall through to default ask_fn
+  - NULL / `"ask"` – fall through to default ask\_fn
 
 ### UserMessage callback: `function(message)`
 
@@ -57,43 +57,43 @@ Return value ignored (informational only).
 
 ### Public methods
 
-- [`HookRegistry$new()`](#method-HookRegistry-new)
+  - [`HookRegistry$new()`](#method-HookRegistry-new)
 
-- [`HookRegistry$register()`](#method-HookRegistry-register)
+  - [`HookRegistry$register()`](#method-HookRegistry-register)
 
-- [`HookRegistry$register_pre()`](#method-HookRegistry-register_pre)
+  - [`HookRegistry$register_pre()`](#method-HookRegistry-register_pre)
 
-- [`HookRegistry$register_post()`](#method-HookRegistry-register_post)
+  - [`HookRegistry$register_post()`](#method-HookRegistry-register_post)
 
-- [`HookRegistry$run_pre()`](#method-HookRegistry-run_pre)
+  - [`HookRegistry$run_pre()`](#method-HookRegistry-run_pre)
 
-- [`HookRegistry$run_post()`](#method-HookRegistry-run_post)
+  - [`HookRegistry$run_post()`](#method-HookRegistry-run_post)
 
-- [`HookRegistry$run_failure()`](#method-HookRegistry-run_failure)
+  - [`HookRegistry$run_failure()`](#method-HookRegistry-run_failure)
 
-- [`HookRegistry$run_permission_denied()`](#method-HookRegistry-run_permission_denied)
+  - [`HookRegistry$run_permission_denied()`](#method-HookRegistry-run_permission_denied)
 
-- [`HookRegistry$run_permission_request()`](#method-HookRegistry-run_permission_request)
+  - [`HookRegistry$run_permission_request()`](#method-HookRegistry-run_permission_request)
 
-- [`HookRegistry$run_user_message()`](#method-HookRegistry-run_user_message)
+  - [`HookRegistry$run_user_message()`](#method-HookRegistry-run_user_message)
 
-- [`HookRegistry$run_assistant_message()`](#method-HookRegistry-run_assistant_message)
+  - [`HookRegistry$run_assistant_message()`](#method-HookRegistry-run_assistant_message)
 
-- [`HookRegistry$run_session_start()`](#method-HookRegistry-run_session_start)
+  - [`HookRegistry$run_session_start()`](#method-HookRegistry-run_session_start)
 
-- [`HookRegistry$run_stop()`](#method-HookRegistry-run_stop)
+  - [`HookRegistry$run_stop()`](#method-HookRegistry-run_stop)
 
-- [`HookRegistry$run_pre_compact()`](#method-HookRegistry-run_pre_compact)
+  - [`HookRegistry$run_pre_compact()`](#method-HookRegistry-run_pre_compact)
 
-- [`HookRegistry$run_subagent_start()`](#method-HookRegistry-run_subagent_start)
+  - [`HookRegistry$run_subagent_start()`](#method-HookRegistry-run_subagent_start)
 
-- [`HookRegistry$run_subagent_stop()`](#method-HookRegistry-run_subagent_stop)
+  - [`HookRegistry$run_subagent_stop()`](#method-HookRegistry-run_subagent_stop)
 
-- [`HookRegistry$clear()`](#method-HookRegistry-clear)
+  - [`HookRegistry$clear()`](#method-HookRegistry-clear)
 
-- [`HookRegistry$count()`](#method-HookRegistry-count)
+  - [`HookRegistry$count()`](#method-HookRegistry-count)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `new()`
 
@@ -103,7 +103,7 @@ Create a new registry.
 
     HookRegistry$new()
 
-------------------------------------------------------------------------
+-----
 
 ### Method `register()`
 
@@ -115,26 +115,26 @@ Register a hook for an event.
 
 #### Arguments
 
-- `event`:
+  - `event`:
+    
+    Character. One of
+    [HookEvent](https://kaipingyang.github.io/codeagent/reference/HookEvent.md)
+    values.
 
-  Character. One of
-  [HookEvent](https://kaipingyang.github.io/codeagent/reference/HookEvent.md)
-  values.
+  - `fn`:
+    
+    Function. Hook callback.
 
-- `fn`:
+  - `tool_pattern`:
+    
+    Character or NULL. Glob filter for tool name (only applies to
+    tool-related events).
 
-  Function. Hook callback.
+  - `timeout_ms`:
+    
+    Integer. Max ms before warning (default 2000).
 
-- `tool_pattern`:
-
-  Character or NULL. Glob filter for tool name (only applies to
-  tool-related events).
-
-- `timeout_ms`:
-
-  Integer. Max ms before warning (default 2000).
-
-------------------------------------------------------------------------
+-----
 
 ### Method `register_pre()`
 
@@ -144,7 +144,7 @@ Register a PreToolUse hook (legacy shorthand).
 
     HookRegistry$register_pre(fn, tool_pattern = NULL, timeout_ms = 2000L)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `register_post()`
 
@@ -154,7 +154,7 @@ Register a PostToolUse hook (legacy shorthand).
 
     HookRegistry$register_post(fn, tool_pattern = NULL, timeout_ms = 2000L)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_pre()`
 
@@ -164,7 +164,7 @@ Fire PreToolUse hooks.
 
     HookRegistry$run_pre(tool_name, tool_input)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_post()`
 
@@ -174,7 +174,7 @@ Fire PostToolUse hooks.
 
     HookRegistry$run_post(tool_name, tool_input, tool_output)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_failure()`
 
@@ -184,7 +184,7 @@ Fire PostToolUseFailure hooks (informational).
 
     HookRegistry$run_failure(tool_name, tool_input, error_message)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_permission_denied()`
 
@@ -194,18 +194,18 @@ Fire PermissionDenied hooks (informational).
 
     HookRegistry$run_permission_denied(tool_name, tool_input, mode)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_permission_request()`
 
 Fire PermissionRequest hooks. Returns "allow", "deny", or NULL (fall
-through to ask_fn).
+through to ask\_fn).
 
 #### Usage
 
     HookRegistry$run_permission_request(tool_name, tool_input, mode)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_user_message()`
 
@@ -215,7 +215,7 @@ Fire UserMessage hooks (informational).
 
     HookRegistry$run_user_message(message)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_assistant_message()`
 
@@ -225,7 +225,7 @@ Fire AssistantMessage hooks (informational).
 
     HookRegistry$run_assistant_message(message)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_session_start()`
 
@@ -236,7 +236,7 @@ Fire SessionStart hooks at the top of a session/turn. Callback:
 
     HookRegistry$run_session_start(context = list())
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_stop()`
 
@@ -247,7 +247,7 @@ Fire Stop hooks when the agent loop terminates. Callback:
 
     HookRegistry$run_stop(stop_reason = "completed", context = list())
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_pre_compact()`
 
@@ -258,7 +258,7 @@ Fire PreCompact hooks before context compaction. Callback:
 
     HookRegistry$run_pre_compact(level = "unknown", context = list())
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_subagent_start()`
 
@@ -269,7 +269,7 @@ Fire SubagentStart hooks when a sub-agent is launched. Callback:
 
     HookRegistry$run_subagent_start(description = "", context = list())
 
-------------------------------------------------------------------------
+-----
 
 ### Method `run_subagent_stop()`
 
@@ -284,7 +284,7 @@ Fire SubagentStop hooks when a sub-agent completes. Callback:
       context = list()
     )
 
-------------------------------------------------------------------------
+-----
 
 ### Method `clear()`
 
@@ -294,7 +294,7 @@ Remove all registered hooks.
 
     HookRegistry$clear()
 
-------------------------------------------------------------------------
+-----
 
 ### Method `count()`
 

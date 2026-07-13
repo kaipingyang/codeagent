@@ -13,7 +13,6 @@ an interactive Shiny UI.
 ## Installation
 
 ``` r
-
 pak::pak(c("tidyverse/ellmer", "kaipingyang/codeagent"))
 
 # Recommended: btw adds R-environment tools (docs, git, pkg, file editing, etc.)
@@ -26,7 +25,6 @@ pak::pak("posit-dev/btw")
 ### Step 1 — Create settings file
 
 ``` r
-
 codeagent::use_codeagent_settings()   # creates ~/.codeagent/settings.json
 ```
 
@@ -51,7 +49,6 @@ Edit the generated file with your endpoint:
 ### Step 2 — Install the CLI (once)
 
 ``` r
-
 codeagent::install_codeagent_cli()   # puts `codeagent` on your PATH
 ```
 
@@ -64,7 +61,6 @@ codeagent "query"   # one-shot query
 ## Quick start (R)
 
 ``` r
-
 library(codeagent)
 
 # Option A: auto-build client from settings.json
@@ -92,29 +88,29 @@ codeagent_console(client)
 
 ### Agent harness
 
-| Feature | Details |
-|----|----|
-| **Agent loop** | [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md) with max_turns, budget tracking, compaction |
-| **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
-| **Hooks** | 12 lifecycle events (tool, permission, message, session), configurable from `settings.json` |
-| **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds |
-| **System prompt** | Tone, task, convention, tool-use, and R-specific behavioural guidance |
-| **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff |
-| **Verification** | `verify_fn` param + [`verify_r_tests()`](https://kaipingyang.github.io/codeagent/reference/verify_r_tests.md) re-enters loop on test failures |
-| **Plan mode** | Model enters/exits read-only planning mid-turn |
-| **Rewind** | [`truncate_chat_turns()`](https://kaipingyang.github.io/codeagent/reference/truncate_chat_turns.md) / REPL `/rewind` roll the conversation back |
-| **Model switch** | `switch_model(client, model)` swaps provider/model mid-session |
+| Feature            | Details                                                                                                                                                                                                                                                     |
+| ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Agent loop**     | `agent_loop()` with max\_turns, budget tracking, compaction                                                                                                                                                                                                 |
+| **Permissions**    | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments                                                                                                                                 |
+| **Hooks**          | 12 lifecycle events (tool, permission, message, session), configurable from `settings.json`                                                                                                                                                                 |
+| **Compaction**     | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds |
+| **System prompt**  | Tone, task, convention, tool-use, and R-specific behavioural guidance                                                                                                                                                                                       |
+| **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff                                                                                                                                                                                             |
+| **Verification**   | `verify_fn` param + `verify_r_tests()` re-enters loop on test failures                                                                                                                                                                                      |
+| **Plan mode**      | Model enters/exits read-only planning mid-turn                                                                                                                                                                                                              |
+| **Rewind**         | `truncate_chat_turns()` / REPL `/rewind` roll the conversation back                                                                                                                                                                                         |
+| **Model switch**   | `switch_model(client, model)` swaps provider/model mid-session                                                                                                                                                                                              |
 
 ### Tools
 
 | Group | Source    | Tools                                                   |
-|-------|-----------|---------------------------------------------------------|
+| ----- | --------- | ------------------------------------------------------- |
 | Core  | codeagent | Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS      |
 | docs  | btw       | help pages, vignettes, NEWS                             |
 | env   | btw       | describe data frames / R environment                    |
 | files | btw       | hash-anchored precise editing + atomic multi-file patch |
 | git   | btw       | status, diff, log, commit, branches                     |
-| pkg   | btw       | document, check, test, coverage, load_all               |
+| pkg   | btw       | document, check, test, coverage, load\_all              |
 | web   | btw       | URL → Markdown                                          |
 | agent | btw       | hierarchical subagent delegation                        |
 | data  | codeagent | `ExploreData` — sandboxed data.frame queries            |
@@ -125,7 +121,6 @@ Compatible with Claude Code and btw skill format (`name/SKILL.md`
 directories).
 
 ``` r
-
 # Install Posit's data-science skill collection
 install_ds_skills()
 
@@ -140,7 +135,6 @@ Built-in slash commands: `/compact`, `/plan`, `/verify`, `/simplify`,
 ### Multi-agent teams
 
 ``` r
-
 # Work-stealing over a shared SQLite board
 team_coordinate(c("task 1", "task 2", "task 3"))
 
@@ -151,7 +145,6 @@ team_lead("Refactor the parser and add tests", max_rounds = 3)
 ### MCP server
 
 ``` r
-
 codeagent_mcp_server()
 # Claude Desktop config:
 # {"mcpServers": {"codeagent": {"command": "Rscript",
@@ -161,7 +154,6 @@ codeagent_mcp_server()
 ### Shiny app
 
 ``` r
-
 codeagent_app(
   client,
   theme         = "default",   # "default" | "flatly" | "darkly" | "glass"
@@ -201,7 +193,7 @@ Precedence (low → high): package defaults → `~/.codeagent/settings.json`
 ## Supported providers
 
 | Provider                                       | `"provider"` value    |
-|------------------------------------------------|-----------------------|
+| ---------------------------------------------- | --------------------- |
 | OpenAI-compatible (Databricks, Azure, vLLM, …) | `"openai_compatible"` |
 | Anthropic                                      | `"anthropic"`         |
 | OpenAI                                         | `"openai"`            |
@@ -213,10 +205,10 @@ Precedence (low → high): package defaults → `~/.codeagent/settings.json`
 
 ## Related
 
-- [ellmer](https://ellmer.tidyverse.org) — LLM client for R
-- [btw](https://btw.posit.co) — R-environment tools for LLMs
-- [shinychat](https://posit-dev.github.io/shinychat/) — Chat UI
-  components
+  - [ellmer](https://ellmer.tidyverse.org) — LLM client for R
+  - [btw](https://btw.posit.co) — R-environment tools for LLMs
+  - [shinychat](https://posit-dev.github.io/shinychat/) — Chat UI
+    components
 
 ## License
 

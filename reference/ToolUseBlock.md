@@ -10,17 +10,17 @@ ToolUseBlock(id, name, input)
 
 ## Arguments
 
-- id:
+  - id:
+    
+    Character. Tool use ID.
 
-  Character. Tool use ID.
+  - name:
+    
+    Character. Tool name.
 
-- name:
-
-  Character. Tool name.
-
-- input:
-
-  List. Tool input parameters.
+  - input:
+    
+    List. Tool input parameters.
 
 ## Value
 

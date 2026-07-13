@@ -14,19 +14,19 @@ failures to prevent infinite compaction loops.
 
 ### Public methods
 
-- [`CompactionController$maybe_compact()`](#method-CompactionController-maybe_compact)
+  - [`CompactionController$maybe_compact()`](#method-CompactionController-maybe_compact)
 
-- [`CompactionController$compact_now()`](#method-CompactionController-compact_now)
+  - [`CompactionController$compact_now()`](#method-CompactionController-compact_now)
 
-- [`CompactionController$handle_ptl_error()`](#method-CompactionController-handle_ptl_error)
+  - [`CompactionController$handle_ptl_error()`](#method-CompactionController-handle_ptl_error)
 
-- [`CompactionController$reset_failures()`](#method-CompactionController-reset_failures)
+  - [`CompactionController$reset_failures()`](#method-CompactionController-reset_failures)
 
-- [`CompactionController$failure_count()`](#method-CompactionController-failure_count)
+  - [`CompactionController$failure_count()`](#method-CompactionController-failure_count)
 
-- [`CompactionController$clone()`](#method-CompactionController-clone)
+  - [`CompactionController$clone()`](#method-CompactionController-clone)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `maybe_compact()`
 
@@ -42,24 +42,23 @@ Check token usage and compact if needed.
 
 #### Arguments
 
-- `chat`:
+  - `chat`:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - `model_limit`:
+    
+    Integer. Model context window token limit.
 
-- `model_limit`:
-
-  Integer. Model context window token limit.
-
-- `compact_model`:
-
-  Character. Model for compaction tasks (haiku).
+  - `compact_model`:
+    
+    Character. Model for compaction tasks (haiku).
 
 #### Returns
 
 Invisibly NULL.
 
-------------------------------------------------------------------------
+-----
 
 ### Method `compact_now()`
 
@@ -75,20 +74,19 @@ Code-aligned flow.
 
 #### Arguments
 
-- `chat`:
+  - `chat`:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
-
-- `compact_model`:
-
-  Character. Model for compaction tasks (haiku).
+  - `compact_model`:
+    
+    Character. Model for compaction tasks (haiku).
 
 #### Returns
 
 Invisibly `TRUE` on success, `FALSE` if skipped or failed.
 
-------------------------------------------------------------------------
+-----
 
 ### Method `handle_ptl_error()`
 
@@ -100,17 +98,16 @@ Handle a prompt-too-long (PTL) error by dropping turns.
 
 #### Arguments
 
-- `chat`:
+  - `chat`:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - `error`:
+    
+    An error condition or message string (parsed for a real context
+    limit when present).
 
-- `error`:
-
-  An error condition or message string (parsed for a real context limit
-  when present).
-
-------------------------------------------------------------------------
+-----
 
 ### Method `reset_failures()`
 
@@ -120,7 +117,7 @@ Reset the failure counter (e.g. after a successful turn).
 
     CompactionController$reset_failures()
 
-------------------------------------------------------------------------
+-----
 
 ### Method `failure_count()`
 
@@ -130,7 +127,7 @@ Return current failure count.
 
     CompactionController$failure_count()
 
-------------------------------------------------------------------------
+-----
 
 ### Method `clone()`
 
@@ -142,6 +139,6 @@ The objects of this class are cloneable with this method.
 
 #### Arguments
 
-- `deep`:
-
-  Whether to make a deep clone.
+  - `deep`:
+    
+    Whether to make a deep clone.

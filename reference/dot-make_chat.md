@@ -10,20 +10,18 @@ Create a bare ellmer Chat from settings
 
 ## Arguments
 
-- settings:
+  - settings:
+    
+    List. Output of `load_settings()`.
 
-  List. Output of
-  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
+  - cwd:
+    
+    Character. Working directory.
 
-- cwd:
-
-  Character. Working directory.
-
-- ...:
-
-  Passed to the underlying ellmer function.
+  - ...:
+    
+    Passed to the underlying ellmer function.
 
 ## Value
 
-An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-object.
+An `ellmer::Chat` object.

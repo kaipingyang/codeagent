@@ -10,22 +10,21 @@ register_notebook_tools(chat, mode = "default", rules = list(), ask_fn = NULL)
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - mode:
+    
+    Character. Permission mode.
 
-- mode:
+  - rules:
+    
+    List. Permission rules.
 
-  Character. Permission mode.
-
-- rules:
-
-  List. Permission rules.
-
-- ask_fn:
-
-  Function or NULL.
+  - ask\_fn:
+    
+    Function or NULL.
 
 ## Value
 

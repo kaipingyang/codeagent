@@ -1,8 +1,7 @@
 # Create an R-based MCP server entry
 
 Builds an `mcp_servers` list entry that launches an R subprocess running
-[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
-over stdio.
+`mcptools::mcp_server()` over stdio.
 
 ## Usage
 
@@ -17,21 +16,19 @@ r_mcp_server(
 
 ## Arguments
 
-- tools_script:
+  - tools\_script:
+    
+    Character(1) or NULL. Path to an `.R` script that yields a `list()`
+    of `ellmer::tool()` objects.
 
-  Character(1) or NULL. Path to an `.R` script that yields a
-  [`list()`](https://rdrr.io/r/base/list.html) of
-  [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
-  objects.
+  - session\_tools:
+    
+    Logical. Whether to expose built-in mcptools session management
+    tools. Default `FALSE`.
 
-- session_tools:
-
-  Logical. Whether to expose built-in mcptools session management tools.
-  Default `FALSE`.
-
-- rscript:
-
-  Character(1). Path to the `Rscript` binary.
+  - rscript:
+    
+    Character(1). Path to the `Rscript` binary.
 
 ## Value
 

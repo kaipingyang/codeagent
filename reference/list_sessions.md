@@ -10,18 +10,18 @@ list_sessions(directory = NULL, limit = NULL, offset = 0L)
 
 ## Arguments
 
-- directory:
+  - directory:
+    
+    Character or NULL. Project working directory. When `NULL`, all
+    sessions across all projects are listed.
 
-  Character or NULL. Project working directory. When `NULL`, all
-  sessions across all projects are listed.
+  - limit:
+    
+    Integer or NULL. Max sessions to return.
 
-- limit:
-
-  Integer or NULL. Max sessions to return.
-
-- offset:
-
-  Integer. Sessions to skip.
+  - offset:
+    
+    Integer. Sessions to skip.
 
 ## Value
 
