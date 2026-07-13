@@ -15,7 +15,8 @@ NULL
 
 # Built-in REPL meta-commands (everything else starting with "/" is a skill).
 .REPL_META_CMDS <- c("exit", "quit", "help", "clear", "compact",
-                     "model", "sessions", "budget", "rewind")
+                     "model", "sessions", "budget", "rewind",
+                     "cost", "copy", "export")
 
 # Parse one REPL line into an action descriptor (pure, testable).
 # Returns list(action, ...). Actions:
@@ -47,6 +48,9 @@ NULL
     compact  = list(action = "compact", arg = arg),
     sessions = list(action = "sessions"),
     budget   = list(action = "budget"),
+    cost     = list(action = "cost"),
+    copy     = list(action = "copy"),
+    export   = list(action = "export", arg = arg),
     rewind   = list(action = "rewind", arg = arg),
     model    = list(action = "model", arg = arg)
   )
@@ -59,10 +63,15 @@ NULL
   "  /clear          clear conversation history",
   "  /rewind [N]     drop the last N exchanges (default 1)",
   "  /sessions       list recent saved sessions",
-  "  /budget         show token usage vs limit",
+  "  /budget         show token usage vs context window limit",
+  "  /cost           show token usage and USD cost for this session",
+  "  /copy           copy the last response to clipboard",
+  "  /export [path]  export conversation to a Markdown file",
   "  /<skill> [args] invoke a skill (e.g. /plan)",
   "  /help           show this help",
   "  /exit, /quit    leave the REPL",
+  "  Ctrl+R          reverse history search",
+  "  Ctrl+C Ctrl+C   exit REPL",
   sep = "\n"
 )
 
@@ -151,8 +160,50 @@ NULL
   )
 }
 
+# ---------------------------------------------------------------------------
+# Ctrl+R history search helpers (pure, testable)
+# ---------------------------------------------------------------------------
+
+# Update state after search_query changes: find the most recent history entry
+# that contains the query string, load it into chars.
+.search_update <- function(state) {
+  q <- paste(state$search_query, collapse = "")
+  if (!nzchar(q)) {
+    # Empty query: restore stash
+    state$chars <- state$stash
+    state$pos   <- length(state$stash)
+    return(state)
+  }
+  idx <- which(grepl(q, state$history, fixed = TRUE))
+  if (length(idx)) {
+    # Most recent match (highest index = most recent)
+    hit <- state$history[[idx[[length(idx)]]]]
+    state$chars        <- strsplit(hit, "", fixed = TRUE)[[1L]]
+    state$pos          <- length(state$chars)
+    state$search_match <- idx[[length(idx)]]   # track for Ctrl+R-again
+  }
+  state
+}
+
+# Ctrl+R pressed again: find the next-older match.
+.search_next <- function(state) {
+  q <- paste(state$search_query, collapse = "")
+  if (!nzchar(q)) return(state)
+  idx <- which(grepl(q, state$history, fixed = TRUE))
+  if (!length(idx)) return(state)
+  cur_match <- state$search_match %||% (length(state$history) + 1L)
+  earlier   <- idx[idx < cur_match]
+  if (length(earlier)) {
+    hit <- state$history[[earlier[[length(earlier)]]]]
+    state$chars        <- strsplit(hit, "", fixed = TRUE)[[1L]]
+    state$pos          <- length(state$chars)
+    state$search_match <- earlier[[length(earlier)]]
+  }
+  state
+}
+
 # Colored, card-style tool lines for the console TUI. cli auto-disables ANSI on
-# non-tty / NO_COLOR, so these degrade to plain text (tests see plain strings).
+# non-tty / NO_COLOR, so these degrade to plain text (tests see plain strings.
 #   request:  ⏺ <label>  <hint>     (cyan bold label, dim hint)
 #   result:     ⎿ <summary>          (green connector, dim text)
 .repl_tool_request_line <- function(label, hint = "") {
@@ -407,6 +458,65 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         TRUE
       },
       budget = { .repl_budget_line(client$chat, settings, force = TRUE); TRUE },
+      cost = {
+        n     <- tryCatch(token_count_with_estimation(client$chat),
+                          error = function(e) 0L)
+        last  <- tryCatch(client$chat$get_cost(include = "last"),
+                          error = function(e) NA_real_)
+        total <- tryCatch(client$chat$get_cost(include = "all"),
+                          error = function(e) NA_real_)
+        cat(sprintf("  tokens:      %s\n", format(as.integer(n), big.mark = ",")))
+        if (!is.na(last))  cat(sprintf("  last turn:   $%.6f\n", last))
+        if (!is.na(total)) cat(sprintf("  session:     $%.6f\n", total))
+        TRUE
+      },
+      copy = {
+        # Collect all ContentText blocks from the last assistant turn
+        last_txt <- tryCatch({
+          lt <- client$chat$last_turn()
+          parts <- lapply(lt@contents, function(ct)
+            tryCatch(ct@text, error = function(e) NULL))
+          paste(Filter(nzchar, Filter(Negate(is.null), parts)), collapse = "\n")
+        }, error = function(e) NULL)
+        if (!is.null(last_txt) && nzchar(last_txt)) {
+          if (requireNamespace("clipr", quietly = TRUE)) {
+            tryCatch(clipr::write_clip(last_txt), error = function(e) NULL)
+            preview <- substr(last_txt, 1L, 60L)
+            cat(sprintf("[copied] %.60s%s\n", preview,
+                        if (nchar(last_txt) > 60L) "…" else ""))
+          } else {
+            cat("[clipr not installed — run: install.packages('clipr')]\n")
+          }
+        } else {
+          cat("[nothing to copy]\n")
+        }
+        TRUE
+      },
+      export = {
+        sid8 <- substr(session_id %||% "unknown", 1L, 8L)
+        out_path <- if (nzchar(act$arg %||% "")) act$arg
+                    else sprintf("codeagent-session-%s.md", sid8)
+        turns <- tryCatch(client$chat$get_turns(), error = function(e) list())
+        lines <- c(
+          sprintf("# codeagent session %s", sid8),
+          sprintf("_exported: %s_\n", format(Sys.time()))
+        )
+        for (turn in turns) {
+          role <- tryCatch(turn@role, error = function(e) "unknown")
+          for (ct in tryCatch(turn@contents, error = function(e) list())) {
+            txt <- tryCatch(ct@text, error = function(e) NULL)
+            if (!is.null(txt) && nzchar(txt))
+              lines <- c(lines, sprintf("## %s\n\n%s\n", role, txt))
+          }
+        }
+        tryCatch({
+          writeLines(lines, out_path)
+          cat(sprintf("[exported to %s]\n", out_path))
+        }, error = function(e) {
+          cat("[export failed]:", conditionMessage(e), "\n")
+        })
+        TRUE
+      },
       rewind = {
         # Drop the last N exchanges (default 1). One exchange = 2 turns
         # (user + assistant), so keep = current_turns - 2*N.
@@ -563,7 +673,33 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
     s$pos <- length(s$chars)
     s
   }
-  if (key %in% c("enter", "\r", "\n")) {
+  if (isTRUE(state$search_mode)) {
+    # Search mode takes priority over all other key handlers
+    if (key %in% c("enter", "\r", "\n")) {
+      state$search_mode <- FALSE
+      state$pos         <- length(state$chars)
+      state$action      <- "submit"
+    } else if (key == "escape") {
+      state$search_mode  <- FALSE
+      state$chars        <- state$stash
+      state$pos          <- length(state$stash)
+      state$search_query <- character(0)
+    } else if (key == "ctrl-r") {
+      # Ctrl+R again: find next-older match
+      state <- .search_next(state)
+    } else if (key == "backspace") {
+      if (length(state$search_query) > 0L)
+        state$search_query <- state$search_query[-length(state$search_query)]
+      state <- .search_update(state)
+    } else if (nchar(key, type = "chars") == 1L && !grepl("[[:cntrl:]]", key)) {
+      state$search_query <- c(state$search_query, key)
+      state <- .search_update(state)
+    } else {
+      # Other keys (arrows, ctrl-*) cancel search mode gracefully
+      state$search_mode  <- FALSE
+      state$search_query <- character(0)
+    }
+  } else if (key %in% c("enter", "\r", "\n")) {
     state$action <- "submit"
   } else if (key == "left") {
     state$pos <- max(0L, state$pos - 1L)
@@ -613,6 +749,12 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         state <- load_hist(state, state$hist_pos)
       }
     }
+  } else if (key == "ctrl-r") {
+    # Enter search mode (search_mode=TRUE case handled at top)
+    state$search_mode  <- TRUE
+    state$search_query <- character(0)
+    state$search_match <- length(state$history) + 1L
+    state$stash        <- state$chars  # save current line
   } else if (key %in% c("tab", "escape", "insert", "pageup", "pagedown") ||
              startsWith(key, "ctrl-") ||
              (startsWith(key, "f") && nchar(key) > 1L)) {
@@ -630,7 +772,15 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 # prompt + buffer, then move the cursor back to its logical position.
 .console_redraw <- function(prompt, state) {
   line <- paste(state$chars, collapse = "")
-  cat("\r\033[K", prompt, line, sep = "")
+  if (isTRUE(state$search_mode)) {
+    q           <- paste(state$search_query, collapse = "")
+    search_pfx  <- tryCatch(
+      cli::style_dim(sprintf("(reverse-i-search)`%s': ", q)),
+      error = function(e) sprintf("(reverse-i-search)`%s': ", q))
+    cat("\r\033[K", search_pfx, line, sep = "")
+  } else {
+    cat("\r\033[K", prompt, line, sep = "")
+  }
   back <- length(state$chars) - state$pos
   if (back > 0L) cat(sprintf("\033[%dD", back))
   utils::flush.console()
@@ -653,7 +803,10 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
   state <- list(chars = character(0), pos = 0L, history = history,
                 hist_pos = length(history) + 1L, stash = character(0),
                 action = NULL,
-                last_cancel_time = cancel_env$last_cancel_time)
+                last_cancel_time = cancel_env$last_cancel_time,
+                search_mode  = FALSE,
+                search_query = character(0),
+                search_match = NULL)
   .console_redraw(prompt, state)
   repeat {
     key <- tryCatch(keypress::keypress(), error = function(e) "enter")
