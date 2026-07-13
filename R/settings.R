@@ -16,7 +16,7 @@ NULL
 
 .CODEAGENT_DEFAULTS <- list(
   # Core model / backend
-  model             = "claude-sonnet-4-6",
+  model             = NULL,       # no default; set CODEAGENT_MODEL or model in settings.json
   provider          = NULL,      # ellmer chat_* factory: "openai_compatible",
                                   # "anthropic", "ollama", "databricks", "deepseek",
                                   # "google_gemini", "groq", "openai", "github",
@@ -178,39 +178,38 @@ load_settings <- function(cwd = getwd()) {
   # Derive PermissionRule list from permissions.allow / .deny / .ask
   settings$rules <- .permissions_to_rules(settings$permissions)
 
+  # Built-in fallback: read ALL CODEAGENT_* vars from ~/.Renviron.
+  # --vanilla Rscript skips .Renviron; we parse it ourselves so users can
+  # configure everything in ~/.Renviron without touching settings.json.
+  # Only import vars that are not already set (env block takes priority).
+  renviron <- path.expand("~/.Renviron")
+  if (file.exists(renviron)) {
+    lines <- tryCatch(readLines(renviron, warn = FALSE), error = function(e) character(0))
+    for (ln in lines) {
+      ln <- trimws(ln)
+      if (!nzchar(ln) || startsWith(ln, "#")) next
+      eq <- regexpr("=", ln, fixed = TRUE)
+      if (eq <= 0L) next
+      var <- trimws(substr(ln, 1L, eq - 1L))
+      val <- trimws(substr(ln, eq + 1L, nchar(ln)))
+      val <- gsub('^["\']|["\']$', "", val)   # strip surrounding quotes
+      # Only import CODEAGENT_* vars not already in the environment.
+      if (startsWith(var, "CODEAGENT_") && !nzchar(Sys.getenv(var, "")))
+        do.call(Sys.setenv, stats::setNames(list(val), var))
+    }
+  }
+
   # apiKeyHelper: run the declared command to obtain the API key when the
   # env var is not already set (mirrors Claude Code's apiKeyHelper behaviour).
-  # The JSON field name is camelCase ("apiKeyHelper") matching Claude Code;
-  # .CODEAGENT_DEFAULTS uses snake_case ("api_key_helper"). Accept both.
-  # Fallback: if no helper is configured, try reading ~/.Renviron directly so
-  # the REPL works under --vanilla without any explicit configuration.
   if (!nzchar(Sys.getenv("CODEAGENT_API_KEY", ""))) {
     helper_cmd <- settings$apiKeyHelper %||% settings$api_key_helper %||% NULL
-    key <- NULL
     if (!is.null(helper_cmd) && nzchar(helper_cmd)) {
-      # Run the user-configured helper command and use its stdout as the key.
       key <- tryCatch(
         trimws(system(helper_cmd, intern = TRUE, ignore.stderr = TRUE)),
         error = function(e) character(0))
-    } else {
-      # Built-in fallback: read CODEAGENT_API_KEY from ~/.Renviron directly.
-      # --vanilla Rscript skips .Renviron; we read it ourselves so users only
-      # need to set CODEAGENT_API_KEY in ~/.Renviron and nothing else.
-      renviron <- path.expand("~/.Renviron")
-      if (file.exists(renviron)) {
-        lines <- tryCatch(readLines(renviron, warn = FALSE), error = function(e) character(0))
-        rx <- grep("^CODEAGENT_API_KEY[[:space:]]*=", lines, value = TRUE)
-        if (length(rx)) {
-          parts <- strsplit(rx[[1L]], "=", fixed = TRUE)[[1L]]
-          if (length(parts) >= 2L) {
-            raw <- trimws(paste(parts[-1L], collapse = "="))
-            key <- gsub('["\']', "", raw)
-          }
-        }
-      }
+      if (length(key) && nzchar(key[[1L]]))
+        Sys.setenv(CODEAGENT_API_KEY = key[[1L]])
     }
-    if (length(key) && nzchar(key[[1L]]))
-      Sys.setenv(CODEAGENT_API_KEY = key[[1L]])
   }
 
   # CLAUDE.md (loaded as context, not merged as settings)
@@ -400,9 +399,26 @@ use_codeagent_settings <- function(scope = c("user", "project"),
 .check_settings_completeness <- function(settings) {
   issues <- character(0)
 
-  # 1. API key
-  api_key <- Sys.getenv("CODEAGENT_API_KEY", "")
-  if (!nzchar(api_key)) {
+  # 1. API key -- only warn when no key is available AND not using a provider
+  # that authenticates via a different mechanism (e.g. Azure/Databricks AAD).
+  api_key  <- Sys.getenv("CODEAGENT_API_KEY", "")
+  base_url <- settings$base_url %||% Sys.getenv("CODEAGENT_BASE_URL", "")
+  # Skip API-key warning for providers that use workload identity / AAD tokens
+  # (their auth flows do not use CODEAGENT_API_KEY at all).
+  needs_key <- !nzchar(api_key) && !nzchar(Sys.getenv("ANTHROPIC_API_KEY", ""))
+  if (needs_key && nzchar(base_url)) {
+    # OpenAI-compatible endpoint configured -- key is expected
+    issues <- c(issues, "api_key")
+    cli::cli_alert_warning(
+      "CODEAGENT_API_KEY is not set -- requests will fail with HTTP 401.")
+    cli::cli_bullets(c(
+      "i" = "Add to {.file ~/.Renviron}: {.code CODEAGENT_API_KEY=<token>}",
+      "i" = paste0("Or set {.code apiKeyHelper} in ",
+                   "{.file ~/.codeagent/settings.json} to a shell command that ",
+                   "prints the key, e.g. {.code \"cat ~/.secret/api_key\"}")
+    ))
+  } else if (needs_key && !nzchar(base_url)) {
+    # No base_url AND no key AND no Anthropic key -- complete blank slate
     issues <- c(issues, "api_key")
     cli::cli_alert_warning(
       "CODEAGENT_API_KEY is not set -- requests will fail with HTTP 401.")
@@ -414,17 +430,25 @@ use_codeagent_settings <- function(scope = c("user", "project"),
     ))
   }
 
-  # 2. Base URL (required for OpenAI-compatible gateways; not needed for Anthropic direct)
-  base_url <- settings$base_url %||% Sys.getenv("CODEAGENT_BASE_URL", "")
-  if (!nzchar(base_url) && !nzchar(Sys.getenv("ANTHROPIC_API_KEY", ""))) {
+  # 2. Base URL -- only warn when no base_url AND no Anthropic key (i.e. not
+  # using direct Anthropic API).  Do NOT mention ANTHROPIC_API_KEY when the
+  # user is clearly on an OpenAI-compatible gateway (provider=openai_compatible).
+  provider <- settings$provider %||% ""
+  anthropic_direct <- identical(provider, "anthropic") ||
+                      (!nzchar(provider) && !nzchar(base_url))
+  if (!nzchar(base_url) && !nzchar(Sys.getenv("ANTHROPIC_API_KEY", "")) &&
+      !nzchar(api_key)) {
     issues <- c(issues, "base_url")
     cli::cli_alert_warning(
-      "Neither CODEAGENT_BASE_URL nor ANTHROPIC_API_KEY is set.")
+      "CODEAGENT_BASE_URL is not set.")
     cli::cli_bullets(c(
-      "i" = paste0("For Databricks/OpenAI-compatible gateways, set ",
+      "i" = paste0("For Databricks/OpenAI-compatible gateways: set ",
                    "{.code CODEAGENT_BASE_URL} in {.file ~/.Renviron} or ",
                    "the {.code env} block of {.file ~/.codeagent/settings.json}"),
-      "i" = "For direct Anthropic API, set {.code ANTHROPIC_API_KEY}"
+      if (anthropic_direct)
+        c("i" = "For direct Anthropic API: set {.code ANTHROPIC_API_KEY} instead")
+      else
+        NULL
     ))
   }
 

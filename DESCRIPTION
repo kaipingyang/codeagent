@@ -70,6 +70,7 @@ Suggests:
     webfakes
 Config/testthat/edition: 3
 Remotes:
-    tidyverse/ellmer
+    tidyverse/ellmer,
+    r-lib/Rapp
 URL: https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues

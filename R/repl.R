@@ -556,7 +556,15 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
   } else if (key == "ctrl-k") {          # kill to line end
     if (state$pos < n) state$chars <- state$chars[seq_len(state$pos)]
   } else if (key == "ctrl-c") {
-    state$action <- "cancel"
+    now <- proc.time()[["elapsed"]]
+    if (!is.null(state$last_cancel_time) &&
+        (now - state$last_cancel_time) < 1.5) {
+      # Double Ctrl+C within 1.5s -> exit the REPL
+      state$action <- "exit"
+    } else {
+      state$last_cancel_time <- now
+      state$action <- "cancel"
+    }
   } else if (key == "ctrl-d") {
     if (n == 0L) state$action <- "eof"   # EOF only on an empty line
   } else if (key == "up") {
@@ -576,8 +584,10 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       }
     }
   } else if (key %in% c("tab", "escape", "insert", "pageup", "pagedown") ||
-             startsWith(key, "ctrl-") || startsWith(key, "f")) {
+             startsWith(key, "ctrl-") ||
+             (startsWith(key, "f") && nchar(key) > 1L)) {
     # ignore unsupported specials (no-op) rather than inserting garbage
+    # note: "f" alone is the printable letter f; "f1".."f12" are function keys
   } else if (nchar(key, type = "chars") == 1L && !grepl("[[:cntrl:]]", key)) {
     # printable single character -> insert at cursor
     state$chars <- append(state$chars, key, after = state$pos)
@@ -609,7 +619,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
   }
   state <- list(chars = character(0), pos = 0L, history = history,
                 hist_pos = length(history) + 1L, stash = character(0),
-                action = NULL)
+                action = NULL, last_cancel_time = NULL)
   .console_redraw(prompt, state)
   repeat {
     key <- tryCatch(keypress::keypress(), error = function(e) "enter")
@@ -620,6 +630,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
   cat("\n")
   switch(state$action,
     eof    = NULL,
+    exit   = NULL,   # double Ctrl+C -> exit REPL
     cancel = "",
     paste(state$chars, collapse = "")
   )
