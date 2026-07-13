@@ -291,6 +291,11 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
     session_id <- tryCatch(.generate_uuid_v4(), error = function(e) "repl")
   iteration <- 1L
 
+  # Shared state for double-Ctrl+C detection: persists last_cancel_time across
+  # successive .console_read_line calls within this REPL session.
+  cancel_env <- new.env(parent = emptyenv())
+  cancel_env$last_cancel_time <- NULL
+
   # Tool execution visibility: print tool name when a tool is requested, and a
   # one-line summary when it completes.  Mirrors Claude Code's CLI behaviour
   # (tool_use pauses text, shows the tool, resumes).  Registered at most once
@@ -341,7 +346,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 
   history <- character(0)  # in-session line history for up/down recall
   repeat {
-    line <- .console_read_line(prompt_str, history, con)
+    line <- .console_read_line(prompt_str, history, con, cancel_env)
     if (is.null(line)) break  # EOF (Ctrl-D / closed connection)
     if (nzchar(trimws(line))) history <- c(history, line)
     act <- .repl_dispatch(line)
@@ -608,7 +613,10 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 
 # Read one edited line. Returns the string, "" for a cancelled (Ctrl-C) line,
 # or NULL on EOF (Ctrl-D on empty line / closed connection).
-.console_read_line <- function(prompt, history = character(0), con = stdin()) {
+# cancel_env: an environment with a $last_cancel_time field, shared across
+# calls from the same REPL session so double-Ctrl+C can be detected.
+.console_read_line <- function(prompt, history = character(0), con = stdin(),
+                                cancel_env = new.env(parent = emptyenv())) {
   supported <- tryCatch(keypress::has_keypress_support(), error = function(e) FALSE)
   if (!isTRUE(supported)) {
     # Cooked-mode fallback (pipes, tests, unsupported terminals).
@@ -619,11 +627,15 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
   }
   state <- list(chars = character(0), pos = 0L, history = history,
                 hist_pos = length(history) + 1L, stash = character(0),
-                action = NULL, last_cancel_time = NULL)
+                action = NULL,
+                last_cancel_time = cancel_env$last_cancel_time)
   .console_redraw(prompt, state)
   repeat {
     key <- tryCatch(keypress::keypress(), error = function(e) "enter")
     state <- .console_apply_key(state, key)
+    # Persist last_cancel_time back to the shared env so it survives
+    # across successive _console_read_line calls within the same session.
+    cancel_env$last_cancel_time <- state$last_cancel_time
     .console_redraw(prompt, state)
     if (!is.null(state$action)) break
   }
