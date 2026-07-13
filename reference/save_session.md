@@ -11,21 +11,22 @@ save_session(chat, cwd = getwd(), session_id = NULL, title = NULL)
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - cwd:
-    
-    Character. Working directory (used to key the project).
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
 
-  - session\_id:
-    
-    Character or NULL. UUID; generated if NULL.
+- cwd:
 
-  - title:
-    
-    Character or NULL. Optional human-readable title.
+  Character. Working directory (used to key the project).
+
+- session_id:
+
+  Character or NULL. UUID; generated if NULL.
+
+- title:
+
+  Character or NULL. Optional human-readable title.
 
 ## Value
 

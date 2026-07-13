@@ -8,8 +8,8 @@
 <title>codeagent — R-native coding agent • codeagent</title>
 <script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
-<link href="deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="codeagent — R-native coding agent">
 <meta name="description" content="An R-native agentic coding assistant built on ellmer and btw. Full-featured harness with streaming, tool execution, permissions, compaction, skills, multi-agent coordination, a CLI REPL, and a Shiny app.
 ">
@@ -66,24 +66,51 @@
 <div class="page-header"><h1 id="codeagent">codeagent<a class="anchor" aria-label="anchor" href="#codeagent"></a>
 </h1></div>
 <p>An R-native agentic coding assistant built on <a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a> and <a href="https://btw.posit.co" class="external-link">btw</a>. It reimplements a coding-agent <strong>harness</strong> in R: the agent loop, permission system, context compaction, hook system, skill system, tool execution, session management, multi-agent coordination, a CLI REPL, and an interactive Shiny UI.</p>
-<blockquote><p><strong>Not a wrapper.</strong> codeagent reimplements the harness from scratch rather than shelling out to an external CLI.</p></blockquote>
+<blockquote>
+<p><strong>Not a wrapper.</strong> codeagent reimplements the harness from scratch rather than shelling out to an external CLI.</p>
+</blockquote>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># pak handles all dependencies including Rapp (from r-lib/Rapp on GitHub)</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu">pak</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"tidyverse/ellmer"</span>, <span class="st">"kaipingyang/codeagent"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"tidyverse/ellmer"</span>, <span class="st">"kaipingyang/codeagent"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Optional: btw for R-environment tools (docs, git, pkg, env, etc.)</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu">pak</span><span class="op">(</span><span class="st">"posit-dev/btw"</span><span class="op">)</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"posit-dev/btw"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Optional: shinychat dev for latest chat UI</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu">pak</span><span class="op">(</span><span class="st">"posit-dev/shinychat/pkg-r"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"posit-dev/shinychat/pkg-r"</span><span class="op">)</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="configuration">Configuration<a class="anchor" aria-label="anchor" href="#configuration"></a>
+</h3>
+<p>Create a settings file and edit it with your endpoint:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="reference/use_codeagent_md.html">use_codeagent_md</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># creates ~/.codeagent/settings.json</span></span></code></pre></div>
+<p>Minimal <code>~/.codeagent/settings.json</code>:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_API_KEY"</span><span class="fu">:</span> <span class="st">"your-token"</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="install-cli-once">Install CLI (once)<a class="anchor" aria-label="anchor" href="#install-cli-once"></a>
+</h3>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="reference/install_codeagent_cli.html">install_codeagent_cli</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># puts `codeagent` on your PATH</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="ex">codeagent</span>       <span class="co"># interactive REPL</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-y</span>    <span class="co"># bypass mode (skip permission prompts)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
 </h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/kaipingyang/codeagent" class="external-link">codeagent</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Step 1: create any ellmer Chat (Databricks, Anthropic, Ollama, ...)</span></span>
@@ -107,22 +134,22 @@
 <div class="section level3">
 <h3 id="interactive-setup-wizard">Interactive setup wizard<a class="anchor" aria-label="anchor" href="#interactive-setup-wizard"></a>
 </h3>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/use_codeagent_setup.html">use_codeagent_setup</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># guides provider selection + API key + settings.json</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="from-a-config-file">From a config file<a class="anchor" aria-label="anchor" href="#from-a-config-file"></a>
 </h3>
-<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true"></a><span class="co"># codeagent.md</span></span>
-<span id="cb4-2"><a href="#cb4-2" aria-hidden="true"></a><span class="pp">---</span></span>
-<span id="cb4-3"><a href="#cb4-3" aria-hidden="true"></a><span class="fu">client</span><span class="kw">:</span></span>
-<span id="cb4-4"><a href="#cb4-4" aria-hidden="true"></a><span class="at">  </span><span class="fu">gpt41</span><span class="kw">:</span><span class="at">    openai/gpt-4.1</span></span>
-<span id="cb4-5"><a href="#cb4-5" aria-hidden="true"></a><span class="at">  </span><span class="fu">deepseek</span><span class="kw">:</span><span class="at"> openai/deepseek-r1</span></span>
-<span id="cb4-6"><a href="#cb4-6" aria-hidden="true"></a><span class="fu">btw_groups</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">docs</span><span class="kw">,</span><span class="at"> git</span><span class="kw">,</span><span class="at"> pkg</span><span class="kw">]</span></span>
-<span id="cb4-7"><a href="#cb4-7" aria-hidden="true"></a><span class="fu">permission_mode</span><span class="kw">:</span><span class="at"> bypass</span></span>
-<span id="cb4-8"><a href="#cb4-8" aria-hidden="true"></a><span class="pp">---</span></span>
-<span id="cb4-9"><a href="#cb4-9" aria-hidden="true"></a><span class="at">Follow tidyverse style.</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="co"># codeagent.md</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="fu">client</span><span class="kw">:</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="at">  </span><span class="fu">gpt41</span><span class="kw">:</span><span class="at">    openai/gpt-4.1</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="at">  </span><span class="fu">deepseek</span><span class="kw">:</span><span class="at"> openai/deepseek-r1</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="fu">btw_groups</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">docs</span><span class="kw">,</span><span class="at"> git</span><span class="kw">,</span><span class="at"> pkg</span><span class="kw">]</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="fu">permission_mode</span><span class="kw">:</span><span class="at"> bypass</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="at">Follow tidyverse style.</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_client_config.html">codeagent_client_config</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"gpt41"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -138,56 +165,56 @@
 <col width="50%">
 <col width="50%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Feature</th>
 <th>Details</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><strong>Agent loop</strong></td>
 <td>
 <code><a href="reference/agent_loop.html">agent_loop()</a></code> with max_turns, budget tracking, compaction</td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>Permissions</strong></td>
 <td>7 modes: <code>default</code>, <code>plan</code>, <code>accept_edits</code>, <code>bypass</code>, <code>dont_ask</code>, <code>auto</code>, <code>bubble</code>; fine-grained rules match tool arguments</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>Hooks</strong></td>
 <td>12 lifecycle events (tool, permission, message, session), configurable from <code>settings.json</code>
 </td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>Compaction</strong></td>
 <td>Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via <code>get_tokens()</code>, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and <strong>mid-loop compaction</strong> between tool rounds — budget-aware micro-snip on by default, opt-in full compact (<code>midloop_full_compact</code>)</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>System prompt</strong></td>
 <td>Tone, task, convention, tool-use, and R-specific behavioural guidance</td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>Error recovery</strong></td>
 <td>PTL/rate-limit/network/auth classification; exponential backoff</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>system-reminder</strong></td>
 <td>Ephemeral per-turn context injection preserves prompt cache</td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>Verification</strong></td>
 <td>
 <code>verify_fn</code> param + <code><a href="reference/verify_r_tests.html">verify_r_tests()</a></code> re-enters loop on test failures</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>Plan mode</strong></td>
 <td>Model enters/exits read-only planning mid-turn</td>
 </tr>
-<tr class="even">
+<tr>
 <td><strong>Rewind</strong></td>
 <td>
 <code><a href="reference/truncate_chat_turns.html">truncate_chat_turns()</a></code> / REPL <code>/rewind</code> roll the conversation back</td>
 </tr>
-<tr class="odd">
+<tr>
 <td><strong>Model switch</strong></td>
 <td>
 <code>switch_model(client, model)</code> swaps provider/model mid-session</td>
@@ -199,68 +226,73 @@
 <h3 id="tools">Tools<a class="anchor" aria-label="anchor" href="#tools"></a>
 </h3>
 <table class="table">
-<thead><tr class="header">
+<colgroup>
+<col width="31%">
+<col width="36%">
+<col width="31%">
+</colgroup>
+<thead><tr>
 <th>Group</th>
 <th>Source</th>
 <th>Tools</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>Core</td>
 <td>codeagent</td>
 <td>Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS</td>
 </tr>
-<tr class="even">
+<tr>
 <td>docs</td>
 <td>btw</td>
 <td>help pages, vignettes, NEWS</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>env</td>
 <td>btw</td>
 <td>describe data frames / R environment</td>
 </tr>
-<tr class="even">
+<tr>
 <td>files</td>
 <td>btw</td>
 <td>hashline-based precise editing + atomic multi-file patch</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>git</td>
 <td>btw</td>
 <td>status, diff, log, commit, branches</td>
 </tr>
-<tr class="even">
+<tr>
 <td>ide</td>
 <td>btw</td>
 <td>read current editor</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>pkg</td>
 <td>btw</td>
 <td>document, check, test, coverage, load_all</td>
 </tr>
-<tr class="even">
+<tr>
 <td>cran</td>
 <td>btw</td>
 <td>search, package info</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>sessioninfo</td>
 <td>btw</td>
 <td>platform, package versions</td>
 </tr>
-<tr class="even">
+<tr>
 <td>web</td>
 <td>btw</td>
 <td>URL → Markdown</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>agent</td>
 <td>btw</td>
 <td>hierarchical subagent delegation</td>
 </tr>
-<tr class="even">
+<tr>
 <td>data</td>
 <td>codeagent</td>
 <td>
@@ -276,25 +308,25 @@
 <col width="33%">
 <col width="33%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th><code>file_tools</code></th>
 <th>Set</th>
 <th>Scope</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>
 <code>"core"</code> (default)</td>
 <td>codeagent Read/Write/Edit/MultiEdit/Glob/Grep/LS</td>
 <td>
 <strong>any path</strong> (absolute or relative)</td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>"btw"</code></td>
 <td>btw file tools (hash-anchored, atomic patch)</td>
 <td><strong>project cwd only</strong></td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>"both"</code></td>
 <td>both sets</td>
 <td>LLM picks per task</td>
@@ -302,7 +334,7 @@
 </tbody>
 </table>
 <p><strong>Reusing btw tasks/agents (not reinvented).</strong> Sub-agents use btw’s <code>btw_tool_agent_subagent</code>; custom agents are discovered via <code>btw_agent_tool()</code>. btw’s guided tasks are reused directly:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_create_skill.html">codeagent_create_skill</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span>    <span class="co"># -&gt; btw_task_create_skill</span></span>
 <span><span class="fu"><a href="reference/codeagent_create_readme.html">codeagent_create_readme</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span>   <span class="co"># -&gt; btw_task_create_readme</span></span>
 <span><span class="fu"><a href="reference/codeagent_init_context.html">codeagent_init_context</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span>    <span class="co"># -&gt; btw_task_create_btw_md (btw.md)</span></span>
@@ -313,7 +345,7 @@
 <h3 id="data-exploration-wear-loop">Data exploration (WEAR loop)<a class="anchor" aria-label="anchor" href="#data-exploration-wear-loop"></a>
 </h3>
 <p>Interactive data analysis with the Write/Execute/Analyze/Regroup pattern:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Start a WEAR session -- agent writes code, executes via ExploreData,</span></span>
 <span><span class="co"># analyzes results, proposes 3-5 follow-up questions each turn</span></span>
 <span><span class="fu"><a href="reference/wear_explore.html">wear_explore</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sales <span class="op">=</span> <span class="va">my_df</span><span class="op">)</span><span class="op">)</span></span>
@@ -334,7 +366,7 @@
 <p><strong>Metadata cache.</strong> Scanning every skill directory (<code><a href="reference/list_skills_meta.html">list_skills_meta()</a></code>) is slow enough to notice on startup, so the parsed metadata is cached both in-memory and on disk (under <code>&lt;config&gt;/cache/skills/</code>, keyed by cwd + a <code>SKILL.md</code> mtime/count signature). The cache self-invalidates whenever any <code>SKILL.md</code> changes or a skill is added/removed, so the slash typeahead and skill tool are near-instant on every launch after the first.</p>
 <p>Built-in skills: <code>/compact</code>, <code>/plan</code>, <code>/verify</code>, <code>/simplify</code>, <code>/loop</code>, <code>/remember</code>, <code>/explore</code>, <code>/report</code></p>
 <p>Install btw skills:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">btw</span><span class="fu">::</span><span class="fu"><a href="https://posit-dev.github.io/btw/reference/btw_skill_install_package.html" class="external-link">btw_skill_install_package</a></span><span class="op">(</span><span class="st">"btw"</span><span class="op">)</span>     <span class="co"># installs skill-creator</span></span>
 <span><span class="fu">btw</span><span class="fu">::</span><span class="fu"><a href="https://posit-dev.github.io/btw/reference/btw_skill_install_github.html" class="external-link">btw_skill_install_github</a></span><span class="op">(</span><span class="st">"org/repo"</span><span class="op">)</span> <span class="co"># from GitHub</span></span>
 <span></span>
@@ -346,7 +378,7 @@
 <div class="section level3">
 <h3 id="security-api-key-storage">Security: API key storage<a class="anchor" aria-label="anchor" href="#security-api-key-storage"></a>
 </h3>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Option 1: OS keyring (macOS Keychain / Windows Credential Store / Linux Secret Service)</span></span>
 <span><span class="co"># Offered automatically in setup wizard when keyring is available</span></span>
 <span><span class="fu"><a href="reference/use_codeagent_setup.html">use_codeagent_setup</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -357,7 +389,7 @@
 <div class="section level3">
 <h3 id="sub-agents">Sub-agents<a class="anchor" aria-label="anchor" href="#sub-agents"></a>
 </h3>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Sub-agent with isolated, resumable session</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, permission_mode <span class="op">=</span> <span class="st">"bypass"</span><span class="op">)</span></span>
 <span></span>
@@ -367,7 +399,7 @@
 <div class="section level3">
 <h3 id="multi-agent-teams">Multi-agent teams<a class="anchor" aria-label="anchor" href="#multi-agent-teams"></a>
 </h3>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fixed fan-out: one worker per task</span></span>
 <span><span class="fu"><a href="reference/team_run.html">team_run</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"review R/a.R"</span>, <span class="st">"review R/b.R"</span>, <span class="st">"review R/c.R"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -383,7 +415,7 @@
 <span>  worktree   <span class="op">=</span> <span class="cn">TRUE</span>                                 <span class="co"># each worker in its own git worktree</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The board is dependency-aware and atomic (<code>BEGIN IMMEDIATE</code>), workers back off while a blocker is still in progress, and a crashed worker’s task is auto-reclaimed after <code>reclaim_timeout</code> so its dependents aren’t blocked forever (<code><a href="reference/board_reclaim_stale.html">board_reclaim_stale()</a></code>). <code><a href="reference/board_watch.html">board_watch()</a></code> (built on <a href="https://watcher.r-lib.org" class="external-link">watcher</a>) drives an event-driven coordinator / live board view, falling back to polling when unavailable.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># LLM-lead coordinator: a lead model decomposes a goal into a task DAG, the team</span></span>
 <span><span class="co"># runs it, then the lead reviews results and re-plans -- up to max_rounds.</span></span>
 <span><span class="fu"><a href="reference/team_lead.html">team_lead</a></span><span class="op">(</span><span class="st">"Refactor the parser and add tests for it"</span>, max_rounds <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
@@ -396,13 +428,13 @@
 <h3 id="sandboxed-r-execution">Sandboxed R execution<a class="anchor" aria-label="anchor" href="#sandboxed-r-execution"></a>
 </h3>
 <p><code>RunR</code> executes R code in a <code>callr</code> subprocess with a scrubbed environment (no API keys visible) and wall-clock timeout:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true"></a><span class="fu">{</span> <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">false</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb18-1"><a href="#cb18-1" tabindex="-1"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
+<span id="cb18-2"><a href="#cb18-2" tabindex="-1"></a><span class="fu">{</span> <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">false</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="eval-harness-vitals">Eval harness (vitals)<a class="anchor" aria-label="anchor" href="#eval-harness-vitals"></a>
 </h3>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Run all eval tasks (measures tool use, permissions, data exploration)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"inst/evals/setup_eval_client.R"</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"inst/evals/eval.R"</span><span class="op">)</span></span>
@@ -412,10 +444,10 @@
 <h3 id="observability-opentelemetry">Observability (OpenTelemetry)<a class="anchor" aria-label="anchor" href="#observability-opentelemetry"></a>
 </h3>
 <p>codeagent inherits <a href="https://ellmer.tidyverse.org" class="external-link">ellmer</a>’s built-in OpenTelemetry instrumentation: when a tracer is active, ellmer emits spans for every chat request and tool call. codeagent adds a top-level <code>codeagent.query</code> span so those chat/tool spans nest under a codeagent-owned parent (mirroring an <code>invoke_agent -&gt; chat -&gt; tool</code> hierarchy).</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_otel_status.html">codeagent_otel_status</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># reports whether otel/otelsdk are installed + tracing is active</span></span></code></pre></div>
 <p>To enable, install the SDK and configure an exporter <em>before</em> launching codeagent:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"otel"</span>, <span class="st">"otelsdk"</span><span class="op">)</span><span class="op">)</span>   <span class="co"># otelsdk needs system Protobuf</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>OTEL_TRACES_EXPORTER <span class="op">=</span> <span class="st">"stdout"</span><span class="op">)</span>               <span class="co"># or an OTLP endpoint:</span></span>
 <span><span class="co"># Sys.setenv(OTEL_EXPORTER_OTLP_ENDPOINT = "http://localhost:4318")</span></span></code></pre></div>
@@ -429,7 +461,7 @@
 <div class="section level3">
 <h3 id="ide-addin">IDE Addin<a class="anchor" aria-label="anchor" href="#ide-addin"></a>
 </h3>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Run from RStudio / Positron Addins menu:</span></span>
 <span><span class="co"># "codeagent: Open chat" -- opens Shiny app for current file/project</span></span>
 <span><span class="co"># "codeagent: Chat about selection" -- sends selected text as context</span></span></code></pre></div>
@@ -437,7 +469,7 @@
 <div class="section level3">
 <h3 id="mcp-server">MCP server<a class="anchor" aria-label="anchor" href="#mcp-server"></a>
 </h3>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_mcp_server.html">codeagent_mcp_server</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co"># Claude Desktop: {"mcpServers": {"codeagent": {"command": "Rscript",</span></span>
 <span><span class="co">#   "args": ["-e", "codeagent::codeagent_mcp_server()"]}}}</span></span></code></pre></div>
@@ -445,25 +477,25 @@
 <div class="section level3">
 <h3 id="cli">CLI<a class="anchor" aria-label="anchor" href="#cli"></a>
 </h3>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/install_codeagent_cli.html">install_codeagent_cli</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># installs the `codeagent` terminal command</span></span></code></pre></div>
-<div class="sourceCode" id="cb21"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true"></a><span class="ex">codeagent</span>                 # interactive REPL (default permission mode)</span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true"></a><span class="ex">codeagent</span> -y              # REPL in bypass mode (skip all permission prompts)</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true"></a><span class="ex">codeagent</span> <span class="st">"List .R files"</span> # one-shot query</span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true"></a><span class="ex">codeagent</span> -p <span class="st">"query"</span>      # one-shot, non-interactive</span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true"></a><span class="ex">codeagent</span> app             # Shiny UI</span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true"></a><span class="ex">codeagent</span> app -y          # Shiny UI in bypass mode</span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true"></a><span class="ex">codeagent</span> -m sonnet       # override model</span>
-<span id="cb21-8"><a href="#cb21-8" aria-hidden="true"></a><span class="ex">codeagent</span> skills list</span>
-<span id="cb21-9"><a href="#cb21-9" aria-hidden="true"></a><span class="ex">codeagent</span> skills install --package btw</span>
-<span id="cb21-10"><a href="#cb21-10" aria-hidden="true"></a><span class="ex">codeagent</span> mcp</span>
-<span id="cb21-11"><a href="#cb21-11" aria-hidden="true"></a><span class="ex">codeagent</span> info --json</span></code></pre></div>
+<div class="sourceCode" id="cb25"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb25-1"><a href="#cb25-1" tabindex="-1"></a><span class="ex">codeagent</span>                 <span class="co"># interactive REPL (default permission mode)</span></span>
+<span id="cb25-2"><a href="#cb25-2" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-y</span>              <span class="co"># REPL in bypass mode (skip all permission prompts)</span></span>
+<span id="cb25-3"><a href="#cb25-3" tabindex="-1"></a><span class="ex">codeagent</span> <span class="st">"List .R files"</span> <span class="co"># one-shot query</span></span>
+<span id="cb25-4"><a href="#cb25-4" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-p</span> <span class="st">"query"</span>      <span class="co"># one-shot, non-interactive</span></span>
+<span id="cb25-5"><a href="#cb25-5" tabindex="-1"></a><span class="ex">codeagent</span> app             <span class="co"># Shiny UI</span></span>
+<span id="cb25-6"><a href="#cb25-6" tabindex="-1"></a><span class="ex">codeagent</span> app <span class="at">-y</span>          <span class="co"># Shiny UI in bypass mode</span></span>
+<span id="cb25-7"><a href="#cb25-7" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-m</span> sonnet       <span class="co"># override model</span></span>
+<span id="cb25-8"><a href="#cb25-8" tabindex="-1"></a><span class="ex">codeagent</span> skills list</span>
+<span id="cb25-9"><a href="#cb25-9" tabindex="-1"></a><span class="ex">codeagent</span> skills install <span class="at">--package</span> btw</span>
+<span id="cb25-10"><a href="#cb25-10" tabindex="-1"></a><span class="ex">codeagent</span> mcp</span>
+<span id="cb25-11"><a href="#cb25-11" tabindex="-1"></a><span class="ex">codeagent</span> info <span class="at">--json</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="shiny-app">Shiny app<a class="anchor" aria-label="anchor" href="#shiny-app"></a>
 </h3>
 <p>Four themes, an accordion sidebar, and a tabbed output panel:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>,</span>
 <span>  theme         <span class="op">=</span> <span class="st">"default"</span>,   <span class="co"># "default" | "flatly" | "darkly" | "glass"</span></span>
@@ -480,29 +512,31 @@
 <div class="section level2">
 <h2 id="configuration-settingsjson">Configuration (settings.json)<a class="anchor" aria-label="anchor" href="#configuration-settingsjson"></a>
 </h2>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/use_codeagent_settings.html">use_codeagent_settings</a></span><span class="op">(</span>scope <span class="op">=</span> <span class="st">"user"</span><span class="op">)</span>   <span class="co"># scaffold ~/.codeagent/settings.json</span></span></code></pre></div>
 <p>Precedence (low to high): package defaults &lt; <code>~/.codeagent/settings.json</code> &lt; <code>.codeagent/settings.json</code> &lt; environment variables.</p>
-<blockquote><p><strong>Config directory.</strong> User-global config/sessions live in the OS-standard location (<code>rappdirs::user_config_dir("codeagent")</code>; e.g. <code>~/.config/codeagent</code> on Linux). A legacy <code>~/.codeagent</code> is migrated automatically on first use (non-destructive copy), and still read as a fallback. Override with <code>CODEAGENT_HOME</code>, or migrate manually via <code><a href="reference/migrate_config_dir.html">migrate_config_dir()</a></code>.</p></blockquote>
-<div class="sourceCode" id="cb24"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true"></a><span class="fu">{</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb24-5"><a href="#cb24-5" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb24-6"><a href="#cb24-6" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
-<span id="cb24-7"><a href="#cb24-7" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
-<span id="cb24-8"><a href="#cb24-8" aria-hidden="true"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
-<span id="cb24-9"><a href="#cb24-9" aria-hidden="true"></a>  <span class="fu">},</span></span>
-<span id="cb24-10"><a href="#cb24-10" aria-hidden="true"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
-<span id="cb24-11"><a href="#cb24-11" aria-hidden="true"></a>  <span class="dt">"tools"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb24-12"><a href="#cb24-12" aria-hidden="true"></a>    <span class="dt">"sets"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"A"</span><span class="ot">,</span> <span class="st">"B"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb24-13"><a href="#cb24-13" aria-hidden="true"></a>    <span class="dt">"capabilities"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"read"</span><span class="fu">:</span> <span class="st">"allow"</span><span class="fu">,</span> <span class="dt">"write"</span><span class="fu">:</span> <span class="st">"ask"</span><span class="fu">,</span> <span class="dt">"exec"</span><span class="fu">:</span> <span class="st">"ask"</span><span class="fu">,</span> <span class="dt">"net"</span><span class="fu">:</span> <span class="st">"deny"</span> <span class="fu">},</span></span>
-<span id="cb24-14"><a href="#cb24-14" aria-hidden="true"></a>    <span class="dt">"overrides"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"btw_tool_git_commit"</span><span class="fu">:</span> <span class="st">"deny"</span><span class="fu">,</span> <span class="dt">"Format"</span><span class="fu">:</span> <span class="st">"ask"</span> <span class="fu">}</span></span>
-<span id="cb24-15"><a href="#cb24-15" aria-hidden="true"></a>  <span class="fu">},</span></span>
-<span id="cb24-16"><a href="#cb24-16" aria-hidden="true"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
-<span id="cb24-17"><a href="#cb24-17" aria-hidden="true"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{},</span></span>
-<span id="cb24-18"><a href="#cb24-18" aria-hidden="true"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
-<span id="cb24-19"><a href="#cb24-19" aria-hidden="true"></a><span class="fu">}</span></span></code></pre></div>
+<blockquote>
+<p><strong>Config directory.</strong> User-global config/sessions live in the OS-standard location (<code>rappdirs::user_config_dir("codeagent")</code>; e.g. <code>~/.config/codeagent</code> on Linux). A legacy <code>~/.codeagent</code> is migrated automatically on first use (non-destructive copy), and still read as a fallback. Override with <code>CODEAGENT_HOME</code>, or migrate manually via <code><a href="reference/migrate_config_dir.html">migrate_config_dir()</a></code>.</p>
+</blockquote>
+<div class="sourceCode" id="cb28"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb28-1"><a href="#cb28-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb28-2"><a href="#cb28-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb28-3"><a href="#cb28-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb28-4"><a href="#cb28-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-5"><a href="#cb28-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb28-6"><a href="#cb28-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb28-7"><a href="#cb28-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb28-8"><a href="#cb28-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
+<span id="cb28-9"><a href="#cb28-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb28-10"><a href="#cb28-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
+<span id="cb28-11"><a href="#cb28-11" tabindex="-1"></a>  <span class="dt">"tools"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb28-12"><a href="#cb28-12" tabindex="-1"></a>    <span class="dt">"sets"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"A"</span><span class="ot">,</span> <span class="st">"B"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb28-13"><a href="#cb28-13" tabindex="-1"></a>    <span class="dt">"capabilities"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"read"</span><span class="fu">:</span> <span class="st">"allow"</span><span class="fu">,</span> <span class="dt">"write"</span><span class="fu">:</span> <span class="st">"ask"</span><span class="fu">,</span> <span class="dt">"exec"</span><span class="fu">:</span> <span class="st">"ask"</span><span class="fu">,</span> <span class="dt">"net"</span><span class="fu">:</span> <span class="st">"deny"</span> <span class="fu">},</span></span>
+<span id="cb28-14"><a href="#cb28-14" tabindex="-1"></a>    <span class="dt">"overrides"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"btw_tool_git_commit"</span><span class="fu">:</span> <span class="st">"deny"</span><span class="fu">,</span> <span class="dt">"Format"</span><span class="fu">:</span> <span class="st">"ask"</span> <span class="fu">}</span></span>
+<span id="cb28-15"><a href="#cb28-15" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb28-16"><a href="#cb28-16" tabindex="-1"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
+<span id="cb28-17"><a href="#cb28-17" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{},</span></span>
+<span id="cb28-18"><a href="#cb28-18" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
+<span id="cb28-19"><a href="#cb28-19" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <div class="section level3">
 <h3 id="tool-permission-control-settingstools">Tool permission control (<code>settings$tools</code>)<a class="anchor" aria-label="anchor" href="#tool-permission-control-settingstools"></a>
 </h3>
@@ -514,27 +548,27 @@
 <col width="40%">
 <col width="36%">
 </colgroup>
-<thead><tr class="header">
+<thead><tr>
 <th>Key</th>
 <th>Purpose</th>
 <th>Values</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td><code>overrides</code></td>
 <td>Decide a <strong>specific tool</strong> by name</td>
 <td>
 <code>"allow"</code> / <code>"deny"</code> / <code>"ask"</code>
 </td>
 </tr>
-<tr class="even">
+<tr>
 <td><code>capabilities</code></td>
 <td>Decide by <strong>capability class</strong>
 </td>
 <td>keys <code>read</code>/<code>write</code>/<code>exec</code>/<code>net</code> → <code>allow</code>/<code>deny</code>/<code>ask</code>
 </td>
 </tr>
-<tr class="odd">
+<tr>
 <td><code>sets</code></td>
 <td>Which tool <strong>sets</strong> to register</td>
 <td>
@@ -550,7 +584,12 @@
 <h2 id="supported-providers">Supported providers<a class="anchor" aria-label="anchor" href="#supported-providers"></a>
 </h2>
 <table class="table">
-<thead><tr class="header">
+<colgroup>
+<col width="43%">
+<col width="26%">
+<col width="30%">
+</colgroup>
+<thead><tr>
 <th>Provider</th>
 <th>
 <code>settings.json</code> <code>"provider"</code>
@@ -558,62 +597,62 @@
 <th>Notes</th>
 </tr></thead>
 <tbody>
-<tr class="odd">
+<tr>
 <td>OpenAI-compatible</td>
 <td><code>"openai_compatible"</code></td>
 <td>Databricks, Azure, vLLM, custom</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Anthropic</td>
 <td><code>"anthropic"</code></td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr>
 <td>OpenAI</td>
 <td><code>"openai"</code></td>
 <td></td>
 </tr>
-<tr class="even">
+<tr>
 <td>Google Gemini</td>
 <td><code>"google_gemini"</code></td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr>
 <td>DeepSeek</td>
 <td><code>"deepseek"</code></td>
 <td>reasoning_content → ContentThinking</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Groq</td>
 <td><code>"groq"</code></td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr>
 <td>GitHub Copilot</td>
 <td><code>"github"</code></td>
 <td></td>
 </tr>
-<tr class="even">
+<tr>
 <td>Ollama</td>
 <td><code>"ollama"</code></td>
 <td>local</td>
 </tr>
-<tr class="odd">
+<tr>
 <td>Posit AI</td>
 <td><code>"posit"</code></td>
 <td>OAuth device flow</td>
 </tr>
-<tr class="even">
+<tr>
 <td>Databricks</td>
 <td><code>"databricks"</code></td>
 <td></td>
 </tr>
-<tr class="odd">
+<tr>
 <td>AWS Bedrock</td>
 <td><code>"aws_bedrock"</code></td>
 <td></td>
 </tr>
-<tr class="even">
+<tr>
 <td>Azure OpenAI</td>
 <td><code>"azure_openai"</code></td>
 <td></td>

@@ -10,17 +10,18 @@ register_team_tool(chat, model = NULL, cwd = getwd())
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - model:
-    
-    Character. Default model for team agents.
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
 
-  - cwd:
-    
-    Character. Working directory.
+- model:
+
+  Character. Default model for team agents.
+
+- cwd:
+
+  Character. Working directory.
 
 ## Value
 

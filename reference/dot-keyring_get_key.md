@@ -16,9 +16,9 @@ Looks up `key_name` in order:
 
 ## Arguments
 
-  - key\_name:
-    
-    Character. Environment variable / keyring username.
+- key_name:
+
+  Character. Environment variable / keyring username.
 
 ## Value
 

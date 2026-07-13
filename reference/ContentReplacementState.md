@@ -14,19 +14,19 @@ exceeded. This mirrors Claude Code's `ContentReplacementState`.
 
 ### Public methods
 
-  - [`ContentReplacementState$new()`](#method-ContentReplacementState-new)
+- [`ContentReplacementState$new()`](#method-ContentReplacementState-new)
 
-  - [`ContentReplacementState$freeze()`](#method-ContentReplacementState-freeze)
+- [`ContentReplacementState$freeze()`](#method-ContentReplacementState-freeze)
 
-  - [`ContentReplacementState$maybe_replace()`](#method-ContentReplacementState-maybe_replace)
+- [`ContentReplacementState$maybe_replace()`](#method-ContentReplacementState-maybe_replace)
 
-  - [`ContentReplacementState$replaced_ids()`](#method-ContentReplacementState-replaced_ids)
+- [`ContentReplacementState$replaced_ids()`](#method-ContentReplacementState-replaced_ids)
 
-  - [`ContentReplacementState$reset()`](#method-ContentReplacementState-reset)
+- [`ContentReplacementState$reset()`](#method-ContentReplacementState-reset)
 
-  - [`ContentReplacementState$clone()`](#method-ContentReplacementState-clone)
+- [`ContentReplacementState$clone()`](#method-ContentReplacementState-clone)
 
------
+------------------------------------------------------------------------
 
 ### Method `new()`
 
@@ -38,11 +38,11 @@ Create a new state object.
 
 #### Arguments
 
-  - `soft_ceiling`:
-    
-    Integer. Token threshold to trigger replacement.
+- `soft_ceiling`:
 
------
+  Integer. Token threshold to trigger replacement.
+
+------------------------------------------------------------------------
 
 ### Method `freeze()`
 
@@ -54,11 +54,11 @@ Freeze a result (exclude it from replacement).
 
 #### Arguments
 
-  - `tool_use_id`:
-    
-    Character.
+- `tool_use_id`:
 
------
+  Character.
+
+------------------------------------------------------------------------
 
 ### Method `maybe_replace()`
 
@@ -70,15 +70,16 @@ Check usage and replace large old results if over ceiling.
 
 #### Arguments
 
-  - `chat`:
-    
-    An `ellmer::Chat` object (modified in place).
+- `chat`:
+
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object (modified in place).
 
 #### Returns
 
 Invisibly NULL.
 
------
+------------------------------------------------------------------------
 
 ### Method `replaced_ids()`
 
@@ -88,7 +89,7 @@ Return IDs of replaced results.
 
     ContentReplacementState$replaced_ids()
 
------
+------------------------------------------------------------------------
 
 ### Method `reset()`
 
@@ -98,7 +99,7 @@ Reset state.
 
     ContentReplacementState$reset()
 
------
+------------------------------------------------------------------------
 
 ### Method `clone()`
 
@@ -110,6 +111,6 @@ The objects of this class are cloneable with this method.
 
 #### Arguments
 
-  - `deep`:
-    
-    Whether to make a deep clone.
+- `deep`:
+
+  Whether to make a deep clone.

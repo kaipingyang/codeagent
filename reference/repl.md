@@ -2,11 +2,16 @@
 
 A terminal read-eval-print loop for the agent. Reuses one
 `CodeagentClient` so history accumulates in the Chat object across
-turns. Mirrors the Shiny `agent_loop()` turn pipeline so long sessions
-stay healthy: per-turn compaction, `<system-reminder>` injection, skill
-preprocessing, and auto-save – the same harness objects the app uses.
+turns. Mirrors the Shiny
+[`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md)
+turn pipeline so long sessions stay healthy: per-turn compaction,
+`<system-reminder>` injection, skill preprocessing, and auto-save – the
+same harness objects the app uses.
 
 Slash commands: `/model`, `/compact`, `/clear`, `/sessions`, `/budget`,
-`/help`, `/exit`. `/<skill>` invokes a skill via `load_skill_prompt()`.
+`/help`, `/exit`. `/<skill>` invokes a skill via
+[`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md).
 The line parser `.repl_dispatch()` is a pure function (testable); the
-loop `codeagent_console()` handles IO + the turn pipeline.
+loop
+[`codeagent_console()`](https://kaipingyang.github.io/codeagent/reference/codeagent_console.md)
+handles IO + the turn pipeline.

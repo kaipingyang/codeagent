@@ -17,21 +17,21 @@ build_codebase_store(
 
 ## Arguments
 
-  - cwd:
-    
-    Character. Project root.
+- cwd:
 
-  - location:
-    
-    Character. Store path (default `.codeagent/rag.duckdb`).
+  Character. Project root.
 
-  - globs:
-    
-    Character vector of file globs to index.
+- location:
 
-  - overwrite:
-    
-    Logical. Recreate the store if it exists.
+  Character. Store path (default `.codeagent/rag.duckdb`).
+
+- globs:
+
+  Character vector of file globs to index.
+
+- overwrite:
+
+  Logical. Recreate the store if it exists.
 
 ## Value
 
