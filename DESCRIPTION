@@ -13,7 +13,6 @@ License: MIT + file LICENSE
 License_is_FOSS: yes
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.3
 VignetteBuilder: knitr
 Imports:
     ellmer (>= 0.4.1.9000),
@@ -74,3 +73,4 @@ Remotes:
     r-lib/Rapp
 URL: https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues
+Config/roxygen2/version: 8.0.0

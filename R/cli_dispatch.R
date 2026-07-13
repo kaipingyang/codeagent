@@ -17,26 +17,35 @@ NULL
 
 #' Dispatch CLI arguments to a command + rest vector.
 #'
-#' Determines which subcommand to run given raw positional argv and the
-#' `print_mode` flag.  Used by `exec/codeagent.R` to keep dispatch logic
-#' testable.
-#'
-#' Rules (in order):
-#' 1. If `argv[[1]]` is a known subcommand name, use it.
-#' 2. If `print_mode = TRUE` or `argv` is non-empty, treat as a one-shot
-#'    `run` (the prompt comes from `argv`).
-#' 3. Otherwise default to `chat` (interactive REPL).
-#'
 #' @param argv Character vector of positional arguments (no flags).
 #' @param print_mode Logical. TRUE when `-p`/`--print` was passed.
 #' @return Named list: `cmd` (character), `rest` (character vector).
 #' @keywords internal
 .ca_dispatch <- function(argv = character(), print_mode = FALSE) {
-  known <- c("run", "chat", "repl", "app", "skills", "mcp", "info")
+  known <- c("run", "chat", "repl", "app", "sessions", "skills", "mcp", "info")
   argv  <- as.character(argv %||% character())
   if (length(argv) && argv[[1L]] %in% known)
     return(list(cmd = argv[[1L]], rest = argv[-1L]))
   if (isTRUE(print_mode) || length(argv) > 0L)
     return(list(cmd = "run", rest = argv))
   list(cmd = "chat", rest = character())
+}
+
+#' Format and print agent output.
+#'
+#' @param x Character scalar (agent response).
+#' @param output_fmt Character. "text" (default) or "json".
+#' @param session_id Character or NULL. Included in JSON output.
+#' @keywords internal
+.ca_format_output <- function(x, output_fmt = "text", session_id = NULL) {
+  if (identical(output_fmt, "json")) {
+    cat(jsonlite::toJSON(
+      list(response   = if (is.character(x)) x else format(x),
+           session_id = session_id %||% NA_character_),
+      auto_unbox = TRUE), "\n")
+  } else {
+    if (is.character(x)) cat(paste(x, collapse = "\n"), "\n")
+    else cat(format(x), "\n")
+  }
+  invisible(NULL)
 }
