@@ -9,7 +9,8 @@ An R-native agentic coding assistant built on [ellmer](https://ellmer.tidyverse.
 ```r
 pak::pak(c("tidyverse/ellmer", "kaipingyang/codeagent"))
 
-# Optional: btw for R-environment tools (docs, git, pkg, env, etc.)
+# Recommended: btw adds R-environment tools (docs, git, pkg, file editing, etc.)
+# Without btw the agent has minimal tooling for real R projects.
 pak::pak("posit-dev/btw")
 ```
 
