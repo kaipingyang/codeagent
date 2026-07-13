@@ -13,15 +13,15 @@ due to context exhaustion or diminishing returns.
 
 ### Public methods
 
-- [`BudgetTracker$reset()`](#method-BudgetTracker-reset)
+  - [`BudgetTracker$reset()`](#method-BudgetTracker-reset)
 
-- [`BudgetTracker$should_stop()`](#method-BudgetTracker-should_stop)
+  - [`BudgetTracker$should_stop()`](#method-BudgetTracker-should_stop)
 
-- [`BudgetTracker$state()`](#method-BudgetTracker-state)
+  - [`BudgetTracker$state()`](#method-BudgetTracker-state)
 
-- [`BudgetTracker$clone()`](#method-BudgetTracker-clone)
+  - [`BudgetTracker$clone()`](#method-BudgetTracker-clone)
 
-------------------------------------------------------------------------
+-----
 
 ### Method `reset()`
 
@@ -31,7 +31,7 @@ Reset the tracker state.
 
     BudgetTracker$reset()
 
-------------------------------------------------------------------------
+-----
 
 ### Method `should_stop()`
 
@@ -48,27 +48,27 @@ Determine whether the agent loop should stop.
 
 #### Arguments
 
-- `current_tokens`:
+  - `current_tokens`:
+    
+    Integer. Current total token count.
 
-  Integer. Current total token count.
+  - `max_tokens`:
+    
+    Integer. Maximum allowed tokens (model context limit).
 
-- `max_tokens`:
+  - `iteration`:
+    
+    Integer. Current loop iteration (1-indexed).
 
-  Integer. Maximum allowed tokens (model context limit).
-
-- `iteration`:
-
-  Integer. Current loop iteration (1-indexed).
-
-- `is_subagent`:
-
-  Logical. If TRUE, budget limits are not applied.
+  - `is_subagent`:
+    
+    Logical. If TRUE, budget limits are not applied.
 
 #### Returns
 
 Logical. TRUE if the loop should stop.
 
-------------------------------------------------------------------------
+-----
 
 ### Method `state()`
 
@@ -82,7 +82,7 @@ Return current tracker state.
 
 Named list with `prev_tokens` and `same_count`.
 
-------------------------------------------------------------------------
+-----
 
 ### Method `clone()`
 
@@ -94,6 +94,6 @@ The objects of this class are cloneable with this method.
 
 #### Arguments
 
-- `deep`:
-
-  Whether to make a deep clone.
+  - `deep`:
+    
+    Whether to make a deep clone.

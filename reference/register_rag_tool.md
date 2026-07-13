@@ -12,18 +12,17 @@ register_rag_tool(chat, cwd = getwd(), store = NULL)
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - cwd:
+    
+    Character. Project root.
 
-- cwd:
-
-  Character. Project root.
-
-- store:
-
-  Optional pre-built ragnar store (skips rebuilding).
+  - store:
+    
+    Optional pre-built ragnar store (skips rebuilding).
 
 ## Value
 

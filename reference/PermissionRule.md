@@ -15,21 +15,21 @@ PermissionRule(
 
 ## Arguments
 
-- tool_name:
+  - tool\_name:
+    
+    Character. Tool name pattern (supports `*` wildcard).
 
-  Character. Tool name pattern (supports `*` wildcard).
+  - behavior:
+    
+    Character. One of `"allow"`, `"deny"`, `"ask"`.
 
-- behavior:
+  - source:
+    
+    Character. Rule source for priority ordering.
 
-  Character. One of `"allow"`, `"deny"`, `"ask"`.
-
-- source:
-
-  Character. Rule source for priority ordering.
-
-- rule_content:
-
-  Character or NULL. Fine-grained condition (e.g. `"npm test:*"`).
+  - rule\_content:
+    
+    Character or NULL. Fine-grained condition (e.g. `"npm test:*"`).
 
 ## Value
 

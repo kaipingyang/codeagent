@@ -10,14 +10,13 @@ register_todo_tool(chat, session_id = "default")
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
-
-- session_id:
-
-  Character. Session id for the todo file.
+  - session\_id:
+    
+    Character. Session id for the todo file.
 
 ## Value
 

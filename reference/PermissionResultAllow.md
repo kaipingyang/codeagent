@@ -10,9 +10,9 @@ PermissionResultAllow(updated_input = NULL)
 
 ## Arguments
 
-- updated_input:
-
-  List or NULL. Modified tool input (if any).
+  - updated\_input:
+    
+    List or NULL. Modified tool input (if any).
 
 ## Value
 

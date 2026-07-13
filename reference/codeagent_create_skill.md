@@ -10,22 +10,18 @@ codeagent_create_skill(client = NULL, mode = "console", ...)
 
 ## Arguments
 
-- client:
+  - client:
+    
+    A codeagent client or an `ellmer::Chat` (its chat is reused).
 
-  A codeagent client or an
-  [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  (its chat is reused).
+  - mode:
+    
+    One of `"console"`, `"app"`, `"client"`, `"tool"`.
 
-- mode:
-
-  One of `"console"`, `"app"`, `"client"`, `"tool"`.
-
-- ...:
-
-  Passed to
-  [`btw::btw_task_create_skill()`](https://posit-dev.github.io/btw/reference/btw_task_create_skill.html).
+  - ...:
+    
+    Passed to `btw::btw_task_create_skill()`.
 
 ## Value
 
-See
-[`btw::btw_task_create_skill()`](https://posit-dev.github.io/btw/reference/btw_task_create_skill.html).
+See `btw::btw_task_create_skill()`.

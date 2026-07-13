@@ -10,21 +10,21 @@ board_send_message(db_path, sender, body, recipient = NULL)
 
 ## Arguments
 
-- db_path:
+  - db\_path:
+    
+    Character. Board path.
 
-  Character. Board path.
+  - sender:
+    
+    Character. Sender id.
 
-- sender:
+  - body:
+    
+    Character. Message body.
 
-  Character. Sender id.
-
-- body:
-
-  Character. Message body.
-
-- recipient:
-
-  Character or NULL. Target agent (NULL = broadcast).
+  - recipient:
+    
+    Character or NULL. Target agent (NULL = broadcast).
 
 ## Value
 

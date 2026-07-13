@@ -19,35 +19,34 @@ register_agent_tool(
 
 ## Arguments
 
-- chat:
+  - chat:
+    
+    An `ellmer::Chat` object.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  object.
+  - model:
+    
+    Character. Model for sub-agents (fallback).
 
-- model:
+  - mode:
+    
+    Character. Permission mode.
 
-  Character. Model for sub-agents (fallback).
+  - rules:
+    
+    List. Permission rules.
 
-- mode:
+  - max\_turns:
+    
+    Integer. Max turns per sub-agent.
 
-  Character. Permission mode.
+  - worktree\_isolation:
+    
+    Logical. Run sub-agents in isolated git worktrees.
 
-- rules:
-
-  List. Permission rules.
-
-- max_turns:
-
-  Integer. Max turns per sub-agent.
-
-- worktree_isolation:
-
-  Logical. Run sub-agents in isolated git worktrees.
-
-- ask_fn:
-
-  Function or NULL. Parent permission callback forwarded to the
-  sub-agent (which runs in "bubble" mode).
+  - ask\_fn:
+    
+    Function or NULL. Parent permission callback forwarded to the
+    sub-agent (which runs in "bubble" mode).
 
 ## Value
 

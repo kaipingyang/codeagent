@@ -10,13 +10,13 @@ PermissionResultDeny(message = "", interrupt = FALSE)
 
 ## Arguments
 
-- message:
+  - message:
+    
+    Character. Reason for denial.
 
-  Character. Reason for denial.
-
-- interrupt:
-
-  Logical. Whether to interrupt the agent.
+  - interrupt:
+    
+    Logical. Whether to interrupt the agent.
 
 ## Value
 

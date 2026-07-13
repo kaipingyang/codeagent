@@ -20,30 +20,29 @@ ephemeral.
 
 ## Arguments
 
-- sub_chat:
+  - sub\_chat:
+    
+    An `ellmer::Chat` for the sub-agent.
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-  for the sub-agent.
+  - prompt:
+    
+    Character. The task prompt.
 
-- prompt:
+  - max\_turns:
+    
+    Integer. Max turns (currently single-shot chat).
 
-  Character. The task prompt.
+  - persist:
+    
+    Logical. Save the sub-agent session to disk.
 
-- max_turns:
+  - cwd:
+    
+    Character. Project dir for session storage.
 
-  Integer. Max turns (currently single-shot chat).
-
-- persist:
-
-  Logical. Save the sub-agent session to disk.
-
-- cwd:
-
-  Character. Project dir for session storage.
-
-- description:
-
-  Character. Used as the sidechain session title.
+  - description:
+    
+    Character. Used as the sidechain session title.
 
 ## Value
 

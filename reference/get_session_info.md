@@ -10,13 +10,13 @@ get_session_info(session_id, directory = NULL)
 
 ## Arguments
 
-- session_id:
+  - session\_id:
+    
+    Character. UUID.
 
-  Character. UUID.
-
-- directory:
-
-  Character or NULL. Project directory.
+  - directory:
+    
+    Character or NULL. Project directory.
 
 ## Value
 

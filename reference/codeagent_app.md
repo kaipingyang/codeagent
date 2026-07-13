@@ -25,81 +25,78 @@ codeagent_app(
 
 ## Arguments
 
-- client:
+  - client:
+    
+    A `CodeagentClient` from `codeagent_client()`, an `ellmer::Chat`, or
+    NULL (legacy mode).
 
-  A `CodeagentClient` from
-  [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md),
-  an [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html),
-  or NULL (legacy mode).
+  - theme:
+    
+    UI theme. One of `"default"` (light Bootstrap 5), `"flatly"`,
+    `"darkly"` (dark), or `"glass"` (dark glassmorphism). The CLI
+    aliases `"light"` -\> `"default"`, `"dark"` -\> `"darkly"`, and
+    `"glassmorphism"` -\> `"glass"` are also accepted. Set at launch;
+    the live dark-mode toggle in the sidebar still flips light/dark on
+    top of the chosen theme.
 
-- theme:
+  - pinned\_skills:
+    
+    Character vector. Retained for backward compatibility; the old
+    Skills picker panel was replaced by the slash-command typeahead
+    (type `/` in the chat input), so this argument is currently unused.
 
-  UI theme. One of `"default"` (light Bootstrap 5), `"flatly"`,
-  `"darkly"` (dark), or `"glass"` (dark glassmorphism). The CLI aliases
-  `"light"` -\> `"default"`, `"dark"` -\> `"darkly"`, and
-  `"glassmorphism"` -\> `"glass"` are also accepted. Set at launch; the
-  live dark-mode toggle in the sidebar still flips light/dark on top of
-  the chosen theme.
+  - greeting:
+    
+    Character or NULL. If provided, pre-fills the chat input box with
+    this text on startup (used by the "Chat about selection" IDE addin
+    to seed the first message with the selected code). NULL leaves the
+    input empty.
 
-- pinned_skills:
+  - port:
+    
+    Integer or NULL. Shiny port (NULL = random).
 
-  Character vector. Retained for backward compatibility; the old Skills
-  picker panel was replaced by the slash-command typeahead (type `/` in
-  the chat input), so this argument is currently unused.
+  - launch.browser:
+    
+    Logical. Open in browser (default TRUE).
 
-- greeting:
+  - file\_tree\_show\_hidden:
+    
+    Logical. Show hidden dotfiles (e.g. `.git`, `.codegraph`) in the
+    file tree. Default `FALSE` to reduce clutter/lag.
 
-  Character or NULL. If provided, pre-fills the chat input box with this
-  text on startup (used by the "Chat about selection" IDE addin to seed
-  the first message with the selected code). NULL leaves the input
-  empty.
+  - file\_tree\_exclude:
+    
+    Character vector. Directory names excluded from the file tree
+    (default `renv`, `node_modules`, `packrat`, `.git`, `.Rproj.user`).
+    Set `character(0)` to disable exclusion.
 
-- port:
+  - chat\_submit\_key:
+    
+    How the chat input submits: `"enter"` (default, Enter sends,
+    Shift/Ctrl+Enter inserts a newline) or `"enter+modifier"`
+    (Ctrl/Cmd+Enter sends, plain Enter inserts a newline – friendlier
+    for long multi-line prompts). Set at launch; not switchable live.
 
-  Integer or NULL. Shiny port (NULL = random).
+  - model:
+    
+    Character. Legacy: model name.
 
-- launch.browser:
+  - permission\_mode:
+    
+    Character. Legacy: permission mode.
 
-  Logical. Open in browser (default TRUE).
+  - cwd:
+    
+    Character. Legacy: working directory.
 
-- file_tree_show_hidden:
+  - btw\_groups:
+    
+    Character vector or NULL. Legacy: btw tool groups.
 
-  Logical. Show hidden dotfiles (e.g. `.git`, `.codegraph`) in the file
-  tree. Default `FALSE` to reduce clutter/lag.
-
-- file_tree_exclude:
-
-  Character vector. Directory names excluded from the file tree (default
-  `renv`, `node_modules`, `packrat`, `.git`, `.Rproj.user`). Set
-  `character(0)` to disable exclusion.
-
-- chat_submit_key:
-
-  How the chat input submits: `"enter"` (default, Enter sends,
-  Shift/Ctrl+Enter inserts a newline) or `"enter+modifier"`
-  (Ctrl/Cmd+Enter sends, plain Enter inserts a newline – friendlier for
-  long multi-line prompts). Set at launch; not switchable live.
-
-- model:
-
-  Character. Legacy: model name.
-
-- permission_mode:
-
-  Character. Legacy: permission mode.
-
-- cwd:
-
-  Character. Legacy: working directory.
-
-- btw_groups:
-
-  Character vector or NULL. Legacy: btw tool groups.
-
-- chat:
-
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
-  Legacy alias.
+  - chat:
+    
+    An `ellmer::Chat`. Legacy alias.
 
 ## Value
 
