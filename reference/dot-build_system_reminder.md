@@ -12,22 +12,21 @@ caching.
 
 ## Arguments
 
-- settings:
+  - settings:
+    
+    List. Output of `load_settings()`.
 
-  List. Output of
-  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
+  - iteration:
+    
+    Integer. Current agent loop iteration.
 
-- iteration:
+  - cwd:
+    
+    Character. Working directory.
 
-  Integer. Current agent loop iteration.
-
-- cwd:
-
-  Character. Working directory.
-
-- query:
-
-  Character or NULL. Current user input for memory relevance.
+  - query:
+    
+    Character or NULL. Current user input for memory relevance.
 
 ## Value
 

@@ -10,9 +10,9 @@ recall_memories(max_chars = 2000L)
 
 ## Arguments
 
-- max_chars:
-
-  Integer. Cap total injected text.
+  - max\_chars:
+    
+    Integer. Cap total injected text.
 
 ## Value
 

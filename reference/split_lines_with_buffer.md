@@ -10,13 +10,13 @@ split_lines_with_buffer(buf, new_output)
 
 ## Arguments
 
-- buf:
+  - buf:
+    
+    Character(1). Current carry-over buffer.
 
-  Character(1). Current carry-over buffer.
-
-- new_output:
-
-  Character(1). New raw text to append.
+  - new\_output:
+    
+    Character(1). New raw text to append.
 
 ## Value
 

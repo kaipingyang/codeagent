@@ -10,9 +10,9 @@ Render a subset of markdown for the terminal.
 
 ## Arguments
 
-- text:
-
-  Character scalar (assistant response).
+  - text:
+    
+    Character scalar (assistant response).
 
 ## Value
 

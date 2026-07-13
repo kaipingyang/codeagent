@@ -1,8 +1,7 @@
 # Rename a session
 
 Appends a `custom-title` JSONL entry. Repeated calls are safe –
-[`list_sessions()`](https://kaipingyang.github.io/codeagent/reference/list_sessions.md)
-reads the last custom-title (most recent wins).
+`list_sessions()` reads the last custom-title (most recent wins).
 
 ## Usage
 
@@ -12,17 +11,17 @@ rename_session(session_id, title, directory = NULL)
 
 ## Arguments
 
-- session_id:
+  - session\_id:
+    
+    Character. UUID of the session.
 
-  Character. UUID of the session.
+  - title:
+    
+    Character. New title (non-empty after trimming).
 
-- title:
-
-  Character. New title (non-empty after trimming).
-
-- directory:
-
-  Character or NULL. Project working directory.
+  - directory:
+    
+    Character or NULL. Project working directory.
 
 ## Value
 

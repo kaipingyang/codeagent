@@ -10,17 +10,17 @@ tag_session(session_id, tag = NULL, directory = NULL)
 
 ## Arguments
 
-- session_id:
+  - session\_id:
+    
+    Character. UUID.
 
-  Character. UUID.
+  - tag:
+    
+    Character or NULL. Tag string (NULL clears).
 
-- tag:
-
-  Character or NULL. Tag string (NULL clears).
-
-- directory:
-
-  Character or NULL. Project working directory.
+  - directory:
+    
+    Character or NULL. Project working directory.
 
 ## Value
 

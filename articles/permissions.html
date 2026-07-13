@@ -8,8 +8,8 @@
 <title>Permissions • codeagent</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
-<link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.4.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.4.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Permissions">
 </head>
 <body>
@@ -60,14 +60,13 @@
 
 
 
-
-<div class="row">
+<script src="permissions_files/accessible-code-block-0.0.1/empty-anchor.js"></script><div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Permissions</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/main/vignettes/permissions.Rmd" class="external-link"><code>vignettes/permissions.Rmd</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/HEAD/vignettes/permissions.Rmd" class="external-link"><code>vignettes/permissions.Rmd</code></a></small>
       <div class="d-none name"><code>permissions.Rmd</code></div>
     </div>
 
@@ -106,9 +105,7 @@ chat$on_tool_request  -&gt;  permission gate (.tool_gate_fn)
              +-- ask   --&gt; ask_fn():  console prompt (CLI)
                                     |  promise -&gt; Shiny Allow/Deny bar (async)
                            approved -&gt; run   /   rejected -&gt; deny</code></pre>
-<p><code>settings$tools$sets</code> (<code>"A"</code> = codeagent core,
-<code>"B"</code> = btw) decides which tool <em>sets</em> get registered;
-it does not affect the per-call decision above.</p>
+<p><code>settings$tools$sets</code> (<code>"A"</code> = codeagent core, <code>"B"</code> = btw) decides which tool <em>sets</em> get registered; it does not affect the per-call decision above.</p>
 </div>
 <div class="section level2">
 <h2 id="modes">Modes<a class="anchor" aria-label="anchor" href="#modes"></a>
@@ -125,8 +122,7 @@ it does not affect the per-call decision above.</p>
 <tbody>
 <tr class="odd">
 <td><code>default</code></td>
-<td>Read-only tools auto-allowed; risky tools
-(Write/Edit/MultiEdit/Bash/RunR) prompt</td>
+<td>Read-only tools auto-allowed; risky tools (Write/Edit/MultiEdit/Bash/RunR) prompt</td>
 </tr>
 <tr class="even">
 <td><code>plan</code></td>
@@ -160,33 +156,25 @@ it does not affect the per-call decision above.</p>
 <div class="section level2">
 <h2 id="fine-grained-rules">Fine-grained rules<a class="anchor" aria-label="anchor" href="#fine-grained-rules"></a>
 </h2>
-<p>Rules match tool arguments (mirroring Claude Code’s
-<code>Bash(git *)</code> syntax) and are evaluated first, in order:</p>
-<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(git status)"</span><span class="ot">,</span> <span class="st">"Read(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[</span><span class="st">"Bash(rm -rf *)"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[</span><span class="st">"Write(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Rules match tool arguments (mirroring Claude Code’s <code>Bash(git *)</code> syntax) and are evaluated first, in order:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(git status)"</span><span class="ot">,</span> <span class="st">"Read(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[</span><span class="st">"Bash(rm -rf *)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[</span><span class="st">"Write(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" aria-hidden="true"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
+<span id="cb3-7"><a href="#cb3-7" aria-hidden="true"></a>  <span class="fu">}</span></span>
+<span id="cb3-8"><a href="#cb3-8" aria-hidden="true"></a><span class="fu">}</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="interactive-approval-shiny">Interactive approval (Shiny)<a class="anchor" aria-label="anchor" href="#interactive-approval-shiny"></a>
 </h2>
-<p>In <code>default</code> mode the Shiny app shows an Allow/Deny bar
-above the input when a risky tool is requested; the agent loop resumes
-on your choice. <code>AskUserQuestion</code> similarly pauses to ask a
-clarifying question. Both use an async promise mechanism; the CLI path
-uses a console prompt instead.</p>
+<p>In <code>default</code> mode the Shiny app shows an Allow/Deny bar above the input when a risky tool is requested; the agent loop resumes on your choice. <code>AskUserQuestion</code> similarly pauses to ask a clarifying question. Both use an async promise mechanism; the CLI path uses a console prompt instead.</p>
 </div>
 <div class="section level2">
 <h2 id="hooks">Hooks<a class="anchor" aria-label="anchor" href="#hooks"></a>
 </h2>
-<p><code>PreToolUse</code> / <code>PermissionRequest</code> hooks (from
-<code>settings.json</code>) can return <code>"allow"</code>,
-<code>"deny"</code>, or fall through to the default gate — useful for
-policy-as-code.</p>
+<p><code>PreToolUse</code> / <code>PermissionRequest</code> hooks (from <code>settings.json</code>) can return <code>"allow"</code>, <code>"deny"</code>, or fall through to the default gate — useful for policy-as-code.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

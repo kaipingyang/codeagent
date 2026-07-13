@@ -10,13 +10,12 @@ Remove a git worktree
 
 ## Arguments
 
-- wt_path:
+  - wt\_path:
+    
+    Character. Path returned by `.create_worktree()`.
 
-  Character. Path returned by
-  [`.create_worktree()`](https://kaipingyang.github.io/codeagent/reference/dot-create_worktree.md).
-
-- base_dir:
-
-  Character. The repo the worktree belongs to (so `git worktree remove`
-  has repo context even if cwd has changed). Defaults to the current
-  directory.
+  - base\_dir:
+    
+    Character. The repo the worktree belongs to (so `git worktree
+    remove` has repo context even if cwd has changed). Defaults to the
+    current directory.

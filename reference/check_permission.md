@@ -16,24 +16,22 @@ check_permission(
 
 ## Arguments
 
-- tool_name:
+  - tool\_name:
+    
+    Character(1). Name of the tool (e.g. `"Bash"`, `"Write"`).
 
-  Character(1). Name of the tool (e.g. `"Bash"`, `"Write"`).
+  - mode:
+    
+    Character(1). One of the values in
+    [PermissionMode](https://kaipingyang.github.io/codeagent/reference/PermissionMode.md).
 
-- mode:
+  - rules:
+    
+    List of `PermissionRule()` objects (highest priority first).
 
-  Character(1). One of the values in
-  [PermissionMode](https://kaipingyang.github.io/codeagent/reference/PermissionMode.md).
-
-- rules:
-
-  List of
-  [`PermissionRule()`](https://kaipingyang.github.io/codeagent/reference/PermissionRule.md)
-  objects (highest priority first).
-
-- tool_input:
-
-  List or NULL. Tool arguments (used for Bash read-only detection).
+  - tool\_input:
+    
+    List or NULL. Tool arguments (used for Bash read-only detection).
 
 ## Value
 

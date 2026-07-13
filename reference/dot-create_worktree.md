@@ -2,8 +2,7 @@
 
 Creates a temporary git worktree so the sub-agent can make changes
 without affecting the main working tree. The caller is responsible for
-cleanup via
-[`.cleanup_worktree()`](https://kaipingyang.github.io/codeagent/reference/dot-cleanup_worktree.md).
+cleanup via `.cleanup_worktree()`.
 
 ## Usage
 
@@ -13,9 +12,9 @@ cleanup via
 
 ## Arguments
 
-- base_dir:
-
-  Character. Git repo root (default current dir).
+  - base\_dir:
+    
+    Character. Git repo root (default current dir).
 
 ## Value
 
