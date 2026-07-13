@@ -90,6 +90,15 @@ ca_self_help <- function(...) {
 # Pass yolo=TRUE or use -y/--yolo for bypass mode.
 ca_make_client <- function(permission_mode = "default",
                             btw_groups = NULL) {
+  # Show a progress spinner during startup so users know what's happening.
+  # Tool registration (btw docs, skill scanning) is the slow part (~5-20s).
+  sp <- cli::cli_progress_step(
+    "Starting codeagent (registering tools and scanning skills…)",
+    .envir = parent.frame()
+  )
+  on.exit(tryCatch(cli::cli_progress_done(id = sp), error = function(e) NULL),
+          add = TRUE)
+
   tryCatch(
     codeagent_client(
       permission_mode = permission_mode,
