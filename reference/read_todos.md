@@ -10,9 +10,9 @@ read_todos(session_id = "default")
 
 ## Arguments
 
-  - session\_id:
-    
-    Character. Session id.
+- session_id:
+
+  Character. Session id.
 
 ## Value
 

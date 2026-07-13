@@ -16,17 +16,18 @@ snip_old_tools(
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object (modified in place via set\_turns).
+- chat:
 
-  - keep\_recent\_turns:
-    
-    Integer. Number of recent turns to leave untouched.
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object (modified in place via set_turns).
 
-  - min\_chars:
-    
-    Integer. Only replace results larger than this size.
+- keep_recent_turns:
+
+  Integer. Number of recent turns to leave untouched.
+
+- min_chars:
+
+  Integer. Only replace results larger than this size.
 
 ## Value
 

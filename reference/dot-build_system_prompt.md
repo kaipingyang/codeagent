@@ -3,7 +3,7 @@
 Assembles behavioural guidance (tone, doing-tasks, conventions, tool
 use, R specifics) plus project context (CLAUDE.md, skills, permission
 mode). Constant text only – ephemeral per-turn context lives in
-`.build_system_reminder()`.
+[`.build_system_reminder()`](https://kaipingyang.github.io/codeagent/reference/dot-build_system_reminder.md).
 
 ## Usage
 
@@ -13,13 +13,14 @@ mode). Constant text only – ephemeral per-turn context lives in
 
 ## Arguments
 
-  - settings:
-    
-    List. Output of `load_settings()`.
+- settings:
 
-  - cwd:
-    
-    Character. Working directory.
+  List. Output of
+  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
+
+- cwd:
+
+  Character. Working directory.
 
 ## Value
 

@@ -12,13 +12,15 @@ switch_model(client, model)
 
 ## Arguments
 
-  - client:
-    
-    A `CodeagentClient` from `codeagent_client()`.
+- client:
 
-  - model:
-    
-    Character. New model spec/alias (see `.resolve_model_chat()`).
+  A `CodeagentClient` from
+  [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md).
+
+- model:
+
+  Character. New model spec/alias (see
+  [`.resolve_model_chat()`](https://kaipingyang.github.io/codeagent/reference/dot-resolve_model_chat.md)).
 
 ## Value
 

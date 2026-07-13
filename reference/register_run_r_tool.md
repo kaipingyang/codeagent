@@ -17,30 +17,34 @@ register_run_r_tool(
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - mode:
-    
-    Character. Permission mode (see
-    [PermissionMode](https://kaipingyang.github.io/codeagent/reference/PermissionMode.md)).
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
 
-  - rules:
-    
-    List. `PermissionRule()` objects.
+- mode:
 
-  - ask\_fn:
-    
-    Function or NULL. `function(tool_name, input) -> logical`. Called
-    when permission resolves to `"ask"`.
+  Character. Permission mode (see
+  [PermissionMode](https://kaipingyang.github.io/codeagent/reference/PermissionMode.md)).
 
-  - sandbox:
-    
-    List or NULL. Sandbox profile (see `.sandbox_profile()`). RunR runs
-    in-process so the environment cannot be scrubbed, but when the
-    sandbox is enabled, code calling shell/process/env or (when network
-    is disabled) network functions is refused.
+- rules:
+
+  List.
+  [`PermissionRule()`](https://kaipingyang.github.io/codeagent/reference/PermissionRule.md)
+  objects.
+
+- ask_fn:
+
+  Function or NULL. `function(tool_name, input) -> logical`. Called when
+  permission resolves to `"ask"`.
+
+- sandbox:
+
+  List or NULL. Sandbox profile (see
+  [`.sandbox_profile()`](https://kaipingyang.github.io/codeagent/reference/dot-sandbox_profile.md)).
+  RunR runs in-process so the environment cannot be scrubbed, but when
+  the sandbox is enabled, code calling shell/process/env or (when
+  network is disabled) network functions is refused.
 
 ## Value
 

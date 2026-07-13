@@ -12,21 +12,22 @@ register_btw_file_tools(chat, mode = "default", rules = list(), ask_fn = NULL)
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - mode:
-    
-    Character. Permission mode.
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
 
-  - rules:
-    
-    List. Permission rules.
+- mode:
 
-  - ask\_fn:
-    
-    Function or NULL.
+  Character. Permission mode.
+
+- rules:
+
+  List. Permission rules.
+
+- ask_fn:
+
+  Function or NULL.
 
 ## Value
 

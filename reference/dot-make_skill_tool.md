@@ -12,10 +12,11 @@ intent to skills and load them automatically – even without explicit
 
 ## Arguments
 
-  - cwd:
-    
-    Character. Project working directory.
+- cwd:
+
+  Character. Project working directory.
 
 ## Value
 
-An `ellmer::tool()` object, or `NULL` if no skills exist.
+An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)
+object, or `NULL` if no skills exist.

@@ -10,13 +10,14 @@ Wrap an ellmer Chat with codeagent settings into a client object
 
 ## Arguments
 
-  - chat:
-    
-    Ellmer Chat object (already equipped with tools and system prompt).
+- chat:
 
-  - settings:
-    
-    Named list from `load_settings()`.
+  Ellmer Chat object (already equipped with tools and system prompt).
+
+- settings:
+
+  Named list from
+  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
 
 ## Value
 

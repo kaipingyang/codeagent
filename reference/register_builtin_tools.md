@@ -18,42 +18,46 @@ register_builtin_tools(
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - mode:
-    
-    Character. Permission mode (see
-    [PermissionMode](https://kaipingyang.github.io/codeagent/reference/PermissionMode.md)).
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
 
-  - rules:
-    
-    List. `PermissionRule()` objects.
+- mode:
 
-  - ask\_fn:
-    
-    Function or NULL. `function(tool_name, input) -> logical`. Called
-    when permission is `"ask"`.
+  Character. Permission mode (see
+  [PermissionMode](https://kaipingyang.github.io/codeagent/reference/PermissionMode.md)).
 
-  - skip\_file\_tools:
-    
-    Logical. If `TRUE`, skip Read/Write/Edit/MultiEdit/Glob/Grep/LS and
-    register only Bash. Advanced use: set this if you want btw file
-    tools to be the *only* file tools (no absolute-path fallback).
-    Default `FALSE` means both codeagent and btw file tools coexist when
-    Path A is enabled.
+- rules:
 
-  - sandbox:
-    
-    List or NULL. Bash sandbox profile (see `.sandbox_profile()`);
-    passed through to `bash_tool()`.
+  List.
+  [`PermissionRule()`](https://kaipingyang.github.io/codeagent/reference/PermissionRule.md)
+  objects.
 
-  - async:
-    
-    Logical. If `TRUE`, register async permission-gated tool variants
-    for the Shiny path (UI-gated approvals). Default `FALSE`
-    (synchronous).
+- ask_fn:
+
+  Function or NULL. `function(tool_name, input) -> logical`. Called when
+  permission is `"ask"`.
+
+- skip_file_tools:
+
+  Logical. If `TRUE`, skip Read/Write/Edit/MultiEdit/Glob/Grep/LS and
+  register only Bash. Advanced use: set this if you want btw file tools
+  to be the *only* file tools (no absolute-path fallback). Default
+  `FALSE` means both codeagent and btw file tools coexist when Path A is
+  enabled.
+
+- sandbox:
+
+  List or NULL. Bash sandbox profile (see
+  [`.sandbox_profile()`](https://kaipingyang.github.io/codeagent/reference/dot-sandbox_profile.md));
+  passed through to
+  [`bash_tool()`](https://kaipingyang.github.io/codeagent/reference/bash_tool.md).
+
+- async:
+
+  Logical. If `TRUE`, register async permission-gated tool variants for
+  the Shiny path (UI-gated approvals). Default `FALSE` (synchronous).
 
 ## Value
 

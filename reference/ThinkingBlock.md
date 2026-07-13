@@ -10,13 +10,13 @@ ThinkingBlock(thinking, signature = "")
 
 ## Arguments
 
-  - thinking:
-    
-    Character. The thinking content.
+- thinking:
 
-  - signature:
-    
-    Character. Signature for extended thinking.
+  Character. The thinking content.
+
+- signature:
+
+  Character. Signature for extended thinking.
 
 ## Value
 

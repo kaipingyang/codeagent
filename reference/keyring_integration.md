@@ -7,9 +7,10 @@ daemon is not running, all functions fall back gracefully to
 
 Call hierarchy:
 
-  - `keyring_store_key()` – save a key (keyring preferred, .Renviron
-    fallback)
+- `keyring_store_key()` – save a key (keyring preferred, .Renviron
+  fallback)
 
-  - `keyring_get_key()` – retrieve a key (keyring -\> env var -\> "")
+- `keyring_get_key()` – retrieve a key (keyring -\> env var -\> "")
 
-  - `.keyring_available()` – runtime probe; cached per session
+- [`.keyring_available()`](https://kaipingyang.github.io/codeagent/reference/dot-keyring_available.md)
+  – runtime probe; cached per session

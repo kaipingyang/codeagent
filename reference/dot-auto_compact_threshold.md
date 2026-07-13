@@ -10,13 +10,14 @@ Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)
 
 ## Arguments
 
-  - model:
-    
-    Character. Model id/name.
+- model:
 
-  - chat:
-    
-    An `ellmer::Chat` or NULL (used to read provider-reported window).
+  Character. Model id/name.
+
+- chat:
+
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  or NULL (used to read provider-reported window).
 
 ## Value
 

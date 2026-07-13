@@ -12,13 +12,13 @@ persist_large_result(content, tool_id)
 
 ## Arguments
 
-  - content:
-    
-    Character(1). Tool output.
+- content:
 
-  - tool\_id:
-    
-    Character(1). Unique identifier for this tool call.
+  Character(1). Tool output.
+
+- tool_id:
+
+  Character(1). Unique identifier for this tool call.
 
 ## Value
 
