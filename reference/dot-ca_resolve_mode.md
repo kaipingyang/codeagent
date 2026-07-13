@@ -10,9 +10,9 @@ Resolve permission mode from the yolo flag.
 
 ## Arguments
 
-  - yolo:
-    
-    Logical. When TRUE returns "bypass", otherwise "default".
+- yolo:
+
+  Logical. When TRUE returns "bypass", otherwise "default".
 
 ## Value
 

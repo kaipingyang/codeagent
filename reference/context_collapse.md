@@ -13,13 +13,14 @@ context_collapse(chat, max_chars = 200L)
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - max\_chars:
-    
-    Integer. Max characters to retain per tool result.
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
+
+- max_chars:
+
+  Integer. Max characters to retain per tool result.
 
 ## Value
 

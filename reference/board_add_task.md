@@ -10,19 +10,19 @@ board_add_task(db_path, prompt, blocked_by = integer(0))
 
 ## Arguments
 
-  - db\_path:
-    
-    Character. Board path.
+- db_path:
 
-  - prompt:
-    
-    Character. The task prompt.
+  Character. Board path.
 
-  - blocked\_by:
-    
-    Integer vector. Task ids that must be `done` before this task can be
-    claimed (DAG edges). Default none. Blockers must already exist on
-    the board (a new task cannot create a cycle by construction).
+- prompt:
+
+  Character. The task prompt.
+
+- blocked_by:
+
+  Integer vector. Task ids that must be `done` before this task can be
+  claimed (DAG edges). Default none. Blockers must already exist on the
+  board (a new task cannot create a cycle by construction).
 
 ## Value
 

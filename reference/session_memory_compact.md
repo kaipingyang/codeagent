@@ -17,25 +17,26 @@ session_memory_compact(
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
 
-  - model:
-    
-    Character. Haiku model for summarisation.
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
 
-  - min\_messages:
-    
-    Integer. Minimum number of text messages to keep.
+- model:
 
-  - min\_tokens:
-    
-    Integer. Minimum tokens to retain.
+  Character. Haiku model for summarisation.
 
-  - max\_tokens:
-    
-    Integer. Maximum tokens for the summary section.
+- min_messages:
+
+  Integer. Minimum number of text messages to keep.
+
+- min_tokens:
+
+  Integer. Minimum tokens to retain.
+
+- max_tokens:
+
+  Integer. Maximum tokens for the summary section.
 
 ## Value
 

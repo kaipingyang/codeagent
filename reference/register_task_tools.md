@@ -12,9 +12,10 @@ register_task_tools(chat)
 
 ## Arguments
 
-  - chat:
-    
-    An `ellmer::Chat` object.
+- chat:
+
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
 
 ## Value
 

@@ -10,9 +10,9 @@ TextBlock(text)
 
 ## Arguments
 
-  - text:
-    
-    Character. The text content.
+- text:
+
+  Character. The text content.
 
 ## Value
 
