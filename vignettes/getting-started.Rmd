@@ -78,7 +78,7 @@ The recommended way to configure codeagent is a user-level settings file.
 Create it with:
 
 ```r
-codeagent::use_codeagent_md()   # creates ~/.codeagent/settings.json from template
+codeagent::use_codeagent_settings()   # creates ~/.codeagent/settings.json from template
 ```
 
 Edit the file to add your endpoint and credentials:

@@ -22,7 +22,7 @@ pak::pak("posit-dev/shinychat/pkg-r")
 Create a settings file and edit it with your endpoint:
 
 ```r
-codeagent::use_codeagent_md()   # creates ~/.codeagent/settings.json
+codeagent::use_codeagent_settings()   # creates ~/.codeagent/settings.json
 ```
 
 Minimal `~/.codeagent/settings.json`:
