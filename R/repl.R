@@ -123,6 +123,34 @@ NULL
   name %||% "tool"
 }
 
+# Animated spinner for the "waiting for first token" phase.
+# Returns NULL on non-TTY (pipe/redirect) so callers skip the spinner entirely.
+# The spinner uses the later pump loop (100 ms ticks) via on_tick= in
+# codeagent_stream(), so it animates even while blocking on the async stream.
+.make_cli_spinner <- function(msg = "Thinking") {
+  if (!tryCatch(isatty(stdout()), error = function(e) FALSE)) return(NULL)
+  frames  <- c("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
+  fi      <- 0L
+  active  <- TRUE
+  list(
+    tick = function() {
+      if (!active) return(invisible(NULL))
+      fi <<- (fi %% length(frames)) + 1L
+      cat("\r",
+          tryCatch(cli::style_dim(paste0(frames[[fi]], " ", msg, "...")),
+                   error = function(e) paste0(frames[[fi]], " ", msg, "...")),
+          sep = "")
+      utils::flush.console()
+    },
+    clear = function() {
+      if (!active) return(invisible(NULL))
+      active <<- FALSE
+      cat("\r\033[K")
+      utils::flush.console()
+    }
+  )
+}
+
 # Colored, card-style tool lines for the console TUI. cli auto-disables ANSI on
 # non-tty / NO_COLOR, so these degrade to plain text (tests see plain strings).
 #   request:  ⏺ <label>  <hint>     (cyan bold label, dim hint)
@@ -336,7 +364,8 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       model_line,
       paste0("mode:      ", mode_str, "      session: ", sid8),
       paste0("directory: ", dir_str)
-    ), padding = c(0L, 1L, 0L, 1L), border_style = "round")
+    ), padding = c(0L, 1L, 0L, 1L), border_style = "round",
+       border_col = "cyan")
     cat("\n")
 
     # Settings completeness check: emit actionable warnings for missing config
@@ -435,28 +464,24 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 
     # 3. Stream / send (with full error recovery: PTL/rate-limit/network/auth)
     if (isTRUE(stream)) {
-      # codeagent_stream() runs .turn_setup + stream loop + .turn_teardown
-      # and handles Ctrl+C gracefully (interrupt handler inside).
-      # "thinking" hint: show once before first chunk, clear on first text.
-      show_hint   <- tryCatch(isatty(stdout()), error = function(e) FALSE)
-      hint_active <- FALSE
-      if (show_hint) {
-        cat(tryCatch(cli::style_dim("\u22ef thinking"),
-                     error = function(e) "... thinking"))
-        hint_active <- TRUE
-      }
+      # Animated spinner while waiting for the first token from the model.
+      # .make_cli_spinner() returns NULL on non-TTY (pipe/redirect), so the
+      # spinner is skipped automatically in scripted / non-interactive usage.
+      sp <- .make_cli_spinner()
 
       result <- codeagent_stream(
         client, actual_input,
+        on_tick     = if (!is.null(sp)) sp$tick else NULL,
         on_delta    = function(txt) {
-          if (hint_active) { cat("\r\033[K"); hint_active <<- FALSE }
+          if (!is.null(sp)) sp$clear()
           cat(txt)
         },
         on_thinking = function(th) {
-          if (hint_active) { cat("\r\033[K"); hint_active <<- FALSE }
+          if (!is.null(sp)) sp$clear()
           cat(.fmt_thinking(th))
         },
         on_error    = function(msg, rec) {
+          if (!is.null(sp)) sp$clear()
           cat(if (nzchar(msg)) msg else "[no response]", "\n")
         },
         on_usage    = function(usage) {
@@ -482,7 +507,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         compaction_ctrl = compaction_ctrl,
         resource_state  = resource_state)
 
-      if (hint_active) cat("\r\033[K")
+      if (!is.null(sp)) sp$clear()   # ensure cleared even on error/interrupt
       if (!identical(result$stop_reason, "error")) cat("\n")
     } else {
       # Non-streaming: spinner while waiting for the response.

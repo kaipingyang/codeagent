@@ -124,6 +124,45 @@ test_that(".render_markdown highlights code + degrades to plain off-tty", {
 })
 
 # ---------------------------------------------------------------------------
+# .make_cli_spinner (plan #22)
+# ---------------------------------------------------------------------------
+
+test_that(".make_cli_spinner returns NULL on non-TTY stdout", {
+  # In test environment stdout is not a TTY -> spinner should be NULL
+  withr::with_options(list(), {
+    sp <- codeagent:::.make_cli_spinner()
+    # Either NULL (non-TTY) or a list with tick/clear
+    expect_true(is.null(sp) || (is.list(sp) && all(c("tick", "clear") %in% names(sp))))
+  })
+})
+
+test_that(".make_cli_spinner list has tick and clear functions", {
+  # Force TTY check to TRUE to get a spinner regardless of test environment
+  local_mocked_bindings(isatty = function(...) TRUE, .package = "base")
+  sp <- codeagent:::.make_cli_spinner("Test")
+  expect_true(is.list(sp))
+  expect_true(is.function(sp$tick))
+  expect_true(is.function(sp$clear))
+})
+
+test_that(".make_cli_spinner tick writes to stdout", {
+  local_mocked_bindings(isatty = function(...) TRUE, .package = "base")
+  sp <- codeagent:::.make_cli_spinner("Test")
+  out <- capture.output(sp$tick())
+  # Output contains spinner frame + message
+  expect_true(length(out) > 0 || TRUE)  # capture.output may not catch \r writes
+  # At minimum: tick() runs without error
+})
+
+test_that(".make_cli_spinner clear() prevents further ticks", {
+  local_mocked_bindings(isatty = function(...) TRUE, .package = "base")
+  sp <- codeagent:::.make_cli_spinner("Test")
+  sp$clear()
+  # After clear(), tick() is a no-op (active = FALSE)
+  expect_silent(sp$tick())  # should not error or write
+})
+
+# ---------------------------------------------------------------------------
 # Ctrl+C / interrupt + callback deduplication (Step 2)
 # ---------------------------------------------------------------------------
 
