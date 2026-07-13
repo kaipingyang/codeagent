@@ -72,8 +72,40 @@ steers it entirely through the two registered callbacks (`on_tool_request` gate,
 pak::pak(c("tidyverse/ellmer", "kaipingyang/codeagent"))
 ```
 
-Configure your endpoint in `~/.Renviron` (all `CODEAGENT_*` vars are loaded
-automatically, even under `--vanilla`):
+### Configuration (recommended: `~/.codeagent/settings.json`)
+
+The recommended way to configure codeagent is a user-level settings file.
+Create it with:
+
+```r
+codeagent::use_codeagent_md()   # creates ~/.codeagent/settings.json from template
+```
+
+Edit the file to add your endpoint and credentials:
+
+```json
+{
+  "model": "main",
+  "provider": "openai_compatible",
+  "env": {
+    "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints",
+    "CODEAGENT_MODEL": "your-main-endpoint",
+    "CODEAGENT_HEAVY_MODEL": "your-heavy-endpoint",
+    "CODEAGENT_FAST_MODEL": "your-fast-endpoint",
+    "CODEAGENT_API_KEY": "your-token"
+  },
+  "permissions": {
+    "defaultMode": "default"
+  }
+}
+```
+
+> **Note:** `CODEAGENT_API_KEY` in the `env` block is loaded at startup,
+> so you do not need to set it separately in `.Renviron`.
+
+#### Alternative: `~/.Renviron`
+
+Set the minimum required variables and restart R:
 
 ```ini
 CODEAGENT_BASE_URL=https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints
@@ -81,18 +113,25 @@ CODEAGENT_MODEL=your-main-endpoint
 CODEAGENT_API_KEY=your-token
 ```
 
-Then restart R (or run `readRenviron("~/.Renviron")`).
+All `CODEAGENT_*` variables in `~/.Renviron` are loaded automatically, even
+when running under `--vanilla` (e.g. via the CLI).
 
 ### CLI
 
+Installing codeagent does **not** automatically put a `codeagent` command on
+your PATH. Run this once after installation:
+
 ```r
-install_codeagent_cli()   # installs the `codeagent` terminal command
+codeagent::install_codeagent_cli()
 ```
+
+Then use from any terminal:
 
 ```bash
 codeagent           # interactive REPL (default permission mode)
-codeagent -y        # REPL in bypass mode (skip all permission prompts)
+codeagent -y        # bypass mode (skip all permission prompts)
 codeagent "query"   # one-shot query
+codeagent -p "query"  # one-shot, non-interactive output
 ```
 
 ## 1. Build a client

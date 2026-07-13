@@ -17,6 +17,41 @@ pak::pak("posit-dev/btw")
 pak::pak("posit-dev/shinychat/pkg-r")
 ```
 
+### Configuration
+
+Create a settings file and edit it with your endpoint:
+
+```r
+codeagent::use_codeagent_md()   # creates ~/.codeagent/settings.json
+```
+
+Minimal `~/.codeagent/settings.json`:
+
+```json
+{
+  "model": "main",
+  "provider": "openai_compatible",
+  "env": {
+    "CODEAGENT_BASE_URL": "https://YOUR-WORKSPACE/serving-endpoints",
+    "CODEAGENT_MODEL": "your-main-endpoint",
+    "CODEAGENT_API_KEY": "your-token"
+  }
+}
+```
+
+### Install CLI (once)
+
+```r
+codeagent::install_codeagent_cli()   # puts `codeagent` on your PATH
+```
+
+```bash
+codeagent       # interactive REPL
+codeagent -y    # bypass mode (skip permission prompts)
+```
+
+
+
 ## Quick start
 
 ```r
