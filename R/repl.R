@@ -16,7 +16,7 @@ NULL
 # Built-in REPL meta-commands (everything else starting with "/" is a skill).
 .REPL_META_CMDS <- c("exit", "quit", "help", "clear", "compact",
                      "model", "sessions", "budget", "rewind",
-                     "cost", "copy", "export")
+                     "cost", "copy", "export", "context")
 
 # Parse one REPL line into an action descriptor (pure, testable).
 # Returns list(action, ...). Actions:
@@ -51,6 +51,7 @@ NULL
     cost     = list(action = "cost"),
     copy     = list(action = "copy"),
     export   = list(action = "export", arg = arg),
+    context  = list(action = "context"),
     rewind   = list(action = "rewind", arg = arg),
     model    = list(action = "model", arg = arg)
   )
@@ -67,6 +68,7 @@ NULL
   "  /cost           show token usage and USD cost for this session",
   "  /copy           copy the last response to clipboard",
   "  /export [path]  export conversation to a Markdown file",
+  "  /context        show token usage breakdown by category",
   "  /<skill> [args] invoke a skill (e.g. /plan)",
   "  /help           show this help",
   "  /exit, /quit    leave the REPL",
@@ -74,6 +76,39 @@ NULL
   "  Ctrl+C Ctrl+C   exit REPL",
   sep = "\n"
 )
+
+# Compute context breakdown: returns named integer vector.
+# All values are estimated (char/3.5 heuristic).
+.context_breakdown <- function(chat, settings = list()) {
+  total  <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
+  model  <- settings$model %||% tryCatch(chat$get_model(), error = function(e) "")
+  window <- tryCatch(.model_context_window(model, chat), error = function(e) 200000L)
+
+  sp_text <- tryCatch(chat$get_system_prompt() %||% "", error = function(e) "")
+  sp_tok  <- estimate_tokens_text(sp_text)
+
+  tools    <- tryCatch(chat$get_tools(), error = function(e) list())
+  tool_tok <- if (length(tools)) {
+    tryCatch(estimate_tokens_text(jsonlite::toJSON(
+      lapply(tools, function(t) list(name = t@name,
+                                     description = t@description)),
+      auto_unbox = TRUE)), error = function(e) 0L)
+  } else 0L
+
+  mem_text <- settings$claude_md %||% ""
+  mem_tok  <- estimate_tokens_text(mem_text)
+
+  msg_tok  <- max(0L, as.integer(total) - sp_tok - tool_tok - mem_tok)
+  free_tok <- max(0L, as.integer(window) - as.integer(total))
+
+  c(system_prompt = sp_tok,
+    tools         = tool_tok,
+    memory        = mem_tok,
+    messages      = msg_tok,
+    total         = as.integer(total),
+    window        = as.integer(window),
+    free          = free_tok)
+}
 
 # Print a one-line token-budget status (only when usage is notable).
 .repl_budget_line <- function(chat, settings, force = FALSE) {
@@ -469,6 +504,40 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         if (!is.na(last))  cat(sprintf("  last turn:   $%.6f\n", last))
         if (!is.na(total)) cat(sprintf("  session:     $%.6f\n", total))
         TRUE
+      },
+      context = {
+        bd <- tryCatch(.context_breakdown(client$chat, settings),
+                       error = function(e) NULL)
+        if (is.null(bd)) { cat("[context info unavailable]\n"); TRUE } else {
+          w   <- bd["window"]
+          tot <- bd["total"]
+          pct <- function(n) sprintf("%4.1f%%", n / max(1L, w) * 100)
+          bar <- function(n, width = 18L) {
+            filled <- min(width, round(n / max(1L, w) * width))
+            tryCatch(
+              paste0(cli::col_cyan(strrep("█", filled)),
+                     cli::style_dim(strrep("░", width - filled))),
+              error = function(e)
+                paste0(strrep("|", filled), strrep(".", width - filled)))
+          }
+          cat(sprintf("\n  Window:  %s tokens\n", format(w, big.mark = ",")))
+          cat(sprintf("  Used:    %s tokens (%s)\n\n",
+                      format(tot, big.mark = ","), pct(tot)))
+          rows <- list(
+            c("system prompt",    bd["system_prompt"]),
+            c("tools (est.)",     bd["tools"]),
+            c("memory/CLAUDE.md", bd["memory"]),
+            c("messages",         bd["messages"]),
+            c("free",             bd["free"]))
+          for (r in rows) {
+            n <- as.integer(r[[2]])
+            cat(sprintf("  %-18s %7s  %5s  %s\n",
+                        r[[1]], format(n, big.mark = ","),
+                        pct(n), bar(n)))
+          }
+          cat("\n  (Breakdown is estimated; 'tools' may be inaccurate.)\n")
+          TRUE
+        }
       },
       copy = {
         # Collect all ContentText blocks from the last assistant turn
