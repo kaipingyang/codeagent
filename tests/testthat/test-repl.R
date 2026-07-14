@@ -262,3 +262,46 @@ test_that(".repl_dispatch recognises /export with path", {
   expect_equal(r$action, "export")
   expect_equal(r$arg, "myfile.md")
 })
+
+# ---------------------------------------------------------------------------
+# .context_breakdown (plan #24)
+# ---------------------------------------------------------------------------
+
+test_that(".context_breakdown returns correct fields", {
+  skip_if_not_installed("ellmer")
+  ch <- ellmer::chat_anthropic(model = "claude-haiku-4-5-20251001",
+                               credentials = function() "fake")
+  bd <- codeagent:::.context_breakdown(ch, list())
+  expect_named(bd, c("system_prompt","tools","memory","messages","total","window","free"),
+               ignore.order = TRUE)
+  expect_true(all(bd >= 0L))
+})
+
+test_that(".context_breakdown: free = window - total", {
+  skip_if_not_installed("ellmer")
+  ch <- ellmer::chat_anthropic(model = "claude-haiku-4-5-20251001",
+                               credentials = function() "fake")
+  bd <- codeagent:::.context_breakdown(ch, list())
+  expect_equal(as.integer(bd["free"]), as.integer(bd["window"]) - as.integer(bd["total"]))
+})
+
+test_that(".context_breakdown: memory > 0 when claude_md set", {
+  skip_if_not_installed("ellmer")
+  ch <- ellmer::chat_anthropic(model = "claude-haiku-4-5-20251001",
+                               credentials = function() "fake")
+  bd <- codeagent:::.context_breakdown(ch, list(claude_md = "some memory content"))
+  expect_gt(bd["memory"], 0L)
+})
+
+test_that(".context_breakdown: messages >= 0 (never negative)", {
+  skip_if_not_installed("ellmer")
+  ch <- ellmer::chat_anthropic(model = "claude-haiku-4-5-20251001",
+                               credentials = function() "fake")
+  bd <- codeagent:::.context_breakdown(ch, list(claude_md = paste(rep("x",10000), collapse="")))
+  expect_gte(bd["messages"], 0L)
+})
+
+test_that(".repl_dispatch recognises /context", {
+  r <- codeagent:::.repl_dispatch("/context")
+  expect_equal(r$action, "context")
+})
