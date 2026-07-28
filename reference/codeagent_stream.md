@@ -14,6 +14,7 @@ codeagent_stream(
   client,
   input,
   ...,
+  on_tick = NULL,
   controller = NULL,
   session_id = NULL,
   iteration = 1L,
@@ -37,6 +38,16 @@ codeagent_stream(
 - input:
 
   Character scalar. The user message.
+
+- ...:
+
+  Passed to
+  [`codeagent_stream_async()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.md).
+
+- on_tick:
+
+  Optional `function()` called once per ~100 ms event-loop tick while
+  pumping the loop (e.g. to animate a spinner).
 
 - controller:
 

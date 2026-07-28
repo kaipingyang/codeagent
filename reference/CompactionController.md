@@ -1,11 +1,5 @@
 # Context compaction controller
 
-Context compaction controller
-
-Context compaction controller
-
-## Details
-
 Monitors token usage and dispatches the appropriate compaction level.
 Includes a circuit breaker that silences compaction after 3 consecutive
 failures to prevent infinite compaction loops.
@@ -28,7 +22,7 @@ failures to prevent infinite compaction loops.
 
 ------------------------------------------------------------------------
 
-### Method `maybe_compact()`
+### `CompactionController$maybe_compact()`
 
 Check token usage and compact if needed.
 
@@ -61,7 +55,7 @@ Invisibly NULL.
 
 ------------------------------------------------------------------------
 
-### Method `compact_now()`
+### `CompactionController$compact_now()`
 
 Run the two-level compaction now (snip -\> session-memory -\> full
 9-section), guarded by the circuit breaker. Unlike `maybe_compact()`
@@ -90,7 +84,7 @@ Invisibly `TRUE` on success, `FALSE` if skipped or failed.
 
 ------------------------------------------------------------------------
 
-### Method `handle_ptl_error()`
+### `CompactionController$handle_ptl_error()`
 
 Handle a prompt-too-long (PTL) error by dropping turns.
 
@@ -112,7 +106,7 @@ Handle a prompt-too-long (PTL) error by dropping turns.
 
 ------------------------------------------------------------------------
 
-### Method `reset_failures()`
+### `CompactionController$reset_failures()`
 
 Reset the failure counter (e.g. after a successful turn).
 
@@ -122,7 +116,7 @@ Reset the failure counter (e.g. after a successful turn).
 
 ------------------------------------------------------------------------
 
-### Method `failure_count()`
+### `CompactionController$failure_count()`
 
 Return current failure count.
 
@@ -132,7 +126,7 @@ Return current failure count.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `CompactionController$clone()`
 
 The objects of this class are cloneable with this method.
 

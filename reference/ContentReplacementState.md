@@ -1,11 +1,5 @@
 # Global context budget manager (Layer 3)
 
-Global context budget manager (Layer 3)
-
-Global context budget manager (Layer 3)
-
-## Details
-
 Tracks total estimated token usage across all turns and replaces the
 largest tool results with a placeholder when the soft ceiling is
 exceeded. This mirrors Claude Code's `ContentReplacementState`.
@@ -14,7 +8,7 @@ exceeded. This mirrors Claude Code's `ContentReplacementState`.
 
 ### Public methods
 
-- [`ContentReplacementState$new()`](#method-ContentReplacementState-new)
+- [`ContentReplacementState$new()`](#method-ContentReplacementState-initialize)
 
 - [`ContentReplacementState$freeze()`](#method-ContentReplacementState-freeze)
 
@@ -28,7 +22,7 @@ exceeded. This mirrors Claude Code's `ContentReplacementState`.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `ContentReplacementState$new()`
 
 Create a new state object.
 
@@ -44,7 +38,7 @@ Create a new state object.
 
 ------------------------------------------------------------------------
 
-### Method `freeze()`
+### `ContentReplacementState$freeze()`
 
 Freeze a result (exclude it from replacement).
 
@@ -60,7 +54,7 @@ Freeze a result (exclude it from replacement).
 
 ------------------------------------------------------------------------
 
-### Method `maybe_replace()`
+### `ContentReplacementState$maybe_replace()`
 
 Check usage and replace large old results if over ceiling.
 
@@ -81,7 +75,7 @@ Invisibly NULL.
 
 ------------------------------------------------------------------------
 
-### Method `replaced_ids()`
+### `ContentReplacementState$replaced_ids()`
 
 Return IDs of replaced results.
 
@@ -91,7 +85,7 @@ Return IDs of replaced results.
 
 ------------------------------------------------------------------------
 
-### Method `reset()`
+### `ContentReplacementState$reset()`
 
 Reset state.
 
@@ -101,7 +95,7 @@ Reset state.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `ContentReplacementState$clone()`
 
 The objects of this class are cloneable with this method.
 

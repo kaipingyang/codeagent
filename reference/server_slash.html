@@ -91,7 +91,7 @@ as the fallback slash UI. REPL is unaffected (uses .preprocess_input)."></head><
     <div class="ref-description section level2">
     <p>Drives shinychat's <strong>official</strong> slash-command typeahead palette
 (dev feature #239: the native <code>/</code>-triggered command menu) WITHOUT using
-<code>shinychat::chat_server()</code>.</p>
+<code><a href="https://posit-dev.github.io/shinychat/r/reference/chat_app.html" class="external-link">shinychat::chat_server()</a></code>.</p>
 <p>codeagent owns its own streaming (<code><a href="server_chat.html">server_chat()</a></code> + <code>stream_task</code>), so it
 cannot adopt <code>chat_server()</code> (whose input observer would double-stream every
 message alongside codeagent's harness – see
@@ -157,11 +157,11 @@ directly (via <code>.handle_chat_command()</code>).</p></dd>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Slash commands are dispatched <strong>directly inside this handler</strong> — we do NOT
+    <p>Slash commands are dispatched <strong>directly inside this handler</strong> – we do NOT
 re-submit <code>/command</code> through <code>update_chat_user_input()</code>. Re-submitting is
 broken: shinychat re-recognises the re-submitted <code>/command</code> as a slash
 command and fires <code>input$&lt;id&gt;_slash_command</code> again with the <em>same</em> value,
-which Shiny's <code>observeEvent</code> de-dupes into a no-op — so the command never
+which Shiny's <code>observeEvent</code> de-dupes into a no-op – so the command never
 reaches <code>input$&lt;id&gt;_user_input</code> / <code>.preprocess_input</code> and silently dies.
 Instead we mirror <code>server_chat</code>'s routing here: local commands run via
 <code>.handle_chat_command()</code>, skills/normal go through the shared <code>stream_task</code>

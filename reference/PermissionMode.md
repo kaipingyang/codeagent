@@ -9,10 +9,6 @@ design.
 PermissionMode
 ```
 
-## Format
-
-An object of class `list` of length 7.
-
 ## Details
 
 - `default` – Reads auto-allow; writes and shell execution require user

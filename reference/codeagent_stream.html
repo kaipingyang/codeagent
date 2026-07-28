@@ -65,6 +65,7 @@ REPL / calling code can continue (the interrupt is <strong>not</strong> re-throw
 <span>  <span class="va">client</span>,</span>
 <span>  <span class="va">input</span>,</span>
 <span>  <span class="va">...</span>,</span>
+<span>  on_tick <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  controller <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  iteration <span class="op">=</span> <span class="fl">1L</span>,</span>
@@ -86,6 +87,15 @@ testing via duck-typing).</p></dd>
 
 <dt id="arg-input">input<a class="anchor" aria-label="anchor" href="#arg-input"></a></dt>
 <dd><p>Character scalar. The user message.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Passed to <code><a href="codeagent_stream_async.html">codeagent_stream_async()</a></code>.</p></dd>
+
+
+<dt id="arg-on-tick">on_tick<a class="anchor" aria-label="anchor" href="#arg-on-tick"></a></dt>
+<dd><p>Optional <code>function()</code> called once per ~100 ms event-loop tick
+while pumping the loop (e.g. to animate a spinner).</p></dd>
 
 
 <dt id="arg-controller">controller<a class="anchor" aria-label="anchor" href="#arg-controller"></a></dt>

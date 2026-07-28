@@ -1,11 +1,5 @@
 # Token budget tracker
 
-Token budget tracker
-
-Token budget tracker
-
-## Details
-
 Monitors token consumption and detects when the agent loop should stop
 due to context exhaustion or diminishing returns.
 
@@ -23,7 +17,7 @@ due to context exhaustion or diminishing returns.
 
 ------------------------------------------------------------------------
 
-### Method `reset()`
+### `BudgetTracker$reset()`
 
 Reset the tracker state.
 
@@ -33,7 +27,7 @@ Reset the tracker state.
 
 ------------------------------------------------------------------------
 
-### Method `should_stop()`
+### `BudgetTracker$should_stop()`
 
 Determine whether the agent loop should stop.
 
@@ -70,7 +64,7 @@ Logical. TRUE if the loop should stop.
 
 ------------------------------------------------------------------------
 
-### Method `state()`
+### `BudgetTracker$state()`
 
 Return current tracker state.
 
@@ -84,7 +78,7 @@ Named list with `prev_tokens` and `same_count`.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `BudgetTracker$clone()`
 
 The objects of this class are cloneable with this method.
 

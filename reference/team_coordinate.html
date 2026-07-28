@@ -107,6 +107,27 @@ are balanced automatically. Mirrors Claude Code's TeamCreate + auto-claim.</p>
 <dd><p>Character. Working directory for workers.</p></dd>
 
 
+<dt id="arg-blocked-by">blocked_by<a class="anchor" aria-label="anchor" href="#arg-blocked-by"></a></dt>
+<dd><p>List or NULL. Optional DAG dependencies: <code>blocked_by[[i]]</code>
+is an integer vector of 1-based task indices that must finish before task
+<code>i</code> can be claimed.</p></dd>
+
+
+<dt id="arg-worktree">worktree<a class="anchor" aria-label="anchor" href="#arg-worktree"></a></dt>
+<dd><p>Logical. Run each worker in its own git worktree
+(default <code>FALSE</code>).</p></dd>
+
+
+<dt id="arg-backoff">backoff<a class="anchor" aria-label="anchor" href="#arg-backoff"></a></dt>
+<dd><p>Numeric. Seconds a worker waits before retrying when a
+dependency is still in progress (default 0.5).</p></dd>
+
+
+<dt id="arg-reclaim-timeout">reclaim_timeout<a class="anchor" aria-label="anchor" href="#arg-reclaim-timeout"></a></dt>
+<dd><p>Numeric. Seconds after which a <code>claimed</code> task held by
+a crashed worker is reclaimed back to <code>pending</code> (default 300).</p></dd>
+
+
 <dt id="arg-db-path">db_path<a class="anchor" aria-label="anchor" href="#arg-db-path"></a></dt>
 <dd><p>Character. Board path (created if missing).</p></dd>
 

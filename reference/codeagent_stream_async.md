@@ -115,7 +115,7 @@ of `"completed"`, `"error"`, or `"interrupted"`.
 
 ## Details
 
-**Tool event dual paths** (see plan §6 for details):
+**Tool event dual paths** (see plan sec6 for details):
 
 - `on_tool_request` / `on_tool_result` parameters are called from the
   `ContentToolRequest` / `ContentToolResult` **stream chunks**.

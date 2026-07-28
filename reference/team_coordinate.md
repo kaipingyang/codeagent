@@ -51,6 +51,26 @@ team_coordinate(
 
   Character. Working directory for workers.
 
+- blocked_by:
+
+  List or NULL. Optional DAG dependencies: `blocked_by[[i]]` is an
+  integer vector of 1-based task indices that must finish before task
+  `i` can be claimed.
+
+- worktree:
+
+  Logical. Run each worker in its own git worktree (default `FALSE`).
+
+- backoff:
+
+  Numeric. Seconds a worker waits before retrying when a dependency is
+  still in progress (default 0.5).
+
+- reclaim_timeout:
+
+  Numeric. Seconds after which a `claimed` task held by a crashed worker
+  is reclaimed back to `pending` (default 300).
+
 - db_path:
 
   Character. Board path (created if missing).

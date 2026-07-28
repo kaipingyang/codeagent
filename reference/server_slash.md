@@ -2,7 +2,7 @@
 
 Drives shinychat's **official** slash-command typeahead palette (dev
 feature \#239: the native `/`-triggered command menu) WITHOUT using
-`shinychat::chat_server()`.
+[`shinychat::chat_server()`](https://posit-dev.github.io/shinychat/r/reference/chat_app.html).
 
 codeagent owns its own streaming
 ([`server_chat()`](https://kaipingyang.github.io/codeagent/reference/server_chat.md) +
@@ -77,12 +77,12 @@ Invisibly NULL.
 
 ## Details
 
-Slash commands are dispatched **directly inside this handler** — we do
+Slash commands are dispatched **directly inside this handler** – we do
 NOT re-submit `/command` through `update_chat_user_input()`.
 Re-submitting is broken: shinychat re-recognises the re-submitted
 `/command` as a slash command and fires `input$<id>_slash_command` again
 with the *same* value, which Shiny's `observeEvent` de-dupes into a
-no-op — so the command never reaches `input$<id>_user_input` /
+no-op – so the command never reaches `input$<id>_user_input` /
 `.preprocess_input` and silently dies. Instead we mirror `server_chat`'s
 routing here: local commands run via `.handle_chat_command()`,
 skills/normal go through the shared `stream_task` (which injects the
