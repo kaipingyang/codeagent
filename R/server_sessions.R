@@ -42,7 +42,7 @@ server_sessions <- function(input, output, session, chat, cwd,
     if (!is.null(stream_task) && stream_task$status() == "running") return()
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .reset_session_state(state)
-    shinychat::chat_clear("chat", session)
+    shinychat::chat_clear("chat", session = session)
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
   })
 
@@ -55,7 +55,7 @@ server_sessions <- function(input, output, session, chat, cwd,
     }
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .reset_session_state(state)
-    shinychat::chat_clear("chat", session)
+    shinychat::chat_clear("chat", session = session)
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
     .ui_toast("Session deleted.", "message")
   })
@@ -76,7 +76,7 @@ server_sessions <- function(input, output, session, chat, cwd,
       return()
     }
     state$session_id <- sid
-    shinychat::chat_clear("chat", session)
+    shinychat::chat_clear("chat", session = session)
     # Replay via contents_shinychat -- native tool card rendering.
     .replay_turns_to_ui(chat, session)
     # Refresh the CONTEXT token meter for the restored conversation (the stream

@@ -102,3 +102,18 @@ test_that(".append_renviron is idempotent for new keys", {
 test_that("use_codeagent_setup aborts in non-interactive sessions", {
   expect_error(use_codeagent_setup(), class = "rlang_error")
 })
+
+test_that("every provider in the catalogue maps to an existing ellmer chat function", {
+  # Guards the dev-version adoption: e.g. chat_posit() only exists in
+  # ellmer >= 0.4.2. If a provider's fn disappears upstream, fail loudly here.
+  catalogue <- codeagent:::.PROVIDER_CATALOGUE
+  ellmer_exports <- getNamespaceExports("ellmer")
+  for (p in catalogue) {
+    expect_true(
+      p$fn %in% ellmer_exports,
+      info = sprintf("provider '%s' -> ellmer::%s() not found", p$name, p$fn)
+    )
+  }
+  # chat_posit specifically requires ellmer >= 0.4.2 (adopted 2026-07).
+  expect_true("chat_posit" %in% ellmer_exports)
+})
