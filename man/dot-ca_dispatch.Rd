@@ -15,17 +15,6 @@
 Named list: \code{cmd} (character), \code{rest} (character vector).
 }
 \description{
-Determines which subcommand to run given raw positional argv and the
-\code{print_mode} flag.  Used by \code{exec/codeagent.R} to keep dispatch logic
-testable.
-}
-\details{
-Rules (in order):
-\enumerate{
-\item If \code{argv[[1]]} is a known subcommand name, use it.
-\item If \code{print_mode = TRUE} or \code{argv} is non-empty, treat as a one-shot
-\code{run} (the prompt comes from \code{argv}).
-\item Otherwise default to \code{chat} (interactive REPL).
-}
+Dispatch CLI arguments to a command + rest vector.
 }
 \keyword{internal}

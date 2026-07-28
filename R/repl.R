@@ -173,7 +173,7 @@ NULL
 # codeagent_stream(), so it animates even while blocking on the async stream.
 .make_cli_spinner <- function(msg = "Thinking") {
   if (!tryCatch(isatty(stdout()), error = function(e) FALSE)) return(NULL)
-  frames  <- c("⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏")
+  frames  <- c("\u280B", "\u2819", "\u2839", "\u2838", "\u283C", "\u2834", "\u2826", "\u2827", "\u2807", "\u280F")
   fi      <- 0L
   active  <- TRUE
   list(
@@ -239,8 +239,8 @@ NULL
 
 # Colored, card-style tool lines for the console TUI. cli auto-disables ANSI on
 # non-tty / NO_COLOR, so these degrade to plain text (tests see plain strings.
-#   request:  ⏺ <label>  <hint>     (cyan bold label, dim hint)
-#   result:     ⎿ <summary>          (green connector, dim text)
+#   request:  (o) <label>  <hint>     (cyan bold label, dim hint)
+#   result:     \_ <summary>          (green connector, dim text)
 .repl_tool_request_line <- function(label, hint = "") {
   glyph <- tryCatch(cli::col_cyan("\u23fa"), error = function(e) "*")
   lab   <- tryCatch(cli::col_cyan(cli::style_bold(label)), error = function(e) label)
@@ -515,8 +515,8 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
           bar <- function(n, width = 18L) {
             filled <- min(width, round(n / max(1L, w) * width))
             tryCatch(
-              paste0(cli::col_cyan(strrep("█", filled)),
-                     cli::style_dim(strrep("░", width - filled))),
+              paste0(cli::col_cyan(strrep("\u2588", filled)),
+                     cli::style_dim(strrep("\u2591", width - filled))),
               error = function(e)
                 paste0(strrep("|", filled), strrep(".", width - filled)))
           }
@@ -552,9 +552,9 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
             tryCatch(clipr::write_clip(last_txt), error = function(e) NULL)
             preview <- substr(last_txt, 1L, 60L)
             cat(sprintf("[copied] %.60s%s\n", preview,
-                        if (nchar(last_txt) > 60L) "…" else ""))
+                        if (nchar(last_txt) > 60L) "\u2026" else ""))
           } else {
-            cat("[clipr not installed — run: install.packages('clipr')]\n")
+            cat("[clipr not installed \u2014 run: install.packages('clipr')]\n")
           }
         } else {
           cat("[nothing to copy]\n")

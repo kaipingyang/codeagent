@@ -4,135 +4,138 @@
 \alias{CompactionController}
 \title{Context compaction controller}
 \description{
-Context compaction controller
-
-Context compaction controller
-}
-\details{
 Monitors token usage and dispatches the appropriate compaction level.
 Includes a circuit breaker that silences compaction after 3 consecutive
 failures to prevent infinite compaction loops.
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-CompactionController-maybe_compact}{\code{CompactionController$maybe_compact()}}
-\item \href{#method-CompactionController-compact_now}{\code{CompactionController$compact_now()}}
-\item \href{#method-CompactionController-handle_ptl_error}{\code{CompactionController$handle_ptl_error()}}
-\item \href{#method-CompactionController-reset_failures}{\code{CompactionController$reset_failures()}}
-\item \href{#method-CompactionController-failure_count}{\code{CompactionController$failure_count()}}
-\item \href{#method-CompactionController-clone}{\code{CompactionController$clone()}}
-}
+  \itemize{
+    \item \href{#method-CompactionController-maybe_compact}{\code{CompactionController$maybe_compact()}}
+    \item \href{#method-CompactionController-compact_now}{\code{CompactionController$compact_now()}}
+    \item \href{#method-CompactionController-handle_ptl_error}{\code{CompactionController$handle_ptl_error()}}
+    \item \href{#method-CompactionController-reset_failures}{\code{CompactionController$reset_failures()}}
+    \item \href{#method-CompactionController-failure_count}{\code{CompactionController$failure_count()}}
+    \item \href{#method-CompactionController-clone}{\code{CompactionController$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-CompactionController-maybe_compact"></a>}}
 \if{latex}{\out{\hypertarget{method-CompactionController-maybe_compact}{}}}
-\subsection{Method \code{maybe_compact()}}{
-Check token usage and compact if needed.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompactionController$maybe_compact(
+\subsection{\code{CompactionController$maybe_compact()}}{
+  Check token usage and compact if needed.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{CompactionController$maybe_compact(
   chat,
   model_limit = 200000L,
   compact_model = .HAIKU_MODEL
-)}\if{html}{\out{</div>}}
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{chat}}{An \code{ellmer::Chat} object.}
+      \item{\code{model_limit}}{Integer. Model context window token limit.}
+      \item{\code{compact_model}}{Character. Model for compaction tasks (haiku).}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly NULL.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{chat}}{An \code{ellmer::Chat} object.}
-
-\item{\code{model_limit}}{Integer. Model context window token limit.}
-
-\item{\code{compact_model}}{Character. Model for compaction tasks (haiku).}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Invisibly NULL.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-CompactionController-compact_now"></a>}}
 \if{latex}{\out{\hypertarget{method-CompactionController-compact_now}{}}}
-\subsection{Method \code{compact_now()}}{
-Run the two-level compaction now (snip -> session-memory ->
+\subsection{\code{CompactionController$compact_now()}}{
+  Run the two-level compaction now (snip -> session-memory ->
 full 9-section), guarded by the circuit breaker. Unlike
 \code{maybe_compact()} this skips the token-threshold check, so callers that
 have already decided to compact (e.g. mid-loop) can reuse the exact
 same Claude Code-aligned flow.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompactionController$compact_now(chat, compact_model = .HAIKU_MODEL)}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{CompactionController$compact_now(chat, compact_model = .HAIKU_MODEL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{chat}}{An \code{ellmer::Chat} object.}
+      \item{\code{compact_model}}{Character. Model for compaction tasks (haiku).}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly \code{TRUE} on success, \code{FALSE} if skipped or failed.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{chat}}{An \code{ellmer::Chat} object.}
-
-\item{\code{compact_model}}{Character. Model for compaction tasks (haiku).}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Invisibly \code{TRUE} on success, \code{FALSE} if skipped or failed.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-CompactionController-handle_ptl_error"></a>}}
 \if{latex}{\out{\hypertarget{method-CompactionController-handle_ptl_error}{}}}
-\subsection{Method \code{handle_ptl_error()}}{
-Handle a prompt-too-long (PTL) error by dropping turns.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompactionController$handle_ptl_error(chat, error = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{chat}}{An \code{ellmer::Chat} object.}
-
-\item{\code{error}}{An error condition or message string (parsed for a real
+\subsection{\code{CompactionController$handle_ptl_error()}}{
+  Handle a prompt-too-long (PTL) error by dropping turns.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{CompactionController$handle_ptl_error(chat, error = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{chat}}{An \code{ellmer::Chat} object.}
+      \item{\code{error}}{An error condition or message string (parsed for a real
 context limit when present).}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
-\if{html}{\out{</div>}}
-}
-}
+
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-CompactionController-reset_failures"></a>}}
 \if{latex}{\out{\hypertarget{method-CompactionController-reset_failures}{}}}
-\subsection{Method \code{reset_failures()}}{
-Reset the failure counter (e.g. after a successful turn).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompactionController$reset_failures()}\if{html}{\out{</div>}}
+\subsection{\code{CompactionController$reset_failures()}}{
+  Reset the failure counter (e.g. after a successful turn).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{CompactionController$reset_failures()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-CompactionController-failure_count"></a>}}
 \if{latex}{\out{\hypertarget{method-CompactionController-failure_count}{}}}
-\subsection{Method \code{failure_count()}}{
-Return current failure count.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompactionController$failure_count()}\if{html}{\out{</div>}}
+\subsection{\code{CompactionController$failure_count()}}{
+  Return current failure count.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{CompactionController$failure_count()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-CompactionController-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-CompactionController-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{CompactionController$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{CompactionController$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{CompactionController$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

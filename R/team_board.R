@@ -360,6 +360,15 @@ board_messages <- function(db_path, recipient = NULL) {
 #' @param permission_mode Character. Permission mode for workers (default
 #'   `"bypass"`; parallel workers cannot prompt).
 #' @param cwd Character. Working directory for workers.
+#' @param blocked_by List or NULL. Optional DAG dependencies: `blocked_by[[i]]`
+#'   is an integer vector of 1-based task indices that must finish before task
+#'   `i` can be claimed.
+#' @param worktree Logical. Run each worker in its own git worktree
+#'   (default `FALSE`).
+#' @param backoff Numeric. Seconds a worker waits before retrying when a
+#'   dependency is still in progress (default 0.5).
+#' @param reclaim_timeout Numeric. Seconds after which a `claimed` task held by
+#'   a crashed worker is reclaimed back to `pending` (default 300).
 #' @param db_path Character. Board path (created if missing).
 #' @return A data.frame: the final board (id, prompt, owner, status, result).
 #' @export
@@ -415,10 +424,10 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
     # Team-level isolation: each worker gets its own git worktree so concurrent
     # edits never collide. Falls back to cwd if worktrees aren't available.
     wt <- if (isTRUE(worktree))
-      tryCatch(codeagent:::.create_worktree(cwd), error = function(e) NULL) else NULL
+      tryCatch(.create_worktree(cwd), error = function(e) NULL) else NULL
     run_cwd <- if (is.null(wt)) cwd else wt
     on.exit(if (!is.null(wt))
-      tryCatch(codeagent:::.cleanup_worktree(wt, cwd), error = function(e) NULL), add = TRUE)
+      tryCatch(.cleanup_worktree(wt, cwd), error = function(e) NULL), add = TRUE)
 
     done <- 0L
     repeat {
@@ -428,9 +437,9 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
         # Nothing claimable: stop if the board is fully done or truly stalled;
         # otherwise a blocker is still in progress -- reclaim any task whose
         # worker died mid-flight (crash recovery), then wait and retry.
-        if (codeagent:::.board_pending_count(db_path) == 0L) break
+        if (.board_pending_count(db_path) == 0L) break
         codeagent::board_reclaim_stale(db_path, timeout = reclaim_timeout)
-        if (codeagent:::.board_stalled(db_path)) break
+        if (.board_stalled(db_path)) break
         Sys.sleep(backoff)
         next
       }

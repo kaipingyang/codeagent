@@ -8,9 +8,9 @@ Public streaming primitives for codeagent. These run the full per-turn
 pipeline (compaction, system-reminder injection, session save, cost
 tracking) and expose typed callbacks for each content event.
 \itemize{
-\item \code{\link[=codeagent_stream_async]{codeagent_stream_async()}} — returns a \code{coro::async} promise.
+\item \code{\link[=codeagent_stream_async]{codeagent_stream_async()}} -- returns a \code{coro::async} promise.
 Use this inside Shiny \code{ExtendedTask} bodies or any \code{coro::async} context.
-\item \code{\link[=codeagent_stream]{codeagent_stream()}} — synchronous wrapper that pumps the event loop
+\item \code{\link[=codeagent_stream]{codeagent_stream()}} -- synchronous wrapper that pumps the event loop
 with \code{later::run_now()} and handles \code{Ctrl+C} gracefully. Use in CLI/ink.
 }
 }

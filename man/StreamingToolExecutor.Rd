@@ -4,11 +4,6 @@
 \alias{StreamingToolExecutor}
 \title{Concurrent tool execution scheduler}
 \description{
-Concurrent tool execution scheduler
-
-Concurrent tool execution scheduler
-}
-\details{
 Manages parallel execution of concurrent-safe tools while serialising
 non-concurrent-safe tools. Mirrors Claude Code's \code{StreamingToolExecutor}.
 
@@ -23,107 +18,108 @@ executed in order when the unsafe tool completes.
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-StreamingToolExecutor-new}{\code{StreamingToolExecutor$new()}}
-\item \href{#method-StreamingToolExecutor-submit}{\code{StreamingToolExecutor$submit()}}
-\item \href{#method-StreamingToolExecutor-drain_queue}{\code{StreamingToolExecutor$drain_queue()}}
-\item \href{#method-StreamingToolExecutor-collect_results}{\code{StreamingToolExecutor$collect_results()}}
-\item \href{#method-StreamingToolExecutor-execute_batch}{\code{StreamingToolExecutor$execute_batch()}}
-\item \href{#method-StreamingToolExecutor-execute_batch_async}{\code{StreamingToolExecutor$execute_batch_async()}}
-\item \href{#method-StreamingToolExecutor-clone}{\code{StreamingToolExecutor$clone()}}
-}
+  \itemize{
+    \item \href{#method-StreamingToolExecutor-initialize}{\code{StreamingToolExecutor$new()}}
+    \item \href{#method-StreamingToolExecutor-submit}{\code{StreamingToolExecutor$submit()}}
+    \item \href{#method-StreamingToolExecutor-drain_queue}{\code{StreamingToolExecutor$drain_queue()}}
+    \item \href{#method-StreamingToolExecutor-collect_results}{\code{StreamingToolExecutor$collect_results()}}
+    \item \href{#method-StreamingToolExecutor-execute_batch}{\code{StreamingToolExecutor$execute_batch()}}
+    \item \href{#method-StreamingToolExecutor-execute_batch_async}{\code{StreamingToolExecutor$execute_batch_async()}}
+    \item \href{#method-StreamingToolExecutor-clone}{\code{StreamingToolExecutor$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-StreamingToolExecutor-new"></a>}}
-\if{latex}{\out{\hypertarget{method-StreamingToolExecutor-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new executor.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{StreamingToolExecutor$new()}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-StreamingToolExecutor-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-StreamingToolExecutor-initialize}{}}}
+\subsection{\code{StreamingToolExecutor$new()}}{
+  Create a new executor.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{StreamingToolExecutor$new()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-StreamingToolExecutor-submit"></a>}}
 \if{latex}{\out{\hypertarget{method-StreamingToolExecutor-submit}{}}}
-\subsection{Method \code{submit()}}{
-Submit a tool call for execution.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{StreamingToolExecutor$submit(tool_call, exec_fn)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{tool_call}}{Named list with \code{id}, \code{name}, \code{input}.}
-
-\item{\code{exec_fn}}{Function \code{(tool_call) -> character}. Executes the tool
+\subsection{\code{StreamingToolExecutor$submit()}}{
+  Submit a tool call for execution.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{StreamingToolExecutor$submit(tool_call, exec_fn)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_call}}{Named list with \code{id}, \code{name}, \code{input}.}
+      \item{\code{exec_fn}}{Function \code{(tool_call) -> character}. Executes the tool
 and returns the result string.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly NULL (result will appear in \code{collect_results()}).
+  }
 }
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Invisibly NULL (result will appear in \code{collect_results()}).
-}
-}
+
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-StreamingToolExecutor-drain_queue"></a>}}
 \if{latex}{\out{\hypertarget{method-StreamingToolExecutor-drain_queue}{}}}
-\subsection{Method \code{drain_queue()}}{
-Drain the queue for any unsafe tool that was running.
+\subsection{\code{StreamingToolExecutor$drain_queue()}}{
+  Drain the queue for any unsafe tool that was running.
 Call this after marking the unsafe tool as complete.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{StreamingToolExecutor$drain_queue()}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{StreamingToolExecutor$drain_queue()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{exec_fn}}{Function \code{(tool_call) -> character}. Executor function.}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-StreamingToolExecutor-collect_results"></a>}}
 \if{latex}{\out{\hypertarget{method-StreamingToolExecutor-collect_results}{}}}
-\subsection{Method \code{collect_results()}}{
-Collect all completed results and reset the accumulator.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{StreamingToolExecutor$collect_results()}\if{html}{\out{</div>}}
+\subsection{\code{StreamingToolExecutor$collect_results()}}{
+  Collect all completed results and reset the accumulator.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{StreamingToolExecutor$collect_results()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    List of result objects (each with \code{id}, \code{name}, \code{result}).
+  }
 }
 
-\subsection{Returns}{
-List of result objects (each with \code{id}, \code{name}, \code{result}).
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-StreamingToolExecutor-execute_batch"></a>}}
 \if{latex}{\out{\hypertarget{method-StreamingToolExecutor-execute_batch}{}}}
-\subsection{Method \code{execute_batch()}}{
-Execute a batch of tool calls, respecting concurrency rules.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{StreamingToolExecutor$execute_batch(tool_calls, exec_fn)}\if{html}{\out{</div>}}
+\subsection{\code{StreamingToolExecutor$execute_batch()}}{
+  Execute a batch of tool calls, respecting concurrency rules.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{StreamingToolExecutor$execute_batch(tool_calls, exec_fn)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_calls}}{List of tool call objects.}
+      \item{\code{exec_fn}}{Function \code{(tool_call) -> character}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    List of result objects.
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{tool_calls}}{List of tool call objects.}
-
-\item{\code{exec_fn}}{Function \code{(tool_call) -> character}.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-List of result objects.
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-StreamingToolExecutor-execute_batch_async"></a>}}
 \if{latex}{\out{\hypertarget{method-StreamingToolExecutor-execute_batch_async}{}}}
-\subsection{Method \code{execute_batch_async()}}{
-Async variant of \code{execute_batch()} for use inside
+\subsection{\code{StreamingToolExecutor$execute_batch_async()}}{
+  Async variant of \code{execute_batch()} for use inside
 \code{coro::async} / Shiny \code{ExtendedTask} contexts.
 
 Concurrent-safe tools are dispatched as a group via
@@ -134,42 +130,45 @@ safe tools have resolved.
 If the \code{promises} package is not installed the method falls back to
 \code{execute_batch()} and returns the result directly (not wrapped in a
 promise); \code{coro::await()} handles plain values transparently.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{StreamingToolExecutor$execute_batch_async(tool_calls, exec_fn)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{tool_calls}}{List of tool call objects (each with \code{id}, \code{name},
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{StreamingToolExecutor$execute_batch_async(tool_calls, exec_fn)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_calls}}{List of tool call objects (each with \code{id}, \code{name},
 \code{input}).}
-
-\item{\code{exec_fn}}{Function \code{(tool_call) -> character}.  Must be callable
+      \item{\code{exec_fn}}{Function \code{(tool_call) -> character}.  Must be callable
 from the current R process.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A \code{promises::promise} resolving to the same list that
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A \code{promises::promise} resolving to the same list that
 \code{execute_batch()} returns, or that list directly when \code{promises} is
 unavailable.
+  }
 }
-}
+
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-StreamingToolExecutor-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-StreamingToolExecutor-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{StreamingToolExecutor$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{StreamingToolExecutor$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{StreamingToolExecutor$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

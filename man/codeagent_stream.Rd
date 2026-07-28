@@ -8,6 +8,7 @@ codeagent_stream(
   client,
   input,
   ...,
+  on_tick = NULL,
   controller = NULL,
   session_id = NULL,
   iteration = 1L,
@@ -22,6 +23,11 @@ codeagent_stream(
 testing via duck-typing).}
 
 \item{input}{Character scalar. The user message.}
+
+\item{...}{Passed to \code{\link[=codeagent_stream_async]{codeagent_stream_async()}}.}
+
+\item{on_tick}{Optional \verb{function()} called once per ~100 ms event-loop tick
+while pumping the loop (e.g. to animate a spinner).}
 
 \item{controller}{Optional \code{ellmer::stream_controller()} for cancellation.}
 

@@ -30,6 +30,19 @@ team_coordinate(
 
 \item{cwd}{Character. Working directory for workers.}
 
+\item{blocked_by}{List or NULL. Optional DAG dependencies: \code{blocked_by[[i]]}
+is an integer vector of 1-based task indices that must finish before task
+\code{i} can be claimed.}
+
+\item{worktree}{Logical. Run each worker in its own git worktree
+(default \code{FALSE}).}
+
+\item{backoff}{Numeric. Seconds a worker waits before retrying when a
+dependency is still in progress (default 0.5).}
+
+\item{reclaim_timeout}{Numeric. Seconds after which a \code{claimed} task held by
+a crashed worker is reclaimed back to \code{pending} (default 300).}
+
 \item{db_path}{Character. Board path (created if missing).}
 }
 \value{

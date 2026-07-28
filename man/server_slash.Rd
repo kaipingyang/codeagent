@@ -59,11 +59,11 @@ registration message is simply ignored and the footer \code{pickerInput} remains
 as the fallback slash UI. REPL is unaffected (uses \code{.preprocess_input}).
 }
 \details{
-Slash commands are dispatched \strong{directly inside this handler} — we do NOT
+Slash commands are dispatched \strong{directly inside this handler} -- we do NOT
 re-submit \verb{/command} through \code{update_chat_user_input()}. Re-submitting is
 broken: shinychat re-recognises the re-submitted \verb{/command} as a slash
 command and fires \verb{input$<id>_slash_command} again with the \emph{same} value,
-which Shiny's \code{observeEvent} de-dupes into a no-op — so the command never
+which Shiny's \code{observeEvent} de-dupes into a no-op -- so the command never
 reaches \verb{input$<id>_user_input} / \code{.preprocess_input} and silently dies.
 Instead we mirror \code{server_chat}'s routing here: local commands run via
 \code{.handle_chat_command()}, skills/normal go through the shared \code{stream_task}

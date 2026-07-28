@@ -74,7 +74,7 @@ Runs the full turn pipeline (compaction, system-reminder injection, session
 save, cost tracking) and invokes typed callbacks for each content event.
 }
 \details{
-\strong{Tool event dual paths} (see plan §6 for details):
+\strong{Tool event dual paths} (see plan sec6 for details):
 \itemize{
 \item \code{on_tool_request} / \code{on_tool_result} parameters are called from the
 \code{ContentToolRequest} / \code{ContentToolResult} \strong{stream chunks}.

@@ -4,11 +4,6 @@
 \alias{DenialTracker}
 \title{Track permission denials and emit warnings at thresholds}
 \description{
-Track permission denials and emit warnings at thresholds
-
-Track permission denials and emit warnings at thresholds
-}
-\details{
 Mirrors Claude Code's \code{denialTracking.ts} behaviour:
 \itemize{
 \item 3 consecutive denials -> warning to reconsider permission mode
@@ -17,58 +12,66 @@ Mirrors Claude Code's \code{denialTracking.ts} behaviour:
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-DenialTracker-record_denial}{\code{DenialTracker$record_denial()}}
-\item \href{#method-DenialTracker-record_success}{\code{DenialTracker$record_success()}}
-\item \href{#method-DenialTracker-counts}{\code{DenialTracker$counts()}}
-\item \href{#method-DenialTracker-clone}{\code{DenialTracker$clone()}}
-}
+  \itemize{
+    \item \href{#method-DenialTracker-record_denial}{\code{DenialTracker$record_denial()}}
+    \item \href{#method-DenialTracker-record_success}{\code{DenialTracker$record_success()}}
+    \item \href{#method-DenialTracker-counts}{\code{DenialTracker$counts()}}
+    \item \href{#method-DenialTracker-clone}{\code{DenialTracker$clone()}}
+  }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DenialTracker-record_denial"></a>}}
 \if{latex}{\out{\hypertarget{method-DenialTracker-record_denial}{}}}
-\subsection{Method \code{record_denial()}}{
-Record a denial event.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DenialTracker$record_denial()}\if{html}{\out{</div>}}
+\subsection{\code{DenialTracker$record_denial()}}{
+  Record a denial event.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DenialTracker$record_denial()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DenialTracker-record_success"></a>}}
 \if{latex}{\out{\hypertarget{method-DenialTracker-record_success}{}}}
-\subsection{Method \code{record_success()}}{
-Record a successful tool execution (resets consecutive count).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DenialTracker$record_success()}\if{html}{\out{</div>}}
+\subsection{\code{DenialTracker$record_success()}}{
+  Record a successful tool execution (resets consecutive count).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DenialTracker$record_success()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DenialTracker-counts"></a>}}
 \if{latex}{\out{\hypertarget{method-DenialTracker-counts}{}}}
-\subsection{Method \code{counts()}}{
-Return current counts.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DenialTracker$counts()}\if{html}{\out{</div>}}
+\subsection{\code{DenialTracker$counts()}}{
+  Return current counts.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DenialTracker$counts()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DenialTracker-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-DenialTracker-clone}{}}}
-\subsection{Method \code{clone()}}{
-The objects of this class are cloneable with this method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{DenialTracker$clone(deep = FALSE)}\if{html}{\out{</div>}}
+\subsection{\code{DenialTracker$clone()}}{
+  The objects of this class are cloneable with this method.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DenialTracker$clone(deep = FALSE)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{deep}}{Whether to make a deep clone.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{deep}}{Whether to make a deep clone.}
-}
-\if{html}{\out{</div>}}
-}
-}
 }

@@ -4,9 +4,9 @@
 #'   pipeline (compaction, system-reminder injection, session save, cost
 #'   tracking) and expose typed callbacks for each content event.
 #'
-#'   * [`codeagent_stream_async()`] — returns a `coro::async` promise.
+#'   * [`codeagent_stream_async()`] -- returns a `coro::async` promise.
 #'     Use this inside Shiny `ExtendedTask` bodies or any `coro::async` context.
-#'   * [`codeagent_stream()`] — synchronous wrapper that pumps the event loop
+#'   * [`codeagent_stream()`] -- synchronous wrapper that pumps the event loop
 #'     with `later::run_now()` and handles `Ctrl+C` gracefully. Use in CLI/ink.
 #' @keywords internal
 #' @name stream
@@ -21,7 +21,7 @@ NULL
 #' Runs the full turn pipeline (compaction, system-reminder injection, session
 #' save, cost tracking) and invokes typed callbacks for each content event.
 #'
-#' **Tool event dual paths** (see plan §6 for details):
+#' **Tool event dual paths** (see plan sec6 for details):
 #' * `on_tool_request` / `on_tool_result` parameters are called from the
 #'   `ContentToolRequest` / `ContentToolResult` **stream chunks**.
 #'   `on_tool_request` fires **before** the permission gate ("pre-gate
@@ -180,6 +180,9 @@ codeagent_stream_async <- function(
 #' REPL / calling code can continue (the interrupt is **not** re-thrown).
 #'
 #' @inheritParams codeagent_stream_async
+#' @param on_tick Optional `function()` called once per ~100 ms event-loop tick
+#'   while pumping the loop (e.g. to animate a spinner).
+#' @param ... Passed to [codeagent_stream_async()].
 #' @return Invisibly, `list(text, usage, stop_reason)`.
 #' @seealso [codeagent_stream_async()] for the async variant.
 #' @export

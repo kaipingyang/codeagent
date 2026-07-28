@@ -4,11 +4,6 @@
 \alias{HookRegistry}
 \title{Tool hook registry}
 \description{
-Tool hook registry
-
-Tool hook registry
-}
-\details{
 Manages lifecycle hooks. Hooks are registered per event type and run in
 registration order.
 \subsection{PreToolUse callback: \verb{function(tool_name, tool_input)}}{
@@ -62,229 +57,262 @@ Return value ignored (informational only).
 }
 \section{Methods}{
 \subsection{Public methods}{
-\itemize{
-\item \href{#method-HookRegistry-new}{\code{HookRegistry$new()}}
-\item \href{#method-HookRegistry-register}{\code{HookRegistry$register()}}
-\item \href{#method-HookRegistry-register_pre}{\code{HookRegistry$register_pre()}}
-\item \href{#method-HookRegistry-register_post}{\code{HookRegistry$register_post()}}
-\item \href{#method-HookRegistry-run_pre}{\code{HookRegistry$run_pre()}}
-\item \href{#method-HookRegistry-run_post}{\code{HookRegistry$run_post()}}
-\item \href{#method-HookRegistry-run_failure}{\code{HookRegistry$run_failure()}}
-\item \href{#method-HookRegistry-run_permission_denied}{\code{HookRegistry$run_permission_denied()}}
-\item \href{#method-HookRegistry-run_permission_request}{\code{HookRegistry$run_permission_request()}}
-\item \href{#method-HookRegistry-run_user_message}{\code{HookRegistry$run_user_message()}}
-\item \href{#method-HookRegistry-run_assistant_message}{\code{HookRegistry$run_assistant_message()}}
-\item \href{#method-HookRegistry-run_session_start}{\code{HookRegistry$run_session_start()}}
-\item \href{#method-HookRegistry-run_stop}{\code{HookRegistry$run_stop()}}
-\item \href{#method-HookRegistry-run_pre_compact}{\code{HookRegistry$run_pre_compact()}}
-\item \href{#method-HookRegistry-run_subagent_start}{\code{HookRegistry$run_subagent_start()}}
-\item \href{#method-HookRegistry-run_subagent_stop}{\code{HookRegistry$run_subagent_stop()}}
-\item \href{#method-HookRegistry-clear}{\code{HookRegistry$clear()}}
-\item \href{#method-HookRegistry-count}{\code{HookRegistry$count()}}
-}
+  \itemize{
+    \item \href{#method-HookRegistry-initialize}{\code{HookRegistry$new()}}
+    \item \href{#method-HookRegistry-register}{\code{HookRegistry$register()}}
+    \item \href{#method-HookRegistry-register_pre}{\code{HookRegistry$register_pre()}}
+    \item \href{#method-HookRegistry-register_post}{\code{HookRegistry$register_post()}}
+    \item \href{#method-HookRegistry-run_pre}{\code{HookRegistry$run_pre()}}
+    \item \href{#method-HookRegistry-run_post}{\code{HookRegistry$run_post()}}
+    \item \href{#method-HookRegistry-run_failure}{\code{HookRegistry$run_failure()}}
+    \item \href{#method-HookRegistry-run_permission_denied}{\code{HookRegistry$run_permission_denied()}}
+    \item \href{#method-HookRegistry-run_permission_request}{\code{HookRegistry$run_permission_request()}}
+    \item \href{#method-HookRegistry-run_user_message}{\code{HookRegistry$run_user_message()}}
+    \item \href{#method-HookRegistry-run_assistant_message}{\code{HookRegistry$run_assistant_message()}}
+    \item \href{#method-HookRegistry-run_session_start}{\code{HookRegistry$run_session_start()}}
+    \item \href{#method-HookRegistry-run_stop}{\code{HookRegistry$run_stop()}}
+    \item \href{#method-HookRegistry-run_pre_compact}{\code{HookRegistry$run_pre_compact()}}
+    \item \href{#method-HookRegistry-run_subagent_start}{\code{HookRegistry$run_subagent_start()}}
+    \item \href{#method-HookRegistry-run_subagent_stop}{\code{HookRegistry$run_subagent_stop()}}
+    \item \href{#method-HookRegistry-clear}{\code{HookRegistry$clear()}}
+    \item \href{#method-HookRegistry-count}{\code{HookRegistry$count()}}
+  }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-HookRegistry-new"></a>}}
-\if{latex}{\out{\hypertarget{method-HookRegistry-new}{}}}
-\subsection{Method \code{new()}}{
-Create a new registry.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$new()}\if{html}{\out{</div>}}
+\if{html}{\out{<a id="method-HookRegistry-initialize"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-initialize}{}}}
+\subsection{\code{HookRegistry$new()}}{
+  Create a new registry.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$new()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-register"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-register}{}}}
-\subsection{Method \code{register()}}{
-Register a hook for an event.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$register(event, fn, tool_pattern = NULL, timeout_ms = 2000L)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{event}}{Character. One of \link{HookEvent} values.}
-
-\item{\code{fn}}{Function. Hook callback.}
-
-\item{\code{tool_pattern}}{Character or NULL. Glob filter for tool name
+\subsection{\code{HookRegistry$register()}}{
+  Register a hook for an event.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$register(event, fn, tool_pattern = NULL, timeout_ms = 2000L)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{event}}{Character. One of \link{HookEvent} values.}
+      \item{\code{fn}}{Function. Hook callback.}
+      \item{\code{tool_pattern}}{Character or NULL. Glob filter for tool name
 (only applies to tool-related events).}
+      \item{\code{timeout_ms}}{Integer. Max ms before warning (default 2000).}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
 
-\item{\code{timeout_ms}}{Integer. Max ms before warning (default 2000).}
-}
-\if{html}{\out{</div>}}
-}
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-register_pre"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-register_pre}{}}}
-\subsection{Method \code{register_pre()}}{
-Register a PreToolUse hook (legacy shorthand).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$register_pre(fn, tool_pattern = NULL, timeout_ms = 2000L)}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$register_pre()}}{
+  Register a PreToolUse hook (legacy shorthand).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$register_pre(fn, tool_pattern = NULL, timeout_ms = 2000L)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-register_post"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-register_post}{}}}
-\subsection{Method \code{register_post()}}{
-Register a PostToolUse hook (legacy shorthand).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$register_post(fn, tool_pattern = NULL, timeout_ms = 2000L)}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$register_post()}}{
+  Register a PostToolUse hook (legacy shorthand).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$register_post(fn, tool_pattern = NULL, timeout_ms = 2000L)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_pre"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_pre}{}}}
-\subsection{Method \code{run_pre()}}{
-Fire PreToolUse hooks.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_pre(tool_name, tool_input)}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$run_pre()}}{
+  Fire PreToolUse hooks.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_pre(tool_name, tool_input)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_post"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_post}{}}}
-\subsection{Method \code{run_post()}}{
-Fire PostToolUse hooks.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_post(tool_name, tool_input, tool_output)}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$run_post()}}{
+  Fire PostToolUse hooks.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_post(tool_name, tool_input, tool_output)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_failure"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_failure}{}}}
-\subsection{Method \code{run_failure()}}{
-Fire PostToolUseFailure hooks (informational).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_failure(tool_name, tool_input, error_message)}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$run_failure()}}{
+  Fire PostToolUseFailure hooks (informational).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_failure(tool_name, tool_input, error_message)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_permission_denied"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_permission_denied}{}}}
-\subsection{Method \code{run_permission_denied()}}{
-Fire PermissionDenied hooks (informational).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_permission_denied(tool_name, tool_input, mode)}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$run_permission_denied()}}{
+  Fire PermissionDenied hooks (informational).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_permission_denied(tool_name, tool_input, mode)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_permission_request"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_permission_request}{}}}
-\subsection{Method \code{run_permission_request()}}{
-Fire PermissionRequest hooks.
+\subsection{\code{HookRegistry$run_permission_request()}}{
+  Fire PermissionRequest hooks.
 Returns "allow", "deny", or NULL (fall through to ask_fn).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_permission_request(tool_name, tool_input, mode)}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_permission_request(tool_name, tool_input, mode)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_user_message"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_user_message}{}}}
-\subsection{Method \code{run_user_message()}}{
-Fire UserMessage hooks (informational).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_user_message(message)}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$run_user_message()}}{
+  Fire UserMessage hooks (informational).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_user_message(message)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_assistant_message"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_assistant_message}{}}}
-\subsection{Method \code{run_assistant_message()}}{
-Fire AssistantMessage hooks (informational).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_assistant_message(message)}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$run_assistant_message()}}{
+  Fire AssistantMessage hooks (informational).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_assistant_message(message)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_session_start"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_session_start}{}}}
-\subsection{Method \code{run_session_start()}}{
-Fire SessionStart hooks at the top of a session/turn.
+\subsection{\code{HookRegistry$run_session_start()}}{
+  Fire SessionStart hooks at the top of a session/turn.
 Callback: \verb{function(context)}. Return value ignored.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_session_start(context = list())}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_session_start(context = list())}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_stop"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_stop}{}}}
-\subsection{Method \code{run_stop()}}{
-Fire Stop hooks when the agent loop terminates.
+\subsection{\code{HookRegistry$run_stop()}}{
+  Fire Stop hooks when the agent loop terminates.
 Callback: \verb{function(stop_reason, context)}. Return value ignored.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_stop(stop_reason = "completed", context = list())}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_stop(stop_reason = "completed", context = list())}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_pre_compact"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_pre_compact}{}}}
-\subsection{Method \code{run_pre_compact()}}{
-Fire PreCompact hooks before context compaction.
+\subsection{\code{HookRegistry$run_pre_compact()}}{
+  Fire PreCompact hooks before context compaction.
 Callback: \verb{function(level, context)}. Return value ignored.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_pre_compact(level = "unknown", context = list())}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_pre_compact(level = "unknown", context = list())}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_subagent_start"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_subagent_start}{}}}
-\subsection{Method \code{run_subagent_start()}}{
-Fire SubagentStart hooks when a sub-agent is launched.
+\subsection{\code{HookRegistry$run_subagent_start()}}{
+  Fire SubagentStart hooks when a sub-agent is launched.
 Callback: \verb{function(description, context)}. Return value ignored.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_subagent_start(description = "", context = list())}\if{html}{\out{</div>}}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_subagent_start(description = "", context = list())}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-run_subagent_stop"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-run_subagent_stop}{}}}
-\subsection{Method \code{run_subagent_stop()}}{
-Fire SubagentStop hooks when a sub-agent completes.
+\subsection{\code{HookRegistry$run_subagent_stop()}}{
+  Fire SubagentStop hooks when a sub-agent completes.
 Callback: \verb{function(description, result, context)}. Return ignored.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$run_subagent_stop(
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_subagent_stop(
   description = "",
   result = NULL,
   context = list()
-)}\if{html}{\out{</div>}}
+)}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-clear"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-clear}{}}}
-\subsection{Method \code{clear()}}{
-Remove all registered hooks.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$clear()}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$clear()}}{
+  Remove all registered hooks.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$clear()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-HookRegistry-count"></a>}}
 \if{latex}{\out{\hypertarget{method-HookRegistry-count}{}}}
-\subsection{Method \code{count()}}{
-Count total registered hooks across all events.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{HookRegistry$count()}\if{html}{\out{</div>}}
+\subsection{\code{HookRegistry$count()}}{
+  Count total registered hooks across all events.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$count()}
+    \if{html}{\out{</div>}}
+  }
 }
 
-}
 }
