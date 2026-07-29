@@ -1,3 +1,13 @@
+# codeagent (development version)
+
+* **Concurrent sub-agents (opt-in via `settings$async_subagents`, default OFF)**:
+  the `Agent` tool can run asynchronously so multiple sub-agent delegations
+  requested in a single turn execute concurrently (via ellmer's
+  `tool_mode = "concurrent"`) on the async streaming paths (CLI REPL / Shiny
+  app). Sync one-shot `codeagent()` transparently falls back to sequential
+  sub-agents, since async (promise-returning) tools are invalid under
+  `Chat$chat()`. Also adopts ellmer 0.4.2 (`set_model()`, `chat_posit()`).
+
 # codeagent 0.1.0
 
 First public release. `codeagent` is an R-native reimplementation of a

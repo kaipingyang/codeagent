@@ -94,20 +94,68 @@ NULL
 #'   "bubble" mode, so any "ask" decision is forwarded to this function.
 #' @return An `ellmer::tool()` object.
 #' @export
+# ---------------------------------------------------------------------------
+# Async-turn tracking. ellmer async (promise-returning) tools work ONLY under
+# chat_async()/stream_async(); sync chat$chat() rejects them. codeagent_stream_async()
+# marks the turn async (.enter_async_turn/.exit_async_turn) so the Agent tool
+# knows it may return a promise for concurrent sub-agents. Sync turns (one-shot
+# codeagent()/agent_loop) fall back to the synchronous sub-agent loop.
+# ---------------------------------------------------------------------------
+.async_turn_state <- new.env(parent = emptyenv())
+.async_turn_state$depth <- 0L
+.enter_async_turn <- function() {
+  .async_turn_state$depth <- .async_turn_state$depth + 1L
+  invisible(NULL)
+}
+.exit_async_turn <- function() {
+  .async_turn_state$depth <- max(0L, .async_turn_state$depth - 1L)
+  invisible(NULL)
+}
+.in_async_turn <- function() isTRUE(.async_turn_state$depth > 0L)
+
+# Async variant of .run_subagent_loop(): returns a promise resolving to the
+# sub-agent's text response. Used only inside an async parent turn so multiple
+# Agent calls interleave (ellmer tool_mode = "concurrent").
+# @keywords internal
+.run_subagent_loop_async <- function(sub_chat, prompt, max_turns = 30L,
+                                      persist = FALSE, cwd = getwd(),
+                                      description = NULL) {
+  p <- promises::then(
+    sub_chat$chat_async(prompt),
+    onFulfilled = function(response) {
+      if (isTRUE(persist)) {
+        sid <- paste0("subagent-", substr(tryCatch(.generate_uuid_v4(),
+                      error = function(e) "x"), 1L, 8L))
+        tryCatch(save_session(sub_chat, cwd, sid,
+                              title = description %||% "sub-agent"),
+                 error = function(e) NULL)
+      }
+      if (is.character(response)) response
+      else "[Sub-agent completed with no text output]"
+    })
+  promises::catch(p, function(e)
+    paste0("[Error in sub-agent] ", conditionMessage(e)))
+}
+
 agent_tool <- function(model              = "claude-sonnet-4-6",
                         mode               = "default",
                         rules              = list(),
                         max_turns          = 30L,
                         worktree_isolation = FALSE,
                         hooks              = NULL,
-                        ask_fn             = NULL) {
+                        ask_fn             = NULL,
+                        async              = FALSE) {
   # Prefer btw's upstream subagent (`btw_tool_agent_subagent`: own conversation
   # thread, resumable via session_id) -- no reinvention. Only fall through to
   # codeagent's own sub-agent loop when a codeagent-specific capability is
   # requested that btw's subagent does NOT provide: git-worktree isolation.
   # (Previously btw's tool was returned unconditionally, so worktree_isolation
   # was silently ignored whenever btw was installed -- a latent bug.)
-  if (!isTRUE(worktree_isolation) && requireNamespace("btw", quietly = TRUE)) {
+  # Prefer btw's upstream subagent unless a codeagent-specific capability is
+  # requested: git-worktree isolation, OR async (concurrent) sub-agents -- btw's
+  # tool is synchronous, so async mode uses codeagent's own promise-based loop.
+  if (!isTRUE(worktree_isolation) && !isTRUE(async) &&
+      requireNamespace("btw", quietly = TRUE)) {
     tools <- tryCatch(btw::btw_tools("btw_tool_agent_subagent"),
                       error = function(e) list())
     if (length(tools) > 0L) return(tools[[1L]])
@@ -121,18 +169,20 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
       if (!is.null(hooks)) tryCatch(
         hooks$run_subagent_start(description, list(model = model)),
         error = function(e) NULL)
-      result <- tryCatch({
-        # Optionally create an isolated worktree. Capture the repo dir BEFORE
-        # the sub-agent may change cwd, so cleanup always has repo context.
-        repo_dir <- getwd()
-        wt_path <- if (isTRUE(worktree_isolation)) .create_worktree(repo_dir) else NULL
-        sub_cwd <- wt_path %||% repo_dir
-        on.exit(.cleanup_worktree(wt_path, repo_dir), add = TRUE)
 
-        # Sub-agents run in "bubble" mode: permission decisions bubble up to
-        # the parent's ask_fn rather than being resolved locally (mirrors
-        # Claude Code's default sub-agent behaviour). The parent ask_fn is
-        # passed through so a bubbled "ask" is answered by the parent.
+      # Async sub-agents (concurrent via ellmer tool_mode="concurrent") are only
+      # valid when the parent turn runs async; sync chat$chat() rejects
+      # promise-returning tools. Gate on the opt-in flag AND an active async turn.
+      use_async <- isTRUE(async) && .in_async_turn()
+
+      # --- synchronous setup (shared by both paths) ---
+      # Sub-agents run in "bubble" mode: permission decisions bubble up to the
+      # parent's ask_fn (mirrors Claude Code's default sub-agent behaviour).
+      setup <- tryCatch({
+        # Capture repo dir BEFORE the sub-agent may change cwd.
+        repo_dir <- getwd()
+        wt_path  <- if (isTRUE(worktree_isolation)) .create_worktree(repo_dir) else NULL
+        sub_cwd  <- wt_path %||% repo_dir
         sub_mode <- "bubble"
         system_prompt <- .prompt_subagent(description, sub_mode, wt_path)
         sub_settings <- list(
@@ -140,22 +190,56 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
           cwd = sub_cwd, max_turns = as.integer(max_turns),
           base_url = Sys.getenv("CODEAGENT_BASE_URL", "")
         )
-        sub_chat <- .make_chat(sub_settings, sub_cwd, system_prompt = system_prompt)
+        sub_chat <- .make_chat(sub_settings, sub_cwd)
+        # .make_chat() builds its own system prompt from settings; replace it
+        # with the sub-agent (bubble-mode) prompt. Passing system_prompt to
+        # .make_chat() would collide in its `...` forwarding.
+        tryCatch(sub_chat$set_system_prompt(system_prompt), error = function(e) NULL)
         register_builtin_tools(sub_chat, mode = sub_mode, rules = rules,
                                ask_fn = ask_fn)
-        # Persist the sub-agent's conversation as a sidechain session so its
-        # history is not ephemeral (stored under the parent project dir).
-        r <- .run_subagent_loop(sub_chat, prompt, max_turns,
-                                persist = TRUE, cwd = repo_dir,
-                                description = description)
-        truncate_tool_result(r, "default")
-      }, error = function(e) {
-        paste0("[Error] Agent tool failed: ", conditionMessage(e))
-      })
-      if (!is.null(hooks)) tryCatch(
-        hooks$run_subagent_stop(description, result, list(model = model)),
-        error = function(e) NULL)
-      result
+        list(sub_chat = sub_chat, wt_path = wt_path, repo_dir = repo_dir)
+      }, error = function(e)
+        structure(paste0("[Error] Agent tool failed: ", conditionMessage(e)),
+                  class = "agent_setup_error"))
+
+      if (inherits(setup, "agent_setup_error")) {
+        msg <- unclass(setup)
+        if (!is.null(hooks)) tryCatch(
+          hooks$run_subagent_stop(description, msg, list(model = model)),
+          error = function(e) NULL)
+        return(msg)
+      }
+
+      # Cleanup worktree + truncate + fire stop hook. Runs at the correct time
+      # in BOTH paths: inline for sync, inside then() for async (so the worktree
+      # is not removed before the sub-agent finishes). Replaces the former
+      # on.exit(), which would fire too early on the async path.
+      finish <- function(r) {
+        tryCatch(.cleanup_worktree(setup$wt_path, setup$repo_dir),
+                 error = function(e) NULL)
+        out <- truncate_tool_result(r, "default")
+        if (!is.null(hooks)) tryCatch(
+          hooks$run_subagent_stop(description, out, list(model = model)),
+          error = function(e) NULL)
+        out
+      }
+
+      if (isTRUE(use_async)) {
+        # Return a promise -> ellmer runs multiple Agent calls concurrently.
+        return(promises::then(
+          .run_subagent_loop_async(setup$sub_chat, prompt, max_turns,
+                                   persist = TRUE, cwd = setup$repo_dir,
+                                   description = description),
+          finish))
+      }
+
+      # Synchronous path (default; safe under chat$chat()).
+      r <- tryCatch(
+        .run_subagent_loop(setup$sub_chat, prompt, max_turns,
+                           persist = TRUE, cwd = setup$repo_dir,
+                           description = description),
+        error = function(e) paste0("[Error in sub-agent] ", conditionMessage(e)))
+      finish(r)
     },
     description = paste0(
       "Spawn a sub-agent to handle a complex, multi-step delegated task. ",
@@ -199,9 +283,10 @@ register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
                                   mode = "default", rules = list(),
                                   max_turns = 30L,
                                   worktree_isolation = FALSE,
-                                  ask_fn = NULL) {
+                                  ask_fn = NULL, async = FALSE) {
   chat$register_tool(agent_tool(model, mode, rules, max_turns,
-                                worktree_isolation, ask_fn = ask_fn))
+                                worktree_isolation, ask_fn = ask_fn,
+                                async = async))
 
   # Register custom btw agent tools from discovered .md files
   if (requireNamespace("btw", quietly = TRUE)) {

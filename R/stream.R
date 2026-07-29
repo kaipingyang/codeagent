@@ -88,7 +88,10 @@ codeagent_stream_async <- function(
                                compaction_ctrl, resource_state)
   stream_contents <- list(actual_input)
 
-  coro::async(function() {
+  # Mark this as an async turn so promise-returning tools (e.g. concurrent
+  # sub-agents) are permitted; cleared when the turn's promise settles.
+  .enter_async_turn()
+  .async_result <- coro::async(function() {
     # controller resets automatically when passed to a new stream call
     # (ellmer 0.4.1 docs), but an explicit tryCatch-guarded reset is harmless.
     if (!is.null(controller))
@@ -166,6 +169,7 @@ codeagent_stream_async <- function(
       invisible(list(text = acc, usage = NULL, stop_reason = "error"))
     })
   })()
+  promises::finally(.async_result, function() .exit_async_turn())
 }
 
 # ---------------------------------------------------------------------------

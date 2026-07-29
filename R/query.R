@@ -545,7 +545,8 @@ agent_loop <- function(user_input,
   tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",
                                 "bypass", rules,
                                 worktree_isolation = isTRUE(settings$worktree_isolation),
-                                ask_fn = NULL),
+                                ask_fn = NULL,
+                                async = isTRUE(settings$async_subagents)),
                                                               error = function(e) NULL)
   tryCatch(register_r_tools(chat, groups = settings$btw_groups %||% NULL),
                                                               error = function(e) NULL)
