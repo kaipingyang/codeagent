@@ -39,6 +39,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/agent_loop.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/agent_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/ask_user_tool.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/async_agent.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/bash_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/board_add_task.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/board_claim.html</loc></url>
@@ -80,6 +81,9 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_session.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-auto_compact_threshold.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-bg_poll.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-bg_spawn.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-bg_status.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-build_system_prompt.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-build_system_reminder.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-ca_dispatch.html</loc></url>

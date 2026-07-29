@@ -14,7 +14,8 @@ agent_tool(
   max_turns = 30L,
   worktree_isolation = FALSE,
   hooks = NULL,
-  ask_fn = NULL
+  ask_fn = NULL,
+  async = FALSE
 )
 ```
 
