@@ -548,6 +548,9 @@ agent_loop <- function(user_input,
                                 ask_fn = NULL,
                                 async = isTRUE(settings$async_subagents)),
                                                               error = function(e) NULL)
+  # Background (non-blocking) sub-agent tool -- opt-in, requires mirai.
+  if (isTRUE(settings$background_agents))
+    tryCatch(register_background_agent_tool(chat), error = function(e) NULL)
   tryCatch(register_r_tools(chat, groups = settings$btw_groups %||% NULL),
                                                               error = function(e) NULL)
   # Plan-mode tools: let the model enter/exit read-only planning mode. Skip in

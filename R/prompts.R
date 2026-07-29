@@ -231,6 +231,12 @@ NULL
     }
   }
 
+  # Background sub-agent results (completed since last turn) + running notices.
+  # Mirrors Claude Code's async-agent attachments: surface results and avoid
+  # re-spawning tasks that are still in flight.
+  bg <- tryCatch(.bg_reminder_block(), error = function(e) "")
+  if (nzchar(bg)) lines <- c(lines, "", bg)
+
   if (length(lines) == 0L) return("")
   paste0("<system-reminder>\n", paste(lines, collapse = "\n"), "\n</system-reminder>")
 }

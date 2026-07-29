@@ -11,7 +11,8 @@ register_agent_tool(
   rules = list(),
   max_turns = 30L,
   worktree_isolation = FALSE,
-  ask_fn = NULL
+  ask_fn = NULL,
+  async = FALSE
 )
 }
 \arguments{

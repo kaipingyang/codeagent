@@ -8,6 +8,12 @@
   sub-agents, since async (promise-returning) tools are invalid under
   `Chat$chat()`. Also adopts ellmer 0.4.2 (`set_model()`, `chat_posit()`).
 
+* **Background sub-agents (opt-in via `settings$background_agents`, default OFF;
+  requires `mirai`)**: a new `BackgroundAgent` tool delegates a task to a
+  fire-and-forget sub-agent running in a `mirai` daemon and returns immediately
+  (non-blocking). Its result is polled and surfaced back to the model on a later
+  turn via the system reminder, mirroring Claude Code's async agents.
+
 # codeagent 0.1.0
 
 First public release. `codeagent` is an R-native reimplementation of a

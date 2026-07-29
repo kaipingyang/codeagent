@@ -94,49 +94,6 @@ NULL
 #'   "bubble" mode, so any "ask" decision is forwarded to this function.
 #' @return An `ellmer::tool()` object.
 #' @export
-# ---------------------------------------------------------------------------
-# Async-turn tracking. ellmer async (promise-returning) tools work ONLY under
-# chat_async()/stream_async(); sync chat$chat() rejects them. codeagent_stream_async()
-# marks the turn async (.enter_async_turn/.exit_async_turn) so the Agent tool
-# knows it may return a promise for concurrent sub-agents. Sync turns (one-shot
-# codeagent()/agent_loop) fall back to the synchronous sub-agent loop.
-# ---------------------------------------------------------------------------
-.async_turn_state <- new.env(parent = emptyenv())
-.async_turn_state$depth <- 0L
-.enter_async_turn <- function() {
-  .async_turn_state$depth <- .async_turn_state$depth + 1L
-  invisible(NULL)
-}
-.exit_async_turn <- function() {
-  .async_turn_state$depth <- max(0L, .async_turn_state$depth - 1L)
-  invisible(NULL)
-}
-.in_async_turn <- function() isTRUE(.async_turn_state$depth > 0L)
-
-# Async variant of .run_subagent_loop(): returns a promise resolving to the
-# sub-agent's text response. Used only inside an async parent turn so multiple
-# Agent calls interleave (ellmer tool_mode = "concurrent").
-# @keywords internal
-.run_subagent_loop_async <- function(sub_chat, prompt, max_turns = 30L,
-                                      persist = FALSE, cwd = getwd(),
-                                      description = NULL) {
-  p <- promises::then(
-    sub_chat$chat_async(prompt),
-    onFulfilled = function(response) {
-      if (isTRUE(persist)) {
-        sid <- paste0("subagent-", substr(tryCatch(.generate_uuid_v4(),
-                      error = function(e) "x"), 1L, 8L))
-        tryCatch(save_session(sub_chat, cwd, sid,
-                              title = description %||% "sub-agent"),
-                 error = function(e) NULL)
-      }
-      if (is.character(response)) response
-      else "[Sub-agent completed with no text output]"
-    })
-  promises::catch(p, function(e)
-    paste0("[Error in sub-agent] ", conditionMessage(e)))
-}
-
 agent_tool <- function(model              = "claude-sonnet-4-6",
                         mode               = "default",
                         rules              = list(),
@@ -413,4 +370,42 @@ codeagent_mcp_server <- function(tools = NULL,
   }
   if (is.character(response)) return(response)
   "[Sub-agent completed with no text output]"
+}
+
+# ---------------------------------------------------------------------------
+# Background (non-blocking) sub-agent tool. Registry/spawn/poll: R/async_agent.R.
+# ---------------------------------------------------------------------------
+
+# Model-triggered fire-and-forget delegation. Returns immediately; the result is
+# surfaced on a later turn via the system reminder (.bg_reminder_block).
+# @keywords internal
+background_agent_tool <- function() {
+  ellmer::tool(
+    fun = function(prompt) {
+      id <- .bg_spawn(prompt)
+      if (inherits(id, "bg_error")) return(unclass(id))
+      paste0("Started background sub-agent #", id,
+             ". It runs concurrently without blocking; its result will be ",
+             "delivered to you on a later turn. Continue other work now -- do ",
+             "not wait for it, and do not re-spawn the same task.")
+    },
+    name = "BackgroundAgent",
+    description = paste0(
+      "Delegate a long-running, independent task to a background sub-agent that ",
+      "runs WITHOUT blocking the conversation. Returns immediately with a task ",
+      "id; the sub-agent's result is surfaced automatically on a later turn. Use ",
+      "for work whose answer you do not need right now (e.g. a broad exploration ",
+      "or a slow check) while you continue helping the user."),
+    arguments = list(prompt = ellmer::type_string(
+      "The full, self-contained task prompt for the background sub-agent.",
+      required = TRUE)),
+    annotations = ellmer::tool_annotations(title = "Background Agent",
+                                           read_only_hint = TRUE))
+}
+
+# Register the BackgroundAgent tool (no-op if mirai is unavailable).
+# @keywords internal
+register_background_agent_tool <- function(chat) {
+  if (.bg_available()) chat$register_tool(background_agent_tool())
+  invisible(chat)
 }

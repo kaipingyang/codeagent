@@ -1,0 +1,65 @@
+# Background (non-blocking) sub-agents (plan 27, Phase B).
+# Unit-level (no live LLM). Real spawn -> codeagent sub-agent is verified
+# manually against a model; here we test the registry, poll, and reminder wiring.
+#
+# NB: .bg_state is a package-internal environment. Mutate it via a captured
+# reference (st$agents <- ...); `codeagent:::.bg_state$agents <- ...` fails
+# because R rewrites it as an assignment to the locked ::: binding.
+
+st <- codeagent:::.bg_state
+
+test_that("bg_take_completed returns completed once, then marks retrieved", {
+  st$agents <- list(
+    "1" = list(id = "1", prompt = "p", status = "done",
+               result = "R", retrieved = FALSE))
+  got <- codeagent:::.bg_take_completed()
+  expect_length(got, 1L)
+  expect_identical(got[[1L]]$result, "R")
+  expect_length(codeagent:::.bg_take_completed(), 0L)  # now retrieved
+  st$agents <- list()
+})
+
+test_that("bg reminder block reports completed results and running agents", {
+  st$agents <- list(
+    "1" = list(id = "1", prompt = "explore data", status = "done",
+               result = "found 3 trends", retrieved = FALSE),
+    "2" = list(id = "2", prompt = "long task", status = "running"))
+  blk <- codeagent:::.bg_reminder_block()
+  expect_true(grepl("found 3 trends", blk, fixed = TRUE))
+  expect_true(grepl("still running", blk))
+  expect_true(grepl("#2", blk, fixed = TRUE))
+  st$agents <- list()
+})
+
+test_that("system reminder surfaces a completed background result", {
+  st$agents <- list(
+    "1" = list(id = "1", prompt = "q", status = "done",
+               result = "BG_DONE_XYZ", retrieved = FALSE))
+  rem <- codeagent:::.build_system_reminder(list(), iteration = 2L,
+                                            cwd = tempdir())
+  expect_true(grepl("BG_DONE_XYZ", rem, fixed = TRUE))
+  st$agents <- list()
+})
+
+test_that("BackgroundAgent tool builds with the expected name", {
+  t <- codeagent:::background_agent_tool()
+  expect_s3_class(t, "ellmer::ToolDef")
+  expect_identical(t@name, "BackgroundAgent")
+})
+
+test_that("bg_poll resolves a real mirai task (fire-and-forget)", {
+  skip_if_not_installed("mirai")
+  codeagent:::.bg_ensure_daemons(1L)
+  m <- mirai::mirai({ paste("answer", 42) }, .compute = codeagent:::.BG_COMPUTE)
+  st$agents <- list(
+    "9" = list(id = "9", prompt = "x", status = "running",
+               result = NULL, retrieved = FALSE, mirai = m))
+  for (i in 1:80) {
+    codeagent:::.bg_poll()
+    if (identical(st$agents[["9"]]$status, "done")) break
+    Sys.sleep(0.1)
+  }
+  expect_identical(st$agents[["9"]]$status, "done")
+  expect_identical(st$agents[["9"]]$result, "answer 42")
+  codeagent:::.bg_shutdown()
+})
