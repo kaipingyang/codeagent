@@ -16,7 +16,8 @@ NULL
 # Built-in REPL meta-commands (everything else starting with "/" is a skill).
 .REPL_META_CMDS <- c("exit", "quit", "help", "clear", "compact",
                      "model", "sessions", "budget", "rewind",
-                     "cost", "copy", "export", "context")
+                     "cost", "copy", "export", "context",
+                     "bg", "bgstatus")
 
 # Parse one REPL line into an action descriptor (pure, testable).
 # Returns list(action, ...). Actions:
@@ -53,7 +54,9 @@ NULL
     export   = list(action = "export", arg = arg),
     context  = list(action = "context"),
     rewind   = list(action = "rewind", arg = arg),
-    model    = list(action = "model", arg = arg)
+    model    = list(action = "model", arg = arg),
+    bg       = list(action = "bg", arg = arg),
+    bgstatus = list(action = "bgstatus")
   )
 }
 
@@ -493,6 +496,8 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         TRUE
       },
       budget = { .repl_budget_line(client$chat, settings, force = TRUE); TRUE },
+      bg = { cat(.bg_slash_spawn(act$arg), "\n", sep = ""); TRUE },
+      bgstatus = { cat(.bg_status_text(), "\n", sep = ""); TRUE },
       cost = {
         n     <- tryCatch(token_count_with_estimation(client$chat),
                           error = function(e) 0L)

@@ -12,7 +12,9 @@
   requires `mirai`)**: a new `BackgroundAgent` tool delegates a task to a
   fire-and-forget sub-agent running in a `mirai` daemon and returns immediately
   (non-blocking). Its result is polled and surfaced back to the model on a later
-  turn via the system reminder, mirroring Claude Code's async agents.
+  turn via the system reminder, mirroring Claude Code's async agents. Users can
+  also spawn and inspect background agents directly with the `/bg <task>` and
+  `/bgstatus` slash commands (REPL and Shiny).
 
 # codeagent 0.1.0
 

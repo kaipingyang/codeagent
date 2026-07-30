@@ -44,7 +44,9 @@ NULL
     model    = "Switch the model", compact = "Compact the context now",
     clear    = "Clear the conversation", rewind = "Rewind the last turn(s)",
     help     = "Show help", sessions = "List saved sessions",
-    budget   = "Show token budget"
+    budget   = "Show token budget",
+    bg       = "Run a task in a background sub-agent",
+    bgstatus = "List background sub-agents"
   )
   # Local commands: echo = FALSE. They do NOT go to the LLM, so we must not let
   # shinychat enter its "awaitResponse" (loading spinner waiting for AI) state.

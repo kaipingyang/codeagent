@@ -64,6 +64,10 @@ NULL
     sessions = list(action = "append",
                     feedback = .format_sessions_feedback(sessions)),
 
+    bg = list(action = "append", feedback = .bg_slash_spawn(args)),
+
+    bgstatus = list(action = "append", feedback = .bg_status_text()),
+
     help = ,
     exit = ,
     quit = list(action = "append", feedback = .slash_help_text()),

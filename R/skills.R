@@ -361,7 +361,8 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
 # Built-in local commands: handled client-side (not sent to LLM). Must match
 # the REPL meta-commands in .REPL_META_CMDS so both paths behave identically.
 .LOCAL_COMMANDS <- c("model", "compact", "clear", "rewind",
-                     "help", "exit", "quit", "sessions", "budget")
+                     "help", "exit", "quit", "sessions", "budget",
+                     "bg", "bgstatus")
 
 #' Extract the plain-text portion from a user-input value
 #'

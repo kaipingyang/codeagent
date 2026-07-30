@@ -194,3 +194,21 @@ NULL
   promises::catch(p, function(e)
     paste0("[Error in sub-agent] ", conditionMessage(e)))
 }
+
+# Human-readable status block for /bgstatus (markdown; also fine in a terminal).
+.bg_status_text <- function() {
+  s <- .bg_status()
+  if (!nrow(s)) return("No background sub-agents.")
+  paste0("**Background sub-agents:**\n",
+         paste(sprintf("- #%s (%s): %s", s$id, s$status, s$prompt),
+               collapse = "\n"))
+}
+
+# Spawn from a user slash command; returns a feedback string (never errors).
+.bg_slash_spawn <- function(task) {
+  task <- trimws(task %||% "")
+  if (!nzchar(task)) return("Usage: /bg <task>")
+  id <- .bg_spawn(task)
+  if (inherits(id, "bg_error")) return(paste0("Background agents unavailable: ", unclass(id)))
+  sprintf("Started background sub-agent #%s. Its result will appear on a later turn.", id)
+}

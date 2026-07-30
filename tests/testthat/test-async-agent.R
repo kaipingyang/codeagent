@@ -63,3 +63,37 @@ test_that("bg_poll resolves a real mirai task (fire-and-forget)", {
   expect_identical(st$agents[["9"]]$result, "answer 42")
   codeagent:::.bg_shutdown()
 })
+
+# --- /bg and /bgstatus user slash commands ---
+
+test_that("/bg and /bgstatus are registered in both command lists", {
+  expect_true(all(c("bg", "bgstatus") %in% codeagent:::.LOCAL_COMMANDS))
+  expect_true(all(c("bg", "bgstatus") %in% codeagent:::.REPL_META_CMDS))
+})
+
+test_that(".repl_dispatch parses /bg and /bgstatus", {
+  expect_identical(codeagent:::.repl_dispatch("/bg do a thing"),
+                   list(action = "bg", arg = "do a thing"))
+  expect_identical(codeagent:::.repl_dispatch("/bgstatus")$action, "bgstatus")
+})
+
+test_that(".preprocess_input treats /bg as a local command (not sent to LLM)", {
+  p <- codeagent:::.preprocess_input("/bg do X")
+  expect_identical(p$type, "command")
+  expect_identical(p$name, "bg")
+})
+
+test_that("bg slash helpers handle empty / no-agent cases", {
+  st <- codeagent:::.bg_state
+  st$agents <- list()
+  expect_match(codeagent:::.bg_slash_spawn(""), "Usage")
+  expect_identical(codeagent:::.bg_status_text(), "No background sub-agents.")
+})
+
+test_that(".chat_command_result routes /bgstatus to an append action", {
+  st <- codeagent:::.bg_state
+  st$agents <- list()
+  r <- codeagent:::.chat_command_result("bgstatus")
+  expect_identical(r$action, "append")
+  expect_match(r$feedback, "No background sub-agents")
+})
