@@ -124,6 +124,68 @@ NULL
   )
 }
 
+#' Build a rich tool result (typed display card) for a host tool
+#'
+#' @description
+#' Construct an [ellmer::ContentToolResult] that carries a **typed display card**,
+#' so a tool's output renders as a table / image / code / error / rich text both
+#' in codeagent's Shiny app and in any host UI that consumes the
+#' `on_tool_result$display` callback of [codeagent_stream()].
+#'
+#' `value` is the text the model sees; `payload` carries the rich artifact for
+#' the UI. Return the result from your tool's function body.
+#'
+#' A host UI reads `display$toolcard$kind` + `display$toolcard$payload` (the
+#' structured artifact, e.g. `payload$df` for a table); codeagent's Shiny app
+#' additionally receives a pre-rendered `display$html` / `display$right_output`.
+#'
+#' @param value Character(1). Text summary returned to the model.
+#' @param kind One of `"text"`, `"table"`, `"image"`, `"code"`, `"diff"`,
+#'   `"error"`.
+#' @param payload Named list holding the artifact, keyed by `kind`:
+#'   * `table`: `list(df = <data.frame>)`
+#'   * `image`: `list(images = list(list(mime = "image/png", b64 = <string>)), output = <text>)`
+#'   * `code` : `list(text = <code>, lang = , filename = , output = )`
+#'   * `error`: `list(message = , detail = )`
+#'   * `text` : `list(text = )`
+#' @param title,icon Optional card title / icon name.
+#' @param status One of `"success"`, `"error"` (forced to `"error"` when
+#'   `kind = "error"`).
+#' @param markdown Optional markdown string attached to the display.
+#' @return An [ellmer::ContentToolResult]; return it from your tool function.
+#' @examples
+#' \dontrun{
+#' summarise <- ellmer::tool(
+#'   function(data_name) {
+#'     df <- summary_frame(data_name)
+#'     tool_result(sprintf("%d x %d summary", nrow(df), ncol(df)),
+#'                 kind = "table", payload = list(df = df),
+#'                 title = "Summary")
+#'   },
+#'   name = "Summarise", description = "...", arguments = list(...))
+#' chat$register_tool(summarise)
+#' register_tool_meta("Summarise", "read")
+#' }
+#' @seealso [codeagent_stream()], [register_tool_meta()]
+#' @export
+tool_result <- function(value,
+                        kind    = c("text", "table", "image", "code", "diff", "error"),
+                        payload = list(),
+                        title   = NULL,
+                        icon    = NULL,
+                        status  = c("success", "error"),
+                        markdown = NULL) {
+  kind   <- match.arg(kind)
+  status <- match.arg(status)
+  if (identical(kind, "error")) status <- "error"
+  if (!is.character(value) || length(value) != 1L)
+    stop("`value` must be a character(1).", call. = FALSE)
+  if (!is.list(payload))
+    stop("`payload` must be a named list.", call. = FALSE)
+  .tool_result2(value, kind = kind, status = status, icon = icon,
+                title = title, payload = payload, markdown = markdown)
+}
+
 # ---------------------------------------------------------------------------
 # Render dispatcher
 # ---------------------------------------------------------------------------
