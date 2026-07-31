@@ -117,3 +117,39 @@ test_that(".install_permission_gate is idempotent per chat (no stale duplicate g
   expect_true(isTRUE(ctx$installed))          # gate registered on the chat
   expect_identical(ctx$ask_fn, ask_shiny)     # latest ask_fn wins -> single live gate
 })
+
+
+# --- register_tool_meta: host tool capability declaration ---
+
+test_that("register_tool_meta lets host tools be classified for the gate", {
+  reg <- codeagent:::.tool_meta_user
+  on.exit(rm(list = ls(reg), envir = reg), add = TRUE)
+
+  # An unregistered host tool defaults to benign "read" (allowed without gating).
+  expect_identical(codeagent:::.tool_capability("MyHostTool"), "read")
+
+  # Declaring it exec makes it sensitive.
+  expect_identical(codeagent::register_tool_meta("MyHostTool", "exec"), "MyHostTool")
+  expect_identical(codeagent:::.tool_capability("MyHostTool"), "exec")
+
+  # Built-in metadata stays authoritative: a host cannot downgrade Bash.
+  codeagent::register_tool_meta("Bash", "read")
+  expect_identical(codeagent:::.tool_capability("Bash"), "exec")
+
+  # Validation.
+  expect_error(codeagent::register_tool_meta("X", "bogus"))
+  expect_error(codeagent::register_tool_meta("", "read"))
+})
+
+test_that("a declared-exec host tool is governed by policy (not auto-allowed)", {
+  reg <- codeagent:::.tool_meta_user
+  on.exit(rm(list = ls(reg), envir = reg), add = TRUE)
+
+  codeagent::register_tool_meta("MyHostTool", "exec")
+  cap <- codeagent:::.tool_capability("MyHostTool")           # "exec" -> not the read fast-path
+  pol <- codeagent:::.resolve_tool_policy(
+    list(tools = list(capabilities = list(exec = "deny"))))
+  expect_identical(
+    codeagent:::.gate_decide("MyHostTool", list(), pol, "default", list(), cap),
+    "deny")
+})

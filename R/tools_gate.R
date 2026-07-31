@@ -46,16 +46,66 @@ NULL
   btw_tool_pkg_install        = list(set = "B", capability = "exec")
 )
 
-# Resolve a tool's capability. Only tools explicitly listed in .TOOL_META are
-# treated as sensitive (write/exec/net); everything else defaults to "read"
-# (allow) so benign/meta tools (todo, skill, remember, read-only btw, ...) are not
-# accidentally gated. Fine-grained control over any tool is still possible via
+# Mutable registry for host/third-party tools to declare their capability so the
+# permission gate governs them correctly. Built-in .TOOL_META stays authoritative
+# (a host cannot downgrade Bash); host tools (absent from .TOOL_META) fall through
+# to here. Only the CONTENTS are mutated (the binding is locked after load) --
+# same pattern as .gate_contexts / .chat_callbacks_installed in this file.
+.tool_meta_user <- new.env(parent = emptyenv())
+
+# Resolve a tool's capability. Precedence: built-in .TOOL_META > host registry
+# (register_tool_meta) > default "read". Only tools resolving to write/exec/net are
+# treated as sensitive; "read" (the default) is allowed WITHOUT gating, so benign
+# tools (todo, skill, remember, read-only btw, host read-only tools, ...) are not
+# accidentally gated. Fine-grained control over ANY tool is still possible via
 # settings$tools$overrides.
 #' @keywords internal
 .tool_capability <- function(name, tool = NULL) {
   m <- .TOOL_META[[name]]
   if (!is.null(m)) return(m$capability)
+  u <- .tool_meta_user[[name]]
+  if (!is.null(u)) return(u$capability)
   "read"
+}
+
+#' Declare a host tool's permission capability
+#'
+#' @description
+#' Register the permission **capability** of a tool that a host application
+#' attaches to the chat (via `chat$register_tool()`), so codeagent's central
+#' permission gate governs it like a native tool.
+#'
+#' codeagent classifies every tool call by capability. Built-in tools are known;
+#' any **unregistered** tool defaults to `"read"` and is therefore allowed
+#' **without gating**. If a host tool performs sensitive actions (writing files,
+#' executing code, network access), declare it here so the gate can `ask`/`deny`
+#' it under the active permission mode and `settings$tools` policy.
+#'
+#' Built-in tool metadata stays authoritative -- this only classifies tools not
+#' already known to codeagent. Registrations persist for the R session.
+#'
+#' @param name Character(1). Tool name (must match the `ellmer::tool()` name).
+#' @param capability One of `"read"`, `"write"`, `"exec"`, `"net"`. Use `"read"`
+#'   for read-only/benign tools (allowed without prompting); `"write"`/`"exec"`/
+#'   `"net"` route through the permission gate.
+#' @param set Character(1). Optional grouping label for reporting (default `"C"`
+#'   = host/custom). Not used in gate decisions.
+#' @return Invisibly, `name`.
+#' @examples
+#' \dontrun{
+#' chat$register_tool(my_run_code_tool)      # a host tool that executes R code
+#' register_tool_meta("RunTFLCode", "exec")  # -> gated like Bash / RunR
+#' }
+#' @seealso [codeagent_client()], [register_builtin_tools()]
+#' @export
+register_tool_meta <- function(name,
+                               capability = c("read", "write", "exec", "net"),
+                               set = "C") {
+  if (!is.character(name) || length(name) != 1L || !nzchar(name))
+    stop("`name` must be a non-empty character(1).", call. = FALSE)
+  capability <- match.arg(capability)
+  .tool_meta_user[[name]] <- list(capability = capability, set = set)
+  invisible(name)
 }
 
 # Parse settings$tools into a policy object (sets / capabilities / overrides).
