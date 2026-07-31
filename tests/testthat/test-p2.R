@@ -106,6 +106,32 @@ test_that("team_run returns empty list for no tasks", {
   expect_equal(team_run(character(0)), list())
 })
 
+test_that("team_run runs real mirai workers: list, length, input order preserved", {
+  skip_on_cran()
+  skip_if_not_installed("mirai")
+  # No reachable endpoint -> each worker's codeagent() call fails fast and
+  # run_one returns an "[Error] ..." string. This exercises the REAL mirai
+  # worker path (daemons spawn, run_one serialises + runs, all results are
+  # collected) and pins the documented contract: a list, same length, in input
+  # order. Guards against the removed crew branch (which returned NA / dropped
+  # results / lost order).
+  withr::local_envvar(
+    CODEAGENT_BASE_URL = "http://127.0.0.1:1",   # connection refused -> fast
+    CODEAGENT_API_KEY  = "x",
+    CODEAGENT_MODEL    = "x")
+  tasks <- c("alpha", "bravo", "charlie")
+  res <- team_run(tasks, n_workers = 2L)
+  expect_type(res, "list")
+  expect_length(res, length(tasks))
+  # run_one must actually RUN in each worker, i.e. its args were BOUND. If the
+  # constants were passed via `...` (which mirai does NOT bind in the worker),
+  # run_one would crash with "argument missing" and mirai would return
+  # `miraiError` objects instead of run_one's own "[Error] ..." string. Note
+  # `is.character()` is TRUE for a miraiError, so we must check the class.
+  expect_false(any(vapply(res, function(x) inherits(x, "miraiError"), logical(1))))
+  expect_true(all(grepl("^\\[Error\\]", vapply(res, as.character, character(1)))))
+})
+
 test_that("team_run_tool builds a valid ellmer tool", {
   skip_if_not_installed("mirai")
   t <- codeagent:::team_run_tool(model = "claude-sonnet-4-6")

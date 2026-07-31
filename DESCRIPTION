@@ -64,7 +64,6 @@ Suggests:
     parallelly,
     ragnar,
     callr,
-    crew,
     vitals,
     keyring,
     webfakes

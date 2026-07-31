@@ -52,12 +52,6 @@ team_run <- function(tasks, model = NULL, n_workers = NULL,
       "i" = "Install it with {.code install.packages('mirai')}."
     ))
 
-  if (!requireNamespace("mirai", quietly = TRUE) && !requireNamespace("crew", quietly = TRUE))
-    cli::cli_abort(c(
-      "{.fn team_run} requires {.pkg crew} or {.pkg mirai}.",
-      "i" = "Install with {.code install.packages('crew')}."
-    ))
-
   model     <- model %||% Sys.getenv("CODEAGENT_MODEL", "claude-sonnet-4-6")
   n_workers <- if (is.null(n_workers)) .team_default_workers(length(tasks))
                else as.integer(min(n_workers, .team_default_workers(length(tasks))))
@@ -75,35 +69,19 @@ team_run <- function(tasks, model = NULL, n_workers = NULL,
     }, error = function(e) paste0("[Error] ", conditionMessage(e)))
   }
 
-  # Prefer crew (more mature worker pool with health monitoring) over raw mirai.
-  if (requireNamespace("crew", quietly = TRUE)) {
-    controller <- crew::crew_controller_local(workers = n_workers)
-    controller$start()
-    on.exit(controller$terminate(), add = TRUE)
-
-    for (i in seq_along(tasks)) {
-      controller$push(
-        command = run_one(task, model, base_url, api_key, permission_mode, cwd),
-        data = list(task = tasks[[i]], model = model, base_url = base_url,
-                    api_key = api_key, permission_mode = permission_mode, cwd = cwd),
-        name = paste0("task_", i)
-      )
-    }
-    controller$wait(mode = "all")
-    collected <- controller$pop(scale = FALSE)
-    results_list <- if (nrow(collected) > 0)
-      as.list(collected$result) else
-      as.list(rep("[Error] No results", length(tasks)))
-    return(results_list)
-  }
-
-  # Fallback: mirai (still works, less observability).
+  # Run each task in its own mirai daemon. mirai_map preserves input order and
+  # collects all results; run_one takes everything via arguments so it
+  # serialises cleanly to the worker processes.
   mirai::daemons(n_workers)
   on.exit(mirai::daemons(0L), add = TRUE)
   m <- mirai::mirai_map(
     tasks, run_one,
-    model = model, base_url = base_url, api_key = api_key,
-    permission_mode = permission_mode, cwd = cwd
+    # Constants MUST go through .args: mirai does NOT bind `...` in the worker
+    # (verified on mirai 2.7.1: passing via `...` -> "argument missing" ->
+    # miraiError). .args binds them and preserves input order. This matches
+    # the same fix already applied in team_coordinate's worker_loop.
+    .args = list(model = model, base_url = base_url, api_key = api_key,
+                 permission_mode = permission_mode, cwd = cwd)
   )
   results <- tryCatch(m[], error = function(e)
     as.list(rep(paste0("[Error] team_run failed: ", conditionMessage(e)),
