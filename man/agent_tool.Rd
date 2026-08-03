@@ -33,6 +33,11 @@ own isolation.}
 
 \item{ask_fn}{Function or NULL. Parent permission callback. Sub-agents run in
 "bubble" mode, so any "ask" decision is forwarded to this function.}
+
+\item{async}{Logical. If \code{TRUE} and the parent turn is async (concurrent
+streaming), run sub-agents via codeagent's promise-based loop so multiple
+\code{Agent} calls in one turn execute concurrently; falls back to synchronous
+sub-agents otherwise. Default \code{FALSE}.}
 }
 \value{
 An \code{ellmer::tool()} object.

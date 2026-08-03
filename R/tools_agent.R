@@ -92,6 +92,10 @@ NULL
 #'   own isolation.
 #' @param ask_fn Function or NULL. Parent permission callback. Sub-agents run in
 #'   "bubble" mode, so any "ask" decision is forwarded to this function.
+#' @param async Logical. If `TRUE` and the parent turn is async (concurrent
+#'   streaming), run sub-agents via codeagent's promise-based loop so multiple
+#'   `Agent` calls in one turn execute concurrently; falls back to synchronous
+#'   sub-agents otherwise. Default `FALSE`.
 #' @return An `ellmer::tool()` object.
 #' @export
 agent_tool <- function(model              = "claude-sonnet-4-6",
@@ -234,6 +238,8 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
 #' @param worktree_isolation Logical. Run sub-agents in isolated git worktrees.
 #' @param ask_fn Function or NULL. Parent permission callback forwarded to the
 #'   sub-agent (which runs in "bubble" mode).
+#' @param async Logical. Passed to [agent_tool()]; enables concurrent sub-agents
+#'   on async parent turns. Default `FALSE`.
 #' @return Invisibly returns `chat`.
 #' @export
 register_agent_tool <- function(chat, model = "claude-sonnet-4-6",

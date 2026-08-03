@@ -30,6 +30,9 @@ register_agent_tool(
 
 \item{ask_fn}{Function or NULL. Parent permission callback forwarded to the
 sub-agent (which runs in "bubble" mode).}
+
+\item{async}{Logical. Passed to \code{\link[=agent_tool]{agent_tool()}}; enables concurrent sub-agents
+on async parent turns. Default \code{FALSE}.}
 }
 \value{
 Invisibly returns \code{chat}.
