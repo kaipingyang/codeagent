@@ -73,6 +73,6 @@ Remotes:
     posit-dev/btw,
     posit-dev/shinychat/pkg-r,
     r-lib/Rapp
-URL: https://github.com/kaipingyang/codeagent
+URL: https://kaipingyang.github.io/codeagent, https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues
 Config/roxygen2/version: 8.0.0

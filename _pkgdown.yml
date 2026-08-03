@@ -158,6 +158,8 @@ reference:
       - register_task_tools
       - register_web_tools
       - enable_btw_file_tools
+      - register_tool_meta
+      - tool_result
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."
@@ -226,3 +228,8 @@ articles:
     contents:
       - team-coordination
       - data-exploration
+
+  - title: "Embedding / Backend"
+    navbar: "Embedding"
+    contents:
+      - backend-integration
