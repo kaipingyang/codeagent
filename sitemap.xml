@@ -3,6 +3,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/AGENTS.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/CLAUDE.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/LICENSE-text.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/articles/backend-integration.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/compaction.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/configuration.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/data-exploration.html</loc></url>
@@ -188,6 +189,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_task_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_team_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_todo_tool.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/register_tool_meta.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_wear_report_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_web_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/remember_tool.html</loc></url>
@@ -234,6 +236,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/todo_write_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/token_count_with_estimation.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tool_display.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/tool_result.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tool_run_r.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tools_agent.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tools_ask_user.html</loc></url>

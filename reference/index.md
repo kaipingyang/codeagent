@@ -262,6 +262,10 @@ Tool factories and registration.
   : Register web tools to an ellmer Chat object
 - [`enable_btw_file_tools()`](https://kaipingyang.github.io/codeagent/reference/enable_btw_file_tools.md)
   : Patch codeagent_client() to use btw file tools (Path A)
+- [`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
+  : Declare a host tool's permission capability
+- [`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md)
+  : Build a rich tool result (typed display card) for a host tool
 
 ## Data exploration (WEAR)
 

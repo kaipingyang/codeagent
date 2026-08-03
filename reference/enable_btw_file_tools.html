@@ -32,6 +32,9 @@ Modifies .register_all_tools() behaviour for subsequent codeagent_client() calls
     <li><h6 class="dropdown-header" data-toc-skip>Advanced</h6></li>
     <li><a class="dropdown-item" href="../articles/team-coordination.html">Multi-agent team coordination</a></li>
     <li><a class="dropdown-item" href="../articles/data-exploration.html">Data exploration with codeagent</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Embedding</h6></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration.html">Embedding codeagent as a backend (Contract v1)</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul><ul class="navbar-nav"><li class="nav-item"><a class="external-link nav-link" href="https://github.com/kaipingyang/codeagent/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
@@ -60,7 +63,7 @@ Modifies <code><a href="dot-register_all_tools.html">.register_all_tools()</a></
 
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p></p><div class="sourceCode r"><pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/kaipingyang/codeagent" class="external-link">codeagent</a></span><span class="op">)</span></span>
+    <p></p><div class="sourceCode r"><pre><code><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://kaipingyang.github.io/codeagent">codeagent</a></span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"pathA/tools_btw_files.R"</span>, package <span class="op">=</span> <span class="st">"codeagent"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/enable_btw_file_tools.html">enable_btw_file_tools</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># opt in</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span><span class="op">)</span></span></code></pre><p></p></div>

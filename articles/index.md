@@ -22,3 +22,8 @@
   coordination](https://kaipingyang.github.io/codeagent/articles/team-coordination.md):
 - [Data exploration with
   codeagent](https://kaipingyang.github.io/codeagent/articles/data-exploration.md):
+
+### Embedding / Backend
+
+- [Embedding codeagent as a backend (Contract
+  v1)](https://kaipingyang.github.io/codeagent/articles/backend-integration.md):

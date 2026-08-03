@@ -1,0 +1,204 @@
+# Embedding codeagent as a backend (Contract v1)
+
+This vignette describes the **stable public interface** for embedding
+codeagent as the engine behind a host application (a Shiny app, an API
+service, another package). The host keeps full ownership of its **UI,
+tools, skill content, data, and provider credentials**; codeagent
+provides the **agent loop, streaming, context compaction, permission
+gate, and skill loading**.
+
+Everything documented here is **Backend Contract v1**. See
+[Versioning](#versioning) for the stability promise. A runnable
+reference lives at
+`system.file("examples/backend_integration_demo.R", package = "codeagent")`.
+
+## The boundary
+
+| codeagent provides | The host owns |
+|----|----|
+| agent loop, multi-turn tool-calling | its UI |
+| provider abstraction (any ellmer `Chat`) | its `Chat` (provider / model / key) |
+| streaming + typed callbacks | rendering |
+| context compaction | domain tools |
+| central permission gate | skill content + data |
+| skill loading | session storage (optional) |
+
+## 1. Entry: a harness-only client
+
+Pass your own
+[`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html) and
+set `register_tools = FALSE` so **none** of codeagent’s coding tools
+(Bash / Write / Edit / Glob / Grep / git / web) are attached — you get
+only the harness.
+
+``` r
+
+chat <- ellmer::chat_openai_compatible(
+  base_url    = Sys.getenv("MY_BASE_URL"),
+  model       = Sys.getenv("MY_MODEL"),
+  credentials = function() Sys.getenv("MY_API_KEY")
+)
+
+client <- codeagent::codeagent_client(
+  chat            = chat,
+  register_tools  = FALSE,
+  permission_mode = "default",   # default | plan | accept_edits | bypass | ...
+  cwd             = getwd()
+)
+```
+
+[`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
+returns a `CodeagentClient`: a list with `$chat` and `$settings`.
+
+## 2. Driving a turn + the callback contract
+
+Use
+[`codeagent_stream()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream.md)
+(blocking; pumps its own event loop) or
+[`codeagent_stream_async()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.md)
+(returns a promise). Rendering happens entirely through **typed
+callbacks** — codeagent does not touch your UI.
+
+``` r
+
+codeagent::codeagent_stream(
+  client, user_input,
+  on_delta        = function(text_chunk) { ... },  # incremental assistant text
+  on_thinking     = function(chunk)      { ... },  # reasoning / thinking content
+  on_tool_request = function(x)          { ... },  # list(id, name, arguments, intent)
+  on_tool_result  = function(x)          { ... },  # list(id, name, display, value, is_error)
+  on_usage        = function(usage)      { ... },  # token usage
+  on_tick         = function()           { ... }   # ~100 ms heartbeat (spinners)
+)
+# returns invisibly: list(text, usage, stop_reason)
+```
+
+Callback payloads:
+
+| Callback | Argument |
+|----|----|
+| `on_delta` | `text_chunk` (character) |
+| `on_thinking` | thinking chunk |
+| `on_tool_request` | `list(id, name, arguments, intent)` — fires **before** the gate |
+| `on_tool_result` | `list(id, name, display, value, is_error)` |
+| `on_usage` | usage object |
+| `on_tick` | none |
+
+## 3. Rich tool results (text / table / image / error)
+
+A tool’s `value` is the text the model sees. To also render a **rich
+artifact** in your UI, return
+[`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md),
+which attaches a typed display card delivered as
+`on_tool_result$display`.
+
+``` r
+
+my_tool <- ellmer::tool(
+  function(name) {
+    df <- summarise_something(name)
+    codeagent::tool_result(
+      sprintf("%d x %d summary", nrow(df), ncol(df)),
+      kind    = "table",
+      payload = list(df = df),
+      title   = "Summary"
+    )
+  },
+  name = "Summarise", description = "...", arguments = list(...)
+)
+```
+
+`display$toolcard$kind` + `display$toolcard$payload` carry the
+structured artifact for any host to render; codeagent’s own Shiny app
+additionally receives a pre-rendered `display$html` /
+`display$right_output`.
+
+| `kind`  | `payload`                                         |
+|---------|---------------------------------------------------|
+| `text`  | `list(text=)`                                     |
+| `table` | `list(df = <data.frame>)`                         |
+| `image` | `list(images = list(list(mime=, b64=)), output=)` |
+| `code`  | `list(text=, lang=, filename=, output=)`          |
+| `error` | `list(message=, detail=)`                         |
+
+A non-Shiny host renders the artifact itself, e.g.:
+
+``` r
+
+on_tool_result <- function(x) {
+  if (identical(x$display$toolcard$kind, "table"))
+    my_render_table(x$display$toolcard$payload$df)
+}
+```
+
+## 4. Host tools + the permission gate
+
+Register your tools the standard ellmer way, then **declare each tool’s
+capability** so the central gate governs it like a native tool.
+
+``` r
+
+chat$register_tool(my_tool)
+codeagent::register_tool_meta("RunAnalysis", capability = "exec")  # read|write|exec|net
+```
+
+> **Important:** an *undeclared* tool defaults to capability `"read"`
+> and is allowed **without gating**. If your tool executes code, writes
+> files, or hits the network, declare it (`"exec"`/`"write"`/`"net"`) so
+> the gate can `ask` or `deny` it. Built-in tool metadata stays
+> authoritative.
+
+Fine-grained control is available through `settings$tools`:
+
+``` r
+
+settings$tools <- list(
+  overrides    = list(RunAnalysis = "ask"),      # per-tool: allow | ask | deny
+  capabilities = list(exec = "ask", net = "deny")# per-capability policy
+)
+```
+
+## 5. Skills
+
+Point codeagent at your own `<name>/SKILL.md` directories (scanned under
+`cwd`). Skill *content* is yours; codeagent only loads and injects it.
+
+``` r
+
+codeagent::list_skills_meta(cwd = getwd())
+codeagent::load_skill_prompt("my_skill", cwd = getwd())
+codeagent::build_skill_hint(...)
+```
+
+## 6. Provider
+
+`chat` accepts any
+[`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+(OpenAI-compatible, Databricks, Anthropic, Gemini, Bedrock, Azure, …) —
+or any object exposing `$stream_async()`. The host owns and supplies
+credentials; codeagent never reads them.
+
+## 7. Versioning
+
+Backend Contract **v1** = the symbols below, with the signatures
+documented above. Changes follow semantic versioning; breaking changes
+bump the major and are announced in `NEWS.md`. The guard test
+`test-backend-contract.R` fails if this surface drifts.
+
+- `codeagent_client(register_tools = FALSE)` → `{chat, settings}`
+- [`codeagent_stream()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream.md)
+  /
+  [`codeagent_stream_async()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.md) +
+  callbacks + `list(text, usage, stop_reason)`
+- [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md)
+- [`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md)
+- [`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
+- [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md)
+  /
+  [`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)
+  /
+  [`build_skill_hint()`](https://kaipingyang.github.io/codeagent/reference/build_skill_hint.md)
+- `CompactionController` (compaction runs automatically; this is the
+  injectable controller)
+- [`switch_model()`](https://kaipingyang.github.io/codeagent/reference/switch_model.md)
+- `settings$tools` policy: `sets` / `capabilities` / `overrides`

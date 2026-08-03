@@ -2,6 +2,18 @@
 
 ## codeagent (development version)
 
+- **Backend embedding (Contract v1)**: documented, stable surface for
+  hosting codeagent as a backend engine. New exported
+  `register_tool_meta(name, capability)` lets host apps declare a custom
+  tool’s capability (`read`/`write`/`exec`/`net`) so the central
+  permission gate governs it (an undeclared tool previously defaulted to
+  `read` and was allowed ungated). New exported
+  `tool_result(value, kind, payload)` builds a typed display card
+  (`text`/`table`/`image`/`code`/`diff`/`error`) that reaches the
+  `on_tool_result$display` callback and the Shiny app. Adds the
+  `backend-integration` vignette + a reference example
+  (`inst/examples/backend_integration_demo.R`) + a contract guard test.
+
 - **Concurrent sub-agents (opt-in via `settings$async_subagents`,
   default OFF)**: the `Agent` tool can run asynchronously so multiple
   sub-agent delegations requested in a single turn execute concurrently
