@@ -165,6 +165,24 @@ awaits any returned promise). See
 `lessons/2026-07-03-shiny-async-interaction.md` and `R/tools_builtin.R`
 `.asyncify_gated_tool()`.
 
+**[`mirai::mirai_map()`](https://mirai.r-lib.org/reference/mirai_map.html)
+常量必须走 `.args`，不能用 `...`：** mirai (\>= 2.x，验证于 2.7.1)
+**不会**把 `...` 里的具名参数绑定到 worker 进程 —— worker 里那些参数是
+missing，函数报 `argument "x" is missing, with no default`，mirai 返回
+`miraiError` 对象而非你的返回值。
+正确写法：`mirai_map(items, fn, .args = list(k1 = v1, k2 = v2))`（`.args`
+绑定 + 保序）。 另注意
+[`is.character()`](https://rdrr.io/r/base/character.html) 对
+`miraiError` 返回 **TRUE**，判定 worker 是否失败要用
+`inherits(x, "miraiError")` 而非字符串检查。参考 `R/team.R`
+[`team_run()`](https://kaipingyang.github.io/codeagent/reference/team_run.md)
+与 `R/team_board.R`
+[`team_coordinate()`](https://kaipingyang.github.io/codeagent/reference/team_coordinate.md)
+的 worker_loop（两处都用 `.args`）。worker 闭包若引用
+包内部函数（非导出），把函数的
+[`environment()`](https://rdrr.io/r/base/environment.html) 设成
+`asNamespace("codeagent")` 即可解析。
+
 **Env vars:** Use `CODEAGENT_BASE_URL`, `CODEAGENT_MODEL`,
 `CODEAGENT_API_KEY` (not `OPENAI_*`).
 
