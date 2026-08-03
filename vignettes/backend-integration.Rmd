@@ -138,6 +138,21 @@ chat$register_tool(my_tool)
 codeagent::register_tool_meta("RunAnalysis", capability = "exec")  # read|write|exec|net
 ```
 
+On a harness-only client (`register_tools = FALSE`) the gate is **not** installed
+automatically — install it once, after attaching your tools, so they are
+governed and approvals route to your `ask_fn`:
+
+```{r}
+codeagent::install_permission_gate(
+  chat,
+  permission_mode = "default",
+  tool_meta = list(RunAnalysis = "exec"),      # optional: declare capabilities here
+  ask_fn = function(name, input, id = NULL) {   # `id` = tool-call id, matches on_tool_request
+    host_request_approval(id, name, input)       # return a logical or a promise<logical>
+  }
+)
+```
+
 > **Important:** an *undeclared* tool defaults to capability `"read"` and is
 > allowed **without gating**. If your tool executes code, writes files, or hits
 > the network, declare it (`"exec"`/`"write"`/`"net"`) so the gate can `ask` or
@@ -181,6 +196,7 @@ this surface drifts.
 - `agent_loop()`
 - `tool_result()`
 - `register_tool_meta()`
+- `install_permission_gate()` (+ `ask_fn(name, input, id = NULL)` contract)
 - `list_skills_meta()` / `load_skill_prompt()` / `build_skill_hint()`
 - `CompactionController` (compaction runs automatically; this is the injectable controller)
 - `switch_model()`

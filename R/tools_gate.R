@@ -199,8 +199,19 @@ register_tool_meta <- function(name,
 
     # decision == "ask"
     ask_fn <- ctx$ask_fn
-    res <- if (is.function(ask_fn)) tryCatch(ask_fn(name, input),
-                                             error = function(e) FALSE) else FALSE
+    # Pass the tool-call id to ask_fns that want it (those declaring `id=` or
+    # `...`); older `(name, input)` ask_fns are called unchanged. This lets a
+    # host correlate the gate's question to the `on_tool_request` preview by id
+    # (needed when same-name/same-arg tools run concurrently).
+    res <- if (is.function(ask_fn)) {
+      fmls <- names(formals(ask_fn))
+      if ("id" %in% fmls || "..." %in% fmls)
+        tryCatch(ask_fn(name, input,
+                        id = tryCatch(request@id, error = function(e) NULL)),
+                 error = function(e) FALSE)
+      else
+        tryCatch(ask_fn(name, input), error = function(e) FALSE)
+    } else FALSE
     if (inherits(res, "promise")) {                                   # async (Shiny)
       return(promises::then(res, function(ok) {
         if (isTRUE(ok)) invisible(NULL) else deny(name, input, cap)
@@ -267,5 +278,61 @@ register_tool_meta <- function(name,
     nm <- tryCatch(result@request@name, error = function(e) "")
     tryCatch(ctx$hooks$run_post(nm, list(), result), error = function(e) NULL)
   }), error = function(e) NULL)
+  invisible(chat)
+}
+
+#' Install codeagent's central permission gate on an existing Chat
+#'
+#' @description
+#' For hosts that build a harness-only client
+#' (`codeagent_client(register_tools = FALSE)`) and attach their own domain
+#' tools, then want those tools governed by codeagent's central permission gate.
+#'
+#' Declare each sensitive tool's capability with [register_tool_meta()] (or pass
+#' `tool_meta` here), then call this once after attaching the tools. Tools whose
+#' capability resolves to `"read"` are allowed without gating; `write`/`exec`/
+#' `net` route through the gate under `permission_mode` + the `tools` policy.
+#'
+#' Idempotent per chat: calling again refreshes the live mode / ask_fn / policy
+#' rather than stacking a second gate.
+#'
+#' @param chat An `ellmer::Chat`.
+#' @param permission_mode Character. One of the 7 modes (default `"default"`).
+#' @param rules List. Fine-grained permission rules (see [check_permission()]).
+#' @param tools List. `settings$tools` policy (`sets` / `capabilities` /
+#'   `overrides`).
+#' @param ask_fn Function or NULL. Permission callback invoked when a tool needs
+#'   approval; may return a logical or a promise (async / Shiny). Called as
+#'   `ask_fn(name, input)`, or `ask_fn(name, input, id = <tool_call_id>)` if it
+#'   declares an `id` argument or `...`.
+#' @param tool_meta Named list mapping tool name -> capability
+#'   (`"read"`/`"write"`/`"exec"`/`"net"`), a convenience for calling
+#'   [register_tool_meta()] on each before installing the gate.
+#' @return Invisibly, `chat`.
+#' @seealso [register_tool_meta()], [codeagent_client()]
+#' @examples
+#' \dontrun{
+#' client <- codeagent_client(chat, register_tools = FALSE)
+#' chat$register_tool(my_write_tool)
+#' install_permission_gate(
+#'   chat, permission_mode = "default",
+#'   tool_meta = list(MyWriteTool = "write"),
+#'   ask_fn = function(name, input, id = NULL) host_prompt(id, name, input))
+#' }
+#' @export
+install_permission_gate <- function(chat, permission_mode = "default",
+                                    rules = list(), tools = list(),
+                                    ask_fn = NULL, tool_meta = list()) {
+  if (length(tool_meta)) {
+    if (is.null(names(tool_meta)) || any(!nzchar(names(tool_meta))))
+      stop("`tool_meta` must be a named list (tool name -> capability).",
+           call. = FALSE)
+    for (nm in names(tool_meta)) register_tool_meta(nm, tool_meta[[nm]])
+  }
+  mode_env <- new.env(parent = emptyenv())
+  mode_env$mode <- permission_mode
+  settings <- list(permission_mode = permission_mode, tools = tools)
+  .install_permission_gate(chat, settings, mode_env, rules = rules,
+                           ask_fn = ask_fn)
   invisible(chat)
 }

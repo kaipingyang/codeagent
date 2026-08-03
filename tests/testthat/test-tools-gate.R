@@ -153,3 +153,58 @@ test_that("a declared-exec host tool is governed by policy (not auto-allowed)", 
     codeagent:::.gate_decide("MyHostTool", list(), pol, "default", list(), cap),
     "deny")
 })
+
+
+# --- Gap #1: gate passes tool-call id to ask_fns that accept it ---
+
+test_that("gate passes tool-call id only to ask_fns that accept it", {
+  reg <- codeagent:::.tool_meta_user
+  on.exit(rm(list = ls(reg), envir = reg), add = TRUE)
+  register_tool_meta("WTool", "exec")
+
+  policy   <- codeagent:::.resolve_tool_policy(
+    list(tools = list(capabilities = list(exec = "ask"))))
+  mode_env <- new.env(); mode_env$mode <- "default"
+  mk_req   <- function() ellmer::ContentToolRequest(
+    id = "call_42", name = "WTool", arguments = list())
+
+  # (a) ask_fn declaring id= receives the tool-call id
+  seen <- new.env(); seen$id <- NA_character_
+  g1 <- codeagent:::.tool_gate_fn(codeagent:::.make_gate_ctx(
+    policy, mode_env, list(), function(name, input, id = NULL) { seen$id <- id; TRUE }))
+  g1(mk_req())
+  expect_identical(seen$id, "call_42")
+
+  # (b) legacy (name, input) ask_fn is called unchanged, no error
+  hit <- new.env(); hit$called <- FALSE
+  g2 <- codeagent:::.tool_gate_fn(codeagent:::.make_gate_ctx(
+    policy, mode_env, list(), function(tool_name, tool_input) { hit$called <- TRUE; TRUE }))
+  expect_silent(g2(mk_req()))
+  expect_true(hit$called)
+})
+
+# --- Gap #2: install_permission_gate() governs host tools ---
+
+test_that("install_permission_gate installs the gate + applies tool_meta", {
+  chat <- ellmer::chat_openai_compatible(
+    base_url = "http://x", model = "m", credentials = function() "k")
+  reg <- codeagent:::.tool_meta_user
+  on.exit(rm(list = ls(reg), envir = reg), add = TRUE)
+
+  install_permission_gate(
+    chat, permission_mode = "default",
+    tools     = list(capabilities = list(write = "deny")),
+    tool_meta = list(HostWrite = "write"))
+
+  # tool_meta convenience recorded the capability
+  expect_identical(codeagent:::.tool_capability("HostWrite"), "write")
+  # gate is installed on the chat
+  ctx <- codeagent:::.gate_contexts[[rlang::obj_address(chat)]]
+  expect_true(isTRUE(ctx$installed))
+  # policy carried through: a write host tool is denied
+  expect_identical(
+    codeagent:::.gate_decide("HostWrite", list(), ctx$policy, "default", list(), "write"),
+    "deny")
+  # unnamed tool_meta is rejected
+  expect_error(install_permission_gate(chat, tool_meta = list("write")))
+})

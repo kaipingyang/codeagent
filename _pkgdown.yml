@@ -160,6 +160,7 @@ reference:
       - enable_btw_file_tools
       - register_tool_meta
       - tool_result
+      - install_permission_gate
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."

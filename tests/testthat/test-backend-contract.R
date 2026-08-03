@@ -11,7 +11,7 @@ test_that("Backend Contract v1: the promised functions are exported", {
     # entry + drive
     "codeagent_client", "codeagent_stream", "codeagent_stream_async", "agent_loop",
     # host tools + governance
-    "register_tool_meta", "tool_result",
+    "register_tool_meta", "tool_result", "install_permission_gate",
     # skills
     "list_skills_meta", "load_skill_prompt", "build_skill_hint",
     # context + model
