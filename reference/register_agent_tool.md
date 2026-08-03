@@ -50,6 +50,12 @@ register_agent_tool(
   Function or NULL. Parent permission callback forwarded to the
   sub-agent (which runs in "bubble" mode).
 
+- async:
+
+  Logical. Passed to
+  [`agent_tool()`](https://kaipingyang.github.io/codeagent/reference/agent_tool.md);
+  enables concurrent sub-agents on async parent turns. Default `FALSE`.
+
 ## Value
 
 Invisibly returns `chat`.

@@ -108,6 +108,13 @@ own isolation.</p></dd>
 <dd><p>Function or NULL. Parent permission callback. Sub-agents run in
 "bubble" mode, so any "ask" decision is forwarded to this function.</p></dd>
 
+
+<dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
+<dd><p>Logical. If <code>TRUE</code> and the parent turn is async (concurrent
+streaming), run sub-agents via codeagent's promise-based loop so multiple
+<code>Agent</code> calls in one turn execute concurrently; falls back to synchronous
+sub-agents otherwise. Default <code>FALSE</code>.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>

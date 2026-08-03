@@ -54,6 +54,13 @@ agent_tool(
   Function or NULL. Parent permission callback. Sub-agents run in
   "bubble" mode, so any "ask" decision is forwarded to this function.
 
+- async:
+
+  Logical. If `TRUE` and the parent turn is async (concurrent
+  streaming), run sub-agents via codeagent's promise-based loop so
+  multiple `Agent` calls in one turn execute concurrently; falls back to
+  synchronous sub-agents otherwise. Default `FALSE`.
+
 ## Value
 
 An [`ellmer::tool()`](https://ellmer.tidyverse.org/reference/tool.html)

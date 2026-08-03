@@ -142,6 +142,22 @@ chat$register_tool(my_tool)
 codeagent::register_tool_meta("RunAnalysis", capability = "exec")  # read|write|exec|net
 ```
 
+On a harness-only client (`register_tools = FALSE`) the gate is **not**
+installed automatically — install it once, after attaching your tools,
+so they are governed and approvals route to your `ask_fn`:
+
+``` r
+
+codeagent::install_permission_gate(
+  chat,
+  permission_mode = "default",
+  tool_meta = list(RunAnalysis = "exec"),      # optional: declare capabilities here
+  ask_fn = function(name, input, id = NULL) {   # `id` = tool-call id, matches on_tool_request
+    host_request_approval(id, name, input)       # return a logical or a promise<logical>
+  }
+)
+```
+
 > **Important:** an *undeclared* tool defaults to capability `"read"`
 > and is allowed **without gating**. If your tool executes code, writes
 > files, or hits the network, declare it (`"exec"`/`"write"`/`"net"`) so
@@ -193,6 +209,8 @@ bump the major and are announced in `NEWS.md`. The guard test
 - [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md)
 - [`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md)
 - [`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
+- [`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
+  (+ `ask_fn(name, input, id = NULL)` contract)
 - [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md)
   /
   [`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)

@@ -279,6 +279,19 @@ native tool.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">chat</span><span class="op">$</span><span class="fu">register_tool</span><span class="op">(</span><span class="va">my_tool</span><span class="op">)</span></span>
 <span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/register_tool_meta.html">register_tool_meta</a></span><span class="op">(</span><span class="st">"RunAnalysis"</span>, capability <span class="op">=</span> <span class="st">"exec"</span><span class="op">)</span>  <span class="co"># read|write|exec|net</span></span></code></pre></div>
+<p>On a harness-only client (<code>register_tools = FALSE</code>) the
+gate is <strong>not</strong> installed automatically — install it once,
+after attaching your tools, so they are governed and approvals route to
+your <code>ask_fn</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/install_permission_gate.html">install_permission_gate</a></span><span class="op">(</span></span>
+<span>  <span class="va">chat</span>,</span>
+<span>  permission_mode <span class="op">=</span> <span class="st">"default"</span>,</span>
+<span>  tool_meta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>RunAnalysis <span class="op">=</span> <span class="st">"exec"</span><span class="op">)</span>,      <span class="co"># optional: declare capabilities here</span></span>
+<span>  ask_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">name</span>, <span class="va">input</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>   <span class="co"># `id` = tool-call id, matches on_tool_request</span></span>
+<span>    <span class="fu">host_request_approval</span><span class="op">(</span><span class="va">id</span>, <span class="va">name</span>, <span class="va">input</span><span class="op">)</span>       <span class="co"># return a logical or a promise&lt;logical&gt;</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <blockquote>
 <p><strong>Important:</strong> an <em>undeclared</em> tool defaults to
 capability <code>"read"</code> and is allowed <strong>without
@@ -290,7 +303,7 @@ metadata stays authoritative.</p>
 </blockquote>
 <p>Fine-grained control is available through
 <code>settings$tools</code>:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">settings</span><span class="op">$</span><span class="va">tools</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  overrides    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>RunAnalysis <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span>,      <span class="co"># per-tool: allow | ask | deny</span></span>
 <span>  capabilities <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>exec <span class="op">=</span> <span class="st">"ask"</span>, net <span class="op">=</span> <span class="st">"deny"</span><span class="op">)</span><span class="co"># per-capability policy</span></span>
@@ -302,7 +315,7 @@ metadata stays authoritative.</p>
 <p>Point codeagent at your own <code>&lt;name&gt;/SKILL.md</code>
 directories (scanned under <code>cwd</code>). Skill <em>content</em> is
 yours; codeagent only loads and injects it.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/list_skills_meta.html">list_skills_meta</a></span><span class="op">(</span>cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/load_skill_prompt.html">load_skill_prompt</a></span><span class="op">(</span><span class="st">"my_skill"</span>, cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/build_skill_hint.html">build_skill_hint</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div>
@@ -336,6 +349,9 @@ breaking changes bump the major and are announced in
 <li><code><a href="../reference/agent_loop.html">agent_loop()</a></code></li>
 <li><code><a href="../reference/tool_result.html">tool_result()</a></code></li>
 <li><code><a href="../reference/register_tool_meta.html">register_tool_meta()</a></code></li>
+<li>
+<code><a href="../reference/install_permission_gate.html">install_permission_gate()</a></code> (+
+<code>ask_fn(name, input, id = NULL)</code> contract)</li>
 <li>
 <code><a href="../reference/list_skills_meta.html">list_skills_meta()</a></code> / <code><a href="../reference/load_skill_prompt.html">load_skill_prompt()</a></code> /
 <code><a href="../reference/build_skill_hint.html">build_skill_hint()</a></code>

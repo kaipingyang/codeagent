@@ -490,6 +490,8 @@ Tool factories and registration.
   : Declare a host tool's permission capability
 - [`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md)
   : Build a rich tool result (typed display card) for a host tool
+- [`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
+  : Install codeagent's central permission gate on an existing Chat
 
 ## Data exploration (WEAR)
 

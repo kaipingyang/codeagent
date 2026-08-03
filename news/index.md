@@ -2,6 +2,17 @@
 
 ## codeagent (development version)
 
+- **Backend permission gate for host tools**: new exported
+  `install_permission_gate(chat, permission_mode, rules, tools, ask_fn, tool_meta)`
+  lets a harness-only client (`register_tools = FALSE`) put the central
+  permission gate over host-attached tools (the gate is otherwise only
+  installed by
+  [`.register_all_tools()`](https://kaipingyang.github.io/codeagent/reference/dot-register_all_tools.md)).
+  The gate now also passes the tool-call `id` to `ask_fn`s that accept
+  it (`ask_fn(name, input, id = NULL)`), so hosts can match an approval
+  prompt to the `on_tool_request` preview; legacy `(name, input)`
+  `ask_fn`s are unchanged.
+
 - **Backend embedding (Contract v1)**: documented, stable surface for
   hosting codeagent as a backend engine. New exported
   `register_tool_meta(name, capability)` lets host apps declare a custom
