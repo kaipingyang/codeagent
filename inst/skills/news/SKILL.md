@@ -1,7 +1,8 @@
 ---
 name: news
 description: Update NEWS.md with recent changes for R package release
-argument-hint: "<version or description of changes>"
+metadata:
+  argument-hint: "<version or description of changes>"
 allowed-tools:
   - Read
   - Edit

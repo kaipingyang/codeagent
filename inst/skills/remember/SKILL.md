@@ -1,7 +1,8 @@
 ---
 name: remember
 description: Save important information to persistent memory for future sessions
-argument-hint: "<information to remember>"
+metadata:
+  argument-hint: "<information to remember>"
 ---
 
 Please save the following information to memory for future sessions:

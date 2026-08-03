@@ -1,7 +1,8 @@
 ---
 name: explore
 description: Explore and analyse a data.frame in the R session with natural language
-argument-hint: "<data.frame name> <question>"
+metadata:
+  argument-hint: "<data.frame name> <question>"
 allowed-tools:
   - ExploreData
   - RunR

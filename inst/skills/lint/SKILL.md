@@ -1,7 +1,8 @@
 ---
 name: lint
 description: Lint and style R code with lintr and styler
-argument-hint: "<file or directory>"
+metadata:
+  argument-hint: "<file or directory>"
 allowed-tools:
   - Bash
   - Read

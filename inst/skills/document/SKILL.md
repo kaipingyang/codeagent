@@ -1,7 +1,6 @@
 ---
 name: document
 description: Run devtools::document() to rebuild NAMESPACE and man/ from roxygen2
-argument-hint: ""
 allowed-tools:
   - Bash
   - Read

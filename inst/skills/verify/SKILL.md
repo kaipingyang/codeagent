@@ -1,7 +1,8 @@
 ---
 name: verify
 description: Structured verification of the last action or implementation — correctness, completeness, edge cases, tests
-argument-hint: "[specific aspect to verify]"
+metadata:
+  argument-hint: "[specific aspect to verify]"
 ---
 
 Please verify the last action or implementation using this structured checklist:

@@ -1,7 +1,8 @@
 ---
 name: posit-dev-packages
 description: 更新 ellmer/btw/shinychat 到最新开发版，并显示开发版相比 CRAN 的新功能。当用户提到"更新开发包"、"dev version"、"开发版包"、"更新 ellmer btw shinychat"、"posit dev packages"时触发。
-argument-hint: "[package names, default: all three]"
+metadata:
+  argument-hint: "[package names, default: all three]"
 ---
 
 # 更新 Posit 开发版包

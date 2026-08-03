@@ -1,7 +1,8 @@
 ---
 name: loop
 description: Run a skill or task periodically (e.g. /loop 5m /verify)
-argument-hint: "<interval> <task>"
+metadata:
+  argument-hint: "<interval> <task>"
 ---
 
 Set up a periodic task loop. The request was: $ARGUMENTS

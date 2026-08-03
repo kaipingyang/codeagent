@@ -1,7 +1,8 @@
 ---
 name: style
 description: Format and lint R code to a consistent style using styler and lintr (or air), reporting and fixing style issues
-argument-hint: "[file or directory, default: R/]"
+metadata:
+  argument-hint: "[file or directory, default: R/]"
 allowed-tools:
   - Bash
   - Read

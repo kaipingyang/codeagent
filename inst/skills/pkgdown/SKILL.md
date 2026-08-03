@@ -1,7 +1,6 @@
 ---
 name: pkgdown
 description: Build or update a pkgdown documentation website for an R package, including reference grouping and vignette articles
-argument-hint: ""
 allowed-tools:
   - Bash
   - Read

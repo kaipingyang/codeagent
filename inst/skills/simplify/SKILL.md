@@ -1,7 +1,8 @@
 ---
 name: simplify
 description: Review and simplify the last piece of code or output — remove complexity, dead code, and over-engineering
-argument-hint: "[scope or focus]"
+metadata:
+  argument-hint: "[scope or focus]"
 ---
 
 Please review the most recently written code or output and simplify it:

@@ -1,7 +1,6 @@
 ---
 name: compact
 description: Manually trigger context compaction to free up context window
-argument-hint: ""
 ---
 
 Please compact the current conversation context now. Summarise everything we have done so far into a concise structured summary, preserving:

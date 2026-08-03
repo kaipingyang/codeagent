@@ -1,7 +1,8 @@
 ---
 name: plan
 description: Enter planning mode — read-only analysis and step-by-step implementation plan
-argument-hint: "<task description>"
+metadata:
+  argument-hint: "<task description>"
 allowed-tools:
   - Read
   - Glob

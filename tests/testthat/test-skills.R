@@ -31,7 +31,7 @@ test_that(".parse_skill_md parses name, description, argument-hint", {
   expect_false(is.null(meta))
   expect_equal(meta$name,          "my-skill")
   expect_equal(meta$description,   "A test skill")
-  expect_equal(meta$argument_hint, '"<task>"')
+  expect_equal(meta$argument_hint, "<task>")   # surrounding quotes stripped
 })
 
 test_that(".parse_skill_md auto_trigger defaults to TRUE", {
@@ -292,4 +292,33 @@ test_that("contents-list input round-trips to a slash decision (the crash path)"
   tp <- codeagent:::.user_input_text(list("\u4f60\u597d"))
   expect_equal(tp, "\u4f60\u597d")
   expect_equal(codeagent:::.preprocess_input(tp)$type, "normal")
+})
+
+
+test_that(".parse_skill_md reads argument-hint from metadata (btw-compatible) + legacy top-level", {
+  dir <- withr::local_tempdir()
+
+  # New spec-compliant form: argument-hint nested under `metadata:`.
+  d1 <- file.path(dir, "newform"); dir.create(d1)
+  writeLines(c("---", "name: newform", "description: d",
+               "metadata:", "  argument-hint: \"<x> <y>\"",
+               "allowed-tools:", "  - RunR", "---", "body"),
+             file.path(d1, "SKILL.md"))
+  m1 <- codeagent:::.parse_skill_md(file.path(d1, "SKILL.md"))
+  expect_identical(m1$argument_hint, "<x> <y>")   # read from metadata, quotes stripped
+
+  # Legacy top-level argument-hint still works.
+  d2 <- file.path(dir, "oldform"); dir.create(d2)
+  writeLines(c("---", "name: oldform", "description: d",
+               "argument-hint: \"<z>\"", "---", "body"),
+             file.path(d2, "SKILL.md"))
+  m2 <- codeagent:::.parse_skill_md(file.path(d2, "SKILL.md"))
+  expect_identical(m2$argument_hint, "<z>")
+
+  # Empty / absent hint -> "".
+  d3 <- file.path(dir, "nohint"); dir.create(d3)
+  writeLines(c("---", "name: nohint", "description: d", "---", "body"),
+             file.path(d3, "SKILL.md"))
+  m3 <- codeagent:::.parse_skill_md(file.path(d3, "SKILL.md"))
+  expect_identical(m3$argument_hint, "")
 })

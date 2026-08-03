@@ -1,7 +1,8 @@
 ---
 name: report
 description: Export the current data exploration session to a Quarto document
-argument-hint: "[title]"
+metadata:
+  argument-hint: "[title]"
 allowed-tools:
   - GenerateReport
 ---

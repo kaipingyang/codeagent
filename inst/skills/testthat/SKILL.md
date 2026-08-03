@@ -1,7 +1,8 @@
 ---
 name: testthat
 description: Write testthat unit tests for R functions
-argument-hint: "<function name or description>"
+metadata:
+  argument-hint: "<function name or description>"
 allowed-tools:
   - Read
   - Glob

@@ -154,10 +154,14 @@ list_skills_meta <- function(cwd = getwd()) {
       btw_skills <- btw:::btw_skills_list()
       btw_covered <- vapply(btw_skills, function(s) s$path, character(1))
       for (s in btw_skills) {
+        # btw drops non-spec frontmatter (argument-hint now lives under
+        # `metadata:`), so recover the hint by re-parsing the SKILL.md.
+        hint <- s$argument_hint %||%
+          tryCatch(.parse_skill_md(s$path)$argument_hint, error = function(e) NULL) %||% ""
         metas[[s$name]] <- SkillMeta(
           name          = s$name,
           description   = s$description %||% "",
-          argument_hint = s$argument_hint %||% "",
+          argument_hint = hint,
           auto_trigger  = TRUE,
           allowed_tools = s$allowed_tools %||% NULL,
           base_dir      = dirname(s$path),
@@ -430,7 +434,18 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
     caps  <- regmatches(ln, m_key)[[1L]]
     if (length(caps) == 3L) {
       key <- caps[2L]; val <- trimws(caps[3L])
-      if (grepl("^\\[", val)) {
+      if (identical(key, "metadata") && !nzchar(val)) {
+        # Nested map: consume following indented "  <key>: <value>" lines.
+        meta <- list()
+        while (i + 1L <= length(fm_lines) &&
+               grepl("^[[:space:]]+[a-zA-Z_-]+:", fm_lines[[i + 1L]])) {
+          sub <- regmatches(fm_lines[[i + 1L]],
+                   regexec("^[[:space:]]+([a-zA-Z_-]+):\\s*(.*)", fm_lines[[i + 1L]]))[[1L]]
+          if (length(sub) == 3L) meta[[sub[[2L]]]] <- trimws(sub[[3L]])
+          i <- i + 1L
+        }
+        parsed[["metadata"]] <- meta
+      } else if (grepl("^\\[", val)) {
         # inline list: [A, B, C]
         items <- trimws(strsplit(gsub("^\\[|\\]$", "", val), ",")[[1L]])
         parsed[[key]] <- items
@@ -447,10 +462,16 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
   auto_trigger <- if (!is.null(parsed[["auto-trigger"]]))
     !identical(tolower(parsed[["auto-trigger"]]), "false") else TRUE
 
+  # argument-hint lives under `metadata:` (btw's frontmatter validator rejects it
+  # as a top-level field); still accept a legacy top-level value. Strip quotes.
+  argh <- parsed[["argument-hint"]] %||%
+          (parsed[["metadata"]] %||% list())[["argument-hint"]] %||% ""
+  argh <- sub('^"(.*)"$', "\\1", sub("^'(.*)'$", "\\1", argh))
+
   SkillMeta(
     name          = name,
     description   = parsed[["description"]] %||% "",
-    argument_hint = parsed[["argument-hint"]] %||% "",
+    argument_hint = argh,
     auto_trigger  = auto_trigger,
     allowed_tools = parsed[["allowed-tools"]] %||% NULL,
     base_dir      = dirname(path),

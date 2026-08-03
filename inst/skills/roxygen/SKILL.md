@@ -1,7 +1,8 @@
 ---
 name: roxygen
 description: Generate roxygen2 documentation skeleton for R functions
-argument-hint: "<function name or file>"
+metadata:
+  argument-hint: "<function name or file>"
 allowed-tools:
   - Read
   - Glob
