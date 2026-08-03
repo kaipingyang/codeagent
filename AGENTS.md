@@ -150,6 +150,17 @@ broader runs with
     [`.register_all_tools()`](https://kaipingyang.github.io/codeagent/reference/dot-register_all_tools.md)
     and its call chain.
 
+5.  **Sync the pkgdown index for new/removed exports** — `_pkgdown.yml`
+    uses an *explicit* reference index, so any `@export` you add/remove
+    MUST be added to/removed from the matching `reference:` `contents:`
+    list (and a new user-facing vignette added to the `articles:` list).
+    pkgdown’s `build_site` **errors** (not warns) on an un-indexed
+    exported topic
+    (`build_reference_index(): N topics missing from index`), which
+    fails the GitHub Pages deploy workflow and emails a failure. Before
+    pushing doc/API changes, run `Rscript -e 'pkgdown::check_pkgdown()'`
+    — it must print “No problems found”.
+
 ## Commit & Pull Request Guidelines
 
 Use Conventional Commit prefixes (`feat:`, `refactor:`, `docs:`). Keep
