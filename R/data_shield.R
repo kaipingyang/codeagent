@@ -60,3 +60,92 @@ NULL
   list(text = if (nzchar(head_lines)) paste0(head_lines, "\n", note) else note,
        capped = TRUE, n_lines = n)
 }
+
+# ---------------------------------------------------------------------------
+# P0 wiring: wrap every tool so its result passes through the egress row-cap.
+# on_tool_result is a read-only notification in ellmer (cannot rewrite the
+# result), so we wrap the tool functions themselves (universal: native / btw /
+# MCP / host tools). Off unless a client sets `data_shield`.
+# ---------------------------------------------------------------------------
+
+# Apply the egress row-cap to a single tool return value (edge 2). Handles the
+# three shapes a tool can return: an ellmer ContentToolResult, a raw data.frame/
+# matrix, or a character string. Everything else passes through untouched.
+#' @keywords internal
+.data_shield_filter_result <- function(result, max_rows = 0L) {
+  # ellmer ContentToolResult -> cap its model-facing value text
+  if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
+                      error = function(e) FALSE))) {
+    val <- tryCatch(as.character(result@value), error = function(e) NULL)
+    if (is.character(val) && length(val) == 1L) {
+      cp <- .data_shield_row_cap(val, max_rows = max_rows)
+      if (isTRUE(cp$capped)) result@value <- cp$text
+    }
+    return(result)
+  }
+  # raw data.frame / matrix return -> cap its printed form
+  if (is.data.frame(result) || is.matrix(result)) {
+    txt <- tryCatch(paste(utils::capture.output(print(result)), collapse = "\n"),
+                    error = function(e) "")
+    cp <- .data_shield_row_cap(txt, max_rows = max_rows)
+    if (isTRUE(cp$capped)) return(cp$text)
+    return(result)
+  }
+  # single character string
+  if (is.character(result) && length(result) == 1L) {
+    cp <- .data_shield_row_cap(result, max_rows = max_rows)
+    if (isTRUE(cp$capped)) return(cp$text)
+  }
+  result
+}
+
+# Wrap one ToolDef in place: replace its underlying function (S7_data) with one
+# that runs the original then filters the result. Preserves name / description /
+# arguments / annotations. Idempotent (marks the wrapper).
+#' @keywords internal
+.data_shield_wrap_tool <- function(tool, max_rows = 0L) {
+  orig <- tryCatch(S7::S7_data(tool), error = function(e) NULL)
+  if (!is.function(orig)) return(tool)
+  if (isTRUE(attr(orig, "data_shield_wrapped"))) return(tool)   # already wrapped
+  wrapped <- function(...) .data_shield_filter_result(orig(...), max_rows = max_rows)
+  attr(wrapped, "data_shield_wrapped") <- TRUE
+  tryCatch({ S7::S7_data(tool) <- wrapped }, error = function(e) NULL)
+  tool
+}
+
+# Per-chat guard so we wrap each chat's tools only once.
+.data_shield_installed <- new.env(parent = emptyenv())
+
+#' Install the Data Shield egress guard on a Chat (P0)
+#'
+#' @description
+#' Opt-in strict data-safety guard. Wraps every tool currently registered on
+#' `chat` so that bulk row-level data in a tool's result is truncated to a shape
+#' summary before it reaches the model (edge 2 of the two inbound edges; see the
+#' `data-shield` vignette). Off by default; call once **after** all tools are
+#' registered. Content-agnostic and shape-based -- it does not inspect code or
+#' block `print`.
+#'
+#' @param chat An `ellmer::Chat`.
+#' @param max_rows Integer. Rows to keep before truncating a bulk tabular result
+#'   (`0` = shape summary only).
+#' @return Invisibly, `chat`.
+#' @seealso [codeagent_client()]
+#' @export
+install_data_shield <- function(chat, max_rows = 0L) {
+  key <- tryCatch(rlang::obj_address(chat), error = function(e) NULL) %||% "default"
+  if (isTRUE(.data_shield_installed[[key]])) return(invisible(chat))
+  tools <- tryCatch(chat$get_tools(), error = function(e) list())
+  if (length(tools)) {
+    wrapped <- lapply(tools, function(t) .data_shield_wrap_tool(t, max_rows = max_rows))
+    tryCatch(chat$set_tools(wrapped), error = function(e) NULL)
+  }
+  .data_shield_installed[[key]] <- TRUE
+  invisible(chat)
+}
+
+# Resolve max_rows from a `data_shield` setting (NULL=off, TRUE=on, list=config).
+#' @keywords internal
+.data_shield_max_rows <- function(data_shield) {
+  if (is.list(data_shield)) as.integer(data_shield$max_rows %||% 0L) else 0L
+}

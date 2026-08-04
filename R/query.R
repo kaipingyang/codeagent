@@ -148,6 +148,12 @@ print.CodeagentClient <- function(x, ...) {
 #'   `FALSE` returns a lightweight shell (chat + settings + system prompt, no
 #'   tools) so callers (e.g. [codeagent_app()]) can render UI first and defer the
 #'   expensive tool registration; call [.register_all_tools()] later.
+#' @param data_shield `NULL` (off, default) or a list enabling the opt-in Data
+#'   Shield egress guard (e.g. `list(max_rows = 0)`): tool results shaped like
+#'   bulk row-level data are truncated to a shape summary before reaching the
+#'   model. For a harness-only client (`register_tools = FALSE`) install it
+#'   yourself after attaching tools via [install_data_shield()]. See the
+#'   `data-shield` vignette.
 #' @return Object of class `CodeagentClient` with slots `$chat` and `$settings`.
 #' @export
 codeagent_client <- function(
@@ -160,7 +166,8 @@ codeagent_client <- function(
   worktree_isolation = FALSE,
   verify_fn          = NULL,
   mcp_config         = NULL,
-  register_tools     = TRUE
+  register_tools     = TRUE,
+  data_shield        = NULL
 ) {
   # Input validation (user-facing entry point).
   if (!is.null(chat) && !inherits(chat, "Chat"))
@@ -186,6 +193,7 @@ codeagent_client <- function(
   settings$worktree_isolation  <- isTRUE(worktree_isolation)
   settings$verify_fn           <- verify_fn
   settings$mcp_config          <- mcp_config
+  settings$data_shield         <- data_shield
 
   # Declarative hooks from settings.json -> live HookRegistry (M5 closing).
   settings$hooks_registry      <- tryCatch(.hooks_from_settings(settings),
@@ -213,6 +221,13 @@ codeagent_client <- function(
     # mcp_config param still works; this adds servers from the settings file.
     tryCatch(.mcp_autoconnect(chat, settings), error = function(e) NULL)
   }
+
+  # Data Shield (opt-in): wrap tool results through the egress row-cap (edge 2).
+  # For a harness-only client (register_tools = FALSE) the host installs it
+  # after attaching their own tools via install_data_shield().
+  if (isTRUE(register_tools) && !is.null(data_shield))
+    tryCatch(install_data_shield(chat, max_rows = .data_shield_max_rows(data_shield)),
+             error = function(e) NULL)
 
   .new_client(chat, settings)
 }
