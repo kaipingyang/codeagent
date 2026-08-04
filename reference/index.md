@@ -270,6 +270,8 @@ Tool factories and registration.
   : Install codeagent's central permission gate on an existing Chat
 - [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
   : Install the Data Shield egress guard on a Chat (P0)
+- [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md)
+  : Register protected data for the Data Shield value_match
 
 ## Data exploration (WEAR)
 

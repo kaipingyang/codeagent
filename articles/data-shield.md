@@ -1,13 +1,14 @@
 # Data Shield: strict data-safety mode (design preview)
 
-> **Status — P0 available; fuller design in progress.** The **P0
+> **Status — P0/P0.5 available; fuller design in progress.** The **P0
 > foundation is wired**: `codeagent_client(data_shield = ...)` and
 > [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
-> wrap tool results through the shape-based egress row-cap (edge 2), and
-> ambient injection stays schema-only (edge 1). The fuller strategy API
-> below
-> (`shield_egress`/`value_match`/`DescribeData`/`reviewer`/`sandbox`) is
-> the **target design / roadmap** and not all wired yet. Off by default
+> wrap tool results through the shape-based egress row-cap. P0.5 adds
+> [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md) +
+> deterministic `value_match` for targeted single-value leaks. Ambient
+> injection stays schema-only. The fuller strategy API below
+> (`shield_egress`/`DescribeData`/`reviewer`/`sandbox`) is the **target
+> design / roadmap** and not all wired yet. Off by default
 > (`data_shield = NULL`).
 
 ## Why
@@ -90,6 +91,50 @@ install_data_shield(chat, max_rows = 0)
   already emits only `name [data.frame N x M: col:type, ...]` (no
   values); Data Shield keeps it that way.
 
+### Runtime uploads in Shiny
+
+The dataset does **not** need to be known when the app starts. Register
+it in the upload observer immediately after reading it; tools may
+already be attached and wrapped, because value matching reads the live
+index at invocation time.
+
+``` r
+
+# Per Shiny session:
+data_env <- new.env(parent = emptyenv())
+
+observeEvent(input$file, {
+  df <- read.csv(input$file$datapath)
+  data_env$uploaded <- df
+  register_protected_data(df)  # runtime registration; no advance column list needed
+})
+```
+
+A complete runnable host-style Shiny example is installed at:
+
+``` r
+
+system.file("examples/data_shield_upload_app.R", package = "codeagent")
+```
+
+From a development checkout:
+
+``` r
+
+devtools::load_all(".")
+source("inst/examples/data_shield_upload_app.R")
+```
+
+It demonstrates three outcomes after upload: bulk rows withheld by
+`row_cap`, a single indexed value withheld by `value_match`, and a
+harmless shape summary passed through.
+
+> **Current P0.5 limitation:** the protected-value index is
+> process-global. The upload demo is therefore suitable for a
+> single-user/development process. A shared-process multi-user Shiny
+> deployment requires indexing by session/chat before production use
+> (tracked in the Data Shield plans).
+
 Illustrative behaviour of the P0 row-cap (implemented):
 
 | tool output                             | P0 action              |
@@ -102,12 +147,15 @@ Illustrative behaviour of the P0 row-cap (implemented):
 
 ## Roadmap
 
-- **P0.5 — `value_match`**: deterministically catch *targeted* leaks the
-  row-cap lets through (e.g. printing one patient’s name), by matching
-  tool output against indexed values of registered protected data.
-- **P1 — `DescribeData` + `register_protected_data()`**: the model’s
-  sanctioned, hardened view of data (schema + suppressed/k-anonymised
-  summaries), plus the protected-data registry.
+- **P0.5 — `value_match` (available)**: deterministically catches
+  *targeted* leaks the row-cap lets through (e.g. printing one patient’s
+  name), by matching tool output against high-entropy values registered
+  with
+  [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md).
+- **P1 — `DescribeData` +
+  [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md)**:
+  the model’s sanctioned, hardened view of data (schema +
+  suppressed/k-anonymised summaries), plus the protected-data registry.
 - **P2 — reviewer (small model), sandbox (folder + no-network),
   differential privacy for distributions (opt-in).**
 
