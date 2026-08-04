@@ -1,5 +1,14 @@
 # codeagent (development version)
 
+* **Data Shield P0/P0.5 (opt-in, default OFF)**: `codeagent_client(data_shield = ...)`
+  and `install_data_shield()` wrap all registered tool functions so bulk
+  row-level results are replaced with a shape summary before reaching the LLM.
+  `register_protected_data()` adds deterministic high-entropy `value_match`
+  protection for targeted single-value leaks that the row-cap cannot detect.
+  Includes deterministic, live-LLM, and runtime-upload Shiny examples; the
+  protected-value index is currently process-global, so shared-process
+  multi-user Shiny deployments require the planned per-session isolation.
+
 * **Backend permission gate for host tools**: new exported
   `install_permission_gate(chat, permission_mode, rules, tools, ask_fn, tool_meta)`
   lets a harness-only client (`register_tools = FALSE`) put the central

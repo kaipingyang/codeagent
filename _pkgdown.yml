@@ -162,6 +162,7 @@ reference:
       - tool_result
       - install_permission_gate
       - install_data_shield
+      - register_protected_data
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."
