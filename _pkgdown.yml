@@ -234,3 +234,8 @@ articles:
     navbar: "Embedding"
     contents:
       - backend-integration
+
+  - title: "Data Shield"
+    navbar: "Data Shield"
+    contents:
+      - data-shield

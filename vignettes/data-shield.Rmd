@@ -1,0 +1,112 @@
+---
+title: "Data Shield: strict data-safety mode (design preview)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Data Shield: strict data-safety mode (design preview)}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+> **Status — design preview.** Data Shield is being built incrementally. The
+> **P0 core** (shape-based egress row-cap) is implemented internally; the
+> `data_shield` client parameter and the strategy API described below are the
+> **target design** and are not all wired yet. This chapter documents the
+> philosophy and roadmap so integrators can plan around it.
+
+## Why
+
+When codeagent is embedded as a backend over **sensitive data** (clinical,
+financial, PII), the guarantee we want is: the LLM may see **metadata and
+descriptive summaries**, but **never raw row-level data**. Data Shield is an
+**opt-in, pluggable valve** that enforces this — off by default
+(`data_shield = NULL`), composed from independent strategies when on.
+
+## The core: two edges
+
+Strip away the agent machinery and data can reach the LLM through **only two
+inbound edges**. Guard both and you have guarded everything:
+
+1. **Prompt / system-prompt content** — including the framework's own
+   **ambient-context auto-injection** (codeagent can inject a summary of R
+   session objects into the system reminder). This is the part we control and
+   must keep **schema-only** (names / types / dimensions), never values.
+2. **Tool results** — whatever a tool returns and that is fed back to the model.
+
+Everything else reduces to these two (RAG and errors arrive as one of them;
+model-generated content is outbound, not inbound). The guarantee applies
+**recursively to sub-agents** — each has its own two edges.
+
+> Blind spot to handle separately: an **image/multimodal** tool result (a
+> rendered table/plot of raw rows) bypasses text scanning.
+
+## Design: composable strategies (not a fixed mode)
+
+`data_shield` is `NULL` (off) or a **list of independent strategies** you
+compose freely. The execution model borrows llm-guard's scanner pipeline
+(ordered, `fail_fast`, each returns `sanitized / valid / score / action`); the
+per-strategy `on_fail` action and named registry borrow from guardrails-ai.
+All pure R — no Python.
+
+```{r}
+# Target API (in progress):
+codeagent_client(..., data_shield = list(
+  shield_describe(k_anon = 5),                                  # safe metadata only
+  shield_egress(detectors = c("value_match", "regex"),          # main boundary
+                max_rows = 0, on_fail = "block"),
+  shield_ingress(langs = c("R", "python", "bash"), on_fail = "ask"),
+  shield_reviewer(model = "<a small, fast model>", scope = "exec"), # small-model audit
+  shield_sandbox(no_network = TRUE),                            # OS confinement
+  shield_narrow_tools()
+))
+```
+
+The main boundary is **edge 2 (tool results)**; the rest (sandbox, ingress
+blacklist, reviewer, tool narrowing) are **defense-in-depth**, not the boundary.
+
+## P0 — the foundation (what ships first)
+
+The minimal, deterministic slice that already gives real protection:
+
+- **Edge 2 — shape-based egress row-cap.** codeagent does **not** inspect code
+  or block `print`. It looks only at the **shape** of a tool's returned text:
+  output with a data.frame / tibble print signature or a many-row rectangular
+  table is truncated to a shape summary; scalars, messages, **model summaries**,
+  plots and errors pass through untouched. Content-agnostic and tunable via
+  `max_rows`.
+- **Edge 1 — ambient stays schema-only.** codeagent's ambient injection already
+  emits only `name [data.frame N x M: col:type, ...]` (no values); Data Shield
+  keeps it that way.
+
+Illustrative behaviour of the P0 row-cap (implemented):
+
+| tool output | P0 action |
+|---|---|
+| `print(mtcars)` (bulk rows) | capped → shape summary |
+| a tibble print (`# A tibble: 320 x 12`) | capped |
+| `print(nrow(df))` → `320` | passes |
+| a status message | passes |
+| `print(summary(fit))` | passes (not row data) |
+
+## Roadmap
+
+- **P0.5 — `value_match`**: deterministically catch *targeted* leaks the
+  row-cap lets through (e.g. printing one patient's name), by matching tool
+  output against indexed values of registered protected data.
+- **P1 — `DescribeData` + `register_protected_data()`**: the model's sanctioned,
+  hardened view of data (schema + suppressed/k-anonymised summaries), plus the
+  protected-data registry.
+- **P2 — reviewer (small model), sandbox (folder + no-network), differential
+  privacy for distributions (opt-in).**
+
+## Honest limits
+
+Data Shield **reduces** disclosure risk; it does not eliminate it. Deterministic
+detectors (row-cap, `value_match`, regex) miss adversarially obfuscated egress
+(e.g. base64-encoding data before printing); those are mitigated — not solved —
+by the ingress blacklist and the no-network sandbox. The strongest guarantees
+come from the structural layers (metadata-only feeding + no-network execution),
+with scanning as defense-in-depth.
