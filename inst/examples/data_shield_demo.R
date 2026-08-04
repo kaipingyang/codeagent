@@ -11,6 +11,11 @@
 # =============================================================================
 
 library(codeagent)
+# NOTE: Data Shield is a dev feature. If `install_data_shield` is "not found",
+# your installed codeagent is stale --- load the dev version first:
+#   devtools::load_all(".")           # dev (this session only)
+#   # or: pak::local_install(".") then RESTART R and library(codeagent)
+stopifnot("install_data_shield()" = exists("install_data_shield"))
 
 # Helper: fetch a tool from a chat by name (get_tools() naming can vary).
 get_tool <- function(chat, nm) {
