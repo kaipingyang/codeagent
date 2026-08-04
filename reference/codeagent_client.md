@@ -20,7 +20,8 @@ codeagent_client(
   worktree_isolation = FALSE,
   verify_fn = NULL,
   mcp_config = NULL,
-  register_tools = TRUE
+  register_tools = TRUE,
+  data_shield = NULL
 )
 ```
 
@@ -84,6 +85,16 @@ codeagent_client(
   can render UI first and defer the expensive tool registration; call
   [`.register_all_tools()`](https://kaipingyang.github.io/codeagent/reference/dot-register_all_tools.md)
   later.
+
+- data_shield:
+
+  `NULL` (off, default) or a list enabling the opt-in Data Shield egress
+  guard (e.g. `list(max_rows = 0)`): tool results shaped like bulk
+  row-level data are truncated to a shape summary before reaching the
+  model. For a harness-only client (`register_tools = FALSE`) install it
+  yourself after attaching tools via
+  [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md).
+  See the `data-shield` vignette.
 
 ## Value
 

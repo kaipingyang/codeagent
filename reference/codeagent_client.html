@@ -74,7 +74,8 @@ is the single object passed to <code><a href="codeagent.html">codeagent()</a></c
 <span>  worktree_isolation <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  verify_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mcp_config <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  register_tools <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  register_tools <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -129,6 +130,15 @@ external MCP servers; see <code><a href="register_mcp_client.html">register_mcp_
 <code>FALSE</code> returns a lightweight shell (chat + settings + system prompt, no
 tools) so callers (e.g. <code><a href="codeagent_app.html">codeagent_app()</a></code>) can render UI first and defer the
 expensive tool registration; call <code><a href="dot-register_all_tools.html">.register_all_tools()</a></code> later.</p></dd>
+
+
+<dt id="arg-data-shield">data_shield<a class="anchor" aria-label="anchor" href="#arg-data-shield"></a></dt>
+<dd><p><code>NULL</code> (off, default) or a list enabling the opt-in Data
+Shield egress guard (e.g. <code>list(max_rows = 0)</code>): tool results shaped like
+bulk row-level data are truncated to a shape summary before reaching the
+model. For a harness-only client (<code>register_tools = FALSE</code>) install it
+yourself after attaching tools via <code><a href="install_data_shield.html">install_data_shield()</a></code>. See the
+<code>data-shield</code> vignette.</p></dd>
 
 </dl></div>
     <div class="section level2">

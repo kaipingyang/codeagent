@@ -1,11 +1,14 @@
 # Data Shield: strict data-safety mode (design preview)
 
-> **Status — design preview.** Data Shield is being built incrementally.
-> The **P0 core** (shape-based egress row-cap) is implemented
-> internally; the `data_shield` client parameter and the strategy API
-> described below are the **target design** and are not all wired yet.
-> This chapter documents the philosophy and roadmap so integrators can
-> plan around it.
+> **Status — P0 available; fuller design in progress.** The **P0
+> foundation is wired**: `codeagent_client(data_shield = ...)` and
+> [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
+> wrap tool results through the shape-based egress row-cap (edge 2), and
+> ambient injection stays schema-only (edge 1). The fuller strategy API
+> below
+> (`shield_egress`/`value_match`/`DescribeData`/`reviewer`/`sandbox`) is
+> the **target design / roadmap** and not all wired yet. Off by default
+> (`data_shield = NULL`).
 
 ## Why
 
@@ -62,9 +65,20 @@ The main boundary is **edge 2 (tool results)**; the rest (sandbox,
 ingress blacklist, reviewer, tool narrowing) are **defense-in-depth**,
 not the boundary.
 
-## P0 — the foundation (what ships first)
+## P0 — the foundation (available now)
 
 The minimal, deterministic slice that already gives real protection:
+
+``` r
+
+# Turn it on (register_tools = TRUE path):
+client <- codeagent_client(chat, data_shield = list(max_rows = 0))
+
+# Harness-only client: install after attaching your own tools:
+client <- codeagent_client(chat, register_tools = FALSE)
+chat$register_tool(my_tool)
+install_data_shield(chat, max_rows = 0)
+```
 
 - **Edge 2 — shape-based egress row-cap.** codeagent does **not**
   inspect code or block `print`. It looks only at the **shape** of a

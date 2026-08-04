@@ -80,12 +80,15 @@
     
     
 <blockquote>
-<p><strong>Status — design preview.</strong> Data Shield is being built
-incrementally. The <strong>P0 core</strong> (shape-based egress row-cap)
-is implemented internally; the <code>data_shield</code> client parameter
-and the strategy API described below are the <strong>target
-design</strong> and are not all wired yet. This chapter documents the
-philosophy and roadmap so integrators can plan around it.</p>
+<p><strong>Status — P0 available; fuller design in progress.</strong>
+The <strong>P0 foundation is wired</strong>:
+<code>codeagent_client(data_shield = ...)</code> and
+<code><a href="../reference/install_data_shield.html">install_data_shield()</a></code> wrap tool results through the
+shape-based egress row-cap (edge 2), and ambient injection stays
+schema-only (edge 1). The fuller strategy API below
+(<code>shield_egress</code>/<code>value_match</code>/<code>DescribeData</code>/<code>reviewer</code>/<code>sandbox</code>)
+is the <strong>target design / roadmap</strong> and not all wired yet.
+Off by default (<code>data_shield = NULL</code>).</p>
 </blockquote>
 <div class="section level2">
 <h2 id="why">Why<a class="anchor" aria-label="anchor" href="#why"></a>
@@ -152,10 +155,18 @@ guardrails-ai. All pure R — no Python.</p>
 <strong>defense-in-depth</strong>, not the boundary.</p>
 </div>
 <div class="section level2">
-<h2 id="p0-the-foundation-what-ships-first">P0 — the foundation (what ships first)<a class="anchor" aria-label="anchor" href="#p0-the-foundation-what-ships-first"></a>
+<h2 id="p0-the-foundation-available-now">P0 — the foundation (available now)<a class="anchor" aria-label="anchor" href="#p0-the-foundation-available-now"></a>
 </h2>
 <p>The minimal, deterministic slice that already gives real
 protection:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Turn it on (register_tools = TRUE path):</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Harness-only client: install after attaching your own tools:</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, register_tools <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="va">chat</span><span class="op">$</span><span class="fu">register_tool</span><span class="op">(</span><span class="va">my_tool</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/install_data_shield.html">install_data_shield</a></span><span class="op">(</span><span class="va">chat</span>, max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
 <strong>Edge 2 — shape-based egress row-cap.</strong> codeagent does
