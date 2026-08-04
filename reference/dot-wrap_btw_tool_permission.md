@@ -23,7 +23,7 @@ preserving the original description, arguments, and annotations.
 - btw_tool:
 
   An
-  [`ellmer::ToolDef`](https://ellmer.tidyverse.org/reference/tool.html)
+  [`ellmer::ToolDef`](https://ellmer.tidyverse.org/reference/ToolDef.html)
   from
   [`btw::btw_tools()`](https://posit-dev.github.io/btw/reference/btw_tools.html).
 
@@ -42,5 +42,5 @@ preserving the original description, arguments, and annotations.
 ## Value
 
 A new
-[`ellmer::ToolDef`](https://ellmer.tidyverse.org/reference/tool.html)
+[`ellmer::ToolDef`](https://ellmer.tidyverse.org/reference/ToolDef.html)
 with permission gate injected.

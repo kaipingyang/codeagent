@@ -28,4 +28,4 @@ ask_user_tool(ask_question_fn = NULL, async = FALSE)
 ## Value
 
 An
-[`ellmer::ToolDef`](https://ellmer.tidyverse.org/reference/tool.html).
+[`ellmer::ToolDef`](https://ellmer.tidyverse.org/reference/ToolDef.html).

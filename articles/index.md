@@ -27,3 +27,8 @@
 
 - [Embedding codeagent as a backend (Contract
   v1)](https://kaipingyang.github.io/codeagent/articles/backend-integration.md):
+
+### Data Shield
+
+- [Data Shield: strict data-safety mode (design
+  preview)](https://kaipingyang.github.io/codeagent/articles/data-shield.md):
