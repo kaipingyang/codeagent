@@ -28,12 +28,25 @@ NULL
 #'
 #' @param max_rows Integer. Rows to retain from bulk tabular tool output (`0`
 #'   means shape summary only).
+#' @param distributions Distribution policy. P1 currently implements strict
+#'   `"off"`; `"on"` and `"dp"` are reserved for later phases.
+#' @param k_anon Integer. Minimum support required before a categorical label
+#'   may be exposed (default 5).
+#' @param category_max Integer. Maximum distinct values for automatic
+#'   categorical treatment.
+#' @param category_ratio Numeric. Maximum distinct/row ratio for a character
+#'   column to be treated as categorical.
 #' @return A mutable `DataShieldState` environment.
 #' @export
-data_shield <- function(max_rows = 0L) {
+data_shield <- function(max_rows = 0L, distributions = "off", k_anon = 5L,
+                        category_max = 20L, category_ratio = 0.2) {
+  distributions <- match.arg(distributions, c("off", "on", "dp"))
   state <- new.env(parent = emptyenv())
   state$index <- new.env(parent = emptyenv())
-  state$config <- list(max_rows = as.integer(max_rows))
+  state$config <- list(
+    max_rows = as.integer(max_rows), distributions = distributions,
+    k_anon = as.integer(k_anon), category_max = as.integer(category_max),
+    category_ratio = as.numeric(category_ratio))
   state$datasets <- list()
   state$closed <- FALSE
   class(state) <- c("DataShieldState", "environment")
@@ -46,7 +59,10 @@ data_shield <- function(max_rows = 0L) {
   if (is.null(x)) return(NULL)
   if (inherits(x, "DataShieldState")) return(x)
   if (isTRUE(x)) return(data_shield())
-  if (is.list(x)) return(data_shield(max_rows = x$max_rows %||% 0L))
+  if (is.list(x)) {
+    allowed <- intersect(names(x), names(formals(data_shield)))
+    return(do.call(data_shield, x[allowed]))
+  }
   stop("`data_shield` must be NULL, TRUE, a config list, or DataShieldState.",
        call. = FALSE)
 }
@@ -225,6 +241,8 @@ install_data_shield <- function(chat, max_rows = NULL, shield = NULL) {
   if (!is.null(max_rows)) shield$config$max_rows <- as.integer(max_rows)
   attr(chat, "codeagent_data_shield") <- shield
 
+  # Safe metadata is the sanctioned alternative to dumping protected rows.
+  register_describe_data_tool(chat, shield)
   tools <- tryCatch(chat$get_tools(), error = function(e) list())
   if (length(tools)) {
     wrapped <- lapply(tools, function(tool) .data_shield_wrap_tool(tool, shield))
@@ -288,6 +306,165 @@ install_data_shield <- function(chat, max_rows = NULL, shield = NULL) {
   list(hit = length(hit) > 0L, n = length(hit), values = unique(hit))
 }
 
+# Classify columns locally (never sent to the model). Overrides remain the
+# authority; heuristics deliberately err toward more restrictive classes.
+#' @keywords internal
+.data_shield_classify_columns <- function(df, sensitivity = NULL) {
+  out <- stats::setNames(rep("measure", ncol(df)), names(df))
+  nms <- tolower(names(df))
+  id_pat <- "(^|_)(id|identifier|subjid|subject|patient|name|email|phone|ssn|mrn|address)(_|$)"
+  quasi_pat <- "(^|_)(age|sex|gender|race|ethnic|site|country|region|zip|postal|birth|dob)(_|$)"
+  out[grepl(id_pat, nms, perl = TRUE)] <- "identifier"
+  out[grepl(quasi_pat, nms, perl = TRUE)] <- "quasi"
+  for (i in seq_along(df)) {
+    x <- df[[i]]
+    if (inherits(x, c("Date", "POSIXt")) && identical(out[[i]], "measure"))
+      out[[i]] <- "quasi"
+    if ((is.character(x) || is.factor(x)) && identical(out[[i]], "measure")) {
+      vals <- unique(x[!is.na(x)])
+      if (length(vals) >= 8L && length(vals) / max(1L, nrow(df)) >= 0.8)
+        out[[i]] <- "identifier"
+    }
+  }
+  if (!is.null(sensitivity)) {
+    sensitivity <- unlist(sensitivity, use.names = TRUE)
+    if (is.null(names(sensitivity)) || any(!names(sensitivity) %in% names(df)))
+      stop("`sensitivity` must be named by columns in `df`.", call. = FALSE)
+    allowed <- c("identifier", "quasi", "measure", "open")
+    if (any(!sensitivity %in% allowed))
+      stop("Sensitivity must be identifier/quasi/measure/open.", call. = FALSE)
+    out[names(sensitivity)] <- sensitivity
+  }
+  out
+}
+
+# Rebuild the combined per-session hash index from all registered datasets.
+#' @keywords internal
+.data_shield_rebuild_index <- function(shield) {
+  rm(list = ls(shield$index, all.names = TRUE), envir = shield$index)
+  for (dataset in shield$datasets) {
+    keys <- ls(dataset$index, all.names = TRUE)
+    for (key in keys) assign(key, TRUE, envir = shield$index)
+  }
+  invisible(length(ls(shield$index, all.names = TRUE)))
+}
+
+.data_shield_type <- function(x) {
+  if (inherits(x, "Date")) return("Date")
+  if (inherits(x, "POSIXt")) return("datetime")
+  if (is.ordered(x)) return("ordered factor")
+  if (is.factor(x)) return("factor")
+  class(x)[[1L]] %||% typeof(x)
+}
+
+.data_shield_range <- function(x) {
+  if (!length(x) || all(is.na(x))) return(NULL)
+  r <- tryCatch(range(x, na.rm = TRUE), error = function(e) NULL)
+  if (is.null(r) || length(r) != 2L) return(NULL)
+  if (inherits(x, "Date")) return(format(r, "%Y-%m-%d"))
+  if (inherits(x, "POSIXt")) return(format(r, "%Y-%m-%d %H:%M:%S %Z"))
+  format(r, scientific = FALSE, trim = TRUE)
+}
+
+# Strict schema for one registered dataset: no distributions/counts/examples.
+#' @keywords internal
+.data_shield_describe <- function(dataset, config) {
+  df <- dataset$data
+  sensitivity <- dataset$sensitivity
+  k <- config$k_anon %||% 5L
+  category_max <- config$category_max %||% 20L
+  category_ratio <- config$category_ratio %||% 0.2
+  lines <- sprintf("Protected dataset '%s': %d rows x %d columns",
+                   dataset$name, nrow(df), ncol(df))
+  for (cn in names(df)) {
+    x <- df[[cn]]
+    sens <- sensitivity[[cn]] %||% "identifier"
+    typ <- .data_shield_type(x)
+    fields <- c(sprintf("type=%s", typ), sprintf("sensitivity=%s", sens),
+                sprintf("missing=%s", if (anyNA(x)) "yes" else "no"))
+    if (sens %in% c("measure", "open")) {
+      if (is.numeric(x) || inherits(x, c("Date", "POSIXt"))) {
+        r <- .data_shield_range(x)
+        if (!is.null(r)) fields <- c(fields, sprintf("range=[%s, %s]", r[[1L]], r[[2L]]))
+      } else if (is.logical(x)) {
+        fields <- c(fields, "labels=[FALSE, TRUE]")
+      } else if (is.factor(x) || is.character(x)) {
+        vals <- as.character(x[!is.na(x)])
+        tab <- table(vals)
+        ratio <- length(tab) / max(1L, length(vals))
+        categorical <- is.factor(x) ||
+          (length(tab) <= category_max && ratio <= category_ratio)
+        if (categorical) {
+          safe <- names(tab)[tab >= k]
+          labels <- safe
+          if (any(tab < k)) labels <- c(labels, "<rare suppressed>")
+          if (length(labels))
+            fields <- c(fields, sprintf("labels=[%s]", paste(labels, collapse = ", ")))
+        } else {
+          fields <- c(fields, "format=free_text")
+        }
+      }
+    } else {
+      fields <- c(fields, "values=suppressed")
+    }
+    lines <- c(lines, sprintf("- %s: %s", cn, paste(fields, collapse = "; ")))
+  }
+  paste(lines, collapse = "\n")
+}
+
+#' Create the strict DescribeData tool
+#'
+#' @param shield A [data_shield()] state containing registered datasets.
+#' @return An `ellmer::tool()`.
+#' @export
+describe_data_tool <- function(shield) {
+  if (!inherits(shield, "DataShieldState"))
+    stop("`shield` must be a DataShieldState.", call. = FALSE)
+  ellmer::tool(
+    function(data_name = NULL) {
+      datasets <- shield$datasets
+      if (!length(datasets)) return("No protected datasets are registered.")
+      if (is.null(data_name) || !nzchar(data_name)) {
+        if (length(datasets) != 1L)
+          return(paste0("Protected datasets: ", paste(names(datasets), collapse = ", "),
+                        ". Call again with data_name."))
+        data_name <- names(datasets)[[1L]]
+      }
+      dataset <- datasets[[data_name]]
+      if (is.null(dataset))
+        return(sprintf("[Error] Protected dataset '%s' is not registered.", data_name))
+      if (!identical(shield$config$distributions %||% "off", "off"))
+        return("[Error] Distribution modes 'on'/'dp' are planned but not implemented; use strict 'off'.")
+      .data_shield_describe(dataset, shield$config)
+    },
+    name = "DescribeData",
+    description = paste0(
+      "Describe a registered protected data.frame without returning raw rows. ",
+      "Strict mode returns schema, sensitivity, missing presence, safe numeric/date ranges, ",
+      "and k-supported low-cardinality labels; never distributions, counts, or free-text examples."),
+    arguments = list(
+      data_name = ellmer::type_string(
+        "Registered protected dataset name. Optional when exactly one exists.",
+        required = FALSE)),
+    annotations = ellmer::tool_annotations(
+      title = "DescribeData", read_only_hint = TRUE,
+      destructive_hint = FALSE, open_world_hint = FALSE))
+}
+
+#' Register the strict DescribeData tool
+#'
+#' @param chat An `ellmer::Chat`.
+#' @param shield A [data_shield()] state.
+#' @return Invisibly, `chat`.
+#' @export
+register_describe_data_tool <- function(chat, shield) {
+  names_now <- vapply(tryCatch(chat$get_tools(), error = function(e) list()),
+    function(tool) tryCatch(S7::prop(tool, "name"), error = function(e) ""),
+    character(1))
+  if (!"DescribeData" %in% names_now) chat$register_tool(describe_data_tool(shield))
+  invisible(chat)
+}
+
 #' Register protected data for a session's Data Shield value_match
 #'
 #' @description
@@ -300,27 +477,42 @@ install_data_shield <- function(chat, max_rows = NULL, shield = NULL) {
 #' where `shield` was created inside that session's server function.
 #'
 #' @param df A data.frame (e.g. an uploaded dataset).
-#' @param cols Character. Columns to index (default: all).
+#' @param name Character. Dataset name exposed to `DescribeData`; inferred from
+#'   a simple object name or generated when omitted.
+#' @param sensitivity Optional named character vector/list assigning columns to
+#'   `identifier`, `quasi`, `measure`, or `open`; local heuristics fill the rest.
+#' @param cols Optional explicit columns to value-index. By default only columns
+#'   classified `identifier`/`quasi` are indexed.
 #' @param min_len,min_card Integer. "Indexable" thresholds: value length and
 #'   column cardinality.
 #' @param shield Optional [data_shield()] state.
 #' @param client Optional `CodeagentClient` that owns a state.
 #' @param chat Optional installed ellmer Chat that owns a state.
 #' @return Invisibly, the number of values indexed.
-#' @seealso [data_shield()], [install_data_shield()], [codeagent_client()]
+#' @seealso [data_shield()], [describe_data_tool()], [install_data_shield()],
+#'   [codeagent_client()]
 #' @export
-register_protected_data <- function(df, cols = NULL, min_len = 3L, min_card = 8L,
+register_protected_data <- function(df, name = NULL, sensitivity = NULL,
+                                    cols = NULL, min_len = 3L, min_card = 8L,
                                     shield = NULL, client = NULL, chat = NULL) {
   if (!is.data.frame(df))
     stop("`df` must be a data.frame.", call. = FALSE)
   state <- .data_shield_state(shield = shield, client = client, chat = chat)
   if (isTRUE(state$closed)) stop("The DataShieldState is closed.", call. = FALSE)
-  cols <- cols %||% names(df)
-  idx  <- .data_shield_build_value_index(df, cols = cols,
-                                         min_len = min_len, min_card = min_card)
-  keys <- ls(idx, all.names = TRUE)
-  for (key in keys) assign(key, TRUE, envir = state$index)
-  state$datasets[[length(state$datasets) + 1L]] <- list(
-    columns = cols, indexed = length(keys), rows = nrow(df), cols_n = ncol(df))
-  invisible(length(keys))
+  if (is.null(name)) {
+    candidate <- deparse1(substitute(df))
+    name <- if (grepl("^[A-Za-z.][A-Za-z0-9._]*$", candidate)) candidate else
+      paste0("dataset_", length(state$datasets) + 1L)
+  }
+  if (!is.character(name) || length(name) != 1L || !nzchar(name))
+    stop("`name` must be a non-empty character(1).", call. = FALSE)
+  sensitivity <- .data_shield_classify_columns(df, sensitivity)
+  index_cols <- cols %||% names(sensitivity)[sensitivity %in% c("identifier", "quasi")]
+  idx <- .data_shield_build_value_index(df, cols = index_cols,
+                                        min_len = min_len, min_card = min_card)
+  state$datasets[[name]] <- list(
+    name = name, data = df, sensitivity = sensitivity,
+    index = idx, index_columns = index_cols)
+  .data_shield_rebuild_index(state)
+  invisible(length(ls(idx, all.names = TRUE)))
 }

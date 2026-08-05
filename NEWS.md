@@ -15,6 +15,10 @@
   Includes deterministic, live-LLM, and runtime-upload Shiny examples. Protected
   values now live in an explicit per-session `DataShieldState`; one browser
   session may share it across chat threads without any cross-user index leakage.
+  P1 adds the automatically registered `DescribeData` tool: strict safe metadata
+  only (schema, sensitivity, missing presence, measure/open ranges and
+  k-supported low-cardinality labels), with no distributions, counts, raw rows,
+  or free-text examples.
 
 * **Backend permission gate for host tools**: new exported
   `install_permission_gate(chat, permission_mode, rules, tools, ask_fn, tool_meta)`

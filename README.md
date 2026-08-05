@@ -107,7 +107,7 @@ codeagent_console(client)
 | pkg | btw | document, check, test, coverage, load_all |
 | web | btw | URL → Markdown |
 | agent | btw | hierarchical subagent delegation |
-| data | codeagent | `ExploreData` — sandboxed data.frame queries |
+| data | codeagent | `ExploreData` — sandboxed data.frame queries; `DescribeData` — strict protected-data metadata (Data Shield) |
 
 ### Skill system
 

@@ -4,11 +4,29 @@
 \alias{data_shield}
 \title{Data Shield --- pluggable strict data-safety valve (P0 core)}
 \usage{
-data_shield(max_rows = 0L)
+data_shield(
+  max_rows = 0L,
+  distributions = "off",
+  k_anon = 5L,
+  category_max = 20L,
+  category_ratio = 0.2
+)
 }
 \arguments{
 \item{max_rows}{Integer. Rows to retain from bulk tabular tool output (\code{0}
 means shape summary only).}
+
+\item{distributions}{Distribution policy. P1 currently implements strict
+\code{"off"}; \code{"on"} and \code{"dp"} are reserved for later phases.}
+
+\item{k_anon}{Integer. Minimum support required before a categorical label
+may be exposed (default 5).}
+
+\item{category_max}{Integer. Maximum distinct values for automatic
+categorical treatment.}
+
+\item{category_ratio}{Numeric. Maximum distinct/row ratio for a character
+column to be treated as categorical.}
 }
 \value{
 A mutable \code{DataShieldState} environment.

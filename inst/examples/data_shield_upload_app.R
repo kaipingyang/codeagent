@@ -56,7 +56,7 @@ ui <- fluidPage(
   titlePanel("Data Shield: runtime upload demo"),
   tags$p(
     "Upload a CSV. Registration happens after upload, without knowing its columns in advance. ",
-    "The app then invokes three local tools through the shield."
+    "The app then invokes four local tools through the shield (bulk, targeted, shape, safe metadata)."
   ),
   fileInput("file", "Upload CSV", accept = c(".csv", "text/csv")),
   actionButton("sample", "Use generated sample data"),
@@ -126,7 +126,7 @@ server <- function(input, output, session) {
     state$data <- df
     state$source <- source
     # Runtime registration: no advance knowledge of names/types is required.
-    state$indexed <- register_protected_data(df, shield = shield)
+    state$indexed <- register_protected_data(df, name = "uploaded", shield = shield)
     state$result <- "Registered. Click 'Run shield tests'."
   }
 
@@ -165,6 +165,7 @@ server <- function(input, output, session) {
     dump_result <- .demo_get_tool(chat, "DumpUploadedData")()
     leak_result <- .demo_get_tool(chat, "LeakOneUploadedValue")()
     shape_result <- .demo_get_tool(chat, "DescribeUploadShape")()
+    describe_result <- .demo_get_tool(chat, "DescribeData")("uploaded")
 
     state$result <- paste(
       "1) Bulk dump (row_cap should withhold):",
@@ -175,6 +176,10 @@ server <- function(input, output, session) {
       "",
       "3) Harmless aggregate/shape (should pass):",
       paste0("   ", as.character(shape_result)),
+      "",
+      "4) DescribeData strict safe metadata:",
+      paste0("   ", paste(strsplit(as.character(describe_result), "\n", fixed = TRUE)[[1L]],
+                            collapse = "\n   ")),
       sep = "\n"
     )
   })

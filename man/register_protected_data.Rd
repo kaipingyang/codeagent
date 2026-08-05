@@ -6,6 +6,8 @@
 \usage{
 register_protected_data(
   df,
+  name = NULL,
+  sensitivity = NULL,
   cols = NULL,
   min_len = 3L,
   min_card = 8L,
@@ -17,7 +19,14 @@ register_protected_data(
 \arguments{
 \item{df}{A data.frame (e.g. an uploaded dataset).}
 
-\item{cols}{Character. Columns to index (default: all).}
+\item{name}{Character. Dataset name exposed to \code{DescribeData}; inferred from
+a simple object name or generated when omitted.}
+
+\item{sensitivity}{Optional named character vector/list assigning columns to
+\code{identifier}, \code{quasi}, \code{measure}, or \code{open}; local heuristics fill the rest.}
+
+\item{cols}{Optional explicit columns to value-index. By default only columns
+classified \code{identifier}/\code{quasi} are indexed.}
 
 \item{min_len, min_card}{Integer. "Indexable" thresholds: value length and
 column cardinality.}
@@ -41,5 +50,6 @@ observer the recommended form is \code{register_protected_data(df, shield=shield
 where \code{shield} was created inside that session's server function.
 }
 \seealso{
-\code{\link[=data_shield]{data_shield()}}, \code{\link[=install_data_shield]{install_data_shield()}}, \code{\link[=codeagent_client]{codeagent_client()}}
+\code{\link[=data_shield]{data_shield()}}, \code{\link[=describe_data_tool]{describe_data_tool()}}, \code{\link[=install_data_shield]{install_data_shield()}},
+\code{\link[=codeagent_client]{codeagent_client()}}
 }

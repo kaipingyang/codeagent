@@ -148,3 +148,63 @@ test_that("one session shield can be shared by multiple chat threads", {
   expect_match(chat_1$get_tools()[[1L]](), "withheld")
   expect_match(chat_2$get_tools()[[1L]](), "withheld")
 })
+
+
+test_that("DescribeData strict matrix exposes safe schema but no distributions/raw text", {
+  shield <- data_shield(k_anon = 3L)
+  df <- data.frame(
+    subject_id = sprintf("SUBJ%03d", 1:10),
+    site = rep(c("SITE_A", "SITE_B"), each = 5),
+    arm = factor(c(rep("A", 5), rep("B", 4), "RARE")),
+    value = seq(10.5, 19.5, length.out = 10),
+    note = paste("private narrative", 1:10),
+    stringsAsFactors = FALSE)
+  register_protected_data(
+    df, name = "study",
+    sensitivity = c(subject_id="identifier", site="quasi", arm="measure",
+                    value="measure", note="open"),
+    shield = shield)
+  text <- codeagent:::.data_shield_describe(shield$datasets$study, shield$config)
+
+  expect_match(text, "Protected dataset 'study': 10 rows x 5 columns", fixed=TRUE)
+  expect_match(text, "subject_id:.*values=suppressed")
+  expect_false(grepl("SUBJ001", text, fixed=TRUE))
+  expect_match(text, "site:.*values=suppressed")
+  expect_false(grepl("SITE_A", text, fixed=TRUE))
+  expect_match(text, "arm:.*labels=\\[A, B, <rare suppressed>\\]")
+  expect_false(grepl("RARE", text, fixed=TRUE))
+  expect_match(text, "value:.*range=\\[10.5, 19.5\\]")
+  expect_match(text, "note:.*format=free_text")
+  expect_false(grepl("private narrative", text, fixed=TRUE))
+  expect_false(grepl("mean|quantile|histogram|count=", text, ignore.case=TRUE))
+})
+
+test_that("install_data_shield registers DescribeData and tool sees later uploads", {
+  shield <- data_shield(k_anon = 2L)
+  chat <- ellmer::chat_openai_compatible(
+    base_url="http://x", model="m", credentials=function() "k")
+  install_data_shield(chat, shield=shield)
+  tool_names <- vapply(chat$get_tools(), function(tool)
+    tryCatch(S7::prop(tool, "name"), error=function(e) ""), character(1))
+  expect_true("DescribeData" %in% tool_names)
+
+  register_protected_data(
+    data.frame(group=factor(rep(c("A","B"), each=3)), value=1:6),
+    name="uploaded", sensitivity=c(group="measure", value="measure"),
+    shield=shield)
+  describe <- chat$get_tools()[[which(tool_names == "DescribeData")]]
+  result <- describe("uploaded")
+  expect_match(as.character(result), "group:.*labels=\\[A, B\\]")
+  expect_match(as.character(result), "value:.*range=\\[1, 6\\]")
+})
+
+test_that("column sensitivity heuristics are restrictive and overrides win", {
+  df <- data.frame(
+    SUBJID=sprintf("P%03d",1:10), AGE=20:29,
+    visit_date=as.Date("2025-01-01") + 0:9, AVAL=runif(10))
+  s <- codeagent:::.data_shield_classify_columns(df, sensitivity=c(visit_date="measure"))
+  expect_identical(s[["SUBJID"]], "identifier")
+  expect_identical(s[["AGE"]], "quasi")
+  expect_identical(s[["visit_date"]], "measure")
+  expect_identical(s[["AVAL"]], "measure")
+})

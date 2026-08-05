@@ -164,6 +164,8 @@ reference:
       - install_data_shield
       - register_protected_data
       - data_shield
+      - describe_data_tool
+      - register_describe_data_tool
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."
