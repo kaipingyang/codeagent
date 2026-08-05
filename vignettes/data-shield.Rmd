@@ -129,9 +129,9 @@ devtools::load_all(".")
 source("inst/examples/data_shield_upload_app.R")
 ```
 
-It demonstrates three outcomes after upload: bulk rows withheld by `row_cap`,
-a single indexed value withheld by `value_match`, and a harmless shape summary
-passed through.
+It demonstrates four outcomes after upload: bulk rows withheld by `row_cap`, a
+single indexed value withheld by `value_match`, a harmless shape summary passed
+through, and strict `DescribeData` metadata with raw identifiers suppressed.
 
 > **Multi-user isolation:** `data_shield()` returns a session-scoped state.
 > Create it inside the Shiny server function, share it only among that user's
