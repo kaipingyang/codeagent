@@ -73,6 +73,66 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
     on_fail = match.arg(on_fail))
 }
 
+.data_shield_asset_defaults <- function(kind) {
+  switch(kind,
+    dataset = list(prompt="schema", egress="scan"),
+    spec = list(prompt="raw", egress="scan"),
+    synthetic = list(prompt="raw", egress="scan"),
+    document = list(prompt="scan", egress="scan"))
+}
+
+.data_shield_asset_policy <- function(name, kind, llm_access=NULL,
+                                      scan_secrets=TRUE, reason=NULL,
+                                      expires="session") {
+  kinds <- c("dataset","spec","document","synthetic")
+  kind <- match.arg(kind, kinds)
+  if (!is.character(name) || length(name)!=1L || !nzchar(name))
+    stop("`name` must be a non-empty character(1).",call.=FALSE)
+  access <- .data_shield_asset_defaults(kind)
+  if (!is.null(llm_access)) {
+    if (!is.list(llm_access) || !all(names(llm_access) %in% c("prompt","egress")))
+      stop("`llm_access` must be list(prompt=, egress=).",call.=FALSE)
+    access[names(llm_access)] <- llm_access
+  }
+  allowed <- c("none","schema","scan","raw")
+  if (any(!unlist(access,use.names=FALSE) %in% allowed))
+    stop("Asset access must be none/schema/scan/raw.",call.=FALSE)
+  if (any(unlist(access,use.names=FALSE)=="raw") &&
+      (is.null(reason) || !is.character(reason) || length(reason)!=1L || !nzchar(reason)))
+    stop("`reason` is required for raw asset access.",call.=FALSE)
+  expiry <- if (identical(expires,"session") || is.null(expires)) Inf else {
+    if (!inherits(expires,"POSIXt")) stop("`expires` must be 'session' or POSIXct.",call.=FALSE)
+    as.numeric(expires)
+  }
+  list(name=name,kind=kind,llm_access=access,scan_secrets=isTRUE(scan_secrets),
+       reason=reason %||% paste0("registered ",kind),expires=expiry)
+}
+
+.data_shield_asset_expired <- function(asset) {
+  is.finite(asset$expires) && as.numeric(Sys.time()) > asset$expires
+}
+
+.data_shield_asset_text <- function(x) {
+  if (is.character(x) && length(x)==1L && file.exists(x)) {
+    size <- suppressWarnings(file.info(x)$size)
+    n <- if (length(size)==1L && is.finite(size)) min(size,8192) else 8192
+    probe <- tryCatch(readBin(x,"raw",n=n),error=function(e) raw())
+    if (any(as.integer(probe)==0L))
+      stop("Raw binary asset needs a dedicated trusted adapter.",call.=FALSE)
+    return(paste(readLines(x,warn=FALSE),collapse="\n"))
+  }
+  if (is.character(x)) return(paste(x,collapse="\n"))
+  paste(utils::capture.output(print(x)),collapse="\n")
+}
+
+.data_shield_default_regex_patterns <- function() {
+  c(
+    email = "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}",
+    phone = "(?:\\+?[0-9][0-9 .()\\-]{7,}[0-9])",
+    api_token = "\\b(?:sk|ghp|dapi)[_-]?[A-Z0-9]{16,}\\b",
+    identity_18 = "\\b[0-9]{17}[0-9X]\\b")
+}
+
 #' Configure regex-based egress scanning
 #'
 #' @description
@@ -105,11 +165,7 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
 shield_regex <- function(patterns = NULL, include_defaults = TRUE,
                          replacement = "[REDACTED]",
                          on_fail = c("redact", "block"), ignore_case = TRUE) {
-  defaults <- c(
-    email = "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}",
-    phone = "(?:\\+?[0-9][0-9 .()\\-]{7,}[0-9])",
-    api_token = "\\b(?:sk|ghp|dapi)[_-]?[A-Z0-9]{16,}\\b",
-    identity_18 = "\\b[0-9]{17}[0-9X]\\b")
+  defaults <- .data_shield_default_regex_patterns()
   if (!is.null(patterns)) {
     if (!is.character(patterns) || is.null(names(patterns)) || any(!nzchar(names(patterns))))
       stop("`patterns` must be a named character vector.", call. = FALSE)
@@ -229,6 +285,7 @@ DataShield <- R6::R6Class(
         detectors = c("row_cap", "value_match"), on_fail = "redact",
         describe_enabled = TRUE, egress_enabled = TRUE)
       private$datasets <- list()
+      private$assets <- list()
       private$index <- new.env(parent = emptyenv())
       private$strategies <- list()
       private$egress_pipeline <- list()
@@ -278,6 +335,68 @@ DataShield <- R6::R6Class(
       invisible(length(ls(idx, all.names = TRUE)))
     },
 
+    #' @description Register a typed data/document/spec asset and its LLM access policy.
+    #' @param x Local asset value or path.
+    #' @param name Unique asset name.
+    #' @param kind `dataset`, `spec`, `document`, or `synthetic`.
+    #' @param llm_access NULL for kind defaults, or list(prompt=, egress=) using
+    #'   `none`, `schema`, `scan`, or `raw`.
+    #' @param scan_secrets Keep baseline PII/secret regex active for raw access.
+    #' @param reason Required when prompt or egress access is raw.
+    #' @param expires `"session"` or POSIXct expiry.
+    register_asset = function(x, name, kind,
+                              llm_access = NULL, scan_secrets = TRUE,
+                              reason = NULL, expires = "session") {
+      private$assert_open()
+      policy <- .data_shield_asset_policy(
+        name=name, kind=kind, llm_access=llm_access,
+        scan_secrets=scan_secrets, reason=reason, expires=expires)
+      private$assets[[name]] <- c(list(value=x), policy)
+      if (identical(kind, "dataset") && is.data.frame(x) &&
+          (policy$llm_access$prompt %in% c("schema", "scan") ||
+           identical(policy$llm_access$egress, "scan")))
+        self$register_data(x, name=name)
+      invisible(self)
+    },
+
+    #' @description Return non-sensitive policy metadata for one registered asset.
+    asset_policy = function(name) {
+      private$assert_open()
+      asset <- private$assets[[name]]
+      if (is.null(asset)) stop("Unknown Data Shield asset: ", name, call.=FALSE)
+      asset[names(asset) != "value"]
+    },
+
+    #' @description Return prompt-safe content according to an asset policy.
+    prompt_content = function(name) {
+      private$assert_open()
+      asset <- private$asset(name)
+      access <- asset$llm_access$prompt
+      if (identical(access, "none")) stop("Asset prompt access is disabled.", call.=FALSE)
+      if (identical(access, "schema")) {
+        if (name %in% names(private$datasets)) return(self$describe(name))
+        return(sprintf("Asset '%s': kind=%s (content suppressed)", name, asset$kind))
+      }
+      text <- .data_shield_asset_text(asset$value)
+      if (identical(access, "scan"))
+        return(self$scan_egress(text, context=list(edge="prompt", tool_name=paste0("asset:",name))))
+      # raw bypasses row/value rules; optional baseline secret/PII scan remains.
+      out <- private$scan_raw_secrets(text, asset, edge="prompt", tool_name=paste0("asset:",name))
+      private$record_event(
+        edge="prompt", tool_name=paste0("asset:",name), strategy="asset_policy",
+        action="bypass", reason=asset$reason, match_count=0L, score=0)
+      out
+    },
+
+    #' @description Tag one result with registered provenance for raw egress.
+    trusted_result = function(value, source) {
+      private$assert_open()
+      asset <- private$asset(source)
+      if (!identical(asset$llm_access$egress, "raw"))
+        stop("Asset is not approved for raw egress: ", source, call.=FALSE)
+      structure(list(value=value, source=source), class="DataShieldTrustedResult")
+    },
+
     #' @description Install/refresh this shield on an ellmer Chat.
     install = function(chat) {
       private$assert_open()
@@ -319,9 +438,22 @@ DataShield <- R6::R6Class(
     #' @param context Optional non-sensitive context (`tool_name`, `tool_call_id`).
     scan_egress = function(result, context = list()) {
       private$assert_open()
+      if (inherits(result, "DataShieldTrustedResult")) {
+        asset <- private$asset(result$source)
+        text <- .data_shield_asset_text(result$value)
+        out <- private$scan_raw_secrets(
+          text, asset, edge=context$edge %||% "egress",
+          tool_name=context$tool_name %||% paste0("asset:",result$source))
+        private$record_event(
+          edge=context$edge %||% "egress",
+          tool_name=context$tool_name %||% paste0("asset:",result$source),
+          tool_call_id=context$tool_call_id, strategy="asset_policy",
+          action="bypass", reason=asset$reason, match_count=0L, score=0)
+        return(out)
+      }
       audit_fn <- function(strategy, action, reason, match_count=0L, score=0) {
         private$record_event(
-          edge="egress", tool_name=context$tool_name,
+          edge=context$edge %||% "egress", tool_name=context$tool_name,
           tool_call_id=context$tool_call_id, strategy=strategy, action=action,
           reason=reason, match_count=match_count, score=score)
       }
@@ -336,7 +468,8 @@ DataShield <- R6::R6Class(
         } else if (identical(stage$type, "scanner")) {
           output <- .data_shield_apply_scanner(
             output, stage$fn, stage$name,
-            context = c(list(edge="egress", shield=self), context),
+            context = c(list(shield=self),
+                        if(is.null(context$edge)) c(context,list(edge="egress")) else context),
             audit_fn = audit_fn)
         }
       }
@@ -409,7 +542,11 @@ DataShield <- R6::R6Class(
     #' @description Remove one dataset, or all datasets when name is NULL.
     clear = function(name = NULL) {
       private$assert_open()
-      if (is.null(name)) private$datasets <- list() else private$datasets[[name]] <- NULL
+      if (is.null(name)) {
+        private$datasets <- list(); private$assets <- list()
+      } else {
+        private$datasets[[name]] <- NULL; private$assets[[name]] <- NULL
+      }
       private$rebuild_index()
       invisible(self)
     },
@@ -418,6 +555,7 @@ DataShield <- R6::R6Class(
     close = function() {
       if (!isTRUE(private$closed)) {
         private$datasets <- list()
+        private$assets <- list()
         private$audit_log <- list()
         rm(list = ls(private$index, all.names = TRUE), envir = private$index)
         private$closed <- TRUE
@@ -428,6 +566,7 @@ DataShield <- R6::R6Class(
     #' @description Summarise non-sensitive runtime coverage.
     coverage = function() {
       list(config = private$config, datasets = names(private$datasets),
+           assets = names(private$assets),
            indexed_values = length(ls(private$index, all.names = TRUE)),
            egress_pipeline = vapply(private$egress_pipeline, `[[`, character(1), "name"),
            ingress_pipeline = vapply(private$ingress_pipeline, `[[`, character(1), "name"),
@@ -438,6 +577,7 @@ DataShield <- R6::R6Class(
   private = list(
     config = NULL,
     datasets = NULL,
+    assets = NULL,
     index = NULL,
     strategies = NULL,
     egress_pipeline = NULL,
@@ -466,6 +606,30 @@ DataShield <- R6::R6Class(
       if (length(private$audit_log) > private$audit_max)
         private$audit_log <- utils::tail(private$audit_log, private$audit_max)
       invisible(NULL)
+    },
+    asset = function(name) {
+      asset <- private$assets[[name]]
+      if (is.null(asset)) stop("Unknown Data Shield asset: ", name, call.=FALSE)
+      if (.data_shield_asset_expired(asset))
+        stop("Data Shield asset policy expired: ", name, call.=FALSE)
+      asset
+    },
+    scan_raw_secrets = function(text, asset, edge, tool_name) {
+      if (!isTRUE(asset$scan_secrets)) return(text)
+      scanner <- .data_shield_regex_scanner(
+        .data_shield_default_regex_patterns(), replacement="[REDACTED]",
+        on_fail="redact", ignore_case=TRUE)
+      result <- scanner(text, list(edge=edge, tool_name=tool_name))
+      if (!isTRUE(result$valid)) {
+        labels <- if (is.data.frame(result$spans) && "label" %in% names(result$spans))
+          unique(unlist(strsplit(result$spans$label,"\\|",perl=TRUE))) else character()
+        private$record_event(
+          edge=edge, tool_name=tool_name, strategy="asset_secret_scan",
+          action="redact", reason=paste0("raw asset secret/PII match: ",paste(labels,collapse=", ")),
+          match_count=if(is.data.frame(result$spans))nrow(result$spans) else 0L,
+          score=result$score)
+      }
+      result$sanitized
     },
     apply_strategy = function(strategy) {
       if (!inherits(strategy, "shield_strategy"))

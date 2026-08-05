@@ -35,6 +35,10 @@ shield$coverage()
   \itemize{
     \item \href{#method-DataShield-initialize}{\code{DataShield$new()}}
     \item \href{#method-DataShield-register_data}{\code{DataShield$register_data()}}
+    \item \href{#method-DataShield-register_asset}{\code{DataShield$register_asset()}}
+    \item \href{#method-DataShield-asset_policy}{\code{DataShield$asset_policy()}}
+    \item \href{#method-DataShield-prompt_content}{\code{DataShield$prompt_content()}}
+    \item \href{#method-DataShield-trusted_result}{\code{DataShield$trusted_result()}}
     \item \href{#method-DataShield-install}{\code{DataShield$install()}}
     \item \href{#method-DataShield-describe}{\code{DataShield$describe()}}
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
@@ -116,6 +120,76 @@ classified \code{identifier}/\code{quasi}.}
       \item{\code{min_len, min_card}}{Minimum value length and column cardinality for
 deterministic value indexing (reduces low-entropy false positives).}
     }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-register_asset"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-register_asset}{}}}
+\subsection{\code{DataShield$register_asset()}}{
+  Register a typed data/document/spec asset and its LLM access policy.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$register_asset(
+  x,
+  name,
+  kind,
+  llm_access = NULL,
+  scan_secrets = TRUE,
+  reason = NULL,
+  expires = "session"
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{x}}{Local asset value or path.}
+      \item{\code{name}}{Unique asset name.}
+      \item{\code{kind}}{\code{dataset}, \code{spec}, \code{document}, or \code{synthetic}.}
+      \item{\code{llm_access}}{NULL for kind defaults, or list(prompt=, egress=) using
+\code{none}, \code{schema}, \code{scan}, or \code{raw}.}
+      \item{\code{scan_secrets}}{Keep baseline PII/secret regex active for raw access.}
+      \item{\code{reason}}{Required when prompt or egress access is raw.}
+      \item{\code{expires}}{\code{"session"} or POSIXct expiry.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-asset_policy"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-asset_policy}{}}}
+\subsection{\code{DataShield$asset_policy()}}{
+  Return non-sensitive policy metadata for one registered asset.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$asset_policy(name)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-prompt_content"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-prompt_content}{}}}
+\subsection{\code{DataShield$prompt_content()}}{
+  Return prompt-safe content according to an asset policy.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$prompt_content(name)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-trusted_result"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-trusted_result}{}}}
+\subsection{\code{DataShield$trusted_result()}}{
+  Tag one result with registered provenance for raw egress.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$trusted_result(value, source)}
     \if{html}{\out{</div>}}
   }
 }

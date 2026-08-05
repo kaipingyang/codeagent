@@ -352,3 +352,69 @@ test_that("DataShield audit capacity, limit, clear and instance isolation work",
   a$clear_audit()
   expect_equal(nrow(a$audit()), 0L)
 })
+
+
+test_that("Data Asset Policy separates kind from prompt/egress access", {
+  shield <- DataShield$new()
+  shield$register_asset("ADaM specification content", name="adam_spec", kind="spec",
+                        reason="validated public specification")
+  spec <- shield$asset_policy("adam_spec")
+  expect_identical(spec$kind, "spec")
+  expect_identical(spec$llm_access, list(prompt="raw", egress="scan"))
+
+  shield$register_asset(data.frame(id=paste0("P",1:10)), name="patients", kind="dataset")
+  dataset <- shield$asset_policy("patients")
+  expect_identical(dataset$llm_access, list(prompt="schema", egress="scan"))
+  expect_true("patients" %in% shield$coverage()$assets)
+  expect_true("patients" %in% shield$coverage()$datasets)
+
+  expect_error(
+    shield$register_asset("raw", name="bad_spec", kind="spec"),
+    "reason.*required")
+})
+
+test_that("raw spec prompt is allowed but secret/PII scanning is configurable", {
+  shield <- DataShield$new()
+  shield$register_asset(
+    "Contact spec.owner@example.org", name="safe_spec", kind="spec",
+    reason="approved specification")
+  redacted <- shield$prompt_content("safe_spec")
+  expect_false(grepl("spec.owner@example.org",redacted,fixed=TRUE))
+  expect_match(redacted,"REDACTED")
+
+  shield$register_asset(
+    "Contact spec.owner@example.org", name="unscanned_spec", kind="spec",
+    scan_secrets=FALSE, reason="approved including contact")
+  expect_match(shield$prompt_content("unscanned_spec"),"spec.owner@example.org",fixed=TRUE)
+})
+
+test_that("trusted raw egress requires provenance, reason and records bypass audit", {
+  shield <- DataShield$new(strategies=list(shield_egress(),shield_regex()))
+  shield$register_asset(
+    "spec", name="adam_spec", kind="spec",
+    llm_access=list(prompt="raw",egress="raw"),
+    reason="validated public specification")
+  tagged <- shield$trusted_result("email spec.owner@example.org",source="adam_spec")
+  out <- shield$scan_egress(tagged,context=list(tool_name="ReadADaMSpec"))
+  expect_false(grepl("spec.owner@example.org",out,fixed=TRUE))
+  audit <- shield$audit()
+  expect_true(all(c("asset_secret_scan","asset_policy") %in% audit$strategy))
+  expect_true(any(audit$action=="bypass"))
+  expect_false(grepl("spec.owner@example.org",paste(audit,collapse=""),fixed=TRUE))
+
+  shield$register_asset("x",name="protected_doc",kind="document")
+  expect_error(shield$trusted_result("x",source="protected_doc"),"not approved")
+})
+
+test_that("asset expiry and untagged mixed output fail safely", {
+  shield <- DataShield$new(strategies=list(shield_egress(),shield_regex()))
+  shield$register_asset(
+    "public",name="expired",kind="spec",
+    llm_access=list(prompt="raw",egress="raw"),reason="temporary",
+    expires=Sys.time()-1)
+  expect_error(shield$prompt_content("expired"),"expired")
+
+  shield$register_data(data.frame(id=paste0("SECRET",1:20)),name="protected")
+  # Untagged text does not inherit trust from any registered spec.
+  expect_match(shield$scan_egress("mixed SECRET7"),"withheld")
+})
