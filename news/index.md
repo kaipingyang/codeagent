@@ -2,6 +2,15 @@
 
 ## codeagent (development version)
 
+- **Composable egress scanners**: `DataShield` now executes an ordered
+  scanner pipeline (list order = execution order) and supports runtime
+  `$add_scanner(name, fn)`. New
+  [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
+  redacts or blocks unregistered email, phone-like values, common
+  API-token prefixes, 18-character identity numbers, and custom named
+  PCRE patterns. Scanner contracts are validated and fail closed; no
+  custom S7 or Python dependency is introduced.
+
 - **Data Shield recursively covers foreground sub-agents**: synchronous
   and concurrent `Agent` sub-chats inherit the parent `DataShield`
   before their first model request, and uninstrumented btw/custom-agent

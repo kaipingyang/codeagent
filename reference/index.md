@@ -274,6 +274,8 @@ Tool factories and registration.
   : Configure strict protected-data metadata
 - [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md)
   : Configure tool-result egress protection
+- [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
+  : Configure regex-based egress scanning
 
 ## Data exploration (WEAR)
 

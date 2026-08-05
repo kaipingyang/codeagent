@@ -80,14 +80,14 @@
     
     
 <blockquote>
-<p><strong>Status — P0/P0.5/P1-strict available; fuller design in
-progress.</strong> The egress row-cap, per-session protected-value
-matching, and strict <code>DescribeData</code> safe metadata tool are
+<p><strong>Status — P0/P0.5/P1/P1.5 available; fuller design in
+progress.</strong> The egress row-cap, protected-value matching, strict
+<code>DescribeData</code>, and ordered regex/custom scanner pipeline are
 wired. <code>DescribeData</code> exposes no distributions/counts by
-default; only sensitivity-gated ranges and k-supported category labels.
-The fuller strategy API (<code>shield_egress</code>
-actions/reviewer/sandbox and <code>distributions="on"/"dp"</code>)
-remains roadmap. Off by default (<code>data_shield = NULL</code>).</p>
+default; <code><a href="../reference/shield_regex.html">shield_regex()</a></code> covers unregistered PII/secrets.
+Reviewer/sandbox, ingress scanning, and
+<code>distributions="on"/"dp"</code> remain roadmap. Off by default
+(<code>data_shield = NULL</code>).</p>
 </blockquote>
 <div class="section level2">
 <h2 id="why">Why<a class="anchor" aria-label="anchor" href="#why"></a>
@@ -131,27 +131,287 @@ scanning.</p>
 <div class="section level2">
 <h2 id="design-composable-strategies-not-a-fixed-mode">Design: composable strategies (not a fixed mode)<a class="anchor" aria-label="anchor" href="#design-composable-strategies-not-a-fixed-mode"></a>
 </h2>
-<p><code>data_shield</code> is <code>NULL</code> (off) or a <strong>list
-of independent strategies</strong> you compose freely. The execution
-model borrows llm-guard’s scanner pipeline (ordered,
-<code>fail_fast</code>, each returns
-<code>sanitized / valid / score / action</code>); the per-strategy
-<code>on_fail</code> action and named registry borrow from
-guardrails-ai. All pure R — no Python.</p>
+<p><code>data_shield</code> accepts <code>NULL</code> (off), an ordered
+strategy list (creates one private <code>DataShield</code> R6), or an
+explicit <code>DataShield</code> instance (for upload and intentional
+session/thread sharing). Implemented strategies are shown first; planned
+strategies are listed separately so the examples never imply they
+already exist.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Target API (in progress):</span></span>
-<span><span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">...</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,                                  <span class="co"># safe metadata only</span></span>
-<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"value_match"</span>, <span class="st">"regex"</span><span class="op">)</span>,          <span class="co"># main boundary</span></span>
+<code class="sourceCode R"><span><span class="co"># Implemented now:</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">...</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"row_cap"</span>, <span class="st">"value_match"</span><span class="op">)</span>,</span>
 <span>                max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
-<span>  <span class="fu">shield_ingress</span><span class="op">(</span>langs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"R"</span>, <span class="st">"python"</span>, <span class="st">"bash"</span><span class="op">)</span>, on_fail <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span>,</span>
-<span>  <span class="fu">shield_reviewer</span><span class="op">(</span>model <span class="op">=</span> <span class="st">"&lt;a small, fast model&gt;"</span>, scope <span class="op">=</span> <span class="st">"exec"</span><span class="op">)</span>, <span class="co"># small-model audit</span></span>
-<span>  <span class="fu">shield_sandbox</span><span class="op">(</span>no_network <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>,                            <span class="co"># OS confinement</span></span>
-<span>  <span class="fu">shield_narrow_tools</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>The main boundary is <strong>edge 2 (tool results)</strong>; the rest
-(sandbox, ingress blacklist, reviewer, tool narrowing) are
-<strong>defense-in-depth</strong>, not the boundary.</p>
+<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"redact"</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Roadmap (not implemented yet):</span></span>
+<span><span class="co"># shield_ingress(...), shield_reviewer(...), shield_sandbox(...),</span></span>
+<span><span class="co"># shield_narrow_tools()</span></span></code></pre></div>
+<p>The main boundary is <strong>edge 2 (tool results)</strong>; sandbox,
+ingress blacklist, reviewer, and tool narrowing are defense-in-depth,
+not the boundary.</p>
+</div>
+<div class="section level2">
+<h2 id="current-parameter-reference">Current parameter reference<a class="anchor" aria-label="anchor" href="#current-parameter-reference"></a>
+</h2>
+<div class="section level3">
+<h3 id="data_shield-input">
+<code>data_shield</code> input<a class="anchor" aria-label="anchor" href="#data_shield-input"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Value</th>
+<th>Effect</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>NULL</code></td>
+<td>Shield completely off; existing codeagent behaviour unchanged</td>
+</tr>
+<tr class="even">
+<td><code>list(shield_*())</code></td>
+<td>Strategies run in list order; codeagent creates one private
+<code>DataShield</code> R6 for this client</td>
+</tr>
+<tr class="odd">
+<td><code>DataShield$new(...)</code></td>
+<td>Explicit lifecycle for uploads and deliberate sharing among selected
+chats</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="shield_egress-core-tool-result-boundary">
+<code>shield_egress()</code> — core tool-result boundary<a class="anchor" aria-label="anchor" href="#shield_egress-core-tool-result-boundary"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Parameter</th>
+<th>Default</th>
+<th>Actual effect</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>detectors</code></td>
+<td><code>c("row_cap", "value_match")</code></td>
+<td>
+<code>row_cap</code> catches bulk tabular output;
+<code>value_match</code> catches indexed high-entropy values</td>
+</tr>
+<tr class="even">
+<td><code>max_rows</code></td>
+<td><code>0</code></td>
+<td>On a bulk/tabular match, retain zero raw printed lines and return
+only a withheld/blocked notice. <code>5</code> would deliberately expose
+the first five printed lines</td>
+</tr>
+<tr class="odd">
+<td><code>on_fail</code></td>
+<td><code>"redact"</code></td>
+<td>
+<code>redact</code>: withheld notice; <code>block</code>: blocked
+notice. Neither asks a user yet</td>
+</tr>
+</tbody>
+</table>
+<p><code>max_rows = 0</code> does <strong>not</strong> block
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> generally. <code>print(nrow(df))</code>, status
+messages, model summaries, plots, and errors pass unless another
+detector finds sensitive content. It triggers only when output has a
+data.frame/tibble or many-line rectangular-table shape.</p>
+</div>
+<div class="section level3">
+<h3 id="shield_describe-strict-model-safe-metadata">
+<code>shield_describe()</code> — strict model-safe metadata<a class="anchor" aria-label="anchor" href="#shield_describe-strict-model-safe-metadata"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Parameter</th>
+<th>Default</th>
+<th>Actual effect</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>distributions</code></td>
+<td><code>"off"</code></td>
+<td>Implemented strict mode: no histograms, quantiles, means, category
+counts, rows, or free-text examples. <code>on</code>/<code>dp</code> are
+roadmap and fail explicitly</td>
+</tr>
+<tr class="even">
+<td><code>k_anon</code></td>
+<td><code>5</code></td>
+<td>Category labels supported by fewer than k rows become
+<code>&lt;rare suppressed&gt;</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code>category_max</code></td>
+<td><code>20</code></td>
+<td>Maximum distinct character values for categorical treatment</td>
+</tr>
+<tr class="even">
+<td><code>category_ratio</code></td>
+<td><code>0.2</code></td>
+<td>Maximum distinct/non-missing ratio for character-categorical
+treatment; otherwise <code>free_text</code>
+</td>
+</tr>
+</tbody>
+</table>
+<p>Sensitivity still clamps output:
+<code>identifier</code>/<code>quasi</code> values stay suppressed;
+<code>measure</code>/<code>open</code> may show numeric/date min–max and
+safe category labels without counts.</p>
+</div>
+<div class="section level3">
+<h3 id="shield_regex-unregistered-piisecrets">
+<code>shield_regex()</code> — unregistered PII/secrets<a class="anchor" aria-label="anchor" href="#shield_regex-unregistered-piisecrets"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Parameter</th>
+<th>Default</th>
+<th>Actual effect</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>patterns</code></td>
+<td><code>NULL</code></td>
+<td>Optional named regular-expression rules using PCRE (Perl-Compatible
+Regular Expression) syntax,
+e.g. <code>c(study_id = "STUDY-[0-9]+")</code>; appended to defaults
+when enabled</td>
+</tr>
+<tr class="even">
+<td><code>include_defaults</code></td>
+<td><code>TRUE</code></td>
+<td>Email, phone-like, common-token-prefix, and 18-character
+identity-number rules</td>
+</tr>
+<tr class="odd">
+<td><code>replacement</code></td>
+<td><code>"[REDACTED]"</code></td>
+<td>Marker inserted once per merged matching span</td>
+</tr>
+<tr class="even">
+<td><code>on_fail</code></td>
+<td><code>"redact"</code></td>
+<td>
+<code>redact</code>: preserve safe surrounding text;
+<code>block</code>: replace the whole result</td>
+</tr>
+<tr class="odd">
+<td><code>ignore_case</code></td>
+<td><code>TRUE</code></td>
+<td>Case-insensitive matching for all rules</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="datashieldnew-direct-lifecycle">
+<code>DataShield$new()</code> direct lifecycle<a class="anchor" aria-label="anchor" href="#datashieldnew-direct-lifecycle"></a>
+</h3>
+<p>Direct constructor parameters (<code>max_rows</code>,
+<code>distributions</code>, <code>k_anon</code>,
+<code>category_max</code>, <code>category_ratio</code>) create the
+default DescribeData + core egress configuration when
+<code>strategies = NULL</code>. Supplying
+<code>strategies = list(...)</code> enables <strong>only</strong> listed
+strategies and preserves list order. Use
+<code>shield$register_data()</code>, <code>$install()</code>,
+<code>$describe()</code>, <code>$clear()</code>, and
+<code>$close()</code> for dynamic/session-owned workflows.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="plain-language-glossary">Plain-language glossary<a class="anchor" aria-label="anchor" href="#plain-language-glossary"></a>
+</h2>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Term</th>
+<th>Plain meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><strong>egress</strong></td>
+<td>Content leaving a local tool and about to enter the LLM</td>
+</tr>
+<tr class="even">
+<td><strong>row-cap</strong></td>
+<td>A limit on how many printed table lines may pass; <code>0</code>
+means no raw line</td>
+</tr>
+<tr class="odd">
+<td><strong>value-match</strong></td>
+<td>Exact matching against high-entropy values indexed from registered
+protected data</td>
+</tr>
+<tr class="even">
+<td><strong>PII</strong></td>
+<td>Personally identifiable information, such as email, phone, identity
+number, or name</td>
+</tr>
+<tr class="odd">
+<td><strong>regex</strong></td>
+<td>Regular expression: a text pattern such as
+<code>STUDY-[0-9]+</code>
+</td>
+</tr>
+<tr class="even">
+<td><strong>PCRE</strong></td>
+<td>Perl-Compatible Regular Expression, the regex syntax used by R with
+<code>perl=TRUE</code>
+</td>
+</tr>
+<tr class="odd">
+<td><strong>span</strong></td>
+<td>Start/end character positions of a detected sensitive substring,
+enabling precise replacement</td>
+</tr>
+<tr class="even">
+<td><strong>k-anonymity threshold</strong></td>
+<td>Do not expose a category label unless at least <code>k</code> rows
+support it</td>
+</tr>
+<tr class="odd">
+<td><strong>fail closed</strong></td>
+<td>If a safety scanner fails, block output instead of allowing it</td>
+</tr>
+<tr class="even">
+<td><strong>R6</strong></td>
+<td>R’s mutable object system; one <code>DataShield</code> owns private
+datasets/index/lifecycle</td>
+</tr>
+</tbody>
+</table>
 </div>
 <div class="section level2">
 <h2 id="p0-the-foundation-available-now">P0 — the foundation (available now)<a class="anchor" aria-label="anchor" href="#p0-the-foundation-available-now"></a>
@@ -162,6 +422,7 @@ protection:</p>
 <code class="sourceCode R"><span><span class="co"># Easy entry: strategy specs create one private DataShield R6 for this client.</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
+<span></span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -214,9 +475,10 @@ the live index at invocation time.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"inst/examples/data_shield_upload_app.R"</span><span class="op">)</span></span></code></pre></div>
-<p>It demonstrates four outcomes after upload: bulk rows withheld by
+<p>It demonstrates five outcomes after upload: bulk rows withheld by
 <code>row_cap</code>, a single indexed value withheld by
-<code>value_match</code>, a harmless shape summary passed through, and
+<code>value_match</code>, unregistered PII redacted by
+<code>shield_regex</code>, a harmless shape summary passed through, and
 strict <code>DescribeData</code> metadata with raw identifiers
 suppressed.</p>
 <blockquote>
@@ -343,7 +605,31 @@ suppressed</td>
 an <code>identifier</code>. Character columns receive categorical labels
 only when they are low-cardinality, low-uniqueness, non-PII, and every
 exposed level satisfies the k-anonymity threshold. Free text never
-receives real examples in strict mode. ## Roadmap</p>
+receives real examples in strict mode.</p>
+</div>
+<div class="section level2">
+<h2 id="p1-5-ordered-egress-scanners">P1.5 ordered egress scanners<a class="anchor" aria-label="anchor" href="#p1-5-ordered-egress-scanners"></a>
+</h2>
+<p>Strategy-list order is the execution order.
+<code><a href="../reference/shield_regex.html">shield_regex()</a></code> catches sensitive content even when no
+data.frame was registered:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"redact"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>patterns<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>study_id<span class="op">=</span><span class="st">"STUDY-[0-9]+"</span><span class="op">)</span>,</span>
+<span>               include_defaults<span class="op">=</span><span class="cn">FALSE</span>, on_fail<span class="op">=</span><span class="st">"block"</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>Built-ins cover email, phone-like strings, common API-token prefixes
+and 18-character identity-number shapes. <code>redact</code> replaces
+only matched spans; <code>block</code> discards the whole model-facing
+result. Custom scanner functions may be appended with
+<code>shield$add_scanner(name, fn)</code>; invalid scanner
+results/errors fail closed.</p>
+</div>
+<div class="section level2">
+<h2 id="roadmap">Roadmap<a class="anchor" aria-label="anchor" href="#roadmap"></a>
+</h2>
 <ul>
 <li>
 <strong>P0.5 — <code>value_match</code> (available)</strong>:
@@ -372,7 +658,10 @@ engine.</p>
 <strong>fail closed</strong> under Data Shield: their mirai worker is a
 separate R process and cannot safely share the session’s R6 state or
 protected-value index. Use foreground <code>Agent</code> until a
-per-owner worker reconstruction protocol is implemented. - <strong>P2 —
+per-owner worker reconstruction protocol is implemented. - <strong>P1.5
+— ordered scanner pipeline + <code><a href="../reference/shield_regex.html">shield_regex()</a></code>
+(available)</strong>: unregistered PII/secrets are redacted/blocked with
+precise spans; custom scanner failures fail closed. - <strong>P2 —
 reviewer (small model), sandbox (folder + no-network), differential
 privacy for distributions (opt-in).</strong></p>
 </div>
