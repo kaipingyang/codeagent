@@ -69,7 +69,8 @@ discovered from <code>.btw/agent-*.md</code>, <code>.claude/agents/</code>, etc.
 <span>  max_turns <span class="op">=</span> <span class="fl">30L</span>,</span>
 <span>  worktree_isolation <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  ask_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  async <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -109,6 +110,11 @@ sub-agent (which runs in "bubble" mode).</p></dd>
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
 <dd><p>Logical. Passed to <code><a href="agent_tool.html">agent_tool()</a></code>; enables concurrent sub-agents
 on async parent turns. Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-data-shield">data_shield<a class="anchor" aria-label="anchor" href="#arg-data-shield"></a></dt>
+<dd><p>Optional <a href="DataShield.html">DataShield</a> inherited by codeagent sub-agents;
+disables uninstrumented btw/custom-agent delegation.</p></dd>
 
 </dl></div>
     <div class="section level2">

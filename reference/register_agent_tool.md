@@ -14,7 +14,8 @@ register_agent_tool(
   max_turns = 30L,
   worktree_isolation = FALSE,
   ask_fn = NULL,
-  async = FALSE
+  async = FALSE,
+  data_shield = NULL
 )
 ```
 
@@ -55,6 +56,13 @@ register_agent_tool(
   Logical. Passed to
   [`agent_tool()`](https://kaipingyang.github.io/codeagent/reference/agent_tool.md);
   enables concurrent sub-agents on async parent turns. Default `FALSE`.
+
+- data_shield:
+
+  Optional
+  [DataShield](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
+  inherited by codeagent sub-agents; disables uninstrumented
+  btw/custom-agent delegation.
 
 ## Value
 

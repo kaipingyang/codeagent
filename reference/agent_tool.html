@@ -72,7 +72,8 @@ codeagent's own sub-agent loop otherwise.</p>
 <span>  worktree_isolation <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  hooks <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ask_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  async <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -117,6 +118,11 @@ own isolation.</p></dd>
 streaming), run sub-agents via codeagent's promise-based loop so multiple
 <code>Agent</code> calls in one turn execute concurrently; falls back to synchronous
 sub-agents otherwise. Default <code>FALSE</code>.</p></dd>
+
+
+<dt id="arg-data-shield">data_shield<a class="anchor" aria-label="anchor" href="#arg-data-shield"></a></dt>
+<dd><p>Optional <a href="DataShield.html">DataShield</a> inherited from the parent. When set,
+the sub-agent's own tools are wrapped before its first LLM request.</p></dd>
 
 </dl></div>
     <div class="section level2">

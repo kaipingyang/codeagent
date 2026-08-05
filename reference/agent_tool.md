@@ -15,7 +15,8 @@ agent_tool(
   worktree_isolation = FALSE,
   hooks = NULL,
   ask_fn = NULL,
-  async = FALSE
+  async = FALSE,
+  data_shield = NULL
 )
 ```
 
@@ -60,6 +61,13 @@ agent_tool(
   streaming), run sub-agents via codeagent's promise-based loop so
   multiple `Agent` calls in one turn execute concurrently; falls back to
   synchronous sub-agents otherwise. Default `FALSE`.
+
+- data_shield:
+
+  Optional
+  [DataShield](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
+  inherited from the parent. When set, the sub-agent's own tools are
+  wrapped before its first LLM request.
 
 ## Value
 

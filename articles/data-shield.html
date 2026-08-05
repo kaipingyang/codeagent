@@ -357,9 +357,24 @@ against high-entropy values registered with
 (schema, sensitivity, missing presence, measure/open ranges and
 k-supported labels; no distributions/counts/examples).
 <code>distributions="on"/"dp"</code> remain later phases.</li>
-<li><strong>P2 — reviewer (small model), sandbox (folder + no-network),
-differential privacy for distributions (opt-in).</strong></li>
 </ul>
+</div>
+<div class="section level2">
+<h2 id="sub-agent-boundary">Sub-agent boundary<a class="anchor" aria-label="anchor" href="#sub-agent-boundary"></a>
+</h2>
+<p>Foreground sub-agents (<code>Agent</code>) inherit the exact same
+<code>DataShield</code> R6 before any of their tools can return content
+to the child model. This applies to both synchronous and concurrent
+async Agent calls. While a shield is active, codeagent deliberately
+skips btw/custom-agent delegation paths that cannot accept the policy
+engine.</p>
+<p><code>BackgroundAgent</code> and <code>/bg</code> currently
+<strong>fail closed</strong> under Data Shield: their mirai worker is a
+separate R process and cannot safely share the session’s R6 state or
+protected-value index. Use foreground <code>Agent</code> until a
+per-owner worker reconstruction protocol is implemented. - <strong>P2 —
+reviewer (small model), sandbox (folder + no-network), differential
+privacy for distributions (opt-in).</strong></p>
 </div>
 <div class="section level2">
 <h2 id="honest-limits">Honest limits<a class="anchor" aria-label="anchor" href="#honest-limits"></a>

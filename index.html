@@ -287,7 +287,7 @@
 <span>  strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"study"</span><span class="op">)</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="va">shield</span><span class="op">)</span></span></code></pre></div>
-<p>Data Shield never sends raw rows through <code>DescribeData</code>; bulk tool output and registered high-entropy values are withheld before reaching the LLM.</p>
+<p>Data Shield never sends raw rows through <code>DescribeData</code>; bulk tool output and registered high-entropy values are withheld before reaching the LLM. Foreground <code>Agent</code> sub-chats inherit the same shield; cross-process <code>BackgroundAgent</code>/<code>/bg</code> fail closed while a shield is active.</p>
 </div>
 <div class="section level3">
 <h3 id="skill-system">Skill system<a class="anchor" aria-label="anchor" href="#skill-system"></a>

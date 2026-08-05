@@ -189,8 +189,21 @@ examples in strict mode. \## Roadmap
   presence, measure/open ranges and k-supported labels; no
   distributions/counts/examples). `distributions="on"/"dp"` remain later
   phases.
-- **P2 — reviewer (small model), sandbox (folder + no-network),
-  differential privacy for distributions (opt-in).**
+
+## Sub-agent boundary
+
+Foreground sub-agents (`Agent`) inherit the exact same `DataShield` R6
+before any of their tools can return content to the child model. This
+applies to both synchronous and concurrent async Agent calls. While a
+shield is active, codeagent deliberately skips btw/custom-agent
+delegation paths that cannot accept the policy engine.
+
+`BackgroundAgent` and `/bg` currently **fail closed** under Data Shield:
+their mirai worker is a separate R process and cannot safely share the
+session’s R6 state or protected-value index. Use foreground `Agent`
+until a per-owner worker reconstruction protocol is implemented. - **P2
+— reviewer (small model), sandbox (folder + no-network), differential
+privacy for distributions (opt-in).**
 
 ## Honest limits
 
