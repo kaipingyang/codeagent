@@ -148,6 +148,9 @@ and `$close()` for dynamic/session-owned workflows.
 | **row-cap** | A limit on how many printed table lines may pass; `0` means no raw line |
 | **value-match** | Exact matching against high-entropy values indexed from registered protected data |
 | **PII** | Personally identifiable information, such as email, phone, identity number, or name |
+| **kind** | What a registered asset is (dataset/spec/document/synthetic), not its R data type or access level |
+| **provenance** | A verifiable source tag showing which registered asset produced a result |
+| **raw access** | Content may enter an LLM edge without row/value restrictions; optional secret/PII scanning may still apply |
 | **regex** | Regular expression: a text pattern such as `STUDY-[0-9]+` |
 | **PCRE** | Perl-Compatible Regular Expression, the regex syntax used by R with `perl=TRUE` |
 | **span** | Start/end character positions of a detected sensitive substring, enabling precise replacement |
@@ -179,6 +182,58 @@ instance.
 recent <- shield$audit(limit=100)
 shield$clear_audit()
 ```
+
+## Data Asset Policy: what it is × what the LLM may see
+
+Asset content type and LLM access are orthogonal:
+
+| `kind` | Default prompt | Default egress | Typical use |
+|----|----|----|----|
+| `dataset` | `schema` | `scan` | patient/analysis data |
+| `spec` | `raw` | `scan` | ADaM spec, SDTMIG, public dictionaries |
+| `synthetic` | `raw` | `scan` | dummy/edge-case test data |
+| `document` | `scan` | `scan` | ordinary reference documents |
+
+| Access | Meaning |
+|----|----|
+| `none` | content unavailable to that LLM edge |
+| `schema` | only strict DescribeData-style metadata |
+| `scan` | content must pass configured Shield scanners |
+| `raw` | bypass row/value restrictions; baseline secret/PII regex still applies unless explicitly disabled |
+
+``` r
+
+shield$register_asset(
+  adam_spec,
+  name = "adam_spec",
+  kind = "spec",
+  llm_access = list(prompt = "raw", egress = "scan"),
+  scan_secrets = TRUE,
+  reason = "Validated public specification",
+  expires = "session"
+)
+
+prompt_text <- shield$prompt_content("adam_spec")
+```
+
+Raw egress never follows from `kind` alone. It requires explicit policy
+and provenance:
+
+``` r
+
+shield$register_asset(
+  adam_spec, name = "adam_spec", kind = "spec",
+  llm_access = list(prompt = "raw", egress = "raw"),
+  reason = "Validated public specification")
+
+tool_result <- shield$trusted_result(value, source = "adam_spec")
+```
+
+An untagged or mixed tool result remains scanned. Raw asset policies
+require a reason, expire with the owning DataShield session by default,
+may set a POSIXct expiry, and emit bypass audit events. Synthetic raw
+always keeps baseline PII/secret scanning; spec raw may explicitly set
+`scan_secrets = FALSE`.
 
 ## P0 — the foundation (available now)
 

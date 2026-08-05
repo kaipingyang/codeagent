@@ -88,6 +88,10 @@ object for an independent user/thread boundary.</p>
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 <p></p><ul><li><p><a href="#method-DataShield-initialize"><code>DataShield$new()</code></a></p></li>
 <li><p><a href="#method-DataShield-register_data"><code>DataShield$register_data()</code></a></p></li>
+<li><p><a href="#method-DataShield-register_asset"><code>DataShield$register_asset()</code></a></p></li>
+<li><p><a href="#method-DataShield-asset_policy"><code>DataShield$asset_policy()</code></a></p></li>
+<li><p><a href="#method-DataShield-prompt_content"><code>DataShield$prompt_content()</code></a></p></li>
+<li><p><a href="#method-DataShield-trusted_result"><code>DataShield$trusted_result()</code></a></p></li>
 <li><p><a href="#method-DataShield-install"><code>DataShield$install()</code></a></p></li>
 <li><p><a href="#method-DataShield-describe"><code>DataShield$describe()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_egress"><code>DataShield$scan_egress()</code></a></p></li>
@@ -185,10 +189,80 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-DataShield-register_asset"></a><div class="section">
+<h3 id="datashield-register-asset-"><code>DataShield$register_asset()</code><a class="anchor" aria-label="anchor" href="#datashield-register-asset-"></a></h3>
+<p>Register a typed data/document/spec asset and its LLM access policy.</p><div class="section">
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span></span>
+<span>  <span class="va">x</span>,</span>
+<span>  <span class="va">name</span>,</span>
+<span>  <span class="va">kind</span>,</span>
+<span>  llm_access <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  scan_secrets <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  reason <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  expires <span class="op">=</span> <span class="st">"session"</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>x</code></dt>
+<dd><p>Local asset value or path.</p></dd>
+
+      <dt><code>name</code></dt>
+<dd><p>Unique asset name.</p></dd>
+
+      <dt><code>kind</code></dt>
+<dd><p><code>dataset</code>, <code>spec</code>, <code>document</code>, or <code>synthetic</code>.</p></dd>
+
+      <dt><code>llm_access</code></dt>
+<dd><p>NULL for kind defaults, or list(prompt=, egress=) using
+<code>none</code>, <code>schema</code>, <code>scan</code>, or <code>raw</code>.</p></dd>
+
+      <dt><code>scan_secrets</code></dt>
+<dd><p>Keep baseline PII/secret regex active for raw access.</p></dd>
+
+      <dt><code>reason</code></dt>
+<dd><p>Required when prompt or egress access is raw.</p></dd>
+
+      <dt><code>expires</code></dt>
+<dd><p><code>"session"</code> or POSIXct expiry.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-DataShield-asset_policy"></a><div class="section">
+<h3 id="datashield-asset-policy-"><code>DataShield$asset_policy()</code><a class="anchor" aria-label="anchor" href="#datashield-asset-policy-"></a></h3>
+<p>Return non-sensitive policy metadata for one registered asset.</p><div class="section">
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">asset_policy</span><span class="op">(</span><span class="va">name</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-DataShield-prompt_content"></a><div class="section">
+<h3 id="datashield-prompt-content-"><code>DataShield$prompt_content()</code><a class="anchor" aria-label="anchor" href="#datashield-prompt-content-"></a></h3>
+<p>Return prompt-safe content according to an asset policy.</p><div class="section">
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">prompt_content</span><span class="op">(</span><span class="va">name</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-DataShield-trusted_result"></a><div class="section">
+<h3 id="datashield-trusted-result-"><code>DataShield$trusted_result()</code><a class="anchor" aria-label="anchor" href="#datashield-trusted-result-"></a></h3>
+<p>Tag one result with registered provenance for raw egress.</p><div class="section">
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">trusted_result</span><span class="op">(</span><span class="va">value</span>, <span class="va">source</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-DataShield-install"></a><div class="section">
 <h3 id="datashield-install-"><code>DataShield$install()</code><a class="anchor" aria-label="anchor" href="#datashield-install-"></a></h3>
 <p>Install/refresh this shield on an ellmer Chat.</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">install</span><span class="op">(</span><span class="va">chat</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -197,7 +271,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-describe"></a><div class="section">
 <h3 id="datashield-describe-"><code>DataShield$describe()</code><a class="anchor" aria-label="anchor" href="#datashield-describe-"></a></h3>
 <p>Return strict safe metadata for a registered dataset.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">describe</span><span class="op">(</span>name <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -206,10 +280,10 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-scan_egress"></a><div class="section">
 <h3 id="datashield-scan-egress-"><code>DataShield$scan_egress()</code><a class="anchor" aria-label="anchor" href="#datashield-scan-egress-"></a></h3>
 <p>Apply the ordered egress strategy pipeline to a tool result.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_egress</span><span class="op">(</span><span class="va">result</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>result</code></dt>
 <dd><p>Tool return value.</p></dd>
 
@@ -225,10 +299,10 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-scan_ingress"></a><div class="section">
 <h3 id="datashield-scan-ingress-"><code>DataShield$scan_ingress()</code><a class="anchor" aria-label="anchor" href="#datashield-scan-ingress-"></a></h3>
 <p>Scan one tool request before execution.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_ingress</span><span class="op">(</span><span class="va">tool_name</span>, <span class="va">input</span>, tool_call_id <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>tool_name</code></dt>
 <dd><p>Model-facing tool name.</p></dd>
 
@@ -250,7 +324,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-add_scanner"></a><div class="section">
 <h3 id="datashield-add-scanner-"><code>DataShield$add_scanner()</code><a class="anchor" aria-label="anchor" href="#datashield-add-scanner-"></a></h3>
 <p>Add a custom scanner function to the end of the egress pipeline.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">add_scanner</span><span class="op">(</span><span class="va">name</span>, <span class="va">fn</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -259,10 +333,10 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-audit"></a><div class="section">
 <h3 id="datashield-audit-"><code>DataShield$audit()</code><a class="anchor" aria-label="anchor" href="#datashield-audit-"></a></h3>
 <p>Return a copy of non-sensitive decision events.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>limit</code></dt>
 <dd><p>Optional number of most recent events.</p></dd>
 
@@ -275,7 +349,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-clear_audit"></a><div class="section">
 <h3 id="datashield-clear-audit-"><code>DataShield$clear_audit()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-audit-"></a></h3>
 <p>Remove all in-memory audit events.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -284,7 +358,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-clear"></a><div class="section">
 <h3 id="datashield-clear-"><code>DataShield$clear()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-"></a></h3>
 <p>Remove one dataset, or all datasets when name is NULL.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span>name <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -293,7 +367,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-close"></a><div class="section">
 <h3 id="datashield-close-"><code>DataShield$close()</code><a class="anchor" aria-label="anchor" href="#datashield-close-"></a></h3>
 <p>Clear sensitive state and close the shield.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -302,7 +376,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-coverage"></a><div class="section">
 <h3 id="datashield-coverage-"><code>DataShield$coverage()</code><a class="anchor" aria-label="anchor" href="#datashield-coverage-"></a></h3>
 <p>Summarise non-sensitive runtime coverage.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">coverage</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -356,6 +430,9 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $datasets</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "iris"</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $assets</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $indexed_values</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] 0</span>

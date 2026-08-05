@@ -2,6 +2,16 @@
 
 ## codeagent (development version)
 
+- **Data Asset Policy** separates what an asset is (`kind`:
+  dataset/spec/ document/synthetic) from what the LLM may see
+  (`llm_access`: prompt/egress none/schema/scan/raw). Kind-specific
+  defaults keep datasets schema-only while allowing specs/synthetic
+  prompt content; egress never defaults raw. Raw access requires a
+  reason, is session-scoped with optional expiry, is audited, and
+  requires explicit provenance via `$trusted_result()`. Synthetic/raw
+  always runs baseline PII/secret regex; spec/raw may explicitly disable
+  it.
+
 - **Non-sensitive Data Shield audit log**: every blocked/asked ingress
   decision and redacted/blocked egress event records timestamp, edge,
   tool name/call id, strategy, action, reason label, match count and

@@ -20,6 +20,14 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$register_data()`](#method-DataShield-register_data)
 
+- [`DataShield$register_asset()`](#method-DataShield-register_asset)
+
+- [`DataShield$asset_policy()`](#method-DataShield-asset_policy)
+
+- [`DataShield$prompt_content()`](#method-DataShield-prompt_content)
+
+- [`DataShield$trusted_result()`](#method-DataShield-trusted_result)
+
 - [`DataShield$install()`](#method-DataShield-install)
 
 - [`DataShield$describe()`](#method-DataShield-describe)
@@ -140,6 +148,85 @@ Register one protected data.frame.
 
   Minimum value length and column cardinality for deterministic value
   indexing (reduces low-entropy false positives).
+
+------------------------------------------------------------------------
+
+### `DataShield$register_asset()`
+
+Register a typed data/document/spec asset and its LLM access policy.
+
+#### Usage
+
+    DataShield$register_asset(
+      x,
+      name,
+      kind,
+      llm_access = NULL,
+      scan_secrets = TRUE,
+      reason = NULL,
+      expires = "session"
+    )
+
+#### Arguments
+
+- `x`:
+
+  Local asset value or path.
+
+- `name`:
+
+  Unique asset name.
+
+- `kind`:
+
+  `dataset`, `spec`, `document`, or `synthetic`.
+
+- `llm_access`:
+
+  NULL for kind defaults, or list(prompt=, egress=) using `none`,
+  `schema`, `scan`, or `raw`.
+
+- `scan_secrets`:
+
+  Keep baseline PII/secret regex active for raw access.
+
+- `reason`:
+
+  Required when prompt or egress access is raw.
+
+- `expires`:
+
+  `"session"` or POSIXct expiry.
+
+------------------------------------------------------------------------
+
+### `DataShield$asset_policy()`
+
+Return non-sensitive policy metadata for one registered asset.
+
+#### Usage
+
+    DataShield$asset_policy(name)
+
+------------------------------------------------------------------------
+
+### `DataShield$prompt_content()`
+
+Return prompt-safe content according to an asset policy.
+
+#### Usage
+
+    DataShield$prompt_content(name)
+
+------------------------------------------------------------------------
+
+### `DataShield$trusted_result()`
+
+Tag one result with registered provenance for raw egress.
+
+#### Usage
+
+    DataShield$trusted_result(value, source)
 
 ------------------------------------------------------------------------
 
@@ -321,6 +408,9 @@ shield$coverage()
 #> 
 #> $datasets
 #> [1] "iris"
+#> 
+#> $assets
+#> NULL
 #> 
 #> $indexed_values
 #> [1] 0

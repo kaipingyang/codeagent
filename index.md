@@ -164,6 +164,22 @@ audit <- shield$audit(limit = 100)
 shield$clear_audit()
 ```
 
+Safe reference assets and protected datasets use separate type/access
+axes:
+
+``` r
+
+shield$register_asset(
+  adam_spec, name = "adam_spec", kind = "spec",
+  llm_access = list(prompt = "raw", egress = "scan"),
+  reason = "Validated public specification"
+)
+```
+
+`kind` says what the asset is; `llm_access` says what may enter/leave
+the LLM. Raw egress is never a default and requires provenance
+(`shield$trusted_result()`), a reason, expiry/session scope, and audit.
+
 ### Skill system
 
 Compatible with Claude Code and btw skill format (`name/SKILL.md`
