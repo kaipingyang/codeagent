@@ -53,8 +53,10 @@ client <- codeagent::codeagent_client(
 )
 ```
 
-`codeagent_client()` returns a `CodeagentClient`: a list with `$chat` and
-`$settings`.
+`codeagent_client()` returns a `CodeagentClient` with `$chat`, `$settings`, and
+`$data_shield` (`NULL` unless enabled). For multi-user Shiny apps, create the
+client inside the server session (for example via `codeagent_app(client_factory=)`),
+never share one mutable client across browser sessions.
 
 ## 2. Driving a turn + the callback contract
 
@@ -191,12 +193,14 @@ above. Changes follow semantic versioning; breaking changes bump the major and
 are announced in `NEWS.md`. The guard test `test-backend-contract.R` fails if
 this surface drifts.
 
-- `codeagent_client(register_tools = FALSE)` → `{chat, settings}`
+- `codeagent_client(register_tools = FALSE)` → `{chat, settings, data_shield}`
+- `codeagent_app(client_factory = )` per-session client contract
 - `codeagent_stream()` / `codeagent_stream_async()` + callbacks + `list(text, usage, stop_reason)`
 - `agent_loop()`
 - `tool_result()`
 - `register_tool_meta()`
 - `install_permission_gate()` (+ `ask_fn(name, input, id = NULL)` contract)
+- `data_shield()` / `install_data_shield()` / `register_protected_data()`
 - `list_skills_meta()` / `load_skill_prompt()` / `build_skill_hint()`
 - `CompactionController` (compaction runs automatically; this is the injectable controller)
 - `switch_model()`

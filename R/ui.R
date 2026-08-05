@@ -81,10 +81,35 @@ NULL
   unname(choices[[1L]])
 }
 
+# Invoke a per-session CodeagentClient factory. Factories may accept `session`
+# (recommended) or no arguments. Kept separate for contract tests.
+.invoke_codeagent_client_factory <- function(factory, session) {
+  if (!is.function(factory)) stop("`client_factory` must be a function.", call. = FALSE)
+  fmls <- names(formals(factory))
+  client <- if ("session" %in% fmls || "..." %in% fmls) factory(session = session) else factory()
+  if (!inherits(client, "CodeagentClient"))
+    stop("`client_factory` must return a CodeagentClient.", call. = FALSE)
+  client
+}
+
+
+# Convert a bare ellmer Chat template into the canonical per-session client
+# factory. Mirrors querychat: share only the immutable template, clone mutable
+# Chat state inside the Shiny session.
+.codeagent_chat_template_factory <- function(chat, permission_mode, cwd, btw_groups) {
+  force(chat); force(permission_mode); force(cwd); force(btw_groups)
+  function(session) codeagent_client(
+    chat = chat$clone(), permission_mode = permission_mode,
+    cwd = cwd, btw_groups = btw_groups, register_tools = FALSE)
+}
 #' Launch the codeagent Shiny application
 #'
-#' @param client A `CodeagentClient` from [codeagent_client()], an
-#'   `ellmer::Chat`, or NULL (legacy mode).
+#' @param client A pre-built `CodeagentClient` (single-user compatibility) or,
+#'   for backward compatibility, an `ellmer::Chat` template (cloned per Shiny
+#'   session). Prefer `chat=` for the template form.
+#' @param client_factory Optional `function(session)` (or zero-argument function)
+#'   returning a fresh `CodeagentClient` for each Shiny session. This is the
+#'   most flexible multi-user mode.
 #' @param theme UI theme. One of `"default"` (light Bootstrap 5), `"flatly"`,
 #'   `"darkly"` (dark), or `"glass"` (dark glassmorphism). The CLI aliases
 #'   `"light"` -> `"default"`, `"dark"` -> `"darkly"`, and `"glassmorphism"` ->
@@ -111,11 +136,13 @@ NULL
 #' @param permission_mode Character. Legacy: permission mode.
 #' @param cwd Character. Legacy: working directory.
 #' @param btw_groups Character vector or NULL. Legacy: btw tool groups.
-#' @param chat An `ellmer::Chat`. Legacy alias.
+#' @param chat An `ellmer::Chat` template cloned inside each Shiny session;
+#'   convenient multi-user entry point.
 #' @return A `shiny.appobj`.
 #' @export
 codeagent_app <- function(
   client          = NULL,
+  client_factory  = NULL,
   theme           = "default",
   pinned_skills   = character(0),
   greeting        = NULL,
@@ -132,13 +159,48 @@ codeagent_app <- function(
   chat            = NULL
 ) {
 
-  # Resolve to CodeagentClient. When we build it ourselves, build a *shell*
-  # (register_tools = FALSE) so the UI renders immediately and the expensive tool
-  # registration (btw_tools, ~15-40s) is deferred to a progress-reported in-server
-  # step. A pre-built client already has its tools, so it is used as-is.
-  if (inherits(client, "CodeagentClient")) {
+  if (!is.null(client_factory) && (!is.null(client) || !is.null(chat)))
+    stop("Use only one of `client_factory`, `client`, or `chat`.", call. = FALSE)
+
+  template_model <- NULL
+  if (is.null(client_factory)) {
+    template_chat <- if (inherits(client, "Chat")) client else
+                     if (inherits(chat, "Chat")) chat else NULL
+    if (!is.null(template_chat)) {
+      # querychat-style convenience path: the supplied bare Chat is an immutable
+      # template; clone it inside every Shiny server session, then wrap it in a
+      # fresh CodeagentClient. A pre-built CodeagentClient is NOT cloned here.
+      template_model <- tryCatch(template_chat$get_model(), error = function(e) NULL)
+      client_factory <- .codeagent_chat_template_factory(
+        template_chat, permission_mode = permission_mode,
+        cwd = cwd, btw_groups = btw_groups)
+      client <- NULL
+      chat <- NULL
+    }
+  }
+
+  # With no explicit client/template, default to a per-session factory.
+  if (is.null(client_factory) && is.null(client) && is.null(chat)) {
+    client_factory <- function(session) codeagent_client(
+      permission_mode = permission_mode, cwd = cwd, btw_groups = btw_groups,
+      register_tools = FALSE)
+  }
+
+  if (!is.null(client_factory)) {
+    ca_client <- NULL
+    chat_obj <- NULL
+    tools_ready <- FALSE
+    settings <- load_settings(cwd)
+    settings$permission_mode <- permission_mode
+    settings$cwd <- cwd
+    settings$btw_groups <- btw_groups
+    if (!is.null(model)) settings$model <- model
+    else if (!is.null(template_model)) settings$model <- template_model
+  } else if (inherits(client, "CodeagentClient")) {
     ca_client   <- client
     tools_ready <- TRUE
+    chat_obj <- ca_client$chat
+    settings <- ca_client$settings
   } else {
     raw_chat <- if (inherits(client, "Chat")) client else chat
     ca_client <- codeagent_client(
@@ -150,11 +212,10 @@ codeagent_app <- function(
     )
     if (!is.null(model)) ca_client$settings$model <- model
     tools_ready <- FALSE
+    chat_obj <- ca_client$chat
+    settings <- ca_client$settings
   }
-
-  chat_obj <- ca_client$chat
-  settings <- ca_client$settings
-  cwd      <- settings$cwd %||% getwd()
+  cwd <- settings$cwd %||% getwd()
 
   # Static assets
   www_dir <- system.file("www", package = "codeagent")
@@ -240,6 +301,17 @@ codeagent_app <- function(
   # Server
   # ---------------------------------------------------------------------------
   server <- function(input, output, session) {
+
+    # Multi-user mode: create all mutable backend state inside this Shiny
+    # session. A pre-built client remains the explicit single-user path.
+    session_client <- if (!is.null(client_factory))
+      .invoke_codeagent_client_factory(client_factory, session) else ca_client
+    chat_obj <- session_client$chat
+    settings <- session_client$settings
+    cwd <- settings$cwd %||% getwd()
+    tools_ready <- if (!is.null(client_factory))
+      length(tryCatch(chat_obj$get_tools(), error = function(e) list())) > 0L else
+      tools_ready
 
     # Shared reactive state (single reactiveValues, no scattered reactiveVal)
     state <- shiny::reactiveValues(
@@ -334,6 +406,10 @@ codeagent_app <- function(
     session$onFlushed(function() {
       if (!isTRUE(tools_ready))
         tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
+      # Harness-only/session factories register tools lazily; install/re-install
+      # the shield afterwards so newly attached tools capture this session state.
+      if (inherits(session_client$data_shield, "DataShieldState"))
+        tryCatch(install_data_shield(session_client), error = function(e) NULL)
       state$initializing <- FALSE
     }, once = TRUE)
 

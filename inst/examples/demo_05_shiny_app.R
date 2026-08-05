@@ -3,8 +3,12 @@
 #
 # Demo: launch the codeagent Shiny app
 #
-# codeagent_app() accepts an optional `chat` argument — any ellmer Chat object.
-# Create the Chat yourself so you can use any ellmer backend:
+# codeagent_app() supports three explicit entry styles (demonstrated below):
+#   chat=           bare ellmer Chat template, cloned per Shiny session
+#   client_factory= advanced per-session CodeagentClient factory
+#   client=         pre-built mutable client (single-user compatibility)
+#
+# The Chat/template may use any ellmer backend:
 #
 #   chat_openai_compatible()  — Databricks / Azure / any OpenAI-compatible API
 #   chat_anthropic()          — Anthropic API directly
@@ -51,38 +55,60 @@ readRenviron(".Renviron")
 devtools::load_all(quiet = TRUE)
 
 # ---------------------------------------------------------------------------
-# Step 1: Create an ellmer Chat (any backend you want)
+# Step 1: Chat factory (any ellmer backend)
 # ---------------------------------------------------------------------------
-
-# Option A: Databricks / OpenAI-compatible endpoint
-chat <- ellmer::chat_openai_compatible(
-  base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
-  model       = Sys.getenv("CODEAGENT_MODEL"),
-  credentials = function() Sys.getenv("CODEAGENT_API_KEY")
-)
-
-# Option B: Anthropic API (uncomment to use)
-# chat <- ellmer::chat_anthropic(model = "claude-sonnet-4-6")
-
-# Option C: Local Ollama (uncomment to use)
-# chat <- ellmer::chat_ollama(model = "llama3.2")
+make_chat <- function() {
+  ellmer::chat_openai_compatible(
+    base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
+    model       = Sys.getenv("CODEAGENT_MODEL"),
+    credentials = function() Sys.getenv("CODEAGENT_API_KEY")
+  )
+}
+# Other providers work too:
+# make_chat <- function() ellmer::chat_anthropic(model = "claude-sonnet-4-6")
+# make_chat <- function() ellmer::chat_ollama(model = "llama3.2")
 
 # ---------------------------------------------------------------------------
-# Step 2: Wrap into a codeagent client (injects tools + system prompt)
+# Step 2: Choose ONE codeagent_app entry style
 # ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-# Step 3: Launch the app directly from the chat.
-# ---------------------------------------------------------------------------
-# codeagent_app() builds the client LAZILY, AFTER the UI renders: the UI shell
-# appears instantly and the expensive setup (tools/skills) runs in-app behind a
-# visible "Initializing codeagent" progress overlay. Do NOT pre-build the client
-# with codeagent_client() here -- that blocks before the UI and skips the overlay.
-cat("Launching codeagent_app (lazy init)...\n")
+# Set CODEAGENT_APP_MODE=chat|factory|client; default = chat.
+app_mode <- Sys.getenv("CODEAGENT_APP_MODE", "chat")
+stopifnot(app_mode %in% c("chat", "factory", "client"))
+
+cat("Launching codeagent_app mode:", app_mode, "\n")
 cat("Press Ctrl-C to stop.\n\n")
 
-codeagent_app(
-  chat            = chat,
-  permission_mode = "bypass",
-  btw_groups      = c("docs", "env", "pkg"),
-  pinned_skills   = c("plan", "compact")
-)
+if (identical(app_mode, "chat")) {
+  # 1) Recommended convenience: bare ellmer Chat is a TEMPLATE. codeagent_app
+  # clones it and builds a fresh CodeagentClient inside every Shiny session.
+  codeagent_app(
+    chat            = make_chat(),
+    permission_mode = "bypass",
+    btw_groups      = c("docs", "env", "pkg"),
+    pinned_skills   = c("plan", "compact")
+  )
+
+} else if (identical(app_mode, "factory")) {
+  # 2) Most flexible multi-user entry: dynamic credentials/models/session state.
+  # Return a harness-only client so codeagent_app can lazily register tools under
+  # its initialization overlay after the UI first renders.
+  codeagent_app(
+    client_factory = function(session) {
+      codeagent_client(
+        make_chat(), permission_mode = "bypass",
+        btw_groups = c("docs", "env", "pkg"), register_tools = FALSE)
+    },
+    pinned_skills = c("plan", "compact")
+  )
+
+} else {
+  # 3) Single-user compatibility: a fully pre-built mutable CodeagentClient is
+  # reused as-is. Construction happens before the UI and skips lazy startup.
+  prebuilt_client <- codeagent_client(
+    make_chat(), permission_mode = "bypass",
+    btw_groups = c("docs", "env", "pkg"))
+  codeagent_app(
+    client = prebuilt_client,
+    pinned_skills = c("plan", "compact")
+  )
+}

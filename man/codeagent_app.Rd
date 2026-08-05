@@ -6,6 +6,7 @@
 \usage{
 codeagent_app(
   client = NULL,
+  client_factory = NULL,
   theme = "default",
   pinned_skills = character(0),
   greeting = NULL,
@@ -22,8 +23,13 @@ codeagent_app(
 )
 }
 \arguments{
-\item{client}{A \code{CodeagentClient} from \code{\link[=codeagent_client]{codeagent_client()}}, an
-\code{ellmer::Chat}, or NULL (legacy mode).}
+\item{client}{A pre-built \code{CodeagentClient} (single-user compatibility) or,
+for backward compatibility, an \code{ellmer::Chat} template (cloned per Shiny
+session). Prefer \verb{chat=} for the template form.}
+
+\item{client_factory}{Optional \verb{function(session)} (or zero-argument function)
+returning a fresh \code{CodeagentClient} for each Shiny session. This is the
+most flexible multi-user mode.}
 
 \item{theme}{UI theme. One of \code{"default"} (light Bootstrap 5), \code{"flatly"},
 \code{"darkly"} (dark), or \code{"glass"} (dark glassmorphism). The CLI aliases
@@ -63,7 +69,8 @@ long multi-line prompts). Set at launch; not switchable live.}
 
 \item{btw_groups}{Character vector or NULL. Legacy: btw tool groups.}
 
-\item{chat}{An \code{ellmer::Chat}. Legacy alias.}
+\item{chat}{An \code{ellmer::Chat} template cloned inside each Shiny session;
+convenient multi-user entry point.}
 }
 \value{
 A \code{shiny.appobj}.
