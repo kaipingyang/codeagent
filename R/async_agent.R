@@ -205,9 +205,14 @@ NULL
 }
 
 # Spawn from a user slash command; returns a feedback string (never errors).
-.bg_slash_spawn <- function(task) {
+.bg_slash_spawn <- function(task, data_shield = NULL) {
   task <- trimws(task %||% "")
   if (!nzchar(task)) return("Usage: /bg <task>")
+  if (inherits(data_shield, "DataShield"))
+    return(paste0(
+      "Background agents are disabled while Data Shield is active: ",
+      "the mirai worker cannot safely inherit this session's protected-data index. ",
+      "Use the foreground Agent tool instead."))
   id <- .bg_spawn(task)
   if (inherits(id, "bg_error")) return(paste0("Background agents unavailable: ", unclass(id)))
   sprintf("Started background sub-agent #%s. Its result will appear on a later turn.", id)

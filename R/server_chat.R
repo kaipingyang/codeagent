@@ -298,7 +298,8 @@ server_chat <- function(input, output, session, chat, settings,
     n_tokens    = n_tokens,
     model_limit = settings$model_limit %||% 200000L,
     n_turns     = n_turns,
-    sessions    = sessions
+    sessions    = sessions,
+    data_shield = settings$data_shield_engine
   )
   feedback <- res$feedback
 

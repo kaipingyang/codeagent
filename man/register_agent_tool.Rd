@@ -12,7 +12,8 @@ register_agent_tool(
   max_turns = 30L,
   worktree_isolation = FALSE,
   ask_fn = NULL,
-  async = FALSE
+  async = FALSE,
+  data_shield = NULL
 )
 }
 \arguments{
@@ -33,6 +34,9 @@ sub-agent (which runs in "bubble" mode).}
 
 \item{async}{Logical. Passed to \code{\link[=agent_tool]{agent_tool()}}; enables concurrent sub-agents
 on async parent turns. Default \code{FALSE}.}
+
+\item{data_shield}{Optional \link{DataShield} inherited by codeagent sub-agents;
+disables uninstrumented btw/custom-agent delegation.}
 }
 \value{
 Invisibly returns \code{chat}.

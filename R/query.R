@@ -195,6 +195,7 @@ codeagent_client <- function(
   settings$mcp_config          <- mcp_config
   shield_state <- .data_shield_resolve(data_shield)
   settings$data_shield <- if (is.null(shield_state)) NULL else shield_state$coverage()$config
+  settings$data_shield_engine <- shield_state
 
   # Declarative hooks from settings.json -> live HookRegistry (M5 closing).
   settings$hooks_registry      <- tryCatch(.hooks_from_settings(settings),
@@ -560,11 +561,13 @@ agent_loop <- function(user_input,
                                 "bypass", rules,
                                 worktree_isolation = isTRUE(settings$worktree_isolation),
                                 ask_fn = NULL,
-                                async = isTRUE(settings$async_subagents)),
+                                async = isTRUE(settings$async_subagents),
+                                data_shield = settings$data_shield_engine),
                                                               error = function(e) NULL)
   # Background (non-blocking) sub-agent tool -- opt-in, requires mirai.
   if (isTRUE(settings$background_agents))
-    tryCatch(register_background_agent_tool(chat), error = function(e) NULL)
+    tryCatch(register_background_agent_tool(chat, settings$data_shield_engine),
+             error = function(e) NULL)
   tryCatch(register_r_tools(chat, groups = settings$btw_groups %||% NULL),
                                                               error = function(e) NULL)
   # Plan-mode tools: let the model enter/exit read-only planning mode. Skip in

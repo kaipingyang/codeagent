@@ -496,7 +496,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         TRUE
       },
       budget = { .repl_budget_line(client$chat, settings, force = TRUE); TRUE },
-      bg = { cat(.bg_slash_spawn(act$arg), "\n", sep = ""); TRUE },
+      bg = { cat(.bg_slash_spawn(act$arg, client$data_shield), "\n", sep = ""); TRUE },
       bgstatus = { cat(.bg_status_text(), "\n", sep = ""); TRUE },
       cost = {
         n     <- tryCatch(token_count_with_estimation(client$chat),

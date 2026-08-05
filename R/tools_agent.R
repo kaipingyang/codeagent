@@ -96,6 +96,8 @@ NULL
 #'   streaming), run sub-agents via codeagent's promise-based loop so multiple
 #'   `Agent` calls in one turn execute concurrently; falls back to synchronous
 #'   sub-agents otherwise. Default `FALSE`.
+#' @param data_shield Optional [DataShield] inherited from the parent. When set,
+#'   the sub-agent's own tools are wrapped before its first LLM request.
 #' @return An `ellmer::tool()` object.
 #' @export
 agent_tool <- function(model              = "claude-sonnet-4-6",
@@ -105,7 +107,8 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                         worktree_isolation = FALSE,
                         hooks              = NULL,
                         ask_fn             = NULL,
-                        async              = FALSE) {
+                        async              = FALSE,
+                        data_shield        = NULL) {
   # Prefer btw's upstream subagent (`btw_tool_agent_subagent`: own conversation
   # thread, resumable via session_id) -- no reinvention. Only fall through to
   # codeagent's own sub-agent loop when a codeagent-specific capability is
@@ -116,7 +119,7 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
   # requested: git-worktree isolation, OR async (concurrent) sub-agents -- btw's
   # tool is synchronous, so async mode uses codeagent's own promise-based loop.
   if (!isTRUE(worktree_isolation) && !isTRUE(async) &&
-      requireNamespace("btw", quietly = TRUE)) {
+      is.null(data_shield) && requireNamespace("btw", quietly = TRUE)) {
     tools <- tryCatch(btw::btw_tools("btw_tool_agent_subagent"),
                       error = function(e) list())
     if (length(tools) > 0L) return(tools[[1L]])
@@ -158,6 +161,7 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         tryCatch(sub_chat$set_system_prompt(system_prompt), error = function(e) NULL)
         register_builtin_tools(sub_chat, mode = sub_mode, rules = rules,
                                ask_fn = ask_fn)
+        if (inherits(data_shield, "DataShield")) data_shield$install(sub_chat)
         list(sub_chat = sub_chat, wt_path = wt_path, repo_dir = repo_dir)
       }, error = function(e)
         structure(paste0("[Error] Agent tool failed: ", conditionMessage(e)),
@@ -240,19 +244,23 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
 #'   sub-agent (which runs in "bubble" mode).
 #' @param async Logical. Passed to [agent_tool()]; enables concurrent sub-agents
 #'   on async parent turns. Default `FALSE`.
+#' @param data_shield Optional [DataShield] inherited by codeagent sub-agents;
+#'   disables uninstrumented btw/custom-agent delegation.
 #' @return Invisibly returns `chat`.
 #' @export
 register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
                                   mode = "default", rules = list(),
                                   max_turns = 30L,
                                   worktree_isolation = FALSE,
-                                  ask_fn = NULL, async = FALSE) {
+                                  ask_fn = NULL, async = FALSE,
+                                  data_shield = NULL) {
   chat$register_tool(agent_tool(model, mode, rules, max_turns,
                                 worktree_isolation, ask_fn = ask_fn,
-                                async = async))
+                                async = async, data_shield = data_shield))
 
-  # Register custom btw agent tools from discovered .md files
-  if (requireNamespace("btw", quietly = TRUE)) {
+  # Uninstrumented btw custom agents cannot inherit DataShield; fail closed by
+  # not registering them when a shield is active.
+  if (is.null(data_shield) && requireNamespace("btw", quietly = TRUE)) {
     tryCatch({
       ns <- getNamespace("btw")
       # btw_agent_tool() discovers agents from .btw/, .claude/agents/, etc.
@@ -385,9 +393,14 @@ codeagent_mcp_server <- function(tools = NULL,
 # Model-triggered fire-and-forget delegation. Returns immediately; the result is
 # surfaced on a later turn via the system reminder (.bg_reminder_block).
 # @keywords internal
-background_agent_tool <- function() {
+background_agent_tool <- function(data_shield = NULL) {
   ellmer::tool(
     fun = function(prompt) {
+      if (inherits(data_shield, "DataShield"))
+        return(paste0(
+          "[data_shield] BackgroundAgent is disabled while Data Shield is active: ",
+          "a mirai worker cannot safely inherit the session's protected-data index. ",
+          "Use the foreground Agent tool instead."))
       id <- .bg_spawn(prompt)
       if (inherits(id, "bg_error")) return(unclass(id))
       paste0("Started background sub-agent #", id,
@@ -411,7 +424,8 @@ background_agent_tool <- function() {
 
 # Register the BackgroundAgent tool (no-op if mirai is unavailable).
 # @keywords internal
-register_background_agent_tool <- function(chat) {
-  if (.bg_available()) chat$register_tool(background_agent_tool())
+register_background_agent_tool <- function(chat, data_shield = NULL) {
+  if (inherits(data_shield, "DataShield") || .bg_available())
+    chat$register_tool(background_agent_tool(data_shield))
   invisible(chat)
 }

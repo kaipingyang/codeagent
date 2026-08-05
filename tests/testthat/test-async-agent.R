@@ -97,3 +97,23 @@ test_that(".chat_command_result routes /bgstatus to an append action", {
   expect_identical(r$action, "append")
   expect_match(r$feedback, "No background sub-agents")
 })
+
+
+test_that("BackgroundAgent fails closed while DataShield is active", {
+  shield <- DataShield$new()
+  st <- codeagent:::.bg_state
+  before <- st$counter
+  tool <- codeagent:::background_agent_tool(shield)
+  result <- tool(prompt="read protected data")
+  expect_match(result, "disabled while Data Shield is active")
+  expect_identical(st$counter, before) # never spawned a mirai task
+})
+
+test_that("/bg fails closed while DataShield is active", {
+  shield <- DataShield$new()
+  result <- codeagent:::.bg_slash_spawn("read protected data", shield)
+  expect_match(result, "disabled while Data Shield is active")
+  decision <- codeagent:::.chat_command_result(
+    "bg", "read protected data", data_shield=shield)
+  expect_match(decision$feedback, "disabled while Data Shield is active")
+})

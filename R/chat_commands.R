@@ -28,7 +28,8 @@ NULL
 #   * "compact"      -- run compaction (handler owns the async UI).
 .chat_command_result <- function(name, args = "",
                                   n_tokens = 0L, model_limit = 200000L,
-                                  n_turns = 0L, sessions = list()) {
+                                  n_turns = 0L, sessions = list(),
+                                  data_shield = NULL) {
   name <- name %||% ""
   args <- args %||% ""
 
@@ -64,7 +65,7 @@ NULL
     sessions = list(action = "append",
                     feedback = .format_sessions_feedback(sessions)),
 
-    bg = list(action = "append", feedback = .bg_slash_spawn(args)),
+    bg = list(action = "append", feedback = .bg_slash_spawn(args, data_shield)),
 
     bgstatus = list(action = "append", feedback = .bg_status_text()),
 

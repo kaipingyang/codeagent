@@ -12,7 +12,8 @@ agent_tool(
   worktree_isolation = FALSE,
   hooks = NULL,
   ask_fn = NULL,
-  async = FALSE
+  async = FALSE,
+  data_shield = NULL
 )
 }
 \arguments{
@@ -38,6 +39,9 @@ own isolation.}
 streaming), run sub-agents via codeagent's promise-based loop so multiple
 \code{Agent} calls in one turn execute concurrently; falls back to synchronous
 sub-agents otherwise. Default \code{FALSE}.}
+
+\item{data_shield}{Optional \link{DataShield} inherited from the parent. When set,
+the sub-agent's own tools are wrapped before its first LLM request.}
 }
 \value{
 An \code{ellmer::tool()} object.

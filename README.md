@@ -126,7 +126,9 @@ client <- codeagent_client(chat, data_shield = shield)
 ```
 
 Data Shield never sends raw rows through `DescribeData`; bulk tool output and
-registered high-entropy values are withheld before reaching the LLM.
+registered high-entropy values are withheld before reaching the LLM. Foreground
+`Agent` sub-chats inherit the same shield; cross-process `BackgroundAgent`/`/bg`
+fail closed while a shield is active.
 
 ### Skill system
 

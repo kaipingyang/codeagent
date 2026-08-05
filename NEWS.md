@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+* **Data Shield recursively covers foreground sub-agents**: synchronous and
+  concurrent `Agent` sub-chats inherit the parent `DataShield` before their first
+  model request, and uninstrumented btw/custom-agent delegation is skipped.
+  `BackgroundAgent` and `/bg` fail closed while a shield is active because a
+  separate mirai process cannot safely inherit the session's R6/index yet.
+
 * **Multi-user Shiny isolation**: `codeagent_app(client_factory = function(session) ...)`
   now creates a fresh `CodeagentClient`/Chat inside every Shiny session; the
   no-client default uses this safe path automatically. Passing a pre-built
