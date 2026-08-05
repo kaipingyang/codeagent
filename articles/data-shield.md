@@ -128,9 +128,10 @@ devtools::load_all(".")
 source("inst/examples/data_shield_upload_app.R")
 ```
 
-It demonstrates three outcomes after upload: bulk rows withheld by
-`row_cap`, a single indexed value withheld by `value_match`, and a
-harmless shape summary passed through.
+It demonstrates four outcomes after upload: bulk rows withheld by
+`row_cap`, a single indexed value withheld by `value_match`, a harmless
+shape summary passed through, and strict `DescribeData` metadata with
+raw identifiers suppressed.
 
 > **Multi-user isolation:**
 > [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
