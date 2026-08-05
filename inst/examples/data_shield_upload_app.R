@@ -3,14 +3,13 @@
 # =============================================================================
 # Demonstrates the common case where the dataset is not known until a user
 # uploads it. The host reads the file locally, stores it in a per-session env,
-# and immediately calls register_protected_data(df, shield = shield). No column
-# list is required.
+# and immediately calls shield$register_data(df). No column list is required.
 #
 # The tools are registered + wrapped ONCE at session startup. Their closures
 # read the latest uploaded data from `data_env`; protected values may be
 # registered later, after any number of uploads.
 #
-# MULTI-USER SAFE: every Shiny server session creates its own DataShieldState,
+# MULTI-USER SAFE: every Shiny server session creates its own DataShield R6,
 # data environment and Chat. Multiple chat threads in that browser session may
 # share the state; other browser sessions cannot see or influence its index.
 #
@@ -23,10 +22,7 @@
 library(shiny)
 library(codeagent)
 
-stopifnot(
-  "install_data_shield()" = exists("install_data_shield"),
-  "register_protected_data()" = exists("register_protected_data")
-)
+stopifnot("DataShield" = exists("DataShield"))
 
 # Get a registered ellmer ToolDef by its model-facing name.
 .demo_get_tool <- function(chat, name) {
@@ -39,7 +35,7 @@ stopifnot(
   NULL
 }
 
-# Choose one value that register_protected_data() will index: a value from a
+# Choose one value that shield$register_data() will index: a value from a
 # sufficiently high-cardinality column, at least 3 chars, not a small integer.
 .demo_indexable_value <- function(df, min_card = 8L) {
   for (name in names(df)) {
@@ -70,7 +66,7 @@ server <- function(input, output, session) {
   # Per-user state: both the data and its protected-value index live inside
   # this Shiny server session (never package-global).
   data_env <- new.env(parent = emptyenv())
-  shield <- data_shield(max_rows = 0L)
+  shield <- DataShield$new(max_rows = 0L)
   state <- reactiveValues(
     data = NULL,
     source = NULL,
@@ -118,7 +114,7 @@ server <- function(input, output, session) {
   )
 
   chat$register_tools(list(dump_tool, leak_tool, shape_tool))
-  install_data_shield(chat, shield = shield) # wrap once; index may be added later
+  shield$install(chat) # wrap once; index may be added later
 
   register_upload <- function(df, source) {
     stopifnot(is.data.frame(df))
@@ -126,7 +122,7 @@ server <- function(input, output, session) {
     state$data <- df
     state$source <- source
     # Runtime registration: no advance knowledge of names/types is required.
-    state$indexed <- register_protected_data(df, name = "uploaded", shield = shield)
+    state$indexed <- shield$register_data(df, name = "uploaded")
     state$result <- "Registered. Click 'Run shield tests'."
   }
 

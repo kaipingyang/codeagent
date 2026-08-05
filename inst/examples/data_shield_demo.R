@@ -11,11 +11,9 @@
 # =============================================================================
 
 library(codeagent)
-# NOTE: Data Shield is a dev feature. If `install_data_shield` is "not found",
-# your installed codeagent is stale --- load the dev version first:
-#   devtools::load_all(".")           # dev (this session only)
-#   # or: pak::local_install(".") then RESTART R and library(codeagent)
-stopifnot("install_data_shield()" = exists("install_data_shield"))
+# NOTE: Data Shield R6 is a dev feature. If `DataShield` is not found, load the
+# dev version first (`devtools::load_all(".")`) or reinstall + restart R.
+stopifnot("DataShield" = exists("DataShield"))
 
 # Helper: fetch a tool from a chat by name (get_tools() naming can vary).
 get_tool <- function(chat, nm) {
@@ -42,7 +40,8 @@ before <- get_tool(chat, "DumpData")()
 cat("WITHOUT shield -> class:", class(before)[1],
     "| rows the model would see:", tryCatch(nrow(before), error = function(e) NA), "\n")
 
-install_data_shield(chat, max_rows = 0)          # <- turn the shield on
+shield <- DataShield$new(max_rows = 0)
+shield$install(chat)                              # <- turn the shield on
 after <- get_tool(chat, "DumpData")()
 cat("WITH shield    ->", substr(as.character(after), 1, 90), "\n")
 
@@ -53,10 +52,12 @@ if (nzchar(Sys.getenv("CODEAGENT_BASE_URL"))) {
     model    = Sys.getenv("CODEAGENT_MODEL"),
     credentials = function() Sys.getenv("CODEAGENT_API_KEY"), echo = "none")
   # Backend/harness pattern: harness-only client, attach your tool, install shield.
-  client <- codeagent_client(chat2, register_tools = FALSE,
-                             data_shield = list(max_rows = 0), permission_mode = "bypass")
+  client <- codeagent_client(
+    chat2, register_tools = FALSE,
+    data_shield = list(shield_egress(max_rows = 0)),
+    permission_mode = "bypass")
   chat2$register_tool(dump)
-  install_data_shield(chat2, max_rows = 0)
+  client$data_shield$install(chat2)
 
   codeagent_stream(
     client, "Call the DumpData tool, then report only how many rows it has.",

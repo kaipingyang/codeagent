@@ -4,7 +4,7 @@
   chat <- ellmer::chat_openai_compatible(
     base_url = "http://x", model = "m", credentials = function() "k")
   codeagent_client(chat, register_tools = FALSE,
-                   data_shield = data_shield(max_rows = 0L))
+                   data_shield = DataShield$new(max_rows = 0L))
 }
 
 test_that("client_factory is invoked per session and returns isolated clients", {
@@ -21,7 +21,6 @@ test_that("client_factory is invoked per session and returns isolated clients", 
   expect_length(made, 2L)
   expect_false(identical(client_a$chat, client_b$chat))
   expect_false(identical(client_a$data_shield, client_b$data_shield))
-  expect_false(identical(client_a$data_shield$index, client_b$data_shield$index))
 })
 
 test_that("zero-argument client_factory remains supported", {
@@ -55,7 +54,7 @@ test_that("codeagent_app creates a distinct client per Shiny session", {
     client <- .make_factory_client()
     client$chat$register_tool(ellmer::tool(
       function() "ok", name = "Ping", description = "d", arguments = list()))
-    install_data_shield(client)
+    client$data_shield$install(client$chat)
     created[[length(created) + 1L]] <<- client
     client
   }

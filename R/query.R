@@ -149,11 +149,10 @@ print.CodeagentClient <- function(x, ...) {
 #'   `FALSE` returns a lightweight shell (chat + settings + system prompt, no
 #'   tools) so callers (e.g. [codeagent_app()]) can render UI first and defer the
 #'   expensive tool registration; call [.register_all_tools()] later.
-#' @param data_shield `NULL` (off, default), a config list (creates a private
-#'   state), or a [data_shield()] `DataShieldState` shared by all chat threads
-#'   in one user session. Tool results shaped like bulk rows or containing
-#'   registered protected values are filtered before reaching the model. For a
-#'   harness-only client, attach tools then call [install_data_shield()].
+#' @param data_shield `NULL` (off), a strategy list from `shield_*()` (creates a
+#'   private [DataShield] R6), or an explicit [DataShield] instance shared by
+#'   selected chat threads. For a harness-only client, attach tools then call
+#'   `client$data_shield$install(client$chat)`.
 #' @return Object of class `CodeagentClient` with `$chat`, `$settings`, and
 #'   `$data_shield` (NULL when disabled).
 #' @export
@@ -195,7 +194,7 @@ codeagent_client <- function(
   settings$verify_fn           <- verify_fn
   settings$mcp_config          <- mcp_config
   shield_state <- .data_shield_resolve(data_shield)
-  settings$data_shield <- if (is.null(shield_state)) NULL else shield_state$config
+  settings$data_shield <- if (is.null(shield_state)) NULL else shield_state$coverage()$config
 
   # Declarative hooks from settings.json -> live HookRegistry (M5 closing).
   settings$hooks_registry      <- tryCatch(.hooks_from_settings(settings),
@@ -224,12 +223,10 @@ codeagent_client <- function(
     tryCatch(.mcp_autoconnect(chat, settings), error = function(e) NULL)
   }
 
-  # Data Shield (opt-in): wrap tool results through the egress row-cap (edge 2).
-  # For a harness-only client (register_tools = FALSE) the host installs it
-  # after attaching their own tools via install_data_shield().
+  # Data Shield (opt-in): install its R6 policy engine after tool registration.
+  # Harness-only hosts attach tools then call client$data_shield$install(chat).
   if (isTRUE(register_tools) && !is.null(shield_state))
-    tryCatch(install_data_shield(chat, shield = shield_state),
-             error = function(e) NULL)
+    tryCatch(shield_state$install(chat), error = function(e) NULL)
 
   .new_client(chat, settings, data_shield = shield_state)
 }

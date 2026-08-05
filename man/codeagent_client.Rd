@@ -48,11 +48,10 @@ external MCP servers; see \code{\link[=register_mcp_client]{register_mcp_client(
 tools) so callers (e.g. \code{\link[=codeagent_app]{codeagent_app()}}) can render UI first and defer the
 expensive tool registration; call \code{\link[=.register_all_tools]{.register_all_tools()}} later.}
 
-\item{data_shield}{\code{NULL} (off, default), a config list (creates a private
-state), or a \code{\link[=data_shield]{data_shield()}} \code{DataShieldState} shared by all chat threads
-in one user session. Tool results shaped like bulk rows or containing
-registered protected values are filtered before reaching the model. For a
-harness-only client, attach tools then call \code{\link[=install_data_shield]{install_data_shield()}}.}
+\item{data_shield}{\code{NULL} (off), a strategy list from \verb{shield_*()} (creates a
+private \link{DataShield} R6), or an explicit \link{DataShield} instance shared by
+selected chat threads. For a harness-only client, attach tools then call
+\code{client$data_shield$install(client$chat)}.}
 }
 \value{
 Object of class \code{CodeagentClient} with \verb{$chat}, \verb{$settings}, and

@@ -161,11 +161,9 @@ reference:
       - register_tool_meta
       - tool_result
       - install_permission_gate
-      - install_data_shield
-      - register_protected_data
-      - data_shield
-      - describe_data_tool
-      - register_describe_data_tool
+      - DataShield
+      - shield_describe
+      - shield_egress
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."

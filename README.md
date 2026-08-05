@@ -109,6 +109,25 @@ codeagent_console(client)
 | agent | btw | hierarchical subagent delegation |
 | data | codeagent | `ExploreData` — sandboxed data.frame queries; `DescribeData` — strict protected-data metadata (Data Shield) |
 
+### Data Shield (opt-in)
+
+```r
+# Easy declaration: creates a private R6 engine for this client.
+client <- codeagent_client(chat, data_shield = list(
+  shield_describe(k_anon = 5),
+  shield_egress(max_rows = 0, on_fail = "redact")
+))
+
+# Explicit lifecycle for uploaded data / shared threads.
+shield <- DataShield$new(
+  strategies = list(shield_describe(), shield_egress(max_rows = 0)))
+shield$register_data(df, name = "study")
+client <- codeagent_client(chat, data_shield = shield)
+```
+
+Data Shield never sends raw rows through `DescribeData`; bulk tool output and
+registered high-entropy values are withheld before reaching the LLM.
+
 ### Skill system
 
 Compatible with Claude Code and btw skill format (`name/SKILL.md` directories).

@@ -30,7 +30,7 @@ test_that(".data_shield_filter_result caps bulk results, passes harmless", {
   expect_identical(codeagent:::.data_shield_filter_result("hello"), "hello")
 })
 
-test_that("install_data_shield wraps tools so bulk results are capped, harmless pass", {
+test_that("DataShield$install wraps tools so bulk results are capped, harmless pass", {
   chat <- ellmer::chat_openai_compatible(
     base_url = "http://x", model = "m", credentials = function() "k")
   dump <- ellmer::tool(function() mtcars, name = "Dump",
@@ -39,7 +39,8 @@ test_that("install_data_shield wraps tools so bulk results are capped, harmless 
                        description = "returns a scalar", arguments = list())
   chat$register_tool(dump)
   chat$register_tool(scal)
-  install_data_shield(chat, max_rows = 0L)
+  shield <- DataShield$new(max_rows = 0L)
+  shield$install(chat)
   tools <- chat$get_tools()
   by_name <- function(nm) {
     for (t in tools) if (identical(tryCatch(S7::prop(t, "name"),
@@ -52,14 +53,31 @@ test_that("install_data_shield wraps tools so bulk results are capped, harmless 
   expect_identical(scaled, "ok")                                     # scalar passed
 })
 
-test_that("codeagent_client exposes per-session Data Shield API (off by default)", {
+test_that("codeagent_client exposes the R6 + strategy-list Data Shield API", {
   expect_true("data_shield" %in% names(formals(codeagent_client)))
-  expect_true(all(c("data_shield", "install_data_shield",
-                    "register_protected_data") %in% getNamespaceExports("codeagent")))
+  expect_true(all(c("DataShield", "shield_describe", "shield_egress") %in%
+                  getNamespaceExports("codeagent")))
   chat <- ellmer::chat_openai_compatible(
     base_url = "http://x", model = "m", credentials = function() "k")
   off <- codeagent_client(chat, register_tools = FALSE)
   expect_null(off$data_shield)
+
+
+test_that("strategy list is the easy entry to one private R6 engine", {
+  chat <- ellmer::chat_openai_compatible(
+    base_url="http://x", model="m", credentials=function() "k")
+  client <- codeagent_client(
+    chat, register_tools=FALSE,
+    data_shield=list(
+      shield_describe(k_anon=3L),
+      shield_egress(detectors=c("row_cap","value_match"), max_rows=0L)))
+  expect_r6_class(client$data_shield, "DataShield")
+  expect_identical(client$data_shield$coverage()$config$k_anon, 3L)
+  expect_error(
+    codeagent_client(chat, register_tools=FALSE,
+                     data_shield=list(max_rows=0L)),
+    "shield_\\*\\(\\)")
+})
 })
 
 
@@ -83,10 +101,10 @@ test_that("value_match indexes high-entropy values, ignores low-card/small-int (
 })
 
 
-test_that("register_protected_data + shield withholds targeted value leaks (row-cap misses)", {
-  shield <- data_shield(max_rows = 0L)
+test_that("DataShield$register_data withholds targeted value leaks", {
+  shield <- DataShield$new(max_rows = 0L)
   df <- data.frame(name = paste0("Subject", 1:50), stringsAsFactors = FALSE)
-  expect_gt(register_protected_data(df, shield = shield), 0)
+  expect_gt(shield$register_data(df, name = "subjects"), 0)
 
   chat <- ellmer::chat_openai_compatible(
     base_url = "http://x", model = "m", credentials = function() "k")
@@ -96,7 +114,7 @@ test_that("register_protected_data + shield withholds targeted value leaks (row-
   safe <- ellmer::tool(function() "The analysis converged.", name = "Safe",
                        description = "d", arguments = list())
   chat$register_tool(leak); chat$register_tool(safe)
-  install_data_shield(chat, shield = shield)
+  shield$install(chat)
 
   by_name <- function(nm) {
     for (t in chat$get_tools())
@@ -112,20 +130,19 @@ test_that("Data Shield state is isolated between clients in the same R process",
     chat <- ellmer::chat_openai_compatible(
       base_url = "http://x", model = "m", credentials = function() "k")
     client <- codeagent_client(chat, register_tools = FALSE,
-                               data_shield = data_shield(max_rows = 0L))
+                               data_shield = DataShield$new(max_rows = 0L))
     tool <- ellmer::tool(function() value, name = "Leak",
                          description = "d", arguments = list())
     chat$register_tool(tool)
-    install_data_shield(client)
+    client$data_shield$install(chat)
     client
   }
   run_tool <- function(client) client$chat$get_tools()[[1L]]()
 
   client_a <- make_client("SubjectA007")
   client_b <- make_client("SubjectA007")
-  register_protected_data(
-    data.frame(id = paste0("SubjectA", sprintf("%03d", 1:20))),
-    client = client_a)
+  client_a$data_shield$register_data(
+    data.frame(id = paste0("SubjectA", sprintf("%03d", 1:20))), name = "a")
 
   expect_match(run_tool(client_a), "withheld")       # A protects A's value
   expect_identical(run_tool(client_b), "SubjectA007")# B cannot see A's index
@@ -133,25 +150,25 @@ test_that("Data Shield state is isolated between clients in the same R process",
 })
 
 test_that("one session shield can be shared by multiple chat threads", {
-  shield <- data_shield(max_rows = 0L)
+  shield <- DataShield$new(max_rows = 0L)
   make_chat <- function() {
     chat <- ellmer::chat_openai_compatible(
       base_url = "http://x", model = "m", credentials = function() "k")
     chat$register_tool(ellmer::tool(function() "PatientThread9", name = "Leak",
                                     description = "d", arguments = list()))
-    install_data_shield(chat, shield = shield)
+    shield$install(chat)
     chat
   }
   chat_1 <- make_chat(); chat_2 <- make_chat()
-  register_protected_data(
-    data.frame(id = paste0("PatientThread", 1:20)), shield = shield)
+  shield$register_data(
+    data.frame(id = paste0("PatientThread", 1:20)), name = "threads")
   expect_match(chat_1$get_tools()[[1L]](), "withheld")
   expect_match(chat_2$get_tools()[[1L]](), "withheld")
 })
 
 
 test_that("DescribeData strict matrix exposes safe schema but no distributions/raw text", {
-  shield <- data_shield(k_anon = 3L)
+  shield <- DataShield$new(k_anon = 3L)
   df <- data.frame(
     subject_id = sprintf("SUBJ%03d", 1:10),
     site = rep(c("SITE_A", "SITE_B"), each = 5),
@@ -159,12 +176,11 @@ test_that("DescribeData strict matrix exposes safe schema but no distributions/r
     value = seq(10.5, 19.5, length.out = 10),
     note = paste("private narrative", 1:10),
     stringsAsFactors = FALSE)
-  register_protected_data(
+  shield$register_data(
     df, name = "study",
     sensitivity = c(subject_id="identifier", site="quasi", arm="measure",
-                    value="measure", note="open"),
-    shield = shield)
-  text <- codeagent:::.data_shield_describe(shield$datasets$study, shield$config)
+                    value="measure", note="open"))
+  text <- shield$describe("study")
 
   expect_match(text, "Protected dataset 'study': 10 rows x 5 columns", fixed=TRUE)
   expect_match(text, "subject_id:.*values=suppressed")
@@ -179,19 +195,18 @@ test_that("DescribeData strict matrix exposes safe schema but no distributions/r
   expect_false(grepl("mean|quantile|histogram|count=", text, ignore.case=TRUE))
 })
 
-test_that("install_data_shield registers DescribeData and tool sees later uploads", {
-  shield <- data_shield(k_anon = 2L)
+test_that("DataShield$install registers DescribeData and sees later uploads", {
+  shield <- DataShield$new(k_anon = 2L)
   chat <- ellmer::chat_openai_compatible(
     base_url="http://x", model="m", credentials=function() "k")
-  install_data_shield(chat, shield=shield)
+  shield$install(chat)
   tool_names <- vapply(chat$get_tools(), function(tool)
     tryCatch(S7::prop(tool, "name"), error=function(e) ""), character(1))
   expect_true("DescribeData" %in% tool_names)
 
-  register_protected_data(
+  shield$register_data(
     data.frame(group=factor(rep(c("A","B"), each=3)), value=1:6),
-    name="uploaded", sensitivity=c(group="measure", value="measure"),
-    shield=shield)
+    name="uploaded", sensitivity=c(group="measure", value="measure"))
   describe <- chat$get_tools()[[which(tool_names == "DescribeData")]]
   result <- describe("uploaded")
   expect_match(as.character(result), "group:.*labels=\\[A, B\\]")

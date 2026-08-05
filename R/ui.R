@@ -408,8 +408,8 @@ codeagent_app <- function(
         tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
       # Harness-only/session factories register tools lazily; install/re-install
       # the shield afterwards so newly attached tools capture this session state.
-      if (inherits(session_client$data_shield, "DataShieldState"))
-        tryCatch(install_data_shield(session_client), error = function(e) NULL)
+      if (inherits(session_client$data_shield, "DataShield"))
+        tryCatch(session_client$data_shield$install(chat_obj), error = function(e) NULL)
       state$initializing <- FALSE
     }, once = TRUE)
 
