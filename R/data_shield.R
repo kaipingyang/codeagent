@@ -214,12 +214,13 @@ DataShield <- R6::R6Class(
     #' @param category_max Maximum distinct character values treated as a category.
     #' @param category_ratio Maximum distinct/non-missing ratio for character
     #'   categorical treatment.
+    #' @param audit_max Maximum in-memory non-sensitive decision events retained.
     #' @param strategies Optional ordered list from [shield_describe()],
     #'   [shield_egress()], [shield_regex()], and [shield_ingress()]. If supplied, only listed
     #'   strategies are enabled and list order controls egress execution order.
     initialize = function(max_rows = 0L, distributions = "off", k_anon = 5L,
                           category_max = 20L, category_ratio = 0.2,
-                          strategies = NULL) {
+                          audit_max = 1000L, strategies = NULL) {
       private$config <- list(
         max_rows = as.integer(max_rows),
         distributions = match.arg(distributions, c("off", "on", "dp")),
@@ -232,6 +233,8 @@ DataShield <- R6::R6Class(
       private$strategies <- list()
       private$egress_pipeline <- list()
       private$ingress_pipeline <- list()
+      private$audit_log <- list()
+      private$audit_max <- max(0L, as.integer(audit_max))
       private$closed <- FALSE
       if (is.null(strategies)) {
         private$egress_pipeline[[1L]] <- list(
@@ -312,19 +315,29 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Apply the ordered egress strategy pipeline to a tool result.
-    scan_egress = function(result) {
+    #' @param result Tool return value.
+    #' @param context Optional non-sensitive context (`tool_name`, `tool_call_id`).
+    scan_egress = function(result, context = list()) {
       private$assert_open()
+      audit_fn <- function(strategy, action, reason, match_count=0L, score=0) {
+        private$record_event(
+          edge="egress", tool_name=context$tool_name,
+          tool_call_id=context$tool_call_id, strategy=strategy, action=action,
+          reason=reason, match_count=match_count, score=score)
+      }
       output <- result
       for (stage in private$egress_pipeline) {
         if (identical(stage$type, "core")) {
           cfg <- stage$config
           output <- .data_shield_filter_result(
             output, max_rows = cfg$max_rows, index = private$index,
-            detectors = cfg$detectors, on_fail = cfg$on_fail)
+            detectors = cfg$detectors, on_fail = cfg$on_fail,
+            audit_fn = audit_fn)
         } else if (identical(stage$type, "scanner")) {
           output <- .data_shield_apply_scanner(
             output, stage$fn, stage$name,
-            context = list(edge = "egress", shield = self))
+            context = c(list(edge="egress", shield=self), context),
+            audit_fn = audit_fn)
         }
       }
       output
@@ -333,13 +346,14 @@ DataShield <- R6::R6Class(
     #' @description Scan one tool request before execution.
     #' @param tool_name Model-facing tool name.
     #' @param input Named list of tool arguments.
+    #' @param tool_call_id Optional non-sensitive tool-call identifier.
     #' @return List with action (`pass`, `block`, or `ask`), reason, matches and score.
-    scan_ingress = function(tool_name, input) {
+    scan_ingress = function(tool_name, input, tool_call_id = NULL) {
       private$assert_open()
       if (!length(private$ingress_pipeline))
         return(list(action="pass", reason=NULL, matches=character(), score=0))
       text <- .data_shield_flatten_tool_input(tool_name, input)
-      context <- list(edge="ingress", tool_name=tool_name,
+      context <- list(edge="ingress", tool_name=tool_name, tool_call_id=tool_call_id,
                       input=input, protected_names=names(private$datasets), shield=self)
       for (stage in private$ingress_pipeline) {
         decision <- tryCatch(
@@ -347,7 +361,14 @@ DataShield <- R6::R6Class(
           error = function(e) list(
             action="block", reason=sprintf("scanner '%s' failed safely", stage$name),
             matches=character(), score=1))
-        if (!identical(decision$action, "pass")) return(decision)
+        if (!identical(decision$action, "pass")) {
+          private$record_event(
+            edge="ingress", tool_name=tool_name, tool_call_id=tool_call_id,
+            strategy=stage$name, action=decision$action,
+            reason=decision$reason, match_count=length(decision$matches),
+            score=decision$score)
+          return(decision)
+        }
       }
       list(action="pass", reason=NULL, matches=character(), score=0)
     },
@@ -359,6 +380,29 @@ DataShield <- R6::R6Class(
         stop("`name` must be non-empty and `fn` must be a function.", call. = FALSE)
       private$egress_pipeline[[length(private$egress_pipeline) + 1L]] <-
         list(type = "scanner", name = name, fn = fn)
+      invisible(self)
+    },
+
+    #' @description Return a copy of non-sensitive decision events.
+    #' @param limit Optional number of most recent events.
+    audit = function(limit = NULL) {
+      events <- private$audit_log
+      if (!is.null(limit)) events <- utils::tail(events, max(0L, as.integer(limit)))
+      if (!length(events)) return(.data_shield_empty_audit())
+      do.call(rbind, lapply(events, function(event) {
+        data.frame(
+          timestamp = as.POSIXct(event$timestamp, origin="1970-01-01", tz="UTC"),
+          edge = event$edge, tool_name = event$tool_name,
+          tool_call_id = event$tool_call_id, strategy = event$strategy,
+          action = event$action, reason = event$reason,
+          match_count = event$match_count, score = event$score,
+          stringsAsFactors = FALSE)
+      }))
+    },
+
+    #' @description Remove all in-memory audit events.
+    clear_audit = function() {
+      private$audit_log <- list()
       invisible(self)
     },
 
@@ -374,6 +418,7 @@ DataShield <- R6::R6Class(
     close = function() {
       if (!isTRUE(private$closed)) {
         private$datasets <- list()
+        private$audit_log <- list()
         rm(list = ls(private$index, all.names = TRUE), envir = private$index)
         private$closed <- TRUE
       }
@@ -386,6 +431,7 @@ DataShield <- R6::R6Class(
            indexed_values = length(ls(private$index, all.names = TRUE)),
            egress_pipeline = vapply(private$egress_pipeline, `[[`, character(1), "name"),
            ingress_pipeline = vapply(private$ingress_pipeline, `[[`, character(1), "name"),
+           audit_events = length(private$audit_log), audit_max = private$audit_max,
            closed = private$closed)
     }
   ),
@@ -396,10 +442,30 @@ DataShield <- R6::R6Class(
     strategies = NULL,
     egress_pipeline = NULL,
     ingress_pipeline = NULL,
+    audit_log = NULL,
+    audit_max = 1000L,
     closed = FALSE,
 
     assert_open = function() {
       if (isTRUE(private$closed)) stop("The DataShield is closed.", call. = FALSE)
+    },
+    record_event = function(edge, tool_name = NA_character_, tool_call_id = NA_character_,
+                            strategy, action, reason, match_count = 0L, score = 0) {
+      if (private$audit_max <= 0L) return(invisible(NULL))
+      event <- list(
+        timestamp = as.numeric(Sys.time()),
+        edge = as.character(edge)[[1L]],
+        tool_name = substr(as.character(tool_name %||% NA_character_)[[1L]], 1L, 100L),
+        tool_call_id = substr(as.character(tool_call_id %||% NA_character_)[[1L]], 1L, 100L),
+        strategy = substr(as.character(strategy)[[1L]], 1L, 100L),
+        action = as.character(action)[[1L]],
+        reason = substr(as.character(reason %||% "policy match")[[1L]], 1L, 200L),
+        match_count = as.integer(match_count %||% 0L),
+        score = as.numeric(score %||% 0))
+      private$audit_log[[length(private$audit_log) + 1L]] <- event
+      if (length(private$audit_log) > private$audit_max)
+        private$audit_log <- utils::tail(private$audit_log, private$audit_max)
+      invisible(NULL)
     },
     apply_strategy = function(strategy) {
       if (!inherits(strategy, "shield_strategy"))
@@ -447,6 +513,14 @@ DataShield <- R6::R6Class(
     return(DataShield$new(strategies = x))
   stop("`data_shield` must be NULL, list(shield_*()), or a DataShield instance.",
        call. = FALSE)
+}
+
+.data_shield_empty_audit <- function() {
+  data.frame(
+    timestamp=as.POSIXct(character(),tz="UTC"), edge=character(),
+    tool_name=character(), tool_call_id=character(), strategy=character(),
+    action=character(), reason=character(), match_count=integer(), score=double(),
+    stringsAsFactors=FALSE)
 }
 
 # Build a pure regex scanner closure.
@@ -530,7 +604,8 @@ DataShield <- R6::R6Class(
 
 # Apply a custom scanner to the model-facing text of common tool result shapes.
 # Scanner errors/invalid contracts fail closed.
-.data_shield_apply_scanner <- function(result, scanner, name, context = list()) {
+.data_shield_apply_scanner <- function(result, scanner, name, context = list(),
+                                       audit_fn = NULL) {
   kind <- "other"; text <- NULL
   if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
                       error=function(e) FALSE))) {
@@ -547,9 +622,19 @@ DataShield <- R6::R6Class(
     .data_shield_validate_scanner_result(scanner(text, context), text, name),
     error = function(e) list(
       sanitized = sprintf("[data_shield] output blocked: scanner '%s' failed safely.", name),
-      valid = FALSE, score = 1, spans = list(), action = "block"))
+      valid = FALSE, score = 1, spans = list(), action = "block",
+      .scanner_failed = TRUE))
   changed <- !isTRUE(scanned$valid) || !identical(scanned$sanitized, text)
   if (!changed) return(result)
+  if (is.function(audit_fn)) {
+    spans <- scanned$spans %||% list()
+    match_count <- if (is.data.frame(spans)) nrow(spans) else length(spans)
+    labels <- if (is.data.frame(spans) && "label" %in% names(spans))
+      unique(unlist(strsplit(spans$label, "\\|", perl=TRUE))) else character()
+    reason <- if (isTRUE(scanned$.scanner_failed)) "scanner failed safely" else
+      paste0("scanner matched", if(length(labels)) paste0(": ",paste(labels,collapse=", ")) else "")
+    audit_fn(name, scanned$action, reason, match_count, scanned$score)
+  }
   if (identical(kind, "content")) { result@value <- scanned$sanitized; return(result) }
   scanned$sanitized
 }
@@ -668,7 +753,7 @@ DataShield <- R6::R6Class(
 #' @keywords internal
 .data_shield_process_text <- function(text, max_rows = 0L, index = NULL,
                                       detectors = c("row_cap", "value_match"),
-                                      on_fail = "redact") {
+                                      on_fail = "redact", audit_fn = NULL) {
   if (!is.character(text) || length(text) != 1L)
     return(list(text = text, changed = FALSE))
   if ("row_cap" %in% detectors) {
@@ -676,6 +761,8 @@ DataShield <- R6::R6Class(
     if (isTRUE(capped$capped)) {
       if (identical(on_fail, "block"))
         capped$text <- sub("output withheld", "output blocked", capped$text, fixed = TRUE)
+      if (is.function(audit_fn))
+        audit_fn("row_cap", on_fail, "bulk tabular output", capped$n_lines %||% 0L, 1)
       return(list(text = capped$text, changed = TRUE))
     }
   }
@@ -684,6 +771,8 @@ DataShield <- R6::R6Class(
                         error = function(e) list(hit = FALSE))
     if (isTRUE(matched$hit)) {
       verb <- if (identical(on_fail, "block")) "blocked" else "withheld"
+      if (is.function(audit_fn))
+        audit_fn("value_match", on_fail, "protected value match", matched$n, min(1, matched$n / 5))
       return(list(
         text = sprintf("[data_shield] output %s: contains %d protected data value(s).",
                        verb, matched$n),
@@ -695,10 +784,10 @@ DataShield <- R6::R6Class(
 
 .data_shield_filter_result <- function(result, max_rows = 0L, index = NULL,
                                        detectors = c("row_cap", "value_match"),
-                                       on_fail = "redact") {
+                                       on_fail = "redact", audit_fn = NULL) {
   process <- function(text) .data_shield_process_text(
     text, max_rows = max_rows, index = index,
-    detectors = detectors, on_fail = on_fail)
+    detectors = detectors, on_fail = on_fail, audit_fn = audit_fn)
   if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
                       error = function(e) FALSE))) {
     value <- tryCatch(as.character(result@value), error = function(e) NULL)
@@ -730,7 +819,9 @@ DataShield <- R6::R6Class(
   if (!is.function(current)) return(tool)
   if (identical(attr(current, "data_shield_state"), shield)) return(tool)
   original <- attr(current, "data_shield_original") %||% current
-  wrapped <- function(...) shield$scan_egress(original(...))
+  tool_name <- tryCatch(S7::prop(tool, "name"), error=function(e) NA_character_)
+  wrapped <- function(...) shield$scan_egress(
+    original(...), context=list(tool_name=tool_name))
   attr(wrapped, "data_shield_wrapped") <- TRUE
   attr(wrapped, "data_shield_original") <- original
   attr(wrapped, "data_shield_state") <- shield

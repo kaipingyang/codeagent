@@ -40,6 +40,8 @@ shield$coverage()
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
+    \item \href{#method-DataShield-audit}{\code{DataShield$audit()}}
+    \item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
     \item \href{#method-DataShield-close}{\code{DataShield$close()}}
     \item \href{#method-DataShield-coverage}{\code{DataShield$coverage()}}
@@ -58,6 +60,7 @@ shield$coverage()
   k_anon = 5L,
   category_max = 20L,
   category_ratio = 0.2,
+  audit_max = 1000L,
   strategies = NULL
 )}
     \if{html}{\out{</div>}}
@@ -74,6 +77,7 @@ implemented; \code{"on"}/\code{"dp"} fail explicitly.}
       \item{\code{category_max}}{Maximum distinct character values treated as a category.}
       \item{\code{category_ratio}}{Maximum distinct/non-missing ratio for character
 categorical treatment.}
+      \item{\code{audit_max}}{Maximum in-memory non-sensitive decision events retained.}
       \item{\code{strategies}}{Optional ordered list from \code{\link[=shield_describe]{shield_describe()}},
 \code{\link[=shield_egress]{shield_egress()}}, \code{\link[=shield_regex]{shield_regex()}}, and \code{\link[=shield_ingress]{shield_ingress()}}. If supplied, only listed
 strategies are enabled and list order controls egress execution order.}
@@ -147,7 +151,15 @@ deterministic value indexing (reduces low-entropy false positives).}
   Apply the ordered egress strategy pipeline to a tool result.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$scan_egress(result)}
+    \preformatted{DataShield$scan_egress(result, context = list())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{result}}{Tool return value.}
+      \item{\code{context}}{Optional non-sensitive context (\code{tool_name}, \code{tool_call_id}).}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -159,7 +171,7 @@ deterministic value indexing (reduces low-entropy false positives).}
   Scan one tool request before execution.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$scan_ingress(tool_name, input)}
+    \preformatted{DataShield$scan_ingress(tool_name, input, tool_call_id = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -167,6 +179,7 @@ deterministic value indexing (reduces low-entropy false positives).}
     \describe{
       \item{\code{tool_name}}{Model-facing tool name.}
       \item{\code{input}}{Named list of tool arguments.}
+      \item{\code{tool_call_id}}{Optional non-sensitive tool-call identifier.}
     }
     \if{html}{\out{</div>}}
   }
@@ -183,6 +196,37 @@ deterministic value indexing (reduces low-entropy false positives).}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$add_scanner(name, fn)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-audit"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-audit}{}}}
+\subsection{\code{DataShield$audit()}}{
+  Return a copy of non-sensitive decision events.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$audit(limit = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{limit}}{Optional number of most recent events.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-clear_audit"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-clear_audit}{}}}
+\subsection{\code{DataShield$clear_audit()}}{
+  Remove all in-memory audit events.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$clear_audit()}
     \if{html}{\out{</div>}}
   }
 }

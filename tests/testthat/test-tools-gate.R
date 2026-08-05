@@ -225,6 +225,10 @@ test_that("Data Shield ingress block rejects even a read/unknown tool", {
     id="call-shield-block", name="UnknownReadTool",
     arguments=list(payload="SEND_SECRET(x)"))
   expect_error(gate(req), "Data Shield ingress matched")
+  audit <- shield$audit()
+  expect_identical(audit$tool_call_id[[1L]], "call-shield-block")
+  expect_identical(audit$tool_name[[1L]], "UnknownReadTool")
+  expect_false(grepl("SEND_SECRET", paste(audit, collapse="")))
 })
 
 test_that("Data Shield ingress ask bypasses read fast-path and uses existing approval", {
@@ -246,6 +250,7 @@ test_that("Data Shield ingress ask bypasses read fast-path and uses existing app
   expect_silent(gate(req))
   expect_true(seen$called)
   expect_identical(seen$id, "call-shield-ask")
+  expect_identical(shield$audit()$action[[1L]], "ask")
 })
 
 test_that("no Data Shield preserves ordinary read fast-path", {

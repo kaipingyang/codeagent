@@ -189,7 +189,8 @@ register_tool_meta <- function(name,
     shield <- ctx$data_shield %||%
       tryCatch(attr(ctx$chat, "codeagent_data_shield"), error=function(e) NULL)
     shield_decision <- if (inherits(shield, "DataShield"))
-      tryCatch(shield$scan_ingress(name, input),
+      tryCatch(shield$scan_ingress(
+        name, input, tool_call_id = tryCatch(request@id, error=function(e) NULL)),
                error=function(e) list(action="block", reason="Data Shield ingress failed safely"))
       else list(action="pass")
     if (identical(shield_decision$action, "block"))

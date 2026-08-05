@@ -314,3 +314,41 @@ test_that("shield_ingress custom patterns and pipeline coverage", {
   expect_identical(shield$coverage()$ingress_pipeline, "ingress")
   expect_identical(shield$scan_ingress("CustomTool", list(payload="safe"))$action, "pass")
 })
+
+
+test_that("DataShield audit records non-sensitive ingress/egress decisions", {
+  shield <- DataShield$new(audit_max=20L, strategies=list(
+    shield_ingress(patterns=c(custom="SEND_SECRET\\("),
+                   include_defaults=FALSE, on_fail="block"),
+    shield_egress(max_rows=0),
+    shield_regex(on_fail="redact")))
+  shield$register_data(
+    data.frame(id=paste0("AUDITSECRET",sprintf("%03d",1:20))), name="study")
+
+  shield$scan_egress(mtcars, context=list(tool_name="DumpRows"))
+  shield$scan_egress("selected AUDITSECRET007", context=list(tool_name="LeakOne"))
+  shield$scan_egress("mail audit.person@example.org", context=list(tool_name="LeakPII"))
+  shield$scan_ingress("CustomTool", list(code="SEND_SECRET(x)"),
+                      tool_call_id="call-audit-1")
+
+  audit <- shield$audit()
+  expect_identical(names(audit), c(
+    "timestamp","edge","tool_name","tool_call_id","strategy","action",
+    "reason","match_count","score"))
+  expect_true(all(c("row_cap","value_match","regex","ingress") %in% audit$strategy))
+  expect_true("call-audit-1" %in% audit$tool_call_id)
+  serialized <- paste(capture.output(dput(audit)), collapse=" ")
+  expect_false(grepl("AUDITSECRET007|audit.person@example.org|SEND_SECRET", serialized))
+})
+
+test_that("DataShield audit capacity, limit, clear and instance isolation work", {
+  a <- DataShield$new(audit_max=2L, strategies=list(shield_regex()))
+  b <- DataShield$new(audit_max=2L, strategies=list(shield_regex()))
+  for (i in 1:3) a$scan_egress(sprintf("person%d@example.org", i))
+  expect_equal(nrow(a$audit()), 2L)
+  expect_equal(nrow(a$audit(limit=1L)), 1L)
+  expect_equal(nrow(b$audit()), 0L)
+  expect_identical(a$coverage()$audit_events, 2L)
+  a$clear_audit()
+  expect_equal(nrow(a$audit()), 0L)
+})

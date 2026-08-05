@@ -139,6 +139,14 @@ in the central permission gate and can block or request approval before executio
 See the full [Data Shield parameter
 reference](https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference).
 
+The in-memory audit log records only non-sensitive decision metadata (strategy,
+action, reason label, count, tool/id), never matched values or raw results:
+
+```r
+audit <- shield$audit(limit = 100)
+shield$clear_audit()
+```
+
 ### Skill system
 
 Compatible with Claude Code and btw skill format (`name/SKILL.md` directories).

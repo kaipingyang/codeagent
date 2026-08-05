@@ -134,11 +134,12 @@ scanning remains the primary boundary because code can be obfuscated.
 ### `DataShield$new()` direct lifecycle
 
 Direct constructor parameters (`max_rows`, `distributions`, `k_anon`,
-`category_max`, `category_ratio`) create the default DescribeData + core egress
-configuration when `strategies = NULL`. Supplying `strategies = list(...)`
-enables **only** listed strategies and preserves list order. Use
-`shield$register_data()`, `$install()`, `$describe()`, `$clear()`, and `$close()`
-for dynamic/session-owned workflows.
+`category_max`, `category_ratio`, `audit_max`) create the default DescribeData +
+core egress configuration when `strategies = NULL`. `audit_max` defaults to 1000
+non-sensitive decision events; `0` disables recording. Supplying
+`strategies = list(...)` enables **only** listed strategies and preserves list
+order. Use `shield$register_data()`, `$install()`, `$describe()`, `$audit()`,
+`$clear_audit()`, `$clear()`, and `$close()` for dynamic/session-owned workflows.
 
 ## Plain-language glossary
 
@@ -155,6 +156,29 @@ for dynamic/session-owned workflows.
 | **k-anonymity threshold** | Do not expose a category label unless at least `k` rows support it |
 | **fail closed** | If a safety scanner fails, block output instead of allowing it |
 | **R6** | R's mutable object system; one `DataShield` owns private datasets/index/lifecycle |
+
+## Non-sensitive audit log
+
+`shield$audit()` returns an in-memory data.frame of policy decisions:
+
+| Field | Meaning |
+|---|---|
+| `timestamp` | UTC event time |
+| `edge` | `ingress` (before tool) or `egress` (before LLM) |
+| `tool_name`, `tool_call_id` | Non-sensitive correlation identifiers |
+| `strategy` | `row_cap`, `value_match`, `regex`, `ingress`, or custom scanner name |
+| `action`, `reason` | `redact`/`block`/`ask` and a rule/reason label |
+| `match_count`, `score` | Number of matches and normalized risk score |
+
+It **never stores** raw tool arguments/results, matched values, data rows, span
+text, or hashes. `audit_max` bounds memory (oldest events are dropped); use
+`shield$clear_audit()` to clear it. Each `DataShield` R6 has its own log, so
+session/thread isolation matches the policy instance.
+
+```r
+recent <- shield$audit(limit=100)
+shield$clear_audit()
+```
 
 ## P0 — the foundation (available now)
 
