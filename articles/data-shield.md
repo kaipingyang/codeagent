@@ -69,14 +69,17 @@ The minimal, deterministic slice that already gives real protection:
 
 ``` r
 
-# Simple one-chat use: config list creates a private state for this client.
-client <- codeagent_client(chat, data_shield = list(max_rows = 0))
+# Easy entry: strategy specs create one private DataShield R6 for this client.
+client <- codeagent_client(chat, data_shield = list(
+  shield_describe(k_anon = 5),
+  shield_egress(max_rows = 0)
+))
 
-# Harness-only client: install after attaching your own tools.
+# Harness-only client: attach tools, then install its R6 engine.
 client <- codeagent_client(chat, register_tools = FALSE,
-                           data_shield = list(max_rows = 0))
+  data_shield = list(shield_describe(), shield_egress(max_rows = 0)))
 chat$register_tool(my_tool)
-install_data_shield(client)
+client$data_shield$install(client$chat)
 ```
 
 - **Edge 2 — shape-based egress row-cap.** codeagent does **not**
@@ -98,8 +101,9 @@ index at invocation time.
 
 ``` r
 
-# Inside each Shiny server session: one state may be shared by multiple chats.
-shield <- data_shield(max_rows = 0)
+# Inside each Shiny server session: one R6 may be shared by selected chats.
+shield <- DataShield$new(
+  strategies = list(shield_describe(), shield_egress(max_rows = 0)))
 data_env <- new.env(parent = emptyenv())
 
 client_factory <- function() {
@@ -109,7 +113,7 @@ client_factory <- function() {
 observeEvent(input$file, {
   df <- read.csv(input$file$datapath)
   data_env$uploaded <- df
-  register_protected_data(df, shield = shield) # no advance columns needed
+  shield$register_data(df, name = "uploaded") # no advance columns needed
 })
 ```
 
@@ -133,14 +137,10 @@ It demonstrates four outcomes after upload: bulk rows withheld by
 shape summary passed through, and strict `DescribeData` metadata with
 raw identifiers suppressed.
 
-> **Multi-user isolation:**
-> [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
-> returns a session-scoped state. Create it inside the Shiny server
-> function, share it only among that user’s chat threads, and pass it
-> explicitly to
-> [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md).
-> Other browser sessions receive separate states and cannot see or
-> influence its index.
+> **Multi-user isolation:** create `DataShield$new()` inside the Shiny
+> server function, share it only among the intended chat threads, and
+> register data via `shield$register_data()`. Other browser sessions
+> receive separate R6 instances and cannot see or influence its index.
 
 Illustrative behaviour of the P0 row-cap (implemented):
 
@@ -183,8 +183,7 @@ examples in strict mode. \## Roadmap
 - **P0.5 — `value_match` (available)**: deterministically catches
   *targeted* leaks the row-cap lets through (e.g. printing one patient’s
   name), by matching tool output against high-entropy values registered
-  with
-  [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md).
+  with `shield$register_data()`.
 - **P1 — `DescribeData` + protected-data registry (strict available)**:
   the model’s sanctioned hardened view (schema, sensitivity, missing
   presence, measure/open ranges and k-supported labels; no

@@ -141,8 +141,8 @@ guardrails-ai. All pure R — no Python.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Target API (in progress):</span></span>
 <span><span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">...</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="fu">shield_describe</span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,                                  <span class="co"># safe metadata only</span></span>
-<span>  <span class="fu">shield_egress</span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"value_match"</span>, <span class="st">"regex"</span><span class="op">)</span>,          <span class="co"># main boundary</span></span>
+<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,                                  <span class="co"># safe metadata only</span></span>
+<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"value_match"</span>, <span class="st">"regex"</span><span class="op">)</span>,          <span class="co"># main boundary</span></span>
 <span>                max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
 <span>  <span class="fu">shield_ingress</span><span class="op">(</span>langs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"R"</span>, <span class="st">"python"</span>, <span class="st">"bash"</span><span class="op">)</span>, on_fail <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  <span class="fu">shield_reviewer</span><span class="op">(</span>model <span class="op">=</span> <span class="st">"&lt;a small, fast model&gt;"</span>, scope <span class="op">=</span> <span class="st">"exec"</span><span class="op">)</span>, <span class="co"># small-model audit</span></span>
@@ -159,14 +159,17 @@ guardrails-ai. All pure R — no Python.</p>
 <p>The minimal, deterministic slice that already gives real
 protection:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Simple one-chat use: config list creates a private state for this client.</span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Easy entry: strategy specs create one private DataShield R6 for this client.</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Harness-only client: install after attaching your own tools.</span></span>
+<span><span class="co"># Harness-only client: attach tools, then install its R6 engine.</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, register_tools <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>                           data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span>  data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">chat</span><span class="op">$</span><span class="fu">register_tool</span><span class="op">(</span><span class="va">my_tool</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/install_data_shield.html">install_data_shield</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">client</span><span class="op">$</span><span class="va">data_shield</span><span class="op">$</span><span class="fu">install</span><span class="op">(</span><span class="va">client</span><span class="op">$</span><span class="va">chat</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
 <strong>Edge 2 — shape-based egress row-cap.</strong> codeagent does
@@ -190,8 +193,9 @@ starts. Register it in the upload observer immediately after reading it;
 tools may already be attached and wrapped, because value matching reads
 the live index at invocation time.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Inside each Shiny server session: one state may be shared by multiple chats.</span></span>
-<span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/data_shield.html">data_shield</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Inside each Shiny server session: one R6 may be shared by selected chats.</span></span>
+<span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
+<span>  strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">data_env</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">new.env</a></span><span class="op">(</span>parent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">emptyenv</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">client_factory</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
@@ -201,7 +205,7 @@ the live index at invocation time.</p>
 <span><span class="fu">observeEvent</span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">file</span>, <span class="op">{</span></span>
 <span>  <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">file</span><span class="op">$</span><span class="va">datapath</span><span class="op">)</span></span>
 <span>  <span class="va">data_env</span><span class="op">$</span><span class="va">uploaded</span> <span class="op">&lt;-</span> <span class="va">df</span></span>
-<span>  <span class="fu"><a href="../reference/register_protected_data.html">register_protected_data</a></span><span class="op">(</span><span class="va">df</span>, shield <span class="op">=</span> <span class="va">shield</span><span class="op">)</span> <span class="co"># no advance columns needed</span></span>
+<span>  <span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"uploaded"</span><span class="op">)</span> <span class="co"># no advance columns needed</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>A complete runnable host-style Shiny example is installed at:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -216,12 +220,11 @@ the live index at invocation time.</p>
 strict <code>DescribeData</code> metadata with raw identifiers
 suppressed.</p>
 <blockquote>
-<p><strong>Multi-user isolation:</strong> <code><a href="../reference/data_shield.html">data_shield()</a></code>
-returns a session-scoped state. Create it inside the Shiny server
-function, share it only among that user’s chat threads, and pass it
-explicitly to <code><a href="../reference/register_protected_data.html">register_protected_data()</a></code>. Other browser
-sessions receive separate states and cannot see or influence its
-index.</p>
+<p><strong>Multi-user isolation:</strong> create
+<code>DataShield$new()</code> inside the Shiny server function, share it
+only among the intended chat threads, and register data via
+<code>shield$register_data()</code>. Other browser sessions receive
+separate R6 instances and cannot see or influence its index.</p>
 </blockquote>
 <p>Illustrative behaviour of the P0 row-cap (implemented):</p>
 <table class="table">
@@ -347,7 +350,7 @@ receives real examples in strict mode. ## Roadmap</p>
 deterministically catches <em>targeted</em> leaks the row-cap lets
 through (e.g. printing one patient’s name), by matching tool output
 against high-entropy values registered with
-<code><a href="../reference/register_protected_data.html">register_protected_data()</a></code>.</li>
+<code>shield$register_data()</code>.</li>
 <li>
 <strong>P1 — <code>DescribeData</code> + protected-data registry
 (strict available)</strong>: the model’s sanctioned hardened view

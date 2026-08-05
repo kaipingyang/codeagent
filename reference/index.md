@@ -268,16 +268,12 @@ Tool factories and registration.
   : Build a rich tool result (typed display card) for a host tool
 - [`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
   : Install codeagent's central permission gate on an existing Chat
-- [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
-  : Install the Data Shield egress guard on a Chat (P0)
-- [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md)
-  : Register protected data for a session's Data Shield value_match
-- [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
-  : Data Shield — pluggable strict data-safety valve (P0 core)
-- [`describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/describe_data_tool.md)
-  : Create the strict DescribeData tool
-- [`register_describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/register_describe_data_tool.md)
-  : Register the strict DescribeData tool
+- [`DataShield`](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
+  : Stateful protected-data policy engine
+- [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)
+  : Configure strict protected-data metadata
+- [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md)
+  : Configure tool-result egress protection
 
 ## Data exploration (WEAR)
 

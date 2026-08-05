@@ -20,6 +20,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/BudgetTracker.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/CompactionController.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/ContentReplacementState.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/DataShield.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/DenialTracker.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/HookEvent.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/HookRegistry.html</loc></url>
@@ -79,10 +80,8 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/constants.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/context_collapse.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/context_window.html</loc></url>
-<url><loc>https://kaipingyang.github.io/codeagent/reference/data_shield.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_memory.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_session.html</loc></url>
-<url><loc>https://kaipingyang.github.io/codeagent/reference/describe_data_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-auto_compact_threshold.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-bg_poll.html</loc></url>
@@ -146,7 +145,6 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/hooks.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/index.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/install_codeagent_cli.html</loc></url>
-<url><loc>https://kaipingyang.github.io/codeagent/reference/install_data_shield.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/install_ds_skills.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/install_permission_gate.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/keyring_integration.html</loc></url>
@@ -181,7 +179,6 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_ask_user_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_btw_file_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_builtin_tools.html</loc></url>
-<url><loc>https://kaipingyang.github.io/codeagent/reference/register_describe_data_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_explore_data_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_lint_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_mcp_client.html</loc></url>
@@ -189,7 +186,6 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_midloop_compaction.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_notebook_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_plan_mode_tools.html</loc></url>
-<url><loc>https://kaipingyang.github.io/codeagent/reference/register_protected_data.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_r_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_rag_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_run_r_tool.html</loc></url>
@@ -221,6 +217,8 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/sessions.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/settings.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/setup.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/shield_describe.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/shield_egress.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/skills.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/snip_old_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/split_lines_with_buffer.html</loc></url>

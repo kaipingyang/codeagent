@@ -7,26 +7,20 @@
   fresh `CodeagentClient`/Chat inside every Shiny session; the no-client
   default uses this safe path automatically. Passing a pre-built
   `client` remains the explicitly single-user compatibility path. Data
-  Shield protected values now live in a session-scoped `DataShieldState`
-  that may be shared among that user’s chat threads without cross-user
-  index leakage.
+  Shield protected values live in a session/thread-owned `DataShield` R6
+  that may be shared deliberately without any package-global index.
 
-- **Data Shield P0/P0.5 (opt-in, default OFF)**:
-  `codeagent_client(data_shield = ...)` and
-  [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
-  wrap all registered tool functions so bulk row-level results are
-  replaced with a shape summary before reaching the LLM.
-  [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md)
-  adds deterministic high-entropy `value_match` protection for targeted
-  single-value leaks that the row-cap cannot detect. Includes
-  deterministic, live-LLM, and runtime-upload Shiny examples. Protected
-  values now live in an explicit per-session `DataShieldState`; one
-  browser session may share it across chat threads without any
-  cross-user index leakage. P1 adds the automatically registered
-  `DescribeData` tool: strict safe metadata only (schema, sensitivity,
-  missing presence, measure/open ranges and k-supported low-cardinality
-  labels), with no distributions, counts, raw rows, or free-text
-  examples.
+- **Data Shield P0/P0.5/P1 (opt-in, default OFF)** is now a single
+  stateful `DataShield` R6 engine. The easy
+  `data_shield=list(shield_*())` form creates a private R6; pass an
+  explicit `DataShield$new()` to register uploads or share a policy
+  across selected chats. `shield$install(chat)` wraps tool results;
+  `shield$register_data()` builds high-entropy value indexes;
+  `shield$describe()` powers the automatically installed strict
+  `DescribeData` tool. Bulk rows and targeted protected values are
+  withheld; metadata exposes no distributions, counts, raw rows, or
+  free-text examples. Scanner specs remain plain R functions/lists (no
+  custom S7).
 
 - **Backend permission gate for host tools**: new exported
   `install_permission_gate(chat, permission_mode, rules, tools, ask_fn, tool_meta)`

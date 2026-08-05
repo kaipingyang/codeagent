@@ -88,13 +88,12 @@ codeagent_client(
 
 - data_shield:
 
-  `NULL` (off, default), a config list (creates a private state), or a
-  [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
-  `DataShieldState` shared by all chat threads in one user session. Tool
-  results shaped like bulk rows or containing registered protected
-  values are filtered before reaching the model. For a harness-only
-  client, attach tools then call
-  [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md).
+  `NULL` (off), a strategy list from `shield_*()` (creates a private
+  [DataShield](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
+  R6), or an explicit
+  [DataShield](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
+  instance shared by selected chat threads. For a harness-only client,
+  attach tools then call `client$data_shield$install(client$chat)`.
 
 ## Value
 

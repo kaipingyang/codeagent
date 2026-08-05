@@ -133,11 +133,10 @@ expensive tool registration; call <code><a href="dot-register_all_tools.html">.r
 
 
 <dt id="arg-data-shield">data_shield<a class="anchor" aria-label="anchor" href="#arg-data-shield"></a></dt>
-<dd><p><code>NULL</code> (off, default), a config list (creates a private
-state), or a <code><a href="data_shield.html">data_shield()</a></code> <code>DataShieldState</code> shared by all chat threads
-in one user session. Tool results shaped like bulk rows or containing
-registered protected values are filtered before reaching the model. For a
-harness-only client, attach tools then call <code><a href="install_data_shield.html">install_data_shield()</a></code>.</p></dd>
+<dd><p><code>NULL</code> (off), a strategy list from <code>shield_*()</code> (creates a
+private <a href="DataShield.html">DataShield</a> R6), or an explicit <a href="DataShield.html">DataShield</a> instance shared by
+selected chat threads. For a harness-only client, attach tools then call
+<code>client$data_shield$install(client$chat)</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

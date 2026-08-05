@@ -217,14 +217,10 @@ bump the major and are announced in `NEWS.md`. The guard test
 - [`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
 - [`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
   (+ `ask_fn(name, input, id = NULL)` contract)
-- [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
+- `DataShield` /
+  [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)
   /
-  [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
-  /
-  [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md)
-- [`describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/describe_data_tool.md)
-  /
-  [`register_describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/register_describe_data_tool.md)
+  [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md)
 - [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md)
   /
   [`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)
