@@ -12,6 +12,7 @@ test_that("Backend Contract v1: the promised functions are exported", {
     "codeagent_client", "codeagent_stream", "codeagent_stream_async", "agent_loop",
     # host tools + governance
     "register_tool_meta", "tool_result", "install_permission_gate",
+    "data_shield", "install_data_shield", "register_protected_data",
     # skills
     "list_skills_meta", "load_skill_prompt", "build_skill_hint",
     # context + model
@@ -31,6 +32,7 @@ test_that("Backend Contract v1: harness-only client registers no tools", {
   expect_s3_class(client, "CodeagentClient")
   expect_true(!is.null(client$chat))
   expect_true(!is.null(client$settings))
+  expect_null(client$data_shield)
   # The whole point of register_tools = FALSE: no coding tools attached.
   tools <- tryCatch(client$chat$get_tools(), error = function(e) list())
   expect_length(tools, 0L)

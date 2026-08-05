@@ -4,25 +4,29 @@
 \alias{install_data_shield}
 \title{Install the Data Shield egress guard on a Chat (P0)}
 \usage{
-install_data_shield(chat, max_rows = 0L)
+install_data_shield(chat, max_rows = NULL, shield = NULL)
 }
 \arguments{
-\item{chat}{An \code{ellmer::Chat}.}
+\item{chat}{An \code{ellmer::Chat} or \code{CodeagentClient}.}
 
-\item{max_rows}{Integer. Rows to keep before truncating a bulk tabular result
-(\code{0} = shape summary only).}
+\item{max_rows}{Optional integer override for rows retained from bulk output.}
+
+\item{shield}{Optional \code{\link[=data_shield]{data_shield()}} state. Required only when \code{chat} is a
+bare Chat that does not already have a shield attached.}
 }
 \value{
-Invisibly, \code{chat}.
+Invisibly, the Chat.
 }
 \description{
-Opt-in strict data-safety guard. Wraps every tool currently registered on
-\code{chat} so that bulk row-level data in a tool's result is truncated to a shape
-summary before it reaches the model (edge 2 of the two inbound edges; see the
-\code{data-shield} vignette). Off by default; call once \strong{after} all tools are
-registered. Content-agnostic and shape-based -- it does not inspect code or
-block \code{print}.
+Wrap every tool currently registered on \code{chat} so bulk rows and registered
+protected values are filtered before reaching the model. The mutable
+\code{DataShieldState} is per user session and may be shared by multiple chat
+threads in that session. Calling again wraps newly registered tools and is
+otherwise idempotent.
+
+Pass a \code{CodeagentClient} directly, or a Chat plus \verb{shield=}. For a
+harness-only client, register host tools first, then call this function.
 }
 \seealso{
-\code{\link[=codeagent_client]{codeagent_client()}}
+\code{\link[=data_shield]{data_shield()}}, \code{\link[=register_protected_data]{register_protected_data()}}, \code{\link[=codeagent_client]{codeagent_client()}}
 }

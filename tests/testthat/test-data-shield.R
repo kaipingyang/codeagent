@@ -33,16 +33,12 @@ test_that(".data_shield_filter_result caps bulk results, passes harmless", {
 test_that("install_data_shield wraps tools so bulk results are capped, harmless pass", {
   chat <- ellmer::chat_openai_compatible(
     base_url = "http://x", model = "m", credentials = function() "k")
-  reg <- codeagent:::.data_shield_installed
-  on.exit(rm(list = ls(reg), envir = reg), add = TRUE)
-
   dump <- ellmer::tool(function() mtcars, name = "Dump",
                        description = "returns a bulk data.frame", arguments = list())
   scal <- ellmer::tool(function() "ok", name = "Scal",
                        description = "returns a scalar", arguments = list())
   chat$register_tool(dump)
   chat$register_tool(scal)
-
   install_data_shield(chat, max_rows = 0L)
   tools <- chat$get_tools()
   by_name <- function(nm) {
@@ -56,9 +52,14 @@ test_that("install_data_shield wraps tools so bulk results are capped, harmless 
   expect_identical(scaled, "ok")                                     # scalar passed
 })
 
-test_that("codeagent_client exposes data_shield (off by default) + install_data_shield exported", {
+test_that("codeagent_client exposes per-session Data Shield API (off by default)", {
   expect_true("data_shield" %in% names(formals(codeagent_client)))
-  expect_true("install_data_shield" %in% getNamespaceExports("codeagent"))
+  expect_true(all(c("data_shield", "install_data_shield",
+                    "register_protected_data") %in% getNamespaceExports("codeagent")))
+  chat <- ellmer::chat_openai_compatible(
+    base_url = "http://x", model = "m", credentials = function() "k")
+  off <- codeagent_client(chat, register_tools = FALSE)
+  expect_null(off$data_shield)
 })
 
 
@@ -83,12 +84,9 @@ test_that("value_match indexes high-entropy values, ignores low-card/small-int (
 
 
 test_that("register_protected_data + shield withholds targeted value leaks (row-cap misses)", {
-  idx <- codeagent:::.data_shield_index
-  reg <- codeagent:::.data_shield_installed
-  on.exit({ rm(list = ls(idx), envir = idx); rm(list = ls(reg), envir = reg) }, add = TRUE)
-
+  shield <- data_shield(max_rows = 0L)
   df <- data.frame(name = paste0("Subject", 1:50), stringsAsFactors = FALSE)
-  expect_gt(register_protected_data(df), 0)
+  expect_gt(register_protected_data(df, shield = shield), 0)
 
   chat <- ellmer::chat_openai_compatible(
     base_url = "http://x", model = "m", credentials = function() "k")
@@ -98,13 +96,55 @@ test_that("register_protected_data + shield withholds targeted value leaks (row-
   safe <- ellmer::tool(function() "The analysis converged.", name = "Safe",
                        description = "d", arguments = list())
   chat$register_tool(leak); chat$register_tool(safe)
-  install_data_shield(chat, max_rows = 0L)
+  install_data_shield(chat, shield = shield)
 
   by_name <- function(nm) {
     for (t in chat$get_tools())
       if (identical(tryCatch(S7::prop(t, "name"), error = function(e) ""), nm)) return(t)
     NULL
   }
-  expect_match(by_name("Leak")(), "withheld")                       # protected value blocked
-  expect_identical(by_name("Safe")(), "The analysis converged.")    # harmless passes
+  expect_match(by_name("Leak")(), "withheld")
+  expect_identical(by_name("Safe")(), "The analysis converged.")
+})
+
+test_that("Data Shield state is isolated between clients in the same R process", {
+  make_client <- function(value) {
+    chat <- ellmer::chat_openai_compatible(
+      base_url = "http://x", model = "m", credentials = function() "k")
+    client <- codeagent_client(chat, register_tools = FALSE,
+                               data_shield = data_shield(max_rows = 0L))
+    tool <- ellmer::tool(function() value, name = "Leak",
+                         description = "d", arguments = list())
+    chat$register_tool(tool)
+    install_data_shield(client)
+    client
+  }
+  run_tool <- function(client) client$chat$get_tools()[[1L]]()
+
+  client_a <- make_client("SubjectA007")
+  client_b <- make_client("SubjectA007")
+  register_protected_data(
+    data.frame(id = paste0("SubjectA", sprintf("%03d", 1:20))),
+    client = client_a)
+
+  expect_match(run_tool(client_a), "withheld")       # A protects A's value
+  expect_identical(run_tool(client_b), "SubjectA007")# B cannot see A's index
+  expect_false(identical(client_a$data_shield, client_b$data_shield))
+})
+
+test_that("one session shield can be shared by multiple chat threads", {
+  shield <- data_shield(max_rows = 0L)
+  make_chat <- function() {
+    chat <- ellmer::chat_openai_compatible(
+      base_url = "http://x", model = "m", credentials = function() "k")
+    chat$register_tool(ellmer::tool(function() "PatientThread9", name = "Leak",
+                                    description = "d", arguments = list()))
+    install_data_shield(chat, shield = shield)
+    chat
+  }
+  chat_1 <- make_chat(); chat_2 <- make_chat()
+  register_protected_data(
+    data.frame(id = paste0("PatientThread", 1:20)), shield = shield)
+  expect_match(chat_1$get_tools()[[1L]](), "withheld")
+  expect_match(chat_2$get_tools()[[1L]](), "withheld")
 })

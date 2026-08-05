@@ -4,7 +4,7 @@
 \alias{.new_client}
 \title{Wrap an ellmer Chat with codeagent settings into a client object}
 \usage{
-.new_client(chat, settings)
+.new_client(chat, settings, data_shield = NULL)
 }
 \arguments{
 \item{chat}{Ellmer Chat object (already equipped with tools and system prompt).}

@@ -48,15 +48,15 @@ external MCP servers; see \code{\link[=register_mcp_client]{register_mcp_client(
 tools) so callers (e.g. \code{\link[=codeagent_app]{codeagent_app()}}) can render UI first and defer the
 expensive tool registration; call \code{\link[=.register_all_tools]{.register_all_tools()}} later.}
 
-\item{data_shield}{\code{NULL} (off, default) or a list enabling the opt-in Data
-Shield egress guard (e.g. \code{list(max_rows = 0)}): tool results shaped like
-bulk row-level data are truncated to a shape summary before reaching the
-model. For a harness-only client (\code{register_tools = FALSE}) install it
-yourself after attaching tools via \code{\link[=install_data_shield]{install_data_shield()}}. See the
-\code{data-shield} vignette.}
+\item{data_shield}{\code{NULL} (off, default), a config list (creates a private
+state), or a \code{\link[=data_shield]{data_shield()}} \code{DataShieldState} shared by all chat threads
+in one user session. Tool results shaped like bulk rows or containing
+registered protected values are filtered before reaching the model. For a
+harness-only client, attach tools then call \code{\link[=install_data_shield]{install_data_shield()}}.}
 }
 \value{
-Object of class \code{CodeagentClient} with slots \verb{$chat} and \verb{$settings}.
+Object of class \code{CodeagentClient} with \verb{$chat}, \verb{$settings}, and
+\verb{$data_shield} (NULL when disabled).
 }
 \description{
 Injects codeagent tools (Bash, Read, Write, Edit, Glob, Grep, LS, btw tools,

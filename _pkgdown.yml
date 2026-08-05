@@ -163,6 +163,7 @@ reference:
       - install_permission_gate
       - install_data_shield
       - register_protected_data
+      - data_shield
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."

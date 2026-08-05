@@ -16,8 +16,9 @@ NULL
 #' @param settings Named list from [load_settings()].
 #' @return Object of class `CodeagentClient`.
 #' @keywords internal
-.new_client <- function(chat, settings) {
-  structure(list(chat = chat, settings = settings), class = "CodeagentClient")
+.new_client <- function(chat, settings, data_shield = NULL) {
+  structure(list(chat = chat, settings = settings, data_shield = data_shield),
+            class = "CodeagentClient")
 }
 
 #' @export
@@ -148,13 +149,13 @@ print.CodeagentClient <- function(x, ...) {
 #'   `FALSE` returns a lightweight shell (chat + settings + system prompt, no
 #'   tools) so callers (e.g. [codeagent_app()]) can render UI first and defer the
 #'   expensive tool registration; call [.register_all_tools()] later.
-#' @param data_shield `NULL` (off, default) or a list enabling the opt-in Data
-#'   Shield egress guard (e.g. `list(max_rows = 0)`): tool results shaped like
-#'   bulk row-level data are truncated to a shape summary before reaching the
-#'   model. For a harness-only client (`register_tools = FALSE`) install it
-#'   yourself after attaching tools via [install_data_shield()]. See the
-#'   `data-shield` vignette.
-#' @return Object of class `CodeagentClient` with slots `$chat` and `$settings`.
+#' @param data_shield `NULL` (off, default), a config list (creates a private
+#'   state), or a [data_shield()] `DataShieldState` shared by all chat threads
+#'   in one user session. Tool results shaped like bulk rows or containing
+#'   registered protected values are filtered before reaching the model. For a
+#'   harness-only client, attach tools then call [install_data_shield()].
+#' @return Object of class `CodeagentClient` with `$chat`, `$settings`, and
+#'   `$data_shield` (NULL when disabled).
 #' @export
 codeagent_client <- function(
   chat               = NULL,
@@ -193,7 +194,8 @@ codeagent_client <- function(
   settings$worktree_isolation  <- isTRUE(worktree_isolation)
   settings$verify_fn           <- verify_fn
   settings$mcp_config          <- mcp_config
-  settings$data_shield         <- data_shield
+  shield_state <- .data_shield_resolve(data_shield)
+  settings$data_shield <- if (is.null(shield_state)) NULL else shield_state$config
 
   # Declarative hooks from settings.json -> live HookRegistry (M5 closing).
   settings$hooks_registry      <- tryCatch(.hooks_from_settings(settings),
@@ -225,11 +227,11 @@ codeagent_client <- function(
   # Data Shield (opt-in): wrap tool results through the egress row-cap (edge 2).
   # For a harness-only client (register_tools = FALSE) the host installs it
   # after attaching their own tools via install_data_shield().
-  if (isTRUE(register_tools) && !is.null(data_shield))
-    tryCatch(install_data_shield(chat, max_rows = .data_shield_max_rows(data_shield)),
+  if (isTRUE(register_tools) && !is.null(shield_state))
+    tryCatch(install_data_shield(chat, shield = shield_state),
              error = function(e) NULL)
 
-  .new_client(chat, settings)
+  .new_client(chat, settings, data_shield = shield_state)
 }
 
 # ---------------------------------------------------------------------------

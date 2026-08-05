@@ -3,6 +3,16 @@
 \name{data_shield}
 \alias{data_shield}
 \title{Data Shield --- pluggable strict data-safety valve (P0 core)}
+\usage{
+data_shield(max_rows = 0L)
+}
+\arguments{
+\item{max_rows}{Integer. Rows to retain from bulk tabular tool output (\code{0}
+means shape summary only).}
+}
+\value{
+A mutable \code{DataShieldState} environment.
+}
 \description{
 Opt-in guard that stops raw row-level data from reaching the LLM via the two
 inbound edges: (1) prompt-side auto-injection (ambient context) and (2) tool
@@ -13,5 +23,13 @@ row-cap} for tool results (edge 2). It does NOT inspect code or block
 \code{print}; it looks only at the \emph{shape} of a tool's returned text and truncates
 output that has the signature of a bulk row-level data dump, passing scalars,
 messages, model summaries, plots and errors through untouched.
+
+Create the mutable state shared by all codeagent clients / chat threads in
+one user session. The protected-value index lives here (never package-global),
+so separate Shiny sessions cannot see or influence each other's values.
+
+Pass the returned object as \code{data_shield = shield} to every
+\code{\link[=codeagent_client]{codeagent_client()}} created for that user session, then register uploaded
+data with \code{register_protected_data(df, shield = shield)}.
 }
 \keyword{internal}
