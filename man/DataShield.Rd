@@ -38,6 +38,7 @@ shield$coverage()
     \item \href{#method-DataShield-install}{\code{DataShield$install()}}
     \item \href{#method-DataShield-describe}{\code{DataShield$describe()}}
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
+    \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
     \item \href{#method-DataShield-close}{\code{DataShield$close()}}
@@ -74,7 +75,7 @@ implemented; \code{"on"}/\code{"dp"} fail explicitly.}
       \item{\code{category_ratio}}{Maximum distinct/non-missing ratio for character
 categorical treatment.}
       \item{\code{strategies}}{Optional ordered list from \code{\link[=shield_describe]{shield_describe()}},
-\code{\link[=shield_egress]{shield_egress()}}, and \code{\link[=shield_regex]{shield_regex()}}. If supplied, only listed
+\code{\link[=shield_egress]{shield_egress()}}, \code{\link[=shield_regex]{shield_regex()}}, and \code{\link[=shield_ingress]{shield_ingress()}}. If supplied, only listed
 strategies are enabled and list order controls egress execution order.}
     }
     \if{html}{\out{</div>}}
@@ -148,6 +149,29 @@ deterministic value indexing (reduces low-entropy false positives).}
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$scan_egress(result)}
     \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-scan_ingress"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-scan_ingress}{}}}
+\subsection{\code{DataShield$scan_ingress()}}{
+  Scan one tool request before execution.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$scan_ingress(tool_name, input)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_name}}{Model-facing tool name.}
+      \item{\code{input}}{Named list of tool arguments.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    List with action (\code{pass}, \code{block}, or \code{ask}), reason, matches and score.
   }
 }
 

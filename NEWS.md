@@ -1,5 +1,13 @@
 # codeagent (development version)
 
+* **Universal Data Shield ingress scanning**: new `shield_ingress()` scans the
+  arguments of every native/btw/MCP/host tool inside the single central
+  permission gate before execution. High-confidence R/Python/Bash serialization,
+  encoded output, network exfiltration, shell data-file display, registered-data
+  preview calls, and custom PCRE rules may `block` or force the existing `ask_fn`
+  approval UI. Read-only/unknown tools no longer bypass a Shield-forced ask;
+  without a Shield, permission behaviour is unchanged.
+
 * **Composable egress scanners**: `DataShield` now executes an ordered scanner
   pipeline (list order = execution order) and supports runtime
   `$add_scanner(name, fn)`. New `shield_regex()` redacts or blocks unregistered

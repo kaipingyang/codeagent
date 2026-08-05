@@ -185,12 +185,23 @@ register_tool_meta <- function(name,
     if (!is.null(ctx$hooks))
       tryCatch(ctx$hooks$run_pre(name, input), error = function(e) NULL)  # PreToolUse
 
+    # Data Shield ingress runs for EVERY tool before capability/read fast-paths.
+    shield <- ctx$data_shield %||%
+      tryCatch(attr(ctx$chat, "codeagent_data_shield"), error=function(e) NULL)
+    shield_decision <- if (inherits(shield, "DataShield"))
+      tryCatch(shield$scan_ingress(name, input),
+               error=function(e) list(action="block", reason="Data Shield ingress failed safely"))
+      else list(action="pass")
+    if (identical(shield_decision$action, "block"))
+      return(deny(name, input, shield_decision$reason %||% "Data Shield ingress blocked"))
+    shield_ask <- identical(shield_decision$action, "ask")
+
     ov  <- ctx$policy$overrides[[name]]
     cap <- .tool_capability(name, tool)
-    # benign (read/meta) tools with no explicit override: allow, don't gate.
-    if (is.null(ov) && identical(cap, "read")) return(invisible())
+    # benign tools auto-allow only when Data Shield did not force approval.
+    if (!shield_ask && is.null(ov) && identical(cap, "read")) return(invisible())
 
-    decision <- tryCatch(
+    decision <- if (shield_ask) "ask" else tryCatch(
       .gate_decide(name, input, ctx$policy, resolve_mode(), ctx$rules, cap),
       error = function(e) "allow")
 
@@ -232,6 +243,8 @@ register_tool_meta <- function(name,
   ctx$rules    <- rules
   ctx$ask_fn   <- ask_fn
   ctx$hooks    <- hooks
+  ctx$chat     <- NULL
+  ctx$data_shield <- NULL
   ctx$installed <- FALSE
   ctx
 }
@@ -261,13 +274,16 @@ register_tool_meta <- function(name,
                                      rules = list(), ask_fn = NULL, hooks = NULL) {
   key <- tryCatch(rlang::obj_address(chat), error = function(e) NULL) %||% "default"
   ctx <- .gate_contexts[[key]]
+  shield <- settings$data_shield_engine %||% attr(chat, "codeagent_data_shield")
   if (is.null(ctx)) {
     ctx <- .make_gate_ctx(.resolve_tool_policy(settings), mode_env, rules, ask_fn, hooks)
+    ctx$chat <- chat; ctx$data_shield <- shield
     .gate_contexts[[key]] <- ctx
   } else {
-    # refresh live context (mode/ask_fn/policy/hooks may have changed)
+    # refresh live context (mode/ask_fn/policy/hooks/shield may have changed)
     ctx$policy <- .resolve_tool_policy(settings); ctx$mode_env <- mode_env
     ctx$rules  <- rules; ctx$ask_fn <- ask_fn; ctx$hooks <- hooks
+    ctx$chat <- chat; ctx$data_shield <- shield
   }
   if (isTRUE(ctx$installed)) return(invisible(chat))   # gate already on this chat
   ctx$installed <- TRUE

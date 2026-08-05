@@ -118,9 +118,59 @@ shield_regex <- function(patterns = NULL, include_defaults = TRUE,
   if (!length(resolved)) stop("At least one regex pattern is required.", call. = FALSE)
   fn <- .data_shield_regex_scanner(
     resolved, replacement = replacement,
+
     on_fail = match.arg(on_fail), ignore_case = ignore_case)
   .new_shield_strategy("scanner", name = "regex", fn = fn)
 }
+#' Configure universal tool-call ingress scanning
+#'
+#' @description
+#' Scan every tool's arguments in the central permission gate before execution.
+#' Default rules target high-confidence data serialization, encoded output,
+#' network exfiltration, shell display of data files, and direct previews of
+#' registered protected dataset names. This is defense-in-depth; egress remains
+#' the primary model-data boundary.
+#'
+#' @param langs Any of `"r"`, `"python"`, and `"bash"`; controls which
+#'   language-specific default rules are included.
+#' @param patterns Optional named regular expressions using PCRE
+#'   (Perl-Compatible Regular Expression) syntax, appended after defaults.
+#' @param include_defaults Include built-in serialization/encoding, network
+#'   transfer, shell data-file display, and protected-name preview rules.
+#' @param on_fail `"block"` rejects the tool call; `"ask"` forces the existing
+#'   permission approval callback/UI (including the tool-call id).
+#' @param ignore_case Apply case-insensitive matching.
+#' @return A Data Shield ingress strategy specification.
+#' @examples
+#' strict_calls <- shield_ingress(on_fail = "block")
+#' supervised <- shield_ingress(langs = c("r", "python", "bash"), on_fail = "ask")
+#' @export
+shield_ingress <- function(langs = c("r", "python", "bash"), patterns = NULL,
+                           include_defaults = TRUE,
+                           on_fail = c("block", "ask"), ignore_case = TRUE) {
+  langs <- match.arg(tolower(langs), c("r", "python", "bash"), several.ok = TRUE)
+  if (!is.null(patterns) &&
+      (!is.character(patterns) || is.null(names(patterns)) || any(!nzchar(names(patterns)))))
+    stop("`patterns` must be a named character vector.", call. = FALSE)
+  defaults <- character()
+  if (isTRUE(include_defaults) && "r" %in% langs) defaults <- c(defaults,
+    r_serialize = "\\b(?:serialize|saveRDS|dput|jsonlite::toJSON|base64enc::base64encode|write\\.csv|write\\.table)\\s*\\(",
+    r_network = "\\b(?:httr2?::(?:request|POST|PUT|PATCH)|curl::)\\b")
+  if (isTRUE(include_defaults) && "python" %in% langs) defaults <- c(defaults,
+    py_serialize = "\\b(?:pickle\\.dumps?|json\\.dumps?|base64\\.b64encode)\\s*\\(",
+    py_network = "\\brequests\\.(?:post|put|patch)\\s*\\(",
+    py_df_print = "\\bprint\\s*\\(\\s*(?:df|data|dataset)\\b")
+  if (isTRUE(include_defaults) && "bash" %in% langs) defaults <- c(defaults,
+    sh_upload = "\\bcurl\\b[^\\n]*(?:--data|-d\\s|--upload-file|-T\\s)|\\bwget\\b[^\\n]*--post-data",
+    sh_data_print = "\\b(?:cat|head|tail)\\s+[^\\n;|]*(?:\\.csv|\\.parquet|\\.sas7bdat|\\.xlsx)\\b",
+    sh_base64 = "\\bbase64\\s+")
+  resolved <- c(defaults, patterns %||% character())
+  if (!length(resolved)) stop("At least one ingress pattern is required.", call. = FALSE)
+  fn <- .data_shield_ingress_scanner(
+    resolved, on_fail = match.arg(on_fail), ignore_case = ignore_case)
+  .new_shield_strategy("ingress", name = "ingress", fn = fn)
+}
+
 #' Stateful protected-data policy engine
 #'
 #' @description
@@ -165,7 +215,7 @@ DataShield <- R6::R6Class(
     #' @param category_ratio Maximum distinct/non-missing ratio for character
     #'   categorical treatment.
     #' @param strategies Optional ordered list from [shield_describe()],
-    #'   [shield_egress()], and [shield_regex()]. If supplied, only listed
+    #'   [shield_egress()], [shield_regex()], and [shield_ingress()]. If supplied, only listed
     #'   strategies are enabled and list order controls egress execution order.
     initialize = function(max_rows = 0L, distributions = "off", k_anon = 5L,
                           category_max = 20L, category_ratio = 0.2,
@@ -181,6 +231,7 @@ DataShield <- R6::R6Class(
       private$index <- new.env(parent = emptyenv())
       private$strategies <- list()
       private$egress_pipeline <- list()
+      private$ingress_pipeline <- list()
       private$closed <- FALSE
       if (is.null(strategies)) {
         private$egress_pipeline[[1L]] <- list(
@@ -279,6 +330,28 @@ DataShield <- R6::R6Class(
       output
     },
 
+    #' @description Scan one tool request before execution.
+    #' @param tool_name Model-facing tool name.
+    #' @param input Named list of tool arguments.
+    #' @return List with action (`pass`, `block`, or `ask`), reason, matches and score.
+    scan_ingress = function(tool_name, input) {
+      private$assert_open()
+      if (!length(private$ingress_pipeline))
+        return(list(action="pass", reason=NULL, matches=character(), score=0))
+      text <- .data_shield_flatten_tool_input(tool_name, input)
+      context <- list(edge="ingress", tool_name=tool_name,
+                      input=input, protected_names=names(private$datasets), shield=self)
+      for (stage in private$ingress_pipeline) {
+        decision <- tryCatch(
+          .data_shield_validate_ingress_result(stage$fn(text, context), stage$name),
+          error = function(e) list(
+            action="block", reason=sprintf("scanner '%s' failed safely", stage$name),
+            matches=character(), score=1))
+        if (!identical(decision$action, "pass")) return(decision)
+      }
+      list(action="pass", reason=NULL, matches=character(), score=0)
+    },
+
     #' @description Add a custom scanner function to the end of the egress pipeline.
     add_scanner = function(name, fn) {
       private$assert_open()
@@ -312,6 +385,7 @@ DataShield <- R6::R6Class(
       list(config = private$config, datasets = names(private$datasets),
            indexed_values = length(ls(private$index, all.names = TRUE)),
            egress_pipeline = vapply(private$egress_pipeline, `[[`, character(1), "name"),
+           ingress_pipeline = vapply(private$ingress_pipeline, `[[`, character(1), "name"),
            closed = private$closed)
     }
   ),
@@ -321,6 +395,7 @@ DataShield <- R6::R6Class(
     index = NULL,
     strategies = NULL,
     egress_pipeline = NULL,
+    ingress_pipeline = NULL,
     closed = FALSE,
 
     assert_open = function() {
@@ -344,6 +419,9 @@ DataShield <- R6::R6Class(
       } else if (identical(type, "scanner")) {
         private$config$egress_enabled <- TRUE
         private$egress_pipeline[[length(private$egress_pipeline) + 1L]] <- list(
+          type = "scanner", name = cfg$name, fn = cfg$fn)
+      } else if (identical(type, "ingress")) {
+        private$ingress_pipeline[[length(private$ingress_pipeline) + 1L]] <- list(
           type = "scanner", name = cfg$name, fn = cfg$fn)
       } else {
         stop("Unknown Data Shield strategy: ", type, call. = FALSE)
@@ -474,6 +552,59 @@ DataShield <- R6::R6Class(
   if (!changed) return(result)
   if (identical(kind, "content")) { result@value <- scanned$sanitized; return(result) }
   scanned$sanitized
+}
+
+# Flatten arbitrary tool arguments to a local-only scan string; no value is sent
+# anywhere by this operation.
+.data_shield_flatten_tool_input <- function(tool_name, input) {
+  walk <- function(x, path = "") {
+    if (is.list(x)) {
+      nms <- names(x) %||% rep("", length(x))
+      return(unlist(Map(function(value, name) {
+        next_path <- paste(c(path, name[nzchar(name)]), collapse=".")
+        walk(value, next_path)
+      }, x, nms), use.names=FALSE))
+    }
+    value <- tryCatch(paste(as.character(x), collapse=" "), error=function(e) "")
+    paste0(path, if(nzchar(path)) "=" else "", value)
+  }
+  paste(c(paste0("tool=", tool_name), walk(input)), collapse="\n")
+}
+
+.data_shield_ingress_scanner <- function(patterns, on_fail, ignore_case) {
+  for (pattern in patterns)
+    tryCatch(grepl(pattern, "", perl=TRUE, ignore.case=ignore_case),
+             error=function(e) stop("Invalid ingress regex: ",conditionMessage(e),call.=FALSE))
+  force(patterns); force(on_fail); force(ignore_case)
+  function(text, context) {
+    resolved <- patterns
+    protected <- context$protected_names %||% character()
+    if (length(protected)) {
+      escaped <- gsub("([][{}()+*^$|\\\\?.])", "\\\\\\1", protected)
+      resolved <- c(resolved,
+        protected_preview = paste0(
+          "\\b(?:head|tail|print|dput|cat|View)\\s*\\(\\s*(?:",
+          paste(escaped,collapse="|"), ")\\b"))
+    }
+    spans <- .data_shield_regex_spans(text, resolved, ignore_case)
+    if (!nrow(spans))
+      return(list(action="pass",reason=NULL,matches=character(),score=0,spans=spans))
+    labels <- unique(unlist(strsplit(spans$label,"\\|",perl=TRUE)))
+    list(action=on_fail,
+         reason=paste0("Data Shield ingress matched: ",paste(labels,collapse=", ")),
+         matches=labels, score=min(1,nrow(spans)/5), spans=spans)
+  }
+}
+
+.data_shield_validate_ingress_result <- function(result, name) {
+  ok <- is.list(result) && is.character(result$action) && length(result$action)==1L &&
+    result$action %in% c("pass","block","ask") &&
+    is.numeric(result$score) && length(result$score)==1L && !is.na(result$score) &&
+    result$score >= 0 && result$score <= 1
+  if (!isTRUE(ok)) stop("Ingress scanner '",name,"' returned an invalid result.",call.=FALSE)
+  result$matches <- result$matches %||% character()
+  result$reason <- result$reason %||% NULL
+  result
 }
 
 # Does `text` look like a bulk row-level data dump (vs a scalar/message/summary)?

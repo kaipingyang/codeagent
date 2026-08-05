@@ -13,6 +13,7 @@ test_that("Backend Contract v1: the promised functions are exported", {
     # host tools + governance
     "register_tool_meta", "tool_result", "install_permission_gate",
     "DataShield", "shield_describe", "shield_egress", "shield_regex",
+    "shield_ingress",
     # skills
     "list_skills_meta", "load_skill_prompt", "build_skill_hint",
     # context + model

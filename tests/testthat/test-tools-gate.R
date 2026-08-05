@@ -208,3 +208,55 @@ test_that("install_permission_gate installs the gate + applies tool_meta", {
   # unnamed tool_meta is rejected
   expect_error(install_permission_gate(chat, tool_meta = list("write")))
 })
+
+
+# --- Data Shield ingress: universal pre-tool interception ---
+
+test_that("Data Shield ingress block rejects even a read/unknown tool", {
+  shield <- DataShield$new(strategies=list(
+    shield_ingress(patterns=c(exfil="SEND_SECRET\\("),
+                   include_defaults=FALSE, on_fail="block")))
+  policy <- codeagent:::.resolve_tool_policy(list())
+  mode_env <- new.env(); mode_env$mode <- "default"
+  ctx <- codeagent:::.make_gate_ctx(policy, mode_env)
+  ctx$data_shield <- shield
+  gate <- codeagent:::.tool_gate_fn(ctx)
+  req <- ellmer::ContentToolRequest(
+    id="call-shield-block", name="UnknownReadTool",
+    arguments=list(payload="SEND_SECRET(x)"))
+  expect_error(gate(req), "Data Shield ingress matched")
+})
+
+test_that("Data Shield ingress ask bypasses read fast-path and uses existing approval", {
+  shield <- DataShield$new(strategies=list(
+    shield_ingress(patterns=c(review="CHECK_DATA\\("),
+                   include_defaults=FALSE, on_fail="ask")))
+  policy <- codeagent:::.resolve_tool_policy(list())
+  mode_env <- new.env(); mode_env$mode <- "default"
+  seen <- new.env(); seen$called <- FALSE; seen$id <- NULL
+  ask_fn <- function(name, input, id=NULL) {
+    seen$called <- TRUE; seen$id <- id; TRUE
+  }
+  ctx <- codeagent:::.make_gate_ctx(policy, mode_env, ask_fn=ask_fn)
+  ctx$data_shield <- shield
+  gate <- codeagent:::.tool_gate_fn(ctx)
+  req <- ellmer::ContentToolRequest(
+    id="call-shield-ask", name="Read",
+    arguments=list(command="CHECK_DATA(x)"))
+  expect_silent(gate(req))
+  expect_true(seen$called)
+  expect_identical(seen$id, "call-shield-ask")
+})
+
+test_that("no Data Shield preserves ordinary read fast-path", {
+  policy <- codeagent:::.resolve_tool_policy(list())
+  mode_env <- new.env(); mode_env$mode <- "default"
+  called <- FALSE
+  ctx <- codeagent:::.make_gate_ctx(
+    policy, mode_env, ask_fn=function(...) { called <<- TRUE; FALSE })
+  gate <- codeagent:::.tool_gate_fn(ctx)
+  req <- ellmer::ContentToolRequest(
+    id="call-no-shield", name="Read", arguments=list(file_path="data.csv"))
+  expect_silent(gate(req))
+  expect_false(called)
+})
