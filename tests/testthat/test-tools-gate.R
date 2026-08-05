@@ -283,3 +283,17 @@ test_that("Shield tool bypass never bypasses the independent permission gate", {
   expect_true(any(shield$audit()$strategy=="tool_policy" &
                   shield$audit()$action=="bypass"))
 })
+
+
+test_that("portable sandbox blocks project-external Read before read fast-path", {
+  root <- withr::local_tempdir(); outside <- tempfile(); writeLines("x",outside)
+  on.exit(unlink(outside),add=TRUE)
+  shield <- DataShield$new(strategies=list(shield_sandbox(project_root=root,backend="policy")))
+  policy <- codeagent:::.resolve_tool_policy(list())
+  mode_env <- new.env(); mode_env$mode <- "default"
+  ctx <- codeagent:::.make_gate_ctx(policy,mode_env); ctx$data_shield <- shield
+  gate <- codeagent:::.tool_gate_fn(ctx)
+  req <- ellmer::ContentToolRequest(
+    id="sandbox-read",name="Read",arguments=list(file_path=outside))
+  expect_error(gate(req),"outside sandbox roots")
+})

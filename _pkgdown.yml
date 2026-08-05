@@ -167,6 +167,7 @@ reference:
       - shield_regex
       - shield_ingress
       - shield_tool_policy
+      - shield_sandbox
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."

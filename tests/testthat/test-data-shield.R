@@ -453,3 +453,44 @@ test_that("tool policy validation rejects ambiguous rules", {
   expect_error(shield_tool_policy(rules=list(KMPlot=list(unknown="scan"))),
                "execution/ingress/egress")
 })
+
+
+test_that("shield_sandbox preserves project rwx and enforces protected rw", {
+  root <- withr::local_tempdir(); dir.create(file.path(root,"data")); dir.create(file.path(root,"tmp"))
+  file.create(file.path(root,"script.R")); file.create(file.path(root,"data","study.csv"))
+  shield <- DataShield$new(strategies=list(shield_sandbox(
+    project_root=root, protected_paths=file.path(root,"data"), temp_root=file.path(root,"tmp"),
+    modes=list(project="rwx",protected_data="rw",temp="rwx"),backend="policy")))
+  scan <- function(cap,path) shield$scan_ingress("AnyTool",list(file_path=path),capability=cap)$action
+  expect_identical(scan("read",file.path(root,"script.R")),"pass")
+  expect_identical(scan("write",file.path(root,"script.R")),"pass")
+  expect_identical(scan("exec",file.path(root,"script.R")),"pass")
+  expect_identical(scan("read",file.path(root,"data","study.csv")),"pass")
+  expect_identical(scan("write",file.path(root,"data","study.csv")),"pass")
+  expect_identical(scan("exec",file.path(root,"data","study.csv")),"block")
+})
+
+test_that("shield_sandbox blocks outside and symlink escapes, allows session tmp", {
+  root <- withr::local_tempdir(); outside <- tempfile("outside-"); dir.create(outside)
+  on.exit(unlink(outside,recursive=TRUE),add=TRUE)
+  writeLines("x",file.path(outside,"secret.txt")); dir.create(file.path(root,"tmp"))
+  file.symlink(outside,file.path(root,"link"))
+  shield <- DataShield$new(strategies=list(shield_sandbox(
+    project_root=root,temp_root=file.path(root,"tmp"),backend="policy")))
+  expect_identical(shield$scan_ingress("Read",list(file_path=file.path(outside,"secret.txt")),capability="read")$action,"block")
+  expect_identical(shield$scan_ingress("Read",list(file_path=file.path(root,"link","secret.txt")),capability="read")$action,"block")
+  expect_identical(shield$scan_ingress("Write",list(file_path=file.path(root,"tmp","x.txt")),capability="write")$action,"pass")
+})
+
+test_that("sandbox network/process/fallback policy is explicit and audited", {
+  auto <- DataShield$new(strategies=list(shield_sandbox(backend="auto",on_unavailable="policy")))
+  expect_identical(auto$scan_ingress("RunR",list(code="1+1"),capability="exec")$action,"pass")
+  expect_true(any(auto$audit()$action=="fallback"))
+  expect_identical(auto$coverage()$sandbox$resolved_backend,"policy")
+
+  strict <- DataShield$new(strategies=list(shield_sandbox(backend="required",on_unavailable="block")))
+  expect_identical(strict$scan_ingress("RunR",list(code="1+1"),capability="exec")$action,"block")
+
+  offline <- DataShield$new(strategies=list(shield_sandbox(backend="policy",network="deny")))
+  expect_identical(offline$scan_ingress("WebPost",list(url="https://example.invalid"),capability="net")$action,"block")
+})

@@ -73,6 +73,74 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
     on_fail = match.arg(on_fail))
 }
 
+.data_shield_extract_paths <- function(input) {
+  out <- character()
+  walk <- function(x, key="") {
+    if (is.list(x)) {
+      nms <- names(x) %||% rep("",length(x))
+      for (i in seq_along(x)) walk(x[[i]],nms[[i]])
+    } else if (is.character(x) && grepl("path|file|dir|cwd|root|source|dest",key,ignore.case=TRUE)) {
+      vals <- x[nzchar(x) & !grepl("^[a-z]+://",x,ignore.case=TRUE)]
+      out <<- c(out,vals)
+    }
+  }
+  walk(input); unique(out)
+}
+
+.data_shield_resolve_path <- function(path, project_root) {
+  absolute <- grepl("^/|^[A-Za-z]:[/\\\\]", path)
+  candidate <- if (absolute) path else file.path(project_root,path)
+  candidate <- path.expand(candidate)
+  if (file.exists(candidate) || dir.exists(candidate))
+    return(normalizePath(candidate,winslash="/",mustWork=TRUE))
+  # Resolve the nearest existing ancestor so symlinked parents cannot escape.
+  tail <- character(); cur <- candidate
+  while (!file.exists(cur) && !dir.exists(cur)) {
+    parent <- dirname(cur); tail <- c(basename(cur),tail)
+    if (identical(parent,cur)) break
+    cur <- parent
+  }
+  base <- normalizePath(cur,winslash="/",mustWork=TRUE)
+  normalizePath(do.call(file.path,as.list(c(base,tail))),winslash="/",mustWork=FALSE)
+}
+
+.data_shield_path_under <- function(path, root) {
+  root <- sub("/+$", "", root)
+  identical(path,root) || startsWith(path,paste0(root,"/"))
+}
+
+.data_shield_sandbox_decision <- function(tool_name, input, capability, config) {
+  fallback <- identical(config$resolved_backend,"policy") &&
+    !identical(config$backend,"policy")
+  fallback_reason <- if (fallback)
+    "full OS sandbox adapter unavailable; using portable policy containment" else NULL
+  if (identical(config$resolved_backend,"unavailable-block") && capability %in% c("exec","net"))
+    return(list(action="block",reason="required OS sandbox is unavailable",paths=character(),fallback=FALSE))
+  if (!isTRUE(config$process_exec) && identical(capability,"exec"))
+    return(list(action="block",reason="process execution disabled by sandbox policy",paths=character(),fallback=fallback,fallback_reason=fallback_reason))
+  if (identical(config$network,"deny") && identical(capability,"net"))
+    return(list(action="block",reason="network disabled by sandbox policy",paths=character(),fallback=fallback,fallback_reason=fallback_reason))
+  paths <- .data_shield_extract_paths(input)
+  if (!length(paths)) return(list(action="pass",paths=character(),fallback=fallback,fallback_reason=fallback_reason))
+  roots <- data.frame(
+    root=c(config$project_root,config$protected_paths,config$temp_root),
+    mode=c(config$modes$project,rep(config$modes$protected_data,length(config$protected_paths)),config$modes$temp),
+    stringsAsFactors=FALSE)
+  roots <- roots[order(nchar(roots$root),decreasing=TRUE),,drop=FALSE]
+  required <- switch(capability,read="r",write="w",exec="x",net="r","r")
+  for (given in paths) {
+    resolved <- tryCatch(.data_shield_resolve_path(given,config$project_root),error=function(e)NA_character_)
+    if (is.na(resolved))
+      return(list(action="block",reason="sandbox could not resolve path",paths=given,fallback=fallback,fallback_reason=fallback_reason))
+    hit <- which(vapply(roots$root,function(root).data_shield_path_under(resolved,root),logical(1)))[1L]
+    if (is.na(hit))
+      return(list(action="block",reason="path is outside sandbox roots",paths=given,fallback=fallback,fallback_reason=fallback_reason))
+    if (!grepl(required,roots$mode[[hit]],fixed=TRUE))
+      return(list(action="block",reason=paste0("sandbox root lacks '",required,"' capability"),paths=given,fallback=fallback,fallback_reason=fallback_reason))
+  }
+  list(action="pass",paths=paths,fallback=fallback,fallback_reason=fallback_reason)
+}
+
 .data_shield_asset_defaults <- function(kind) {
   switch(kind,
     dataset = list(prompt="schema", egress="scan"),
@@ -261,6 +329,49 @@ shield_ingress <- function(langs = c("r", "python", "bash"), patterns = NULL,
   .new_shield_strategy("ingress", name = "ingress", fn = fn)
 }
 
+#' Configure portable sandbox policy
+#'
+#' @description
+#' Restrict explicit tool path arguments to project/protected/session-temp roots
+#' while preserving project `rwx` and process execution by default. This is a
+#' portable policy guard, not a kernel sandbox. `backend="auto"` currently falls
+#' back to policy because no full out-of-process OS adapter is implemented;
+#' `on_unavailable="block"` can fail closed for exec/net tools.
+#'
+#' @param project_root Project root (default current working directory).
+#' @param protected_paths Additional protected data roots.
+#' @param temp_root Session-specific temporary root; NULL creates one.
+#' @param modes Named list using `r`, `rw`, or `rwx` for project,
+#'   protected_data, and temp.
+#' @param process_exec Preserve exec-capability tools (default TRUE).
+#' @param network `"tool_policy"` or `"deny"`.
+#' @param symlink_escape Currently only `"deny"`.
+#' @param backend `"policy"`, `"auto"`, or `"required"`.
+#' @param on_unavailable `"policy"` fallback or `"block"` exec/net.
+#' @return A Data Shield sandbox strategy specification.
+#' @export
+shield_sandbox <- function(
+  project_root = getwd(), protected_paths = character(), temp_root = NULL,
+  modes = list(project="rwx", protected_data="rw", temp="rwx"),
+  process_exec = TRUE, network = c("tool_policy","deny"),
+  symlink_escape = "deny", backend = c("auto","policy","required"),
+  on_unavailable = c("policy","block")) {
+  required_modes <- c("project","protected_data","temp")
+  modes <- utils::modifyList(list(project="rwx",protected_data="rw",temp="rwx"),modes)
+  if (any(!names(modes) %in% required_modes) || any(!unlist(modes) %in% c("r","rw","rwx")))
+    stop("Sandbox modes must be r/rw/rwx for project/protected_data/temp.",call.=FALSE)
+  project_root <- normalizePath(project_root,winslash="/",mustWork=TRUE)
+  protected_paths <- vapply(protected_paths, normalizePath, character(1),
+                            winslash="/",mustWork=TRUE)
+  if (is.null(temp_root)) { temp_root <- tempfile("codeagent-shield-"); dir.create(temp_root) }
+  temp_root <- normalizePath(temp_root,winslash="/",mustWork=TRUE)
+  .new_shield_strategy(
+    "sandbox", project_root=project_root, protected_paths=protected_paths,
+    temp_root=temp_root, modes=modes, process_exec=isTRUE(process_exec),
+    network=match.arg(network), symlink_escape=match.arg(symlink_escape,"deny"),
+    backend=match.arg(backend), on_unavailable=match.arg(on_unavailable))
+}
+
 #' Stateful protected-data policy engine
 #'
 #' @description
@@ -388,6 +499,11 @@ DataShield <- R6::R6Class(
         name=name, kind=kind, llm_access=llm_access,
         scan_secrets=scan_secrets, reason=reason, expires=expires)
       private$assets[[name]] <- c(list(value=x), policy)
+      if (!is.null(private$sandbox) && is.character(x) && length(x)==1L &&
+          (file.exists(x) || dir.exists(x)))
+        private$sandbox$protected_paths <- unique(c(
+          private$sandbox$protected_paths,
+          normalizePath(x,winslash="/",mustWork=TRUE)))
       if (identical(kind, "dataset") && is.data.frame(x) &&
           (policy$llm_access$prompt %in% c("schema", "scan") ||
            identical(policy$llm_access$egress, "scan")))
@@ -539,9 +655,30 @@ DataShield <- R6::R6Class(
     #' @param tool_name Model-facing tool name.
     #' @param input Named list of tool arguments.
     #' @param tool_call_id Optional non-sensitive tool-call identifier.
+    #' @param capability Tool capability (`read`, `write`, `exec`, or `net`).
     #' @return List with action (`pass`, `block`, or `ask`), reason, matches and score.
-    scan_ingress = function(tool_name, input, tool_call_id = NULL) {
+    scan_ingress = function(tool_name, input, tool_call_id = NULL,
+                            capability = "read") {
       private$assert_open()
+      if (!is.null(private$sandbox)) {
+        sandbox_decision <- .data_shield_sandbox_decision(
+          tool_name,input,capability,private$sandbox)
+        if (isTRUE(sandbox_decision$fallback) && !private$sandbox_fallback_logged) {
+          private$record_event(
+            edge="ingress",tool_name=tool_name,tool_call_id=tool_call_id,
+            strategy="sandbox",action="fallback",reason=sandbox_decision$fallback_reason,
+            match_count=0L,score=0)
+          private$sandbox_fallback_logged <- TRUE
+        }
+        if (!identical(sandbox_decision$action,"pass")) {
+          private$record_event(
+            edge="ingress",tool_name=tool_name,tool_call_id=tool_call_id,
+            strategy="sandbox",action="deny",reason=sandbox_decision$reason,
+            match_count=length(sandbox_decision$paths),score=1)
+          return(list(action="block",reason=sandbox_decision$reason,
+                      matches=sandbox_decision$paths,score=1))
+        }
+      }
       policy <- private$resolve_tool_policy(tool_name)
       if (identical(policy$execution,"deny") || identical(policy$ingress,"deny")) {
         decision <- list(
@@ -650,6 +787,7 @@ DataShield <- R6::R6Class(
            audit_events = length(private$audit_log), audit_max = private$audit_max,
            tool_policy_default = private$tool_policy_config$default,
            tool_policy_rules = names(private$tool_policy_config$rules),
+           sandbox = private$sandbox,
            closed = private$closed)
     }
   ),
@@ -664,6 +802,8 @@ DataShield <- R6::R6Class(
     audit_log = NULL,
     audit_max = 1000L,
     tool_policy_config = NULL,
+    sandbox = NULL,
+    sandbox_fallback_logged = FALSE,
     closed = FALSE,
 
     assert_open = function() {
@@ -749,6 +889,11 @@ DataShield <- R6::R6Class(
           type = "scanner", name = cfg$name, fn = cfg$fn)
       } else if (identical(type, "tool_policy")) {
         private$tool_policy_config <- list(default=cfg$default, rules=cfg$rules)
+      } else if (identical(type, "sandbox")) {
+        cfg$resolved_backend <- if (identical(cfg$backend,"policy")) "policy" else
+          if (identical(cfg$on_unavailable,"policy")) "policy" else "unavailable-block"
+        cfg$os_adapter_available <- FALSE
+        private$sandbox <- cfg
       } else {
         stop("Unknown Data Shield strategy: ", type, call. = FALSE)
       }

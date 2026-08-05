@@ -181,6 +181,7 @@ register_tool_meta <- function(name,
     if (is.null(name) || !nzchar(name)) return(invisible())
     input <- tryCatch(as.list(request@arguments), error = function(e) list())
     tool  <- tryCatch(request@tool, error = function(e) NULL)
+    cap   <- .tool_capability(name, tool)
 
     if (!is.null(ctx$hooks))
       tryCatch(ctx$hooks$run_pre(name, input), error = function(e) NULL)  # PreToolUse
@@ -190,7 +191,8 @@ register_tool_meta <- function(name,
       tryCatch(attr(ctx$chat, "codeagent_data_shield"), error=function(e) NULL)
     shield_decision <- if (inherits(shield, "DataShield"))
       tryCatch(shield$scan_ingress(
-        name, input, tool_call_id = tryCatch(request@id, error=function(e) NULL)),
+        name, input, tool_call_id = tryCatch(request@id, error=function(e) NULL),
+        capability = cap),
                error=function(e) list(action="block", reason="Data Shield ingress failed safely"))
       else list(action="pass")
     if (identical(shield_decision$action, "block"))
@@ -198,7 +200,6 @@ register_tool_meta <- function(name,
     shield_ask <- identical(shield_decision$action, "ask")
 
     ov  <- ctx$policy$overrides[[name]]
-    cap <- .tool_capability(name, tool)
     # benign tools auto-allow only when Data Shield did not force approval.
     if (!shield_ask && is.null(ov) && identical(cap, "read")) return(invisible())
 

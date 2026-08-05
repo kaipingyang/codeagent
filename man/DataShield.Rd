@@ -259,7 +259,12 @@ deterministic value indexing (reduces low-entropy false positives).}
   Scan one tool request before execution.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$scan_ingress(tool_name, input, tool_call_id = NULL)}
+    \preformatted{DataShield$scan_ingress(
+  tool_name,
+  input,
+  tool_call_id = NULL,
+  capability = "read"
+)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -268,6 +273,7 @@ deterministic value indexing (reduces low-entropy false positives).}
       \item{\code{tool_name}}{Model-facing tool name.}
       \item{\code{input}}{Named list of tool arguments.}
       \item{\code{tool_call_id}}{Optional non-sensitive tool-call identifier.}
+      \item{\code{capability}}{Tool capability (\code{read}, \code{write}, \code{exec}, or \code{net}).}
     }
     \if{html}{\out{</div>}}
   }

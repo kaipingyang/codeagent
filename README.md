@@ -120,7 +120,8 @@ client <- codeagent_client(chat, data_shield = list(
   shield_ingress(on_fail = "ask"),
   shield_tool_policy(rules = list(
     KMPlot = list(ingress = "scan", egress = "bypass")
-  ))
+  )),
+  shield_sandbox(project_root = getwd(), backend = "policy")
 ))
 
 # Explicit lifecycle for uploaded data / shared threads.
@@ -141,6 +142,10 @@ handles unregistered PII/secrets; `shield_ingress()` scans every tool's argument
 in the central permission gate and can block or request approval before execution.
 `shield_tool_policy()` provides exact/glob per-tool `scan`/`bypass`/`deny` rules;
 Shield bypass is audited and never bypasses the separate permission gate.
+`shield_sandbox()` preserves project/temp `rwx` and process execution by default,
+while portable path policy blocks project-external and symlink-escaped paths;
+`backend="auto"` currently reports/falls back to policy unless a full OS adapter
+is available.
 See the full [Data Shield parameter
 reference](https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference).
 
