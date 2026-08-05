@@ -115,7 +115,8 @@ codeagent_console(client)
 # Easy declaration: creates a private R6 engine for this client.
 client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
-  shield_egress(max_rows = 0, on_fail = "redact")
+  shield_egress(max_rows = 0, on_fail = "redact"),
+  shield_regex(on_fail = "redact")
 ))
 
 # Explicit lifecycle for uploaded data / shared threads.
@@ -129,6 +130,11 @@ Data Shield never sends raw rows through `DescribeData`; bulk tool output and
 registered high-entropy values are withheld before reaching the LLM. Foreground
 `Agent` sub-chats inherit the same shield; cross-process `BackgroundAgent`/`/bg`
 fail closed while a shield is active.
+
+`shield_egress(max_rows = 0)` retains **no raw tabular line** when bulk output is
+detected; scalar/status/model-summary output still passes. `shield_regex()`
+handles unregistered PII/secrets. See the full [Data Shield parameter
+reference](https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference).
 
 ### Skill system
 

@@ -11,17 +11,34 @@ shield_egress(
 )
 }
 \arguments{
-\item{detectors}{Character vector. Implemented detectors are \code{"row_cap"}
-and \code{"value_match"}.}
+\item{detectors}{One or both of \code{"row_cap"} and \code{"value_match"}. Default:
+both, in that order.}
 
-\item{max_rows}{Rows retained from bulk tabular output (\code{0} = none).}
+\item{max_rows}{Number of leading printed table lines to retain when
+\code{row_cap} triggers. \code{0} retains no raw line; values greater than zero
+deliberately expose that many leading lines and should only be used when
+the caller accepts that disclosure.}
 
-\item{on_fail}{Action label for withheld output. P0/P0.5 support
-\code{"redact"} and \code{"block"}; \code{"ask"} is reserved for a later phase.}
+\item{on_fail}{\code{"redact"} replaces unsafe output with a withheld notice;
+\code{"block"} discards it with a blocked notice. Neither mode asks a user;
+interactive \code{"ask"} is a later phase.}
 }
 \value{
 A Data Shield strategy specification.
 }
 \description{
-Configure tool-result egress protection
+Create the core model-egress stage. Every wrapped tool still executes locally;
+this stage controls only what its result may send back to the LLM.
+
+\code{row_cap} detects output shaped like a data.frame/tibble or a many-line
+rectangular table. With \code{max_rows = 0} (recommended strict default), it keeps
+\strong{zero raw lines} and replaces the output with a shape/withheld notice.
+Scalars, ordinary messages, model summaries, plots, and errors pass through.
+\code{value_match} independently withholds high-entropy values previously indexed
+by \code{DataShield$register_data()} (e.g. one subject id that is too short to
+trigger the bulk row cap).
+}
+\examples{
+strict <- shield_egress(max_rows = 0, on_fail = "redact")
+no_value_index <- shield_egress(detectors = "row_cap", max_rows = 0)
 }

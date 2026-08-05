@@ -6,12 +6,28 @@
 
 #' Configure strict protected-data metadata
 #'
-#' @param distributions Distribution policy. Strict `"off"` is implemented;
-#'   `"on"` and `"dp"` are reserved for later phases.
-#' @param k_anon Minimum support before a categorical label may be exposed.
-#' @param category_max Maximum distinct values for categorical treatment.
-#' @param category_ratio Maximum distinct/row ratio for character categories.
+#' @description
+#' Enable the automatically registered `DescribeData` tool. In the currently
+#' implemented strict mode (`distributions = "off"`), it never returns rows,
+#' histograms, quantiles, means, category counts, or real free-text examples.
+#' `identifier`/`quasi` values are suppressed; `measure`/`open` columns may show
+#' numeric/date min-max and low-cardinality labels whose support is at least
+#' `k_anon` (labels are shown without counts).
+#'
+#' @param distributions `"off"` is implemented and is the safe default.
+#'   `"on"` and `"dp"` are accepted as roadmap configuration but DescribeData
+#'   returns an explicit not-implemented error instead of silently weakening
+#'   privacy.
+#' @param k_anon Minimum rows supporting a categorical label before it may be
+#'   exposed; rarer labels become `<rare suppressed>`.
+#' @param category_max Maximum distinct values for automatically treating a
+#'   character column as categorical.
+#' @param category_ratio Maximum `n_distinct / n_non_missing` ratio for automatic
+#'   character-categorical treatment. Higher-cardinality text is marked
+#'   `free_text` and no examples are returned.
 #' @return A Data Shield strategy specification.
+#' @examples
+#' strict_metadata <- shield_describe(k_anon = 5)
 #' @export
 shield_describe <- function(distributions = "off", k_anon = 5L,
                             category_max = 20L, category_ratio = 0.2) {
@@ -23,12 +39,31 @@ shield_describe <- function(distributions = "off", k_anon = 5L,
 
 #' Configure tool-result egress protection
 #'
-#' @param detectors Character vector. Implemented detectors are `"row_cap"`
-#'   and `"value_match"`.
-#' @param max_rows Rows retained from bulk tabular output (`0` = none).
-#' @param on_fail Action label for withheld output. P0/P0.5 support
-#'   `"redact"` and `"block"`; `"ask"` is reserved for a later phase.
+#' @description
+#' Create the core model-egress stage. Every wrapped tool still executes locally;
+#' this stage controls only what its result may send back to the LLM.
+#'
+#' `row_cap` detects output shaped like a data.frame/tibble or a many-line
+#' rectangular table. With `max_rows = 0` (recommended strict default), it keeps
+#' **zero raw lines** and replaces the output with a shape/withheld notice.
+#' Scalars, ordinary messages, model summaries, plots, and errors pass through.
+#' `value_match` independently withholds high-entropy values previously indexed
+#' by `DataShield$register_data()` (e.g. one subject id that is too short to
+#' trigger the bulk row cap).
+#'
+#' @param detectors One or both of `"row_cap"` and `"value_match"`. Default:
+#'   both, in that order.
+#' @param max_rows Number of leading printed table lines to retain when
+#'   `row_cap` triggers. `0` retains no raw line; values greater than zero
+#'   deliberately expose that many leading lines and should only be used when
+#'   the caller accepts that disclosure.
+#' @param on_fail `"redact"` replaces unsafe output with a withheld notice;
+#'   `"block"` discards it with a blocked notice. Neither mode asks a user;
+#'   interactive `"ask"` is a later phase.
 #' @return A Data Shield strategy specification.
+#' @examples
+#' strict <- shield_egress(max_rows = 0, on_fail = "redact")
+#' no_value_index <- shield_egress(detectors = "row_cap", max_rows = 0)
 #' @export
 shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L,
                           on_fail = c("redact", "block")) {
@@ -38,6 +73,54 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
     on_fail = match.arg(on_fail))
 }
 
+#' Configure regex-based egress scanning
+#'
+#' @description
+#' Detect and redact/block common unregistered PII and secrets in tool output.
+#' Default rules cover email, phone-like numbers, common API-token prefixes,
+#' and 18-character identity-number shapes. Custom named PCRE patterns may be
+#' added without introducing another state engine.
+#'
+#' @param patterns Optional named character vector of custom regular expressions
+#'   using PCRE (Perl-Compatible Regular Expression) syntax. Example:
+#'   `c(study_id = "STUDY-[0-9]+")`, where `study_id` names the rule and
+#'   `[0-9]+` means one or more digits. With `include_defaults = TRUE`, custom
+#'   rules are appended after the built-ins.
+#' @param include_defaults Include built-in email, phone-like, common-token-prefix,
+#'   and 18-character identity-number rules.
+#' @param replacement Marker inserted once per merged matching span when
+#'   `on_fail = "redact"`.
+#' @param on_fail `"redact"` replaces only matching spans and preserves the rest
+#'   of the tool result; `"block"` replaces the entire model-facing result.
+#' @param ignore_case Apply case-insensitive PCRE matching to all rules.
+#' @return A Data Shield scanner strategy specification.
+#' @examples
+#' pii <- shield_regex(on_fail = "redact")
+#' study_ids <- shield_regex(
+#'   patterns = c(study_id = "STUDY-[0-9]+"),
+#'   include_defaults = FALSE,
+#'   on_fail = "block"
+#' )
+#' @export
+shield_regex <- function(patterns = NULL, include_defaults = TRUE,
+                         replacement = "[REDACTED]",
+                         on_fail = c("redact", "block"), ignore_case = TRUE) {
+  defaults <- c(
+    email = "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}",
+    phone = "(?:\\+?[0-9][0-9 .()\\-]{7,}[0-9])",
+    api_token = "\\b(?:sk|ghp|dapi)[_-]?[A-Z0-9]{16,}\\b",
+    identity_18 = "\\b[0-9]{17}[0-9X]\\b")
+  if (!is.null(patterns)) {
+    if (!is.character(patterns) || is.null(names(patterns)) || any(!nzchar(names(patterns))))
+      stop("`patterns` must be a named character vector.", call. = FALSE)
+  }
+  resolved <- c(if (isTRUE(include_defaults)) defaults else character(), patterns %||% character())
+  if (!length(resolved)) stop("At least one regex pattern is required.", call. = FALSE)
+  fn <- .data_shield_regex_scanner(
+    resolved, replacement = replacement,
+    on_fail = match.arg(on_fail), ignore_case = ignore_case)
+  .new_shield_strategy("scanner", name = "regex", fn = fn)
+}
 #' Stateful protected-data policy engine
 #'
 #' @description
@@ -49,7 +132,22 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
 #' `codeagent_client(data_shield = list(shield_*()))` is the declarative
 #' convenience path and creates a private `DataShield` internally. Pass an
 #' explicit `DataShield` instance when data must be registered dynamically or
-#' shared across chats.
+#' shared across chats. Instances are intentionally non-cloneable; create a new
+#' object for an independent user/thread boundary.
+#'
+#' @examples
+#' # Easy one-client declaration:
+#' specs <- list(
+#'   shield_describe(k_anon = 5),
+#'   shield_egress(max_rows = 0),
+#'   shield_regex(on_fail = "redact")
+#' )
+#'
+#' # Explicit lifecycle for uploaded data / selected shared chats:
+#' shield <- DataShield$new(strategies = specs)
+#' shield$register_data(iris, name = "iris",
+#'   sensitivity = c(Species = "measure"))
+#' shield$coverage()
 #'
 #' @export
 DataShield <- R6::R6Class(
@@ -57,11 +155,18 @@ DataShield <- R6::R6Class(
   cloneable = FALSE,
   public = list(
     #' @description Create a Data Shield.
-    #' @param max_rows,k_anon,category_max,category_ratio Direct defaults used
-    #'   when `strategies` is NULL.
-    #' @param distributions Direct strict metadata policy.
-    #' @param strategies Optional list from [shield_describe()] and
-    #'   [shield_egress()].
+    #' @param max_rows Direct `row_cap` value when `strategies = NULL`: `0`
+    #'   exposes no raw tabular line; positive values retain that many leading
+    #'   printed lines.
+    #' @param distributions Direct DescribeData policy. Strict `"off"` only is
+    #'   implemented; `"on"`/`"dp"` fail explicitly.
+    #' @param k_anon Minimum category support for exposing a label.
+    #' @param category_max Maximum distinct character values treated as a category.
+    #' @param category_ratio Maximum distinct/non-missing ratio for character
+    #'   categorical treatment.
+    #' @param strategies Optional ordered list from [shield_describe()],
+    #'   [shield_egress()], and [shield_regex()]. If supplied, only listed
+    #'   strategies are enabled and list order controls egress execution order.
     initialize = function(max_rows = 0L, distributions = "off", k_anon = 5L,
                           category_max = 20L, category_ratio = 0.2,
                           strategies = NULL) {
@@ -75,8 +180,15 @@ DataShield <- R6::R6Class(
       private$datasets <- list()
       private$index <- new.env(parent = emptyenv())
       private$strategies <- list()
+      private$egress_pipeline <- list()
       private$closed <- FALSE
-      if (!is.null(strategies)) {
+      if (is.null(strategies)) {
+        private$egress_pipeline[[1L]] <- list(
+          type = "core", name = "egress",
+          config = list(detectors = private$config$detectors,
+                        max_rows = private$config$max_rows,
+                        on_fail = private$config$on_fail))
+      } else {
         private$config$describe_enabled <- FALSE
         private$config$egress_enabled <- FALSE
         for (strategy in strategies) private$apply_strategy(strategy)
@@ -84,11 +196,15 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Register one protected data.frame.
-    #' @param df A data.frame.
-    #' @param name Dataset name used by `DescribeData`.
-    #' @param sensitivity Optional named identifier/quasi/measure/open overrides.
-    #' @param cols Optional explicit columns to value-index.
-    #' @param min_len,min_card High-entropy index thresholds.
+    #' @param df A data.frame retained locally; rows are never emitted by
+    #'   `DescribeData`.
+    #' @param name Dataset name used by the model-facing `DescribeData` tool.
+    #' @param sensitivity Optional named overrides: `identifier`, `quasi`,
+    #'   `measure`, or `open`. Local heuristics classify unspecified columns.
+    #' @param cols Optional explicit value-match columns. Default: columns
+    #'   classified `identifier`/`quasi`.
+    #' @param min_len,min_card Minimum value length and column cardinality for
+    #'   deterministic value indexing (reduces low-entropy false positives).
     register_data = function(df, name = NULL, sensitivity = NULL, cols = NULL,
                              min_len = 3L, min_card = 8L) {
       private$assert_open()
@@ -144,16 +260,33 @@ DataShield <- R6::R6Class(
       .data_shield_describe(dataset, private$config)
     },
 
-    #' @description Apply the egress pipeline to a tool result.
+    #' @description Apply the ordered egress strategy pipeline to a tool result.
     scan_egress = function(result) {
       private$assert_open()
-      if (!isTRUE(private$config$egress_enabled)) return(result)
-      .data_shield_filter_result(
-        result,
-        max_rows = private$config$max_rows,
-        index = private$index,
-        detectors = private$config$detectors,
-        on_fail = private$config$on_fail)
+      output <- result
+      for (stage in private$egress_pipeline) {
+        if (identical(stage$type, "core")) {
+          cfg <- stage$config
+          output <- .data_shield_filter_result(
+            output, max_rows = cfg$max_rows, index = private$index,
+            detectors = cfg$detectors, on_fail = cfg$on_fail)
+        } else if (identical(stage$type, "scanner")) {
+          output <- .data_shield_apply_scanner(
+            output, stage$fn, stage$name,
+            context = list(edge = "egress", shield = self))
+        }
+      }
+      output
+    },
+
+    #' @description Add a custom scanner function to the end of the egress pipeline.
+    add_scanner = function(name, fn) {
+      private$assert_open()
+      if (!is.character(name) || length(name) != 1L || !nzchar(name) || !is.function(fn))
+        stop("`name` must be non-empty and `fn` must be a function.", call. = FALSE)
+      private$egress_pipeline[[length(private$egress_pipeline) + 1L]] <-
+        list(type = "scanner", name = name, fn = fn)
+      invisible(self)
     },
 
     #' @description Remove one dataset, or all datasets when name is NULL.
@@ -178,6 +311,7 @@ DataShield <- R6::R6Class(
     coverage = function() {
       list(config = private$config, datasets = names(private$datasets),
            indexed_values = length(ls(private$index, all.names = TRUE)),
+           egress_pipeline = vapply(private$egress_pipeline, `[[`, character(1), "name"),
            closed = private$closed)
     }
   ),
@@ -186,6 +320,7 @@ DataShield <- R6::R6Class(
     datasets = NULL,
     index = NULL,
     strategies = NULL,
+    egress_pipeline = NULL,
     closed = FALSE,
 
     assert_open = function() {
@@ -203,6 +338,13 @@ DataShield <- R6::R6Class(
       } else if (identical(type, "egress")) {
         private$config$egress_enabled <- TRUE
         private$config[names(cfg)] <- cfg
+        private$egress_pipeline[[length(private$egress_pipeline) + 1L]] <- list(
+
+          type = "core", name = "egress", config = cfg)
+      } else if (identical(type, "scanner")) {
+        private$config$egress_enabled <- TRUE
+        private$egress_pipeline[[length(private$egress_pipeline) + 1L]] <- list(
+          type = "scanner", name = cfg$name, fn = cfg$fn)
       } else {
         stop("Unknown Data Shield strategy: ", type, call. = FALSE)
       }
@@ -227,6 +369,111 @@ DataShield <- R6::R6Class(
     return(DataShield$new(strategies = x))
   stop("`data_shield` must be NULL, list(shield_*()), or a DataShield instance.",
        call. = FALSE)
+}
+
+# Build a pure regex scanner closure.
+.data_shield_regex_scanner <- function(patterns, replacement, on_fail, ignore_case) {
+  for (pattern in patterns)
+    tryCatch(grepl(pattern, "", perl = TRUE, ignore.case = ignore_case),
+             error = function(e) stop("Invalid shield regex: ", conditionMessage(e), call. = FALSE))
+  force(patterns); force(replacement); force(on_fail); force(ignore_case)
+  function(text, context) {
+    spans <- .data_shield_regex_spans(text, patterns, ignore_case)
+    if (!nrow(spans))
+      return(list(sanitized = text, valid = TRUE, score = 0,
+                  spans = spans, action = "pass"))
+    labels <- unique(spans$label)
+    sanitized <- if (identical(on_fail, "block")) {
+      sprintf("[data_shield] output blocked by regex scanner (%s).",
+              paste(labels, collapse = ", "))
+    } else {
+      .data_shield_redact_spans(text, spans, replacement)
+    }
+    list(sanitized = sanitized, valid = FALSE,
+         score = min(1, nrow(spans) / 5), spans = spans, action = on_fail)
+  }
+}
+
+.data_shield_regex_spans <- function(text, patterns, ignore_case = TRUE) {
+  rows <- list()
+  for (label in names(patterns)) {
+    matches <- gregexpr(patterns[[label]], text, perl = TRUE,
+                        ignore.case = ignore_case)[[1L]]
+    lengths <- attr(matches, "match.length")
+    keep <- matches > 0L & lengths > 0L
+    if (any(keep)) {
+      rows[[length(rows) + 1L]] <- data.frame(
+        start = matches[keep], end = matches[keep] + lengths[keep] - 1L,
+        label = label, stringsAsFactors = FALSE)
+    }
+  }
+  if (!length(rows))
+    return(data.frame(start=integer(), end=integer(), label=character()))
+  spans <- do.call(rbind, rows)
+  spans <- spans[order(spans$start, spans$end), , drop=FALSE]
+  # Merge overlap so redaction never corrupts offsets; keep all reason labels.
+  merged <- list()
+  for (i in seq_len(nrow(spans))) {
+    cur <- spans[i, , drop=FALSE]
+    if (!length(merged) || cur$start > merged[[length(merged)]]$end) {
+      merged[[length(merged) + 1L]] <- cur
+    } else {
+      last <- merged[[length(merged)]]
+      last$end <- max(last$end, cur$end)
+      last$label <- paste(unique(c(strsplit(last$label, "\\|", perl=TRUE)[[1L]],
+                                   cur$label)), collapse="|")
+      merged[[length(merged)]] <- last
+    }
+  }
+  out <- do.call(rbind, merged); rownames(out) <- NULL; out
+}
+
+.data_shield_redact_spans <- function(text, spans, replacement = "[REDACTED]") {
+  out <- text
+  for (i in rev(seq_len(nrow(spans)))) {
+    before <- if (spans$start[[i]] > 1L) substr(out, 1L, spans$start[[i]] - 1L) else ""
+    after  <- if (spans$end[[i]] < nchar(out)) substr(out, spans$end[[i]] + 1L, nchar(out)) else ""
+    out <- paste0(before, replacement, after)
+  }
+  out
+}
+
+.data_shield_validate_scanner_result <- function(result, original, name) {
+  ok <- is.list(result) && is.character(result$sanitized) && length(result$sanitized) == 1L &&
+    is.logical(result$valid) && length(result$valid) == 1L && !is.na(result$valid) &&
+    is.numeric(result$score) && length(result$score) == 1L && !is.na(result$score) &&
+    result$score >= 0 && result$score <= 1 &&
+    is.character(result$action) && length(result$action) == 1L &&
+    result$action %in% c("pass", "redact", "block")
+  if (!isTRUE(ok)) stop("Scanner '", name, "' returned an invalid result.", call. = FALSE)
+  result$spans <- result$spans %||% list()
+  result
+}
+
+# Apply a custom scanner to the model-facing text of common tool result shapes.
+# Scanner errors/invalid contracts fail closed.
+.data_shield_apply_scanner <- function(result, scanner, name, context = list()) {
+  kind <- "other"; text <- NULL
+  if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
+                      error=function(e) FALSE))) {
+    kind <- "content"; text <- tryCatch(as.character(result@value), error=function(e) NULL)
+  } else if (is.character(result) && length(result) == 1L) {
+    kind <- "character"; text <- result
+  } else if (is.data.frame(result) || is.matrix(result)) {
+    kind <- "tabular"
+    text <- tryCatch(paste(utils::capture.output(print(result)), collapse="\n"),
+                     error=function(e) NULL)
+  }
+  if (is.null(text)) return(result)
+  scanned <- tryCatch(
+    .data_shield_validate_scanner_result(scanner(text, context), text, name),
+    error = function(e) list(
+      sanitized = sprintf("[data_shield] output blocked: scanner '%s' failed safely.", name),
+      valid = FALSE, score = 1, spans = list(), action = "block"))
+  changed <- !isTRUE(scanned$valid) || !identical(scanned$sanitized, text)
+  if (!changed) return(result)
+  if (identical(kind, "content")) { result@value <- scanned$sanitized; return(result) }
+  scanned$sanitized
 }
 
 # Does `text` look like a bulk row-level data dump (vs a scalar/message/summary)?

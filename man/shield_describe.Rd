@@ -12,18 +12,32 @@ shield_describe(
 )
 }
 \arguments{
-\item{distributions}{Distribution policy. Strict \code{"off"} is implemented;
-\code{"on"} and \code{"dp"} are reserved for later phases.}
+\item{distributions}{\code{"off"} is implemented and is the safe default.
+\code{"on"} and \code{"dp"} are accepted as roadmap configuration but DescribeData
+returns an explicit not-implemented error instead of silently weakening
+privacy.}
 
-\item{k_anon}{Minimum support before a categorical label may be exposed.}
+\item{k_anon}{Minimum rows supporting a categorical label before it may be
+exposed; rarer labels become \verb{<rare suppressed>}.}
 
-\item{category_max}{Maximum distinct values for categorical treatment.}
+\item{category_max}{Maximum distinct values for automatically treating a
+character column as categorical.}
 
-\item{category_ratio}{Maximum distinct/row ratio for character categories.}
+\item{category_ratio}{Maximum \code{n_distinct / n_non_missing} ratio for automatic
+character-categorical treatment. Higher-cardinality text is marked
+\code{free_text} and no examples are returned.}
 }
 \value{
 A Data Shield strategy specification.
 }
 \description{
-Configure strict protected-data metadata
+Enable the automatically registered \code{DescribeData} tool. In the currently
+implemented strict mode (\code{distributions = "off"}), it never returns rows,
+histograms, quantiles, means, category counts, or real free-text examples.
+\code{identifier}/\code{quasi} values are suppressed; \code{measure}/\code{open} columns may show
+numeric/date min-max and low-cardinality labels whose support is at least
+\code{k_anon} (labels are shown without counts).
+}
+\examples{
+strict_metadata <- shield_describe(k_anon = 5)
 }

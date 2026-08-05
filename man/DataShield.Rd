@@ -12,7 +12,23 @@ only when those chat threads intentionally share the same protected data.
 \verb{codeagent_client(data_shield = list(shield_*()))} is the declarative
 convenience path and creates a private \code{DataShield} internally. Pass an
 explicit \code{DataShield} instance when data must be registered dynamically or
-shared across chats.
+shared across chats. Instances are intentionally non-cloneable; create a new
+object for an independent user/thread boundary.
+}
+\examples{
+# Easy one-client declaration:
+specs <- list(
+  shield_describe(k_anon = 5),
+  shield_egress(max_rows = 0),
+  shield_regex(on_fail = "redact")
+)
+
+# Explicit lifecycle for uploaded data / selected shared chats:
+shield <- DataShield$new(strategies = specs)
+shield$register_data(iris, name = "iris",
+  sensitivity = c(Species = "measure"))
+shield$coverage()
+
 }
 \section{Methods}{
 \subsection{Public methods}{
@@ -22,6 +38,7 @@ shared across chats.
     \item \href{#method-DataShield-install}{\code{DataShield$install()}}
     \item \href{#method-DataShield-describe}{\code{DataShield$describe()}}
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
+    \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
     \item \href{#method-DataShield-close}{\code{DataShield$close()}}
     \item \href{#method-DataShield-coverage}{\code{DataShield$coverage()}}
@@ -47,11 +64,18 @@ shared across chats.
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{max_rows, k_anon, category_max, category_ratio}}{Direct defaults used
-when \code{strategies} is NULL.}
-      \item{\code{distributions}}{Direct strict metadata policy.}
-      \item{\code{strategies}}{Optional list from \code{\link[=shield_describe]{shield_describe()}} and
-\code{\link[=shield_egress]{shield_egress()}}.}
+      \item{\code{max_rows}}{Direct \code{row_cap} value when \code{strategies = NULL}: \code{0}
+exposes no raw tabular line; positive values retain that many leading
+printed lines.}
+      \item{\code{distributions}}{Direct DescribeData policy. Strict \code{"off"} only is
+implemented; \code{"on"}/\code{"dp"} fail explicitly.}
+      \item{\code{k_anon}}{Minimum category support for exposing a label.}
+      \item{\code{category_max}}{Maximum distinct character values treated as a category.}
+      \item{\code{category_ratio}}{Maximum distinct/non-missing ratio for character
+categorical treatment.}
+      \item{\code{strategies}}{Optional ordered list from \code{\link[=shield_describe]{shield_describe()}},
+\code{\link[=shield_egress]{shield_egress()}}, and \code{\link[=shield_regex]{shield_regex()}}. If supplied, only listed
+strategies are enabled and list order controls egress execution order.}
     }
     \if{html}{\out{</div>}}
   }
@@ -77,11 +101,15 @@ when \code{strategies} is NULL.}
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
-      \item{\code{df}}{A data.frame.}
-      \item{\code{name}}{Dataset name used by \code{DescribeData}.}
-      \item{\code{sensitivity}}{Optional named identifier/quasi/measure/open overrides.}
-      \item{\code{cols}}{Optional explicit columns to value-index.}
-      \item{\code{min_len, min_card}}{High-entropy index thresholds.}
+      \item{\code{df}}{A data.frame retained locally; rows are never emitted by
+\code{DescribeData}.}
+      \item{\code{name}}{Dataset name used by the model-facing \code{DescribeData} tool.}
+      \item{\code{sensitivity}}{Optional named overrides: \code{identifier}, \code{quasi},
+\code{measure}, or \code{open}. Local heuristics classify unspecified columns.}
+      \item{\code{cols}}{Optional explicit value-match columns. Default: columns
+classified \code{identifier}/\code{quasi}.}
+      \item{\code{min_len, min_card}}{Minimum value length and column cardinality for
+deterministic value indexing (reduces low-entropy false positives).}
     }
     \if{html}{\out{</div>}}
   }
@@ -115,10 +143,22 @@ when \code{strategies} is NULL.}
 \if{html}{\out{<a id="method-DataShield-scan_egress"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-scan_egress}{}}}
 \subsection{\code{DataShield$scan_egress()}}{
-  Apply the egress pipeline to a tool result.
+  Apply the ordered egress strategy pipeline to a tool result.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$scan_egress(result)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-add_scanner"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-add_scanner}{}}}
+\subsection{\code{DataShield$add_scanner()}}{
+  Add a custom scanner function to the end of the egress pipeline.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$add_scanner(name, fn)}
     \if{html}{\out{</div>}}
   }
 }

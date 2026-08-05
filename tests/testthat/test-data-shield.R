@@ -239,3 +239,48 @@ test_that("DataShield R6 owns clear/close lifecycle", {
   expect_error(shield$register_data(data.frame(x=1), name="late"), "closed")
   expect_null(shield$clone)
 })
+
+
+test_that("shield_regex redacts unregistered PII/secrets with precise spans", {
+  shield <- DataShield$new(strategies=list(
+    shield_egress(detectors="row_cap", max_rows=0),
+    shield_regex(on_fail="redact")))
+  fake_token <- paste0("s", "k-", strrep("A", 20))
+  text <- paste("Contact Jane.Doe@example.com or 13800138000; token", fake_token)
+  out <- shield$scan_egress(text)
+  expect_false(grepl("Jane.Doe@example.com|13800138000", out))
+  expect_false(grepl(fake_token, out, fixed=TRUE))
+  expect_gte(lengths(regmatches(out, gregexpr("\\[REDACTED\\]", out)))[[1]], 3L)
+  expect_identical(shield$coverage()$egress_pipeline, c("egress", "regex"))
+})
+
+test_that("shield_regex block and custom patterns work", {
+  shield <- DataShield$new(strategies=list(
+    shield_regex(patterns=c(study_id="STUDY-[0-9]+"),
+                 include_defaults=FALSE, on_fail="block")))
+  expect_match(shield$scan_egress("value STUDY-12345"), "blocked by regex scanner")
+  expect_identical(shield$scan_egress("ordinary safe text"), "ordinary safe text")
+})
+
+test_that("regex scanner handles ContentToolResult and small data.frames", {
+  shield <- DataShield$new(strategies=list(shield_regex()))
+  result <- tool_result("mail me at person@example.org", kind="text")
+  filtered <- shield$scan_egress(result)
+  expect_false(grepl("person@example.org", as.character(filtered@value), fixed=TRUE))
+  small <- data.frame(name=c("a","b"), email=c("a@example.org","b@example.org"))
+  filtered_df <- shield$scan_egress(small)
+  expect_true(is.character(filtered_df))
+  expect_false(grepl("@example.org", filtered_df, fixed=TRUE))
+})
+
+test_that("custom scanners run in order and invalid results fail closed", {
+  result <- function(text, valid=TRUE, action="pass")
+    list(sanitized=text, valid=valid, score=if(valid)0 else 1,
+         spans=list(), action=action)
+  shield <- DataShield$new(strategies=list())
+  shield$add_scanner("first", function(text, context) result(sub("alpha","beta",text)))
+  shield$add_scanner("second", function(text, context) result(sub("beta","gamma",text)))
+  expect_identical(shield$scan_egress("alpha"), "gamma")
+  shield$add_scanner("broken", function(text, context) list(nope=TRUE))
+  expect_match(shield$scan_egress("safe"), "failed safely")
+})

@@ -52,7 +52,7 @@ ui <- fluidPage(
   titlePanel("Data Shield: runtime upload demo"),
   tags$p(
     "Upload a CSV. Registration happens after upload, without knowing its columns in advance. ",
-    "The app then invokes four local tools through the shield (bulk, targeted, shape, safe metadata)."
+    "The app then invokes five local tools through the shield (bulk, targeted, regex PII, shape, safe metadata)."
   ),
   fileInput("file", "Upload CSV", accept = c(".csv", "text/csv")),
   actionButton("sample", "Use generated sample data"),
@@ -66,7 +66,8 @@ server <- function(input, output, session) {
   # Per-user state: both the data and its protected-value index live inside
   # this Shiny server session (never package-global).
   data_env <- new.env(parent = emptyenv())
-  shield <- DataShield$new(max_rows = 0L)
+  shield <- DataShield$new(strategies=list(
+    shield_describe(), shield_egress(max_rows=0L), shield_regex()))
   state <- reactiveValues(
     data = NULL,
     source = NULL,
@@ -113,7 +114,13 @@ server <- function(input, output, session) {
     arguments = list()
   )
 
-  chat$register_tools(list(dump_tool, leak_tool, shape_tool))
+  pii_tool <- ellmer::tool(
+    function() "Contact unregistered.person@example.org or +1 (555) 123-4567.",
+    name = "LeakUnregisteredPII",
+    description = "Return unregistered contact details.",
+    arguments = list())
+
+  chat$register_tools(list(dump_tool, leak_tool, shape_tool, pii_tool))
   shield$install(chat) # wrap once; index may be added later
 
   register_upload <- function(df, source) {
@@ -161,6 +168,7 @@ server <- function(input, output, session) {
     dump_result <- .demo_get_tool(chat, "DumpUploadedData")()
     leak_result <- .demo_get_tool(chat, "LeakOneUploadedValue")()
     shape_result <- .demo_get_tool(chat, "DescribeUploadShape")()
+    pii_result <- .demo_get_tool(chat, "LeakUnregisteredPII")()
     describe_result <- .demo_get_tool(chat, "DescribeData")("uploaded")
 
     state$result <- paste(
@@ -170,10 +178,13 @@ server <- function(input, output, session) {
       "2) One protected value (value_match should withhold):",
       paste0("   ", substr(as.character(leak_result), 1L, 160L)),
       "",
-      "3) Harmless aggregate/shape (should pass):",
+      "3) Unregistered PII (regex scanner should redact):",
+      paste0("   ", as.character(pii_result)),
+      "",
+      "4) Harmless aggregate/shape (should pass):",
       paste0("   ", as.character(shape_result)),
       "",
-      "4) DescribeData strict safe metadata:",
+      "5) DescribeData strict safe metadata:",
       paste0("   ", paste(strsplit(as.character(describe_result), "\n", fixed = TRUE)[[1L]],
                             collapse = "\n   ")),
       sep = "\n"
