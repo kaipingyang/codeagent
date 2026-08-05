@@ -80,17 +80,14 @@
     
     
 <blockquote>
-<p><strong>Status — P0/P0.5 available; fuller design in
-progress.</strong> The <strong>P0 foundation is wired</strong>:
-<code>codeagent_client(data_shield = ...)</code> and
-<code><a href="../reference/install_data_shield.html">install_data_shield()</a></code> wrap tool results through the
-shape-based egress row-cap. P0.5 adds
-<code><a href="../reference/register_protected_data.html">register_protected_data()</a></code> + deterministic
-<code>value_match</code> for targeted single-value leaks. Ambient
-injection stays schema-only. The fuller strategy API below
-(<code>shield_egress</code>/<code>DescribeData</code>/<code>reviewer</code>/<code>sandbox</code>)
-is the <strong>target design / roadmap</strong> and not all wired yet.
-Off by default (<code>data_shield = NULL</code>).</p>
+<p><strong>Status — P0/P0.5/P1-strict available; fuller design in
+progress.</strong> The egress row-cap, per-session protected-value
+matching, and strict <code>DescribeData</code> safe metadata tool are
+wired. <code>DescribeData</code> exposes no distributions/counts by
+default; only sensitivity-gated ranges and k-supported category labels.
+The fuller strategy API (<code>shield_egress</code>
+actions/reviewer/sandbox and <code>distributions="on"/"dp"</code>)
+remains roadmap. Off by default (<code>data_shield = NULL</code>).</p>
 </blockquote>
 <div class="section level2">
 <h2 id="why">Why<a class="anchor" aria-label="anchor" href="#why"></a>
@@ -260,8 +257,89 @@ index.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="roadmap">Roadmap<a class="anchor" aria-label="anchor" href="#roadmap"></a>
+<h2 id="p1-describedata-strict-safe-metadata-contract">P1 <code>DescribeData</code>: strict safe metadata contract<a class="anchor" aria-label="anchor" href="#p1-describedata-strict-safe-metadata-contract"></a>
 </h2>
+<p><code>DescribeData</code> is the sanctioned way for the model to
+understand protected data without receiving rows. Its output is
+determined by three orthogonal dimensions:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Dimension</th>
+<th>Values</th>
+<th>Purpose</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Global policy</td>
+<td><code>distributions = "off" / "on" / "dp"</code></td>
+<td>strict defaults to no distributions; <code>on</code> is explicit
+opt-in; <code>dp</code> adds noise + budget</td>
+</tr>
+<tr class="even">
+<td>Column sensitivity</td>
+<td><code>identifier / quasi / measure / open</code></td>
+<td>business role that clamps the maximum disclosure for that
+column</td>
+</tr>
+<tr class="odd">
+<td>Data type</td>
+<td>numeric / factor / character / Date / …</td>
+<td>determines the safe representation: range, labels, or free-text
+marker</td>
+</tr>
+</tbody>
+</table>
+<p>Strict (<code>distributions = "off"</code>) matrix:</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Metadata</th>
+<th>identifier / quasi</th>
+<th>measure / open</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>column name, type, missing presence</td>
+<td>shown</td>
+<td>shown</td>
+</tr>
+<tr class="even">
+<td>numeric/date min–max</td>
+<td>hidden</td>
+<td>shown</td>
+</tr>
+<tr class="odd">
+<td>low-cardinality categorical labels</td>
+<td>hidden</td>
+<td>shown without counts; levels with support <code>&lt; k</code> are
+suppressed</td>
+</tr>
+<tr class="even">
+<td>real free-text examples</td>
+<td>hidden</td>
+<td>hidden</td>
+</tr>
+<tr class="odd">
+<td>histogram, quantiles, mean/SD, category counts</td>
+<td>hidden</td>
+<td>hidden (<code>on</code>/<code>dp</code> opt-in only)</td>
+</tr>
+</tbody>
+</table>
+<p>A factor is not automatically safe: a factorised subject ID remains
+an <code>identifier</code>. Character columns receive categorical labels
+only when they are low-cardinality, low-uniqueness, non-PII, and every
+exposed level satisfies the k-anonymity threshold. Free text never
+receives real examples in strict mode. ## Roadmap</p>
 <ul>
 <li>
 <strong>P0.5 — <code>value_match</code> (available)</strong>:
@@ -270,10 +348,11 @@ through (e.g. printing one patient’s name), by matching tool output
 against high-entropy values registered with
 <code><a href="../reference/register_protected_data.html">register_protected_data()</a></code>.</li>
 <li>
-<strong>P1 — <code>DescribeData</code> +
-<code><a href="../reference/register_protected_data.html">register_protected_data()</a></code></strong>: the model’s sanctioned,
-hardened view of data (schema + suppressed/k-anonymised summaries), plus
-the protected-data registry.</li>
+<strong>P1 — <code>DescribeData</code> + protected-data registry
+(strict available)</strong>: the model’s sanctioned hardened view
+(schema, sensitivity, missing presence, measure/open ranges and
+k-supported labels; no distributions/counts/examples).
+<code>distributions="on"/"dp"</code> remain later phases.</li>
 <li><strong>P2 — reviewer (small model), sandbox (folder + no-network),
 differential privacy for distributions (opt-in).</strong></li>
 </ul>

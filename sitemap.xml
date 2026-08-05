@@ -82,6 +82,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/data_shield.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_memory.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_session.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/describe_data_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-auto_compact_threshold.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-bg_poll.html</loc></url>
@@ -180,6 +181,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_ask_user_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_btw_file_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_builtin_tools.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/register_describe_data_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_explore_data_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_lint_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_mcp_client.html</loc></url>

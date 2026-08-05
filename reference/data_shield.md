@@ -24,7 +24,13 @@ created for that user session, then register uploaded data with
 ## Usage
 
 ``` r
-data_shield(max_rows = 0L)
+data_shield(
+  max_rows = 0L,
+  distributions = "off",
+  k_anon = 5L,
+  category_max = 20L,
+  category_ratio = 0.2
+)
 ```
 
 ## Arguments
@@ -33,6 +39,25 @@ data_shield(max_rows = 0L)
 
   Integer. Rows to retain from bulk tabular tool output (`0` means shape
   summary only).
+
+- distributions:
+
+  Distribution policy. P1 currently implements strict `"off"`; `"on"`
+  and `"dp"` are reserved for later phases.
+
+- k_anon:
+
+  Integer. Minimum support required before a categorical label may be
+  exposed (default 5).
+
+- category_max:
+
+  Integer. Maximum distinct values for automatic categorical treatment.
+
+- category_ratio:
+
+  Numeric. Maximum distinct/row ratio for a character column to be
+  treated as categorical.
 
 ## Value
 

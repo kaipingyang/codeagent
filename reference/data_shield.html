@@ -97,7 +97,13 @@ data with <code>register_protected_data(df, shield = shield)</code>.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">data_shield</span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">data_shield</span><span class="op">(</span></span>
+<span>  max_rows <span class="op">=</span> <span class="fl">0L</span>,</span>
+<span>  distributions <span class="op">=</span> <span class="st">"off"</span>,</span>
+<span>  k_anon <span class="op">=</span> <span class="fl">5L</span>,</span>
+<span>  category_max <span class="op">=</span> <span class="fl">20L</span>,</span>
+<span>  category_ratio <span class="op">=</span> <span class="fl">0.2</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -107,6 +113,26 @@ data with <code>register_protected_data(df, shield = shield)</code>.</p>
 <dl><dt id="arg-max-rows">max_rows<a class="anchor" aria-label="anchor" href="#arg-max-rows"></a></dt>
 <dd><p>Integer. Rows to retain from bulk tabular tool output (<code>0</code>
 means shape summary only).</p></dd>
+
+
+<dt id="arg-distributions">distributions<a class="anchor" aria-label="anchor" href="#arg-distributions"></a></dt>
+<dd><p>Distribution policy. P1 currently implements strict
+<code>"off"</code>; <code>"on"</code> and <code>"dp"</code> are reserved for later phases.</p></dd>
+
+
+<dt id="arg-k-anon">k_anon<a class="anchor" aria-label="anchor" href="#arg-k-anon"></a></dt>
+<dd><p>Integer. Minimum support required before a categorical label
+may be exposed (default 5).</p></dd>
+
+
+<dt id="arg-category-max">category_max<a class="anchor" aria-label="anchor" href="#arg-category-max"></a></dt>
+<dd><p>Integer. Maximum distinct values for automatic
+categorical treatment.</p></dd>
+
+
+<dt id="arg-category-ratio">category_ratio<a class="anchor" aria-label="anchor" href="#arg-category-ratio"></a></dt>
+<dd><p>Numeric. Maximum distinct/row ratio for a character
+column to be treated as categorical.</p></dd>
 
 </dl></div>
     <div class="section level2">

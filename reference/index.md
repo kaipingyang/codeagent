@@ -274,6 +274,10 @@ Tool factories and registration.
   : Register protected data for a session's Data Shield value_match
 - [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
   : Data Shield — pluggable strict data-safety valve (P0 core)
+- [`describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/describe_data_tool.md)
+  : Create the strict DescribeData tool
+- [`register_describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/register_describe_data_tool.md)
+  : Register the strict DescribeData tool
 
 ## Data exploration (WEAR)
 

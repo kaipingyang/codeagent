@@ -107,17 +107,17 @@ codeagent_console(client)
 
 ### Tools
 
-| Group | Source    | Tools                                                   |
-|-------|-----------|---------------------------------------------------------|
-| Core  | codeagent | Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS      |
-| docs  | btw       | help pages, vignettes, NEWS                             |
-| env   | btw       | describe data frames / R environment                    |
-| files | btw       | hash-anchored precise editing + atomic multi-file patch |
-| git   | btw       | status, diff, log, commit, branches                     |
-| pkg   | btw       | document, check, test, coverage, load_all               |
-| web   | btw       | URL → Markdown                                          |
-| agent | btw       | hierarchical subagent delegation                        |
-| data  | codeagent | `ExploreData` — sandboxed data.frame queries            |
+| Group | Source | Tools |
+|----|----|----|
+| Core | codeagent | Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS |
+| docs | btw | help pages, vignettes, NEWS |
+| env | btw | describe data frames / R environment |
+| files | btw | hash-anchored precise editing + atomic multi-file patch |
+| git | btw | status, diff, log, commit, branches |
+| pkg | btw | document, check, test, coverage, load_all |
+| web | btw | URL → Markdown |
+| agent | btw | hierarchical subagent delegation |
+| data | codeagent | `ExploreData` — sandboxed data.frame queries; `DescribeData` — strict protected-data metadata (Data Shield) |
 
 ### Skill system
 
@@ -507,6 +507,10 @@ Tool factories and registration.
   : Register protected data for a session's Data Shield value_match
 - [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
   : Data Shield — pluggable strict data-safety valve (P0 core)
+- [`describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/describe_data_tool.md)
+  : Create the strict DescribeData tool
+- [`register_describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/register_describe_data_tool.md)
+  : Register the strict DescribeData tool
 
 ## Data exploration (WEAR)
 

@@ -15,6 +15,8 @@ inside that session's server function.
 ``` r
 register_protected_data(
   df,
+  name = NULL,
+  sensitivity = NULL,
   cols = NULL,
   min_len = 3L,
   min_card = 8L,
@@ -30,9 +32,21 @@ register_protected_data(
 
   A data.frame (e.g. an uploaded dataset).
 
+- name:
+
+  Character. Dataset name exposed to `DescribeData`; inferred from a
+  simple object name or generated when omitted.
+
+- sensitivity:
+
+  Optional named character vector/list assigning columns to
+  `identifier`, `quasi`, `measure`, or `open`; local heuristics fill the
+  rest.
+
 - cols:
 
-  Character. Columns to index (default: all).
+  Optional explicit columns to value-index. By default only columns
+  classified `identifier`/`quasi` are indexed.
 
 - min_len, min_card:
 
@@ -59,5 +73,6 @@ Invisibly, the number of values indexed.
 ## See also
 
 [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md),
+[`describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/describe_data_tool.md),
 [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md),
 [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)

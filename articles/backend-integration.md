@@ -222,6 +222,9 @@ bump the major and are announced in `NEWS.md`. The guard test
   [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
   /
   [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md)
+- [`describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/describe_data_tool.md)
+  /
+  [`register_describe_data_tool()`](https://kaipingyang.github.io/codeagent/reference/register_describe_data_tool.md)
 - [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md)
   /
   [`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)
