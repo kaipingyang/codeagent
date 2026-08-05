@@ -133,17 +133,17 @@ expensive tool registration; call <code><a href="dot-register_all_tools.html">.r
 
 
 <dt id="arg-data-shield">data_shield<a class="anchor" aria-label="anchor" href="#arg-data-shield"></a></dt>
-<dd><p><code>NULL</code> (off, default) or a list enabling the opt-in Data
-Shield egress guard (e.g. <code>list(max_rows = 0)</code>): tool results shaped like
-bulk row-level data are truncated to a shape summary before reaching the
-model. For a harness-only client (<code>register_tools = FALSE</code>) install it
-yourself after attaching tools via <code><a href="install_data_shield.html">install_data_shield()</a></code>. See the
-<code>data-shield</code> vignette.</p></dd>
+<dd><p><code>NULL</code> (off, default), a config list (creates a private
+state), or a <code><a href="data_shield.html">data_shield()</a></code> <code>DataShieldState</code> shared by all chat threads
+in one user session. Tool results shaped like bulk rows or containing
+registered protected values are filtered before reaching the model. For a
+harness-only client, attach tools then call <code><a href="install_data_shield.html">install_data_shield()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Object of class <code>CodeagentClient</code> with slots <code>$chat</code> and <code>$settings</code>.</p>
+    <p>Object of class <code>CodeagentClient</code> with <code>$chat</code>, <code>$settings</code>, and
+<code>$data_shield</code> (NULL when disabled).</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

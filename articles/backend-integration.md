@@ -48,7 +48,11 @@ client <- codeagent::codeagent_client(
 ```
 
 [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
-returns a `CodeagentClient`: a list with `$chat` and `$settings`.
+returns a `CodeagentClient` with `$chat`, `$settings`, and
+`$data_shield` (`NULL` unless enabled). For multi-user Shiny apps,
+create the client inside the server session (for example via
+`codeagent_app(client_factory=)`), never share one mutable client across
+browser sessions.
 
 ## 2. Driving a turn + the callback contract
 
@@ -201,7 +205,9 @@ documented above. Changes follow semantic versioning; breaking changes
 bump the major and are announced in `NEWS.md`. The guard test
 `test-backend-contract.R` fails if this surface drifts.
 
-- `codeagent_client(register_tools = FALSE)` → `{chat, settings}`
+- `codeagent_client(register_tools = FALSE)` →
+  `{chat, settings, data_shield}`
+- `codeagent_app(client_factory = )` per-session client contract
 - [`codeagent_stream()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream.md)
   /
   [`codeagent_stream_async()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.md) +
@@ -211,6 +217,11 @@ bump the major and are announced in `NEWS.md`. The guard test
 - [`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
 - [`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
   (+ `ask_fn(name, input, id = NULL)` contract)
+- [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
+  /
+  [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
+  /
+  [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md)
 - [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md)
   /
   [`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)

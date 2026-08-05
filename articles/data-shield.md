@@ -72,13 +72,14 @@ The minimal, deterministic slice that already gives real protection:
 
 ``` r
 
-# Turn it on (register_tools = TRUE path):
+# Simple one-chat use: config list creates a private state for this client.
 client <- codeagent_client(chat, data_shield = list(max_rows = 0))
 
-# Harness-only client: install after attaching your own tools:
-client <- codeagent_client(chat, register_tools = FALSE)
+# Harness-only client: install after attaching your own tools.
+client <- codeagent_client(chat, register_tools = FALSE,
+                           data_shield = list(max_rows = 0))
 chat$register_tool(my_tool)
-install_data_shield(chat, max_rows = 0)
+install_data_shield(client)
 ```
 
 - **Edge 2 — shape-based egress row-cap.** codeagent does **not**
@@ -100,13 +101,18 @@ index at invocation time.
 
 ``` r
 
-# Per Shiny session:
+# Inside each Shiny server session: one state may be shared by multiple chats.
+shield <- data_shield(max_rows = 0)
 data_env <- new.env(parent = emptyenv())
+
+client_factory <- function() {
+  codeagent_client(make_chat(), data_shield = shield)
+}
 
 observeEvent(input$file, {
   df <- read.csv(input$file$datapath)
   data_env$uploaded <- df
-  register_protected_data(df)  # runtime registration; no advance column list needed
+  register_protected_data(df, shield = shield) # no advance columns needed
 })
 ```
 
@@ -129,11 +135,14 @@ It demonstrates three outcomes after upload: bulk rows withheld by
 `row_cap`, a single indexed value withheld by `value_match`, and a
 harmless shape summary passed through.
 
-> **Current P0.5 limitation:** the protected-value index is
-> process-global. The upload demo is therefore suitable for a
-> single-user/development process. A shared-process multi-user Shiny
-> deployment requires indexing by session/chat before production use
-> (tracked in the Data Shield plans).
+> **Multi-user isolation:**
+> [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
+> returns a session-scoped state. Create it inside the Shiny server
+> function, share it only among that user’s chat threads, and pass it
+> explicitly to
+> [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md).
+> Other browser sessions receive separate states and cannot see or
+> influence its index.
 
 Illustrative behaviour of the P0 row-cap (implemented):
 

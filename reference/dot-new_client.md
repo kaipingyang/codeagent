@@ -5,7 +5,7 @@ Wrap an ellmer Chat with codeagent settings into a client object
 ## Usage
 
 ``` r
-.new_client(chat, settings)
+.new_client(chat, settings, data_shield = NULL)
 ```
 
 ## Arguments

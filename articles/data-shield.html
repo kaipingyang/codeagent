@@ -162,13 +162,14 @@ guardrails-ai. All pure R — no Python.</p>
 <p>The minimal, deterministic slice that already gives real
 protection:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Turn it on (register_tools = TRUE path):</span></span>
+<code class="sourceCode R"><span><span class="co"># Simple one-chat use: config list creates a private state for this client.</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Harness-only client: install after attaching your own tools:</span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, register_tools <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="co"># Harness-only client: install after attaching your own tools.</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, register_tools <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>                           data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">chat</span><span class="op">$</span><span class="fu">register_tool</span><span class="op">(</span><span class="va">my_tool</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/install_data_shield.html">install_data_shield</a></span><span class="op">(</span><span class="va">chat</span>, max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/install_data_shield.html">install_data_shield</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
 <strong>Edge 2 — shape-based egress row-cap.</strong> codeagent does
@@ -192,13 +193,18 @@ starts. Register it in the upload observer immediately after reading it;
 tools may already be attached and wrapped, because value matching reads
 the live index at invocation time.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Per Shiny session:</span></span>
+<code class="sourceCode R"><span><span class="co"># Inside each Shiny server session: one state may be shared by multiple chats.</span></span>
+<span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/data_shield.html">data_shield</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="va">data_env</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">new.env</a></span><span class="op">(</span>parent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">emptyenv</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">client_factory</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="fu">make_chat</span><span class="op">(</span><span class="op">)</span>, data_shield <span class="op">=</span> <span class="va">shield</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span></span>
 <span><span class="fu">observeEvent</span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">file</span>, <span class="op">{</span></span>
 <span>  <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">file</span><span class="op">$</span><span class="va">datapath</span><span class="op">)</span></span>
 <span>  <span class="va">data_env</span><span class="op">$</span><span class="va">uploaded</span> <span class="op">&lt;-</span> <span class="va">df</span></span>
-<span>  <span class="fu"><a href="../reference/register_protected_data.html">register_protected_data</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span>  <span class="co"># runtime registration; no advance column list needed</span></span>
+<span>  <span class="fu"><a href="../reference/register_protected_data.html">register_protected_data</a></span><span class="op">(</span><span class="va">df</span>, shield <span class="op">=</span> <span class="va">shield</span><span class="op">)</span> <span class="co"># no advance columns needed</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>A complete runnable host-style Shiny example is installed at:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -212,11 +218,12 @@ the live index at invocation time.</p>
 <code>value_match</code>, and a harmless shape summary passed
 through.</p>
 <blockquote>
-<p><strong>Current P0.5 limitation:</strong> the protected-value index
-is process-global. The upload demo is therefore suitable for a
-single-user/development process. A shared-process multi-user Shiny
-deployment requires indexing by session/chat before production use
-(tracked in the Data Shield plans).</p>
+<p><strong>Multi-user isolation:</strong> <code><a href="../reference/data_shield.html">data_shield()</a></code>
+returns a session-scoped state. Create it inside the Shiny server
+function, share it only among that user’s chat threads, and pass it
+explicitly to <code><a href="../reference/register_protected_data.html">register_protected_data()</a></code>. Other browser
+sessions receive separate states and cannot see or influence its
+index.</p>
 </blockquote>
 <p>Illustrative behaviour of the P0 row-cap (implemented):</p>
 <table class="table">

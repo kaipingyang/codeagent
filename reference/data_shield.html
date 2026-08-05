@@ -6,14 +6,26 @@ This file contains the P0 core: a content-agnostic, shape-based egress
 row-cap for tool results (edge 2). It does NOT inspect code or block
 print; it looks only at the shape of a tool's returned text and truncates
 output that has the signature of a bulk row-level data dump, passing scalars,
-messages, model summaries, plots and errors through untouched."><meta property="og:description" content="Opt-in guard that stops raw row-level data from reaching the LLM via the two
+messages, model summaries, plots and errors through untouched.
+Create the mutable state shared by all codeagent clients / chat threads in
+one user session. The protected-value index lives here (never package-global),
+so separate Shiny sessions cannot see or influence each other's values.
+Pass the returned object as data_shield = shield to every
+codeagent_client() created for that user session, then register uploaded
+data with register_protected_data(df, shield = shield)."><meta property="og:description" content="Opt-in guard that stops raw row-level data from reaching the LLM via the two
 inbound edges: (1) prompt-side auto-injection (ambient context) and (2) tool
 results. Off by default (data_shield = NULL).
 This file contains the P0 core: a content-agnostic, shape-based egress
 row-cap for tool results (edge 2). It does NOT inspect code or block
 print; it looks only at the shape of a tool's returned text and truncates
 output that has the signature of a bulk row-level data dump, passing scalars,
-messages, model summaries, plots and errors through untouched."></head><body>
+messages, model summaries, plots and errors through untouched.
+Create the mutable state shared by all codeagent clients / chat threads in
+one user session. The protected-value index lives here (never package-global),
+so separate Shiny sessions cannot see or influence each other's values.
+Pass the returned object as data_shield = shield to every
+codeagent_client() created for that user session, then register uploaded
+data with register_protected_data(df, shield = shield)."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -75,11 +87,35 @@ row-cap</strong> for tool results (edge 2). It does NOT inspect code or block
 <code>print</code>; it looks only at the <em>shape</em> of a tool's returned text and truncates
 output that has the signature of a bulk row-level data dump, passing scalars,
 messages, model summaries, plots and errors through untouched.</p>
+<p>Create the mutable state shared by all codeagent clients / chat threads in
+one user session. The protected-value index lives here (never package-global),
+so separate Shiny sessions cannot see or influence each other's values.</p>
+<p>Pass the returned object as <code>data_shield = shield</code> to every
+<code><a href="codeagent_client.html">codeagent_client()</a></code> created for that user session, then register uploaded
+data with <code>register_protected_data(df, shield = shield)</code>.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">data_shield</span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0L</span><span class="op">)</span></span></code></pre></div>
+    </div>
+
+    <div class="section level2">
+    <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-  </main></div>
+<dl><dt id="arg-max-rows">max_rows<a class="anchor" aria-label="anchor" href="#arg-max-rows"></a></dt>
+<dd><p>Integer. Rows to retain from bulk tabular tool output (<code>0</code>
+means shape summary only).</p></dd>
+
+</dl></div>
+    <div class="section level2">
+    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
+    <p>A mutable <code>DataShieldState</code> environment.</p>
+    </div>
+
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

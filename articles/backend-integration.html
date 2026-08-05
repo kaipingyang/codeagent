@@ -151,8 +151,12 @@ are attached — you get only the harness.</p>
 <span>  cwd             <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> returns a
-<code>CodeagentClient</code>: a list with <code>$chat</code> and
-<code>$settings</code>.</p>
+<code>CodeagentClient</code> with <code>$chat</code>,
+<code>$settings</code>, and <code>$data_shield</code> (<code>NULL</code>
+unless enabled). For multi-user Shiny apps, create the client inside the
+server session (for example via
+<code>codeagent_app(client_factory=)</code>), never share one mutable
+client across browser sessions.</p>
 </div>
 <div class="section level2">
 <h2 id="driving-a-turn-the-callback-contract">2. Driving a turn + the callback contract<a class="anchor" aria-label="anchor" href="#driving-a-turn-the-callback-contract"></a>
@@ -342,8 +346,11 @@ breaking changes bump the major and are announced in
 <ul>
 <li>
 <code>codeagent_client(register_tools = FALSE)</code> →
-<code>{chat, settings}</code>
+<code>{chat, settings, data_shield}</code>
 </li>
+<li>
+<code>codeagent_app(client_factory = )</code> per-session client
+contract</li>
 <li>
 <code><a href="../reference/codeagent_stream.html">codeagent_stream()</a></code> /
 <code><a href="../reference/codeagent_stream_async.html">codeagent_stream_async()</a></code> + callbacks +
@@ -355,6 +362,10 @@ breaking changes bump the major and are announced in
 <li>
 <code><a href="../reference/install_permission_gate.html">install_permission_gate()</a></code> (+
 <code>ask_fn(name, input, id = NULL)</code> contract)</li>
+<li>
+<code><a href="../reference/data_shield.html">data_shield()</a></code> / <code><a href="../reference/install_data_shield.html">install_data_shield()</a></code> /
+<code><a href="../reference/register_protected_data.html">register_protected_data()</a></code>
+</li>
 <li>
 <code><a href="../reference/list_skills_meta.html">list_skills_meta()</a></code> / <code><a href="../reference/load_skill_prompt.html">load_skill_prompt()</a></code> /
 <code><a href="../reference/build_skill_hint.html">build_skill_hint()</a></code>

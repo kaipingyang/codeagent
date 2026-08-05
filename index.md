@@ -162,11 +162,20 @@ codeagent_mcp_server()
 
 ``` r
 
+# Single-user / interactive convenience:
 codeagent_app(
   client,
   theme         = "default",   # "default" | "flatly" | "darkly" | "glass"
   pinned_skills = c("plan", "compact")
 )
+
+# Multi-user deployment: create mutable client/chat state per Shiny session.
+codeagent_app(client_factory = function(session) {
+  codeagent_client(ellmer::chat_openai_compatible(
+    base_url = Sys.getenv("CODEAGENT_BASE_URL"),
+    model = Sys.getenv("CODEAGENT_MODEL"),
+    credentials = function() Sys.getenv("CODEAGENT_API_KEY")))
+})
 ```
 
 ## Configuration reference

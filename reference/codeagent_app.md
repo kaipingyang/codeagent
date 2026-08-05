@@ -7,6 +7,7 @@ Launch the codeagent Shiny application
 ``` r
 codeagent_app(
   client = NULL,
+  client_factory = NULL,
   theme = "default",
   pinned_skills = character(0),
   greeting = NULL,
@@ -27,10 +28,17 @@ codeagent_app(
 
 - client:
 
-  A `CodeagentClient` from
-  [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md),
-  an [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html),
-  or NULL (legacy mode).
+  A pre-built `CodeagentClient` (single-user compatibility) or, for
+  backward compatibility, an
+  [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  template (cloned per Shiny session). Prefer `chat=` for the template
+  form.
+
+- client_factory:
+
+  Optional `function(session)` (or zero-argument function) returning a
+  fresh `CodeagentClient` for each Shiny session. This is the most
+  flexible multi-user mode.
 
 - theme:
 
@@ -98,8 +106,9 @@ codeagent_app(
 
 - chat:
 
-  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
-  Legacy alias.
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  template cloned inside each Shiny session; convenient multi-user entry
+  point.
 
 ## Value
 

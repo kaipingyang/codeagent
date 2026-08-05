@@ -1,22 +1,27 @@
-# Register protected data for the Data Shield value_match
+# Register protected data for a session's Data Shield value_match
 
-Index the (high-entropy) values of a data.frame so the Data Shield
-egress guard withholds them if they surface in a tool result (e.g. a
-tool that prints one subject's name or id – something the shape-based
-row-cap lets through). Only long, high-cardinality, non-small-integer
-values are indexed; common / low-cardinality / small-integer values are
-skipped to avoid false positives (those belong to the describe layer,
-not value_match).
+Index high-entropy values from a data.frame into one **session-scoped**
+[`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
+state. All chat threads that share that state will protect the same
+uploaded data; other Shiny sessions remain completely isolated.
 
-Effects are process-global for the session (per-session isolation is a
-planned follow-up). Call once per protected dataset, then
-[`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
-(or `codeagent_client(data_shield=)`).
+Supply exactly one of `shield`, `client`, or `chat`. In a Shiny upload
+observer the recommended form is
+`register_protected_data(df, shield=shield)` where `shield` was created
+inside that session's server function.
 
 ## Usage
 
 ``` r
-register_protected_data(df, cols = NULL, min_len = 3L, min_card = 8L)
+register_protected_data(
+  df,
+  cols = NULL,
+  min_len = 3L,
+  min_card = 8L,
+  shield = NULL,
+  client = NULL,
+  chat = NULL
+)
 ```
 
 ## Arguments
@@ -33,11 +38,26 @@ register_protected_data(df, cols = NULL, min_len = 3L, min_card = 8L)
 
   Integer. "Indexable" thresholds: value length and column cardinality.
 
+- shield:
+
+  Optional
+  [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
+  state.
+
+- client:
+
+  Optional `CodeagentClient` that owns a state.
+
+- chat:
+
+  Optional installed ellmer Chat that owns a state.
+
 ## Value
 
 Invisibly, the number of values indexed.
 
 ## See also
 
+[`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md),
 [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md),
 [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)

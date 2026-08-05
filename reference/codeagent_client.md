@@ -88,14 +88,15 @@ codeagent_client(
 
 - data_shield:
 
-  `NULL` (off, default) or a list enabling the opt-in Data Shield egress
-  guard (e.g. `list(max_rows = 0)`): tool results shaped like bulk
-  row-level data are truncated to a shape summary before reaching the
-  model. For a harness-only client (`register_tools = FALSE`) install it
-  yourself after attaching tools via
+  `NULL` (off, default), a config list (creates a private state), or a
+  [`data_shield()`](https://kaipingyang.github.io/codeagent/reference/data_shield.md)
+  `DataShieldState` shared by all chat threads in one user session. Tool
+  results shaped like bulk rows or containing registered protected
+  values are filtered before reaching the model. For a harness-only
+  client, attach tools then call
   [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md).
-  See the `data-shield` vignette.
 
 ## Value
 
-Object of class `CodeagentClient` with slots `$chat` and `$settings`.
+Object of class `CodeagentClient` with `$chat`, `$settings`, and
+`$data_shield` (NULL when disabled).

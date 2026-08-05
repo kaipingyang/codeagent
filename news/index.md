@@ -2,6 +2,15 @@
 
 ## codeagent (development version)
 
+- **Multi-user Shiny isolation**:
+  `codeagent_app(client_factory = function(session) ...)` now creates a
+  fresh `CodeagentClient`/Chat inside every Shiny session; the no-client
+  default uses this safe path automatically. Passing a pre-built
+  `client` remains the explicitly single-user compatibility path. Data
+  Shield protected values now live in a session-scoped `DataShieldState`
+  that may be shared among that user’s chat threads without cross-user
+  index leakage.
+
 - **Data Shield P0/P0.5 (opt-in, default OFF)**:
   `codeagent_client(data_shield = ...)` and
   [`install_data_shield()`](https://kaipingyang.github.io/codeagent/reference/install_data_shield.md)
@@ -10,10 +19,10 @@
   [`register_protected_data()`](https://kaipingyang.github.io/codeagent/reference/register_protected_data.md)
   adds deterministic high-entropy `value_match` protection for targeted
   single-value leaks that the row-cap cannot detect. Includes
-  deterministic, live-LLM, and runtime-upload Shiny examples; the
-  protected-value index is currently process-global, so shared-process
-  multi-user Shiny deployments require the planned per-session
-  isolation.
+  deterministic, live-LLM, and runtime-upload Shiny examples. Protected
+  values now live in an explicit per-session `DataShieldState`; one
+  browser session may share it across chat threads without any
+  cross-user index leakage.
 
 - **Backend permission gate for host tools**: new exported
   `install_permission_gate(chat, permission_mode, rules, tools, ask_fn, tool_meta)`
