@@ -386,13 +386,16 @@ remains the primary boundary because code can be obfuscated. ###
 <code>DataShield$new()</code> direct lifecycle</p>
 <p>Direct constructor parameters (<code>max_rows</code>,
 <code>distributions</code>, <code>k_anon</code>,
-<code>category_max</code>, <code>category_ratio</code>) create the
-default DescribeData + core egress configuration when
-<code>strategies = NULL</code>. Supplying
+<code>category_max</code>, <code>category_ratio</code>,
+<code>audit_max</code>) create the default DescribeData + core egress
+configuration when <code>strategies = NULL</code>.
+<code>audit_max</code> defaults to 1000 non-sensitive decision events;
+<code>0</code> disables recording. Supplying
 <code>strategies = list(...)</code> enables <strong>only</strong> listed
 strategies and preserves list order. Use
 <code>shield$register_data()</code>, <code>$install()</code>,
-<code>$describe()</code>, <code>$clear()</code>, and
+<code>$describe()</code>, <code>$audit()</code>,
+<code>$clear_audit()</code>, <code>$clear()</code>, and
 <code>$close()</code> for dynamic/session-owned workflows.</p>
 </div>
 </div>
@@ -468,11 +471,74 @@ datasets/index/lifecycle</td>
 </table>
 </div>
 <div class="section level2">
+<h2 id="non-sensitive-audit-log">Non-sensitive audit log<a class="anchor" aria-label="anchor" href="#non-sensitive-audit-log"></a>
+</h2>
+<p><code>shield$audit()</code> returns an in-memory data.frame of policy
+decisions:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Field</th>
+<th>Meaning</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>timestamp</code></td>
+<td>UTC event time</td>
+</tr>
+<tr class="even">
+<td><code>edge</code></td>
+<td>
+<code>ingress</code> (before tool) or <code>egress</code> (before
+LLM)</td>
+</tr>
+<tr class="odd">
+<td>
+<code>tool_name</code>, <code>tool_call_id</code>
+</td>
+<td>Non-sensitive correlation identifiers</td>
+</tr>
+<tr class="even">
+<td><code>strategy</code></td>
+<td>
+<code>row_cap</code>, <code>value_match</code>, <code>regex</code>,
+<code>ingress</code>, or custom scanner name</td>
+</tr>
+<tr class="odd">
+<td>
+<code>action</code>, <code>reason</code>
+</td>
+<td>
+<code>redact</code>/<code>block</code>/<code>ask</code> and a
+rule/reason label</td>
+</tr>
+<tr class="even">
+<td>
+<code>match_count</code>, <code>score</code>
+</td>
+<td>Number of matches and normalized risk score</td>
+</tr>
+</tbody>
+</table>
+<p>It <strong>never stores</strong> raw tool arguments/results, matched
+values, data rows, span text, or hashes. <code>audit_max</code> bounds
+memory (oldest events are dropped); use
+<code>shield$clear_audit()</code> to clear it. Each
+<code>DataShield</code> R6 has its own log, so session/thread isolation
+matches the policy instance.</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">recent</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
 <h2 id="p0-the-foundation-available-now">P0 — the foundation (available now)<a class="anchor" aria-label="anchor" href="#p0-the-foundation-available-now"></a>
 </h2>
 <p>The minimal, deterministic slice that already gives real
 protection:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Easy entry: strategy specs create one private DataShield R6 for this client.</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
@@ -507,7 +573,7 @@ Shield keeps it that way.</li>
 starts. Register it in the upload observer immediately after reading it;
 tools may already be attached and wrapped, because value matching reads
 the live index at invocation time.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Inside each Shiny server session: one R6 may be shared by selected chats.</span></span>
 <span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -523,10 +589,10 @@ the live index at invocation time.</p>
 <span>  <span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"uploaded"</span><span class="op">)</span> <span class="co"># no advance columns needed</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>A complete runnable host-style Shiny example is installed at:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples/data_shield_upload_app.R"</span>, package <span class="op">=</span> <span class="st">"codeagent"</span><span class="op">)</span></span></code></pre></div>
 <p>From a development checkout:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"inst/examples/data_shield_upload_app.R"</span><span class="op">)</span></span></code></pre></div>
 <p>It demonstrates five outcomes after upload: bulk rows withheld by
@@ -667,7 +733,7 @@ receives real examples in strict mode.</p>
 <p>Strategy-list order is the execution order.
 <code><a href="../reference/shield_regex.html">shield_regex()</a></code> catches sensitive content even when no
 data.frame was registered:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"redact"</span><span class="op">)</span>,</span>
@@ -690,7 +756,7 @@ callback/gate. It scans every tool’s arguments before the read-only fast
 path. A <code>block</code> result raises <code>tool_reject</code>; an
 <code>ask</code> result reuses the current CLI/Shiny approval callback,
 including tool-call id correlation.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>

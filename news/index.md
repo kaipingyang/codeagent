@@ -2,6 +2,14 @@
 
 ## codeagent (development version)
 
+- **Non-sensitive Data Shield audit log**: every blocked/asked ingress
+  decision and redacted/blocked egress event records timestamp, edge,
+  tool name/call id, strategy, action, reason label, match count and
+  score in the owning R6 instance. Raw tool arguments/results, matched
+  values, span text, rows and hashes are never stored. Use
+  `$audit(limit=)`, `$clear_audit()`, and `$coverage()$audit_events`;
+  `audit_max` bounds memory with oldest-first eviction.
+
 - **Universal Data Shield ingress scanning**: new
   [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
   scans the arguments of every native/btw/MCP/host tool inside the

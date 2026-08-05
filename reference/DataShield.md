@@ -30,6 +30,10 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$add_scanner()`](#method-DataShield-add_scanner)
 
+- [`DataShield$audit()`](#method-DataShield-audit)
+
+- [`DataShield$clear_audit()`](#method-DataShield-clear_audit)
+
 - [`DataShield$clear()`](#method-DataShield-clear)
 
 - [`DataShield$close()`](#method-DataShield-close)
@@ -50,6 +54,7 @@ Create a Data Shield.
       k_anon = 5L,
       category_max = 20L,
       category_ratio = 0.2,
+      audit_max = 1000L,
       strategies = NULL
     )
 
@@ -77,6 +82,10 @@ Create a Data Shield.
 
   Maximum distinct/non-missing ratio for character categorical
   treatment.
+
+- `audit_max`:
+
+  Maximum in-memory non-sensitive decision events retained.
 
 - `strategies`:
 
@@ -160,7 +169,17 @@ Apply the ordered egress strategy pipeline to a tool result.
 
 #### Usage
 
-    DataShield$scan_egress(result)
+    DataShield$scan_egress(result, context = list())
+
+#### Arguments
+
+- `result`:
+
+  Tool return value.
+
+- `context`:
+
+  Optional non-sensitive context (`tool_name`, `tool_call_id`).
 
 ------------------------------------------------------------------------
 
@@ -170,7 +189,7 @@ Scan one tool request before execution.
 
 #### Usage
 
-    DataShield$scan_ingress(tool_name, input)
+    DataShield$scan_ingress(tool_name, input, tool_call_id = NULL)
 
 #### Arguments
 
@@ -181,6 +200,10 @@ Scan one tool request before execution.
 - `input`:
 
   Named list of tool arguments.
+
+- `tool_call_id`:
+
+  Optional non-sensitive tool-call identifier.
 
 #### Returns
 
@@ -195,6 +218,32 @@ Add a custom scanner function to the end of the egress pipeline.
 #### Usage
 
     DataShield$add_scanner(name, fn)
+
+------------------------------------------------------------------------
+
+### `DataShield$audit()`
+
+Return a copy of non-sensitive decision events.
+
+#### Usage
+
+    DataShield$audit(limit = NULL)
+
+#### Arguments
+
+- `limit`:
+
+  Optional number of most recent events.
+
+------------------------------------------------------------------------
+
+### `DataShield$clear_audit()`
+
+Remove all in-memory audit events.
+
+#### Usage
+
+    DataShield$clear_audit()
 
 ------------------------------------------------------------------------
 
@@ -281,6 +330,12 @@ shield$coverage()
 #> 
 #> $ingress_pipeline
 #> character(0)
+#> 
+#> $audit_events
+#> [1] 0
+#> 
+#> $audit_max
+#> [1] 1000
 #> 
 #> $closed
 #> [1] FALSE
