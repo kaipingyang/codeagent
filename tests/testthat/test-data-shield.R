@@ -61,7 +61,7 @@ test_that("codeagent_client exposes the R6 + strategy-list Data Shield API", {
     base_url = "http://x", model = "m", credentials = function() "k")
   off <- codeagent_client(chat, register_tools = FALSE)
   expect_null(off$data_shield)
-
+})
 
 test_that("strategy list is the easy entry to one private R6 engine", {
   chat <- ellmer::chat_openai_compatible(
@@ -70,14 +70,17 @@ test_that("strategy list is the easy entry to one private R6 engine", {
     chat, register_tools=FALSE,
     data_shield=list(
       shield_describe(k_anon=3L),
-      shield_egress(detectors=c("row_cap","value_match"), max_rows=0L)))
+      shield_egress(detectors=c("row_cap","value_match"), max_rows=0L,
+                    on_fail="block")))
   expect_r6_class(client$data_shield, "DataShield")
   expect_identical(client$data_shield$coverage()$config$k_anon, 3L)
+  chat$register_tool(ellmer::tool(function() mtcars, name="Dump", description="d", arguments=list()))
+  client$data_shield$install(chat)
+  expect_match(chat$get_tools()[[1L]](), "output blocked")
   expect_error(
     codeagent_client(chat, register_tools=FALSE,
                      data_shield=list(max_rows=0L)),
     "shield_\\*\\(\\)")
-})
 })
 
 
@@ -222,4 +225,17 @@ test_that("column sensitivity heuristics are restrictive and overrides win", {
   expect_identical(s[["AGE"]], "quasi")
   expect_identical(s[["visit_date"]], "measure")
   expect_identical(s[["AVAL"]], "measure")
+})
+
+
+test_that("DataShield R6 owns clear/close lifecycle", {
+  shield <- DataShield$new()
+  shield$register_data(data.frame(id=paste0("X",1:10)), name="x")
+  expect_identical(shield$coverage()$datasets, "x")
+  shield$clear("x")
+  expect_length(shield$coverage()$datasets, 0L)
+  shield$close()
+  expect_true(shield$coverage()$closed)
+  expect_error(shield$register_data(data.frame(x=1), name="late"), "closed")
+  expect_null(shield$clone)
 })

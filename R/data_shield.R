@@ -214,9 +214,7 @@ DataShield <- R6::R6Class(
         for (key in keys) assign(key, TRUE, envir = private$index)
       }
       invisible(length(ls(private$index, all.names = TRUE)))
-    },
-    get_index = function() private$index,
-    get_config = function() private$config
+    }
   )
 )
 
@@ -297,7 +295,11 @@ DataShield <- R6::R6Class(
     return(list(text = text, changed = FALSE))
   if ("row_cap" %in% detectors) {
     capped <- .data_shield_row_cap(text, max_rows = max_rows)
-    if (isTRUE(capped$capped)) return(list(text = capped$text, changed = TRUE))
+    if (isTRUE(capped$capped)) {
+      if (identical(on_fail, "block"))
+        capped$text <- sub("output withheld", "output blocked", capped$text, fixed = TRUE)
+      return(list(text = capped$text, changed = TRUE))
+    }
   }
   if ("value_match" %in% detectors) {
     matched <- tryCatch(.data_shield_value_scan(text, index),
