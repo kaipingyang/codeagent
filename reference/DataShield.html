@@ -91,6 +91,7 @@ object for an independent user/thread boundary.</p>
 <li><p><a href="#method-DataShield-install"><code>DataShield$install()</code></a></p></li>
 <li><p><a href="#method-DataShield-describe"><code>DataShield$describe()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_egress"><code>DataShield$scan_egress()</code></a></p></li>
+<li><p><a href="#method-DataShield-scan_ingress"><code>DataShield$scan_ingress()</code></a></p></li>
 <li><p><a href="#method-DataShield-add_scanner"><code>DataShield$add_scanner()</code></a></p></li>
 <li><p><a href="#method-DataShield-clear"><code>DataShield$clear()</code></a></p></li>
 <li><p><a href="#method-DataShield-close"><code>DataShield$close()</code></a></p></li>
@@ -130,7 +131,7 @@ categorical treatment.</p></dd>
 
       <dt><code>strategies</code></dt>
 <dd><p>Optional ordered list from <code><a href="shield_describe.html">shield_describe()</a></code>,
-<code><a href="shield_egress.html">shield_egress()</a></code>, and <code><a href="shield_regex.html">shield_regex()</a></code>. If supplied, only listed
+<code><a href="shield_egress.html">shield_egress()</a></code>, <code><a href="shield_regex.html">shield_regex()</a></code>, and <code><a href="shield_ingress.html">shield_ingress()</a></code>. If supplied, only listed
 strategies are enabled and list order controls egress execution order.</p></dd>
 
 
@@ -205,10 +206,32 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-DataShield-scan_ingress"></a><div class="section">
+<h3 id="datashield-scan-ingress-"><code>DataShield$scan_ingress()</code><a class="anchor" aria-label="anchor" href="#datashield-scan-ingress-"></a></h3>
+<p>Scan one tool request before execution.</p><div class="section">
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_ingress</span><span class="op">(</span><span class="va">tool_name</span>, <span class="va">input</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>tool_name</code></dt>
+<dd><p>Model-facing tool name.</p></dd>
+
+      <dt><code>input</code></dt>
+<dd><p>Named list of tool arguments.</p></dd>
+
+
+</dl><p></p></div>
+</div><p></p><div class="section">
+<h4 id="returns">Returns<a class="anchor" aria-label="anchor" href="#returns"></a></h4>
+<p>List with action (<code>pass</code>, <code>block</code>, or <code>ask</code>), reason, matches and score.</p>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-DataShield-add_scanner"></a><div class="section">
 <h3 id="datashield-add-scanner-"><code>DataShield$add_scanner()</code><a class="anchor" aria-label="anchor" href="#datashield-add-scanner-"></a></h3>
 <p>Add a custom scanner function to the end of the egress pipeline.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">add_scanner</span><span class="op">(</span><span class="va">name</span>, <span class="va">fn</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -217,7 +240,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-clear"></a><div class="section">
 <h3 id="datashield-clear-"><code>DataShield$clear()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-"></a></h3>
 <p>Remove one dataset, or all datasets when name is NULL.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span>name <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -226,7 +249,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-close"></a><div class="section">
 <h3 id="datashield-close-"><code>DataShield$close()</code><a class="anchor" aria-label="anchor" href="#datashield-close-"></a></h3>
 <p>Clear sensitive state and close the shield.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -235,7 +258,7 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <p></p><hr><a id="method-DataShield-coverage"></a><div class="section">
 <h3 id="datashield-coverage-"><code>DataShield$coverage()</code><a class="anchor" aria-label="anchor" href="#datashield-coverage-"></a></h3>
 <p>Summarise non-sensitive runtime coverage.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">coverage</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -295,6 +318,9 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $egress_pipeline</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "egress" "regex" </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $ingress_pipeline</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> character(0)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $closed</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] FALSE</span>

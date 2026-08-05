@@ -276,6 +276,8 @@ Tool factories and registration.
   : Configure tool-result egress protection
 - [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
   : Configure regex-based egress scanning
+- [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
+  : Configure universal tool-call ingress scanning
 
 ## Data exploration (WEAR)
 

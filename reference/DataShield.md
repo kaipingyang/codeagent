@@ -26,6 +26,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$scan_egress()`](#method-DataShield-scan_egress)
 
+- [`DataShield$scan_ingress()`](#method-DataShield-scan_ingress)
+
 - [`DataShield$add_scanner()`](#method-DataShield-add_scanner)
 
 - [`DataShield$clear()`](#method-DataShield-clear)
@@ -81,8 +83,9 @@ Create a Data Shield.
   Optional ordered list from
   [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md),
   [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md),
+  [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md),
   and
-  [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md).
+  [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md).
   If supplied, only listed strategies are enabled and list order
   controls egress execution order.
 
@@ -158,6 +161,30 @@ Apply the ordered egress strategy pipeline to a tool result.
 #### Usage
 
     DataShield$scan_egress(result)
+
+------------------------------------------------------------------------
+
+### `DataShield$scan_ingress()`
+
+Scan one tool request before execution.
+
+#### Usage
+
+    DataShield$scan_ingress(tool_name, input)
+
+#### Arguments
+
+- `tool_name`:
+
+  Model-facing tool name.
+
+- `input`:
+
+  Named list of tool arguments.
+
+#### Returns
+
+List with action (`pass`, `block`, or `ask`), reason, matches and score.
 
 ------------------------------------------------------------------------
 
@@ -251,6 +278,9 @@ shield$coverage()
 #> 
 #> $egress_pipeline
 #> [1] "egress" "regex" 
+#> 
+#> $ingress_pipeline
+#> character(0)
 #> 
 #> $closed
 #> [1] FALSE

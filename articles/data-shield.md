@@ -1,13 +1,12 @@
 # Data Shield: strict data-safety mode (design preview)
 
-> **Status — P0/P0.5/P1/P1.5 available; fuller design in progress.** The
-> egress row-cap, protected-value matching, strict `DescribeData`, and
-> ordered regex/custom scanner pipeline are wired. `DescribeData`
-> exposes no distributions/counts by default;
-> [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
-> covers unregistered PII/secrets. Reviewer/sandbox, ingress scanning,
-> and `distributions="on"/"dp"` remain roadmap. Off by default
-> (`data_shield = NULL`).
+> **Status — P0/P0.5/P1/P1.5/C2 available; fuller design in progress.**
+> The egress row-cap, protected-value matching, strict `DescribeData`,
+> ordered regex/custom egress scanners, and universal pre-tool
+> [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
+> are wired. `DescribeData` exposes no distributions/counts by default.
+> Reviewer, sandbox, and `distributions="on"/"dp"` remain roadmap. Off
+> by default (`data_shield = NULL`).
 
 ## Why
 
@@ -53,12 +52,12 @@ client <- codeagent_client(..., data_shield = list(
   shield_describe(k_anon = 5),
   shield_egress(detectors = c("row_cap", "value_match"),
                 max_rows = 0, on_fail = "block"),
-  shield_regex(on_fail = "redact")
+  shield_regex(on_fail = "redact"),
+  shield_ingress(langs = c("r", "python", "bash"), on_fail = "ask")
 ))
 
 # Roadmap (not implemented yet):
-# shield_ingress(...), shield_reviewer(...), shield_sandbox(...),
-# shield_narrow_tools()
+# shield_reviewer(...), shield_sandbox(...), shield_narrow_tools()
 ```
 
 The main boundary is **edge 2 (tool results)**; sandbox, ingress
@@ -113,7 +112,23 @@ category labels without counts.
 | `on_fail` | `"redact"` | `redact`: preserve safe surrounding text; `block`: replace the whole result |
 | `ignore_case` | `TRUE` | Case-insensitive matching for all rules |
 
-### `DataShield$new()` direct lifecycle
+### `shield_ingress()` — scan every tool call before execution
+
+| Parameter | Default | Actual effect |
+|----|----|----|
+| `langs` | `c("r", "python", "bash")` | Select built-in rules for each code/shell language |
+| `patterns` | `NULL` | Optional named custom regex rules appended to defaults |
+| `include_defaults` | `TRUE` | Include serialization/base64/network/data-file-display and protected-name preview rules |
+| `on_fail` | `"block"` | `block`: reject the tool call; `ask`: force the existing permission approval UI/callback |
+| `ignore_case` | `TRUE` | Case-insensitive matching |
+
+Ingress scans **all** tool arguments before the usual read/write/exec
+capability fast paths, including unknown and read-only tools. It does
+not ban ordinary reading: defaults focus on high-confidence
+read-and-display, serialization, encoding, and network-transfer
+patterns. It is a cheap pre-filter; egress scanning remains the primary
+boundary because code can be obfuscated. \### `DataShield$new()` direct
+lifecycle
 
 Direct constructor parameters (`max_rows`, `distributions`, `k_anon`,
 `category_max`, `category_ratio`) create the default DescribeData + core
@@ -127,6 +142,7 @@ workflows.
 
 | Term | Plain meaning |
 |----|----|
+| **ingress** | A tool call’s name/arguments entering local execution; scanned before the tool runs |
 | **egress** | Content leaving a local tool and about to enter the LLM |
 | **row-cap** | A limit on how many printed table lines may pass; `0` means no raw line |
 | **value-match** | Exact matching against high-entropy values indexed from registered protected data |
@@ -279,7 +295,29 @@ spans; `block` discards the whole model-facing result. Custom scanner
 functions may be appended with `shield$add_scanner(name, fn)`; invalid
 scanner results/errors fail closed.
 
-## Roadmap
+## C2 universal ingress scanning
+
+[`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
+is installed into codeagent’s existing single central permission gate;
+it does not create a competing callback/gate. It scans every tool’s
+arguments before the read-only fast path. A `block` result raises
+`tool_reject`; an `ask` result reuses the current CLI/Shiny approval
+callback, including tool-call id correlation.
+
+``` r
+
+client <- codeagent_client(chat, data_shield=list(
+  shield_ingress(on_fail="ask"),
+  shield_egress(max_rows=0),
+  shield_regex()
+))
+```
+
+Defaults intentionally do not reject every `Read` or `print`:
+`nrow(study)` and `print("done")` pass, while `head(study)`,
+`dput(study)`, base64/pickle/JSON serialization, upload-style
+curl/requests calls, and shell display of data files are reviewed or
+blocked. \## Roadmap
 
 - **P0.5 — `value_match` (available)**: deterministically catches
   *targeted* leaks the row-cap lets through (e.g. printing one patient’s
@@ -306,9 +344,12 @@ until a per-owner worker reconstruction protocol is implemented. -
 **P1.5 — ordered scanner pipeline +
 [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
 (available)**: unregistered PII/secrets are redacted/blocked with
-precise spans; custom scanner failures fail closed. - **P2 — reviewer
-(small model), sandbox (folder + no-network), differential privacy for
-distributions (opt-in).**
+precise spans; custom scanner failures fail closed. - **C2 —
+[`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
+(available)**: all tool arguments pass the central permission gate;
+deterministic high-confidence rules block or force approval. - **P2 —
+reviewer (small model), sandbox (folder + no-network), differential
+privacy for distributions (opt-in).**
 
 ## Honest limits
 
