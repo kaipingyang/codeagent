@@ -24,6 +24,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$asset_policy()`](#method-DataShield-asset_policy)
 
+- [`DataShield$tool_policy()`](#method-DataShield-tool_policy)
+
 - [`DataShield$prompt_content()`](#method-DataShield-prompt_content)
 
 - [`DataShield$trusted_result()`](#method-DataShield-trusted_result)
@@ -101,8 +103,9 @@ Create a Data Shield.
   [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md),
   [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md),
   [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md),
+  [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md),
   and
-  [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md).
+  [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md).
   If supplied, only listed strategies are enabled and list order
   controls egress execution order.
 
@@ -207,6 +210,16 @@ Return non-sensitive policy metadata for one registered asset.
 #### Usage
 
     DataShield$asset_policy(name)
+
+------------------------------------------------------------------------
+
+### `DataShield$tool_policy()`
+
+Resolve effective Shield policy for one tool/agent name.
+
+#### Usage
+
+    DataShield$tool_policy(tool_name)
 
 ------------------------------------------------------------------------
 
@@ -426,6 +439,12 @@ shield$coverage()
 #> 
 #> $audit_max
 #> [1] 1000
+#> 
+#> $tool_policy_default
+#> [1] "scan"
+#> 
+#> $tool_policy_rules
+#> NULL
 #> 
 #> $closed
 #> [1] FALSE

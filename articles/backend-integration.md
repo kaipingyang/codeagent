@@ -225,6 +225,8 @@ bump the major and are announced in `NEWS.md`. The guard test
   [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
   /
   [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
+  /
+  [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md)
 - [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md)
   /
   [`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)

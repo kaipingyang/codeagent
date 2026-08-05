@@ -53,7 +53,11 @@ client <- codeagent_client(..., data_shield = list(
   shield_egress(detectors = c("row_cap", "value_match"),
                 max_rows = 0, on_fail = "block"),
   shield_regex(on_fail = "redact"),
-  shield_ingress(langs = c("r", "python", "bash"), on_fail = "ask")
+  shield_ingress(langs = c("r", "python", "bash"), on_fail = "ask"),
+  shield_tool_policy(rules = list(
+    KMPlot = list(ingress = "scan", egress = "bypass"),
+    DangerousExport = list(execution = "deny")
+  ))
 ))
 
 # Roadmap (not implemented yet):
@@ -127,8 +131,24 @@ capability fast paths, including unknown and read-only tools. It does
 not ban ordinary reading: defaults focus on high-confidence
 read-and-display, serialization, encoding, and network-transfer
 patterns. It is a cheap pre-filter; egress scanning remains the primary
-boundary because code can be obfuscated. \### `DataShield$new()` direct
-lifecycle
+boundary because code can be obfuscated.
+
+### `shield_tool_policy()` — exact/glob trust and deny rules
+
+| Setting | Meaning |
+|----|----|
+| `default="scan"` | Every tool is scanned unless a rule overrides it |
+| `execution="deny"` | Reject the tool before execution |
+| `ingress="bypass"` | Skip Shield argument scanning, but still apply permission gate |
+| `egress="bypass"` | Return that tool’s output without Shield filtering; audit every bypass |
+| `egress="deny"` | Replace the result with an explicit policy-denied notice |
+
+Rules support exact names and `*` globs. Exact wins; otherwise the first
+matching glob wins. For example, `KMPlot` may bypass egress when its
+developer guarantees all outputs are LLM-safe, while `btw_tool_docs_*`
+can receive a broader trusted rule. This policy never bypasses
+codeagent’s independent permission system. \### `DataShield$new()`
+direct lifecycle
 
 Direct constructor parameters (`max_rows`, `distributions`, `k_anon`,
 `category_max`, `category_ratio`, `audit_max`) create the default

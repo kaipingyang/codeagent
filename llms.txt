@@ -128,7 +128,10 @@ client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
   shield_egress(max_rows = 0, on_fail = "redact"),
   shield_regex(on_fail = "redact"),
-  shield_ingress(on_fail = "ask")
+  shield_ingress(on_fail = "ask"),
+  shield_tool_policy(rules = list(
+    KMPlot = list(ingress = "scan", egress = "bypass")
+  ))
 ))
 
 # Explicit lifecycle for uploaded data / shared threads.
@@ -150,8 +153,11 @@ output is detected; scalar/status/model-summary output still passes.
 handles unregistered PII/secrets;
 [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
 scans every tool’s arguments in the central permission gate and can
-block or request approval before execution. See the full [Data Shield
-parameter
+block or request approval before execution.
+[`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md)
+provides exact/glob per-tool `scan`/`bypass`/`deny` rules; Shield bypass
+is audited and never bypasses the separate permission gate. See the full
+[Data Shield parameter
 reference](https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference).
 
 The in-memory audit log records only non-sensitive decision metadata
@@ -572,6 +578,8 @@ Tool factories and registration.
   : Configure regex-based egress scanning
 - [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
   : Configure universal tool-call ingress scanning
+- [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md)
+  : Configure per-tool/agent Data Shield policy
 
 ## Data exploration (WEAR)
 
