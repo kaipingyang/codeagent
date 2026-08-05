@@ -80,13 +80,13 @@
     
     
 <blockquote>
-<p><strong>Status — P0/P0.5/P1/P1.5/C2 available; fuller design in
-progress.</strong> The egress row-cap, protected-value matching, strict
-<code>DescribeData</code>, ordered regex/custom egress scanners, and
-universal pre-tool <code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> are wired.
-<code>DescribeData</code> exposes no distributions/counts by default.
-Reviewer, sandbox, and <code>distributions="on"/"dp"</code> remain
-roadmap. Off by default (<code>data_shield = NULL</code>).</p>
+<p><strong>Status — P0/P0.5/P1/P1.5/C2/C5-policy available; fuller
+design in progress.</strong> The egress row-cap, protected-value
+matching, strict DescribeData, ordered scanners, universal pre-tool
+ingress, per-tool policy, and portable path/symlink sandbox are wired.
+Reviewer, full OS execution adapter, and
+<code>distributions="on"/"dp"</code> remain roadmap. Off by default
+(<code>data_shield = NULL</code>).</p>
 </blockquote>
 <div class="section level2">
 <h2 id="why">Why<a class="anchor" aria-label="anchor" href="#why"></a>
@@ -147,11 +147,12 @@ already exist.</p>
 <span>  <span class="fu"><a href="../reference/shield_tool_policy.html">shield_tool_policy</a></span><span class="op">(</span>rules <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    KMPlot <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>ingress <span class="op">=</span> <span class="st">"scan"</span>, egress <span class="op">=</span> <span class="st">"bypass"</span><span class="op">)</span>,</span>
 <span>    DangerousExport <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>execution <span class="op">=</span> <span class="st">"deny"</span><span class="op">)</span></span>
-<span>  <span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_sandbox.html">shield_sandbox</a></span><span class="op">(</span>project_root <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, backend <span class="op">=</span> <span class="st">"policy"</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Roadmap (not implemented yet):</span></span>
-<span><span class="co"># shield_reviewer(...), shield_sandbox(...), shield_narrow_tools()</span></span></code></pre></div>
+<span><span class="co"># shield_reviewer(...), shield_narrow_tools()</span></span></code></pre></div>
 <p>The main boundary is <strong>edge 2 (tool results)</strong>; sandbox,
 ingress blacklist, reviewer, and tool narrowing are defense-in-depth,
 not the boundary.</p>
@@ -431,8 +432,86 @@ otherwise the first matching glob wins. For example, <code>KMPlot</code>
 may bypass egress when its developer guarantees all outputs are
 LLM-safe, while <code>btw_tool_docs_*</code> can receive a broader
 trusted rule. This policy never bypasses codeagent’s independent
-permission system. ### <code>DataShield$new()</code> direct
-lifecycle</p>
+permission system.</p>
+</div>
+<div class="section level3">
+<h3 id="shield_sandbox-portable-containment-without-crippling-the-agent">
+<code>shield_sandbox()</code> — portable containment without
+crippling the agent<a class="anchor" aria-label="anchor" href="#shield_sandbox-portable-containment-without-crippling-the-agent"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Parameter</th>
+<th>Default</th>
+<th>Actual effect</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>project_root</code></td>
+<td><code><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd()</a></code></td>
+<td>Project root allowed by path policy</td>
+</tr>
+<tr class="even">
+<td><code>protected_paths</code></td>
+<td>none</td>
+<td>Extra registered data roots; longest matching root controls
+mode</td>
+</tr>
+<tr class="odd">
+<td><code>temp_root</code></td>
+<td>new session temp</td>
+<td>Isolated temporary root</td>
+</tr>
+<tr class="even">
+<td><code>modes</code></td>
+<td>project <code>rwx</code>, data <code>rw</code>, temp
+<code>rwx</code>
+</td>
+<td>Logical Shield capabilities (not chmod bits)</td>
+</tr>
+<tr class="odd">
+<td><code>process_exec</code></td>
+<td><code>TRUE</code></td>
+<td>Preserve RunR/Bash/Python; FALSE blocks exec tools</td>
+</tr>
+<tr class="even">
+<td><code>network</code></td>
+<td><code>"tool_policy"</code></td>
+<td>Let tool policy decide; <code>"deny"</code> blocks net
+capability</td>
+</tr>
+<tr class="odd">
+<td><code>symlink_escape</code></td>
+<td><code>"deny"</code></td>
+<td>Resolve real paths and reject links escaping allowed roots</td>
+</tr>
+<tr class="even">
+<td><code>backend</code></td>
+<td><code>"auto"</code></td>
+<td>
+<code>policy</code>, <code>auto</code>, or
+<code>required</code>
+</td>
+</tr>
+<tr class="odd">
+<td><code>on_unavailable</code></td>
+<td><code>"policy"</code></td>
+<td>Full OS adapter unavailable → policy fallback; <code>block</code>
+fails closed for exec/net</td>
+</tr>
+</tbody>
+</table>
+<p>Current implementation is a portable central-gate path/capability
+policy. It is not advertised as kernel isolation: the capability probe
+found user/network/ mount namespaces but no bubblewrap/container, and
+plain <code>unshare</code> still sees the host filesystem. A future full
+adapter must move exec tools out of process. ###
+<code>DataShield$new()</code> direct lifecycle</p>
 <p>Direct constructor parameters (<code>max_rows</code>,
 <code>distributions</code>, <code>k_anon</code>,
 <code>category_max</code>, <code>category_ratio</code>,
@@ -925,7 +1004,23 @@ including tool-call id correlation.</p>
 <code>print("done")</code> pass, while <code>head(study)</code>,
 <code>dput(study)</code>, base64/pickle/JSON serialization, upload-style
 curl/requests calls, and shell display of data files are reviewed or
-blocked. ## Roadmap</p>
+blocked.</p>
+</div>
+<div class="section level2">
+<h2 id="c5-portable-sandbox-and-btw-boundary">C5 portable sandbox and btw boundary<a class="anchor" aria-label="anchor" href="#c5-portable-sandbox-and-btw-boundary"></a>
+</h2>
+<p><code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code> deliberately preserves coding
+capability: project and session-temp default to <code>rwx</code>,
+protected data defaults to <code>rw</code> but may be <code>rwx</code>,
+and process execution stays enabled. Its current portable backend blocks
+explicit paths outside allowed roots, rejects symlink escape, and
+applies network/process capability policy in the central gate.</p>
+<p>btw is not assumed to provide OS isolation. Its file tools enforce
+cwd with <code><a href="https://fs.r-lib.org/reference/path_math.html" class="external-link">fs::path_has_parent()</a></code> but a project-internal
+symlink to an external file passed our probe; its RunR executes through
+<code>evaluate</code> in the global environment and only restores
+cwd/options/envvars. Data Shield therefore applies uniformly to native,
+btw, MCP and host tools. ## Roadmap</p>
 <ul>
 <li>
 <strong>P0.5 — <code>value_match</code> (available)</strong>:
@@ -960,7 +1055,11 @@ per-owner worker reconstruction protocol is implemented. - <strong>P1.5
 precise spans; custom scanner failures fail closed. - <strong>C2 —
 <code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> (available)</strong>: all tool arguments
 pass the central permission gate; deterministic high-confidence rules
-block or force approval. - <strong>P2 — reviewer (small model), sandbox
+block or force approval. - <strong>C5 — portable
+<code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code> (available)</strong>: project/temp
+<code>rwx</code>, protected data <code>rw</code> by default,
+realpath/symlink containment and policy fallback; full OS process
+adapter remains roadmap. - <strong>P2 — reviewer (small model), sandbox
 (folder + no-network), differential privacy for distributions
 (opt-in).</strong></p>
 </div>

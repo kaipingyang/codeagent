@@ -311,7 +311,12 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <h3 id="datashield-scan-ingress-"><code>DataShield$scan_ingress()</code><a class="anchor" aria-label="anchor" href="#datashield-scan-ingress-"></a></h3>
 <p>Scan one tool request before execution.</p><div class="section">
 <h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_ingress</span><span class="op">(</span><span class="va">tool_name</span>, <span class="va">input</span>, tool_call_id <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_ingress</span><span class="op">(</span></span>
+<span>  <span class="va">tool_name</span>,</span>
+<span>  <span class="va">input</span>,</span>
+<span>  tool_call_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  capability <span class="op">=</span> <span class="st">"read"</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>tool_name</code></dt>
@@ -322,6 +327,9 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 
       <dt><code>tool_call_id</code></dt>
 <dd><p>Optional non-sensitive tool-call identifier.</p></dd>
+
+      <dt><code>capability</code></dt>
+<dd><p>Tool capability (<code>read</code>, <code>write</code>, <code>exec</code>, or <code>net</code>).</p></dd>
 
 
 </dl><p></p></div>
@@ -464,6 +472,9 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 <span class="r-out co"><span class="r-pr">#&gt;</span> [1] "scan"</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $tool_policy_rules</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> $sandbox</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> $closed</span>

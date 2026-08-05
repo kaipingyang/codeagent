@@ -2,6 +2,18 @@
 
 ## codeagent (development version)
 
+- **Portable sandbox policy**: new
+  [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
+  keeps project/session-temp `rwx` and process execution by default
+  while the central gate validates all explicit path arguments against
+  project/protected/temp roots, follows real paths to reject symlink
+  escape, enforces per-root `r/rw/rwx`, and can deny network/exec
+  capabilities. `backend="auto"` honestly falls back to policy (or
+  blocks in required mode) because a full OS process adapter is not yet
+  wired; coverage/audit report the fallback. btw file tools are also
+  covered (their cwd guard permits symlink escape), and btw RunR is not
+  treated as an OS sandbox.
+
 - **Per-tool/agent Shield policy**: new
   [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md)
   supports exact or `*`-glob rules with `scan` (default), explicit

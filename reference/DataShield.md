@@ -289,7 +289,12 @@ Scan one tool request before execution.
 
 #### Usage
 
-    DataShield$scan_ingress(tool_name, input, tool_call_id = NULL)
+    DataShield$scan_ingress(
+      tool_name,
+      input,
+      tool_call_id = NULL,
+      capability = "read"
+    )
 
 #### Arguments
 
@@ -304,6 +309,10 @@ Scan one tool request before execution.
 - `tool_call_id`:
 
   Optional non-sensitive tool-call identifier.
+
+- `capability`:
+
+  Tool capability (`read`, `write`, `exec`, or `net`).
 
 #### Returns
 
@@ -444,6 +453,9 @@ shield$coverage()
 #> [1] "scan"
 #> 
 #> $tool_policy_rules
+#> NULL
+#> 
+#> $sandbox
 #> NULL
 #> 
 #> $closed

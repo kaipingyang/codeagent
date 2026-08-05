@@ -280,6 +280,8 @@ Tool factories and registration.
   : Configure universal tool-call ingress scanning
 - [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md)
   : Configure per-tool/agent Data Shield policy
+- [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
+  : Configure portable sandbox policy
 
 ## Data exploration (WEAR)
 

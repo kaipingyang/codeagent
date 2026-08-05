@@ -1,11 +1,10 @@
 # Data Shield: strict data-safety mode (design preview)
 
-> **Status — P0/P0.5/P1/P1.5/C2 available; fuller design in progress.**
-> The egress row-cap, protected-value matching, strict `DescribeData`,
-> ordered regex/custom egress scanners, and universal pre-tool
-> [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
-> are wired. `DescribeData` exposes no distributions/counts by default.
-> Reviewer, sandbox, and `distributions="on"/"dp"` remain roadmap. Off
+> **Status — P0/P0.5/P1/P1.5/C2/C5-policy available; fuller design in
+> progress.** The egress row-cap, protected-value matching, strict
+> DescribeData, ordered scanners, universal pre-tool ingress, per-tool
+> policy, and portable path/symlink sandbox are wired. Reviewer, full OS
+> execution adapter, and `distributions="on"/"dp"` remain roadmap. Off
 > by default (`data_shield = NULL`).
 
 ## Why
@@ -57,11 +56,12 @@ client <- codeagent_client(..., data_shield = list(
   shield_tool_policy(rules = list(
     KMPlot = list(ingress = "scan", egress = "bypass"),
     DangerousExport = list(execution = "deny")
-  ))
+  )),
+  shield_sandbox(project_root = getwd(), backend = "policy")
 ))
 
 # Roadmap (not implemented yet):
-# shield_reviewer(...), shield_sandbox(...), shield_narrow_tools()
+# shield_reviewer(...), shield_narrow_tools()
 ```
 
 The main boundary is **edge 2 (tool results)**; sandbox, ingress
@@ -147,8 +147,28 @@ Rules support exact names and `*` globs. Exact wins; otherwise the first
 matching glob wins. For example, `KMPlot` may bypass egress when its
 developer guarantees all outputs are LLM-safe, while `btw_tool_docs_*`
 can receive a broader trusted rule. This policy never bypasses
-codeagent’s independent permission system. \### `DataShield$new()`
-direct lifecycle
+codeagent’s independent permission system.
+
+### `shield_sandbox()` — portable containment without crippling the agent
+
+| Parameter | Default | Actual effect |
+|----|----|----|
+| `project_root` | [`getwd()`](https://rdrr.io/r/base/getwd.html) | Project root allowed by path policy |
+| `protected_paths` | none | Extra registered data roots; longest matching root controls mode |
+| `temp_root` | new session temp | Isolated temporary root |
+| `modes` | project `rwx`, data `rw`, temp `rwx` | Logical Shield capabilities (not chmod bits) |
+| `process_exec` | `TRUE` | Preserve RunR/Bash/Python; FALSE blocks exec tools |
+| `network` | `"tool_policy"` | Let tool policy decide; `"deny"` blocks net capability |
+| `symlink_escape` | `"deny"` | Resolve real paths and reject links escaping allowed roots |
+| `backend` | `"auto"` | `policy`, `auto`, or `required` |
+| `on_unavailable` | `"policy"` | Full OS adapter unavailable → policy fallback; `block` fails closed for exec/net |
+
+Current implementation is a portable central-gate path/capability
+policy. It is not advertised as kernel isolation: the capability probe
+found user/network/ mount namespaces but no bubblewrap/container, and
+plain `unshare` still sees the host filesystem. A future full adapter
+must move exec tools out of process. \### `DataShield$new()` direct
+lifecycle
 
 Direct constructor parameters (`max_rows`, `distributions`, `k_anon`,
 `category_max`, `category_ratio`, `audit_max`) create the default
@@ -418,7 +438,24 @@ Defaults intentionally do not reject every `Read` or `print`:
 `nrow(study)` and `print("done")` pass, while `head(study)`,
 `dput(study)`, base64/pickle/JSON serialization, upload-style
 curl/requests calls, and shell display of data files are reviewed or
-blocked. \## Roadmap
+blocked.
+
+## C5 portable sandbox and btw boundary
+
+[`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
+deliberately preserves coding capability: project and session-temp
+default to `rwx`, protected data defaults to `rw` but may be `rwx`, and
+process execution stays enabled. Its current portable backend blocks
+explicit paths outside allowed roots, rejects symlink escape, and
+applies network/process capability policy in the central gate.
+
+btw is not assumed to provide OS isolation. Its file tools enforce cwd
+with
+[`fs::path_has_parent()`](https://fs.r-lib.org/reference/path_math.html)
+but a project-internal symlink to an external file passed our probe; its
+RunR executes through `evaluate` in the global environment and only
+restores cwd/options/envvars. Data Shield therefore applies uniformly to
+native, btw, MCP and host tools. \## Roadmap
 
 - **P0.5 — `value_match` (available)**: deterministically catches
   *targeted* leaks the row-cap lets through (e.g. printing one patient’s
@@ -448,9 +485,14 @@ until a per-owner worker reconstruction protocol is implemented. -
 precise spans; custom scanner failures fail closed. - **C2 —
 [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
 (available)**: all tool arguments pass the central permission gate;
-deterministic high-confidence rules block or force approval. - **P2 —
-reviewer (small model), sandbox (folder + no-network), differential
-privacy for distributions (opt-in).**
+deterministic high-confidence rules block or force approval. - **C5 —
+portable
+[`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
+(available)**: project/temp `rwx`, protected data `rw` by default,
+realpath/symlink containment and policy fallback; full OS process
+adapter remains roadmap. - **P2 — reviewer (small model), sandbox
+(folder + no-network), differential privacy for distributions
+(opt-in).**
 
 ## Honest limits
 
