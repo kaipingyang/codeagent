@@ -166,6 +166,7 @@ reference:
       - shield_egress
       - shield_regex
       - shield_ingress
+      - shield_tool_policy
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."

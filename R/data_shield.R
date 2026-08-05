@@ -175,9 +175,43 @@ shield_regex <- function(patterns = NULL, include_defaults = TRUE,
   fn <- .data_shield_regex_scanner(
     resolved, replacement = replacement,
 
+
     on_fail = match.arg(on_fail), ignore_case = ignore_case)
   .new_shield_strategy("scanner", name = "regex", fn = fn)
 }
+#' Configure per-tool/agent Data Shield policy
+#'
+#' @description
+#' Override Shield handling by exact tool name or `*` glob. `scan` is the safe
+#' default; `bypass` explicitly skips one Shield edge and is audited; `deny`
+#' prevents execution (or blocks egress). Shield bypass never bypasses the
+#' independent permission gate.
+#'
+#' @param default Default mode (`"scan"`).
+#' @param rules Named list keyed by exact/glob tool names. Each rule may contain
+#'   `execution`, `ingress`, and `egress` set to `scan`, `bypass`, or `deny`.
+#' @return A Data Shield tool-policy strategy specification.
+#' @examples
+#' trusted_plot <- shield_tool_policy(rules = list(
+#'   KMPlot = list(ingress = "scan", egress = "bypass"),
+#'   DangerousExport = list(execution = "deny")
+#' ))
+#' @export
+shield_tool_policy <- function(default = "scan", rules = list()) {
+  default <- match.arg(default, c("scan"))
+  if (!is.list(rules) || (length(rules) && (is.null(names(rules)) || any(!nzchar(names(rules))))))
+    stop("`rules` must be a named list keyed by tool name/glob.", call.=FALSE)
+  allowed <- c("scan", "bypass", "deny")
+  normalized <- lapply(rules, function(rule) {
+    if (!is.list(rule) || any(!names(rule) %in% c("execution","ingress","egress")))
+      stop("Each tool rule may contain execution/ingress/egress.", call.=FALSE)
+    if (any(!unlist(rule,use.names=FALSE) %in% allowed))
+      stop("Tool policy values must be scan/bypass/deny.", call.=FALSE)
+    utils::modifyList(list(execution=default,ingress=default,egress=default),rule)
+  })
+  .new_shield_strategy("tool_policy", default=default, rules=normalized)
+}
+
 #' Configure universal tool-call ingress scanning
 #'
 #' @description
@@ -272,7 +306,8 @@ DataShield <- R6::R6Class(
     #'   categorical treatment.
     #' @param audit_max Maximum in-memory non-sensitive decision events retained.
     #' @param strategies Optional ordered list from [shield_describe()],
-    #'   [shield_egress()], [shield_regex()], and [shield_ingress()]. If supplied, only listed
+    #'   [shield_egress()], [shield_regex()], [shield_ingress()], and
+    #'   [shield_tool_policy()]. If supplied, only listed
     #'   strategies are enabled and list order controls egress execution order.
     initialize = function(max_rows = 0L, distributions = "off", k_anon = 5L,
                           category_max = 20L, category_ratio = 0.2,
@@ -292,6 +327,7 @@ DataShield <- R6::R6Class(
       private$ingress_pipeline <- list()
       private$audit_log <- list()
       private$audit_max <- max(0L, as.integer(audit_max))
+      private$tool_policy_config <- list(default="scan", rules=list())
       private$closed <- FALSE
       if (is.null(strategies)) {
         private$egress_pipeline[[1L]] <- list(
@@ -367,6 +403,12 @@ DataShield <- R6::R6Class(
       asset[names(asset) != "value"]
     },
 
+    #' @description Resolve effective Shield policy for one tool/agent name.
+    tool_policy = function(tool_name) {
+      private$assert_open()
+      private$resolve_tool_policy(tool_name)
+    },
+
     #' @description Return prompt-safe content according to an asset policy.
     prompt_content = function(name) {
       private$assert_open()
@@ -438,6 +480,23 @@ DataShield <- R6::R6Class(
     #' @param context Optional non-sensitive context (`tool_name`, `tool_call_id`).
     scan_egress = function(result, context = list()) {
       private$assert_open()
+      tool_name <- context$tool_name %||% NA_character_
+      policy <- private$resolve_tool_policy(tool_name)
+      if (identical(policy$egress, "deny")) {
+        private$record_event(
+          edge=context$edge %||% "egress",tool_name=tool_name,
+          tool_call_id=context$tool_call_id,strategy="tool_policy",action="deny",
+          reason=paste0("tool rule: ",policy$matched_rule),match_count=0L,score=1)
+        return("[data_shield] tool output denied by explicit tool policy.")
+      }
+      if (identical(policy$egress, "bypass")) {
+        private$record_event(
+          edge=context$edge %||% "egress",tool_name=tool_name,
+          tool_call_id=context$tool_call_id,strategy="tool_policy",action="bypass",
+          reason=paste0("trusted tool rule: ",policy$matched_rule),match_count=0L,score=0)
+        if (inherits(result,"DataShieldTrustedResult")) return(.data_shield_asset_text(result$value))
+        return(result)
+      }
       if (inherits(result, "DataShieldTrustedResult")) {
         asset <- private$asset(result$source)
         text <- .data_shield_asset_text(result$value)
@@ -483,6 +542,24 @@ DataShield <- R6::R6Class(
     #' @return List with action (`pass`, `block`, or `ask`), reason, matches and score.
     scan_ingress = function(tool_name, input, tool_call_id = NULL) {
       private$assert_open()
+      policy <- private$resolve_tool_policy(tool_name)
+      if (identical(policy$execution,"deny") || identical(policy$ingress,"deny")) {
+        decision <- list(
+          action="block", reason=paste0("Data Shield tool policy denied: ",policy$matched_rule),
+          matches=policy$matched_rule, score=1)
+        private$record_event(
+          edge="ingress",tool_name=tool_name,tool_call_id=tool_call_id,
+          strategy="tool_policy",action="deny",reason=decision$reason,
+          match_count=1L,score=1)
+        return(decision)
+      }
+      if (identical(policy$ingress,"bypass")) {
+        private$record_event(
+          edge="ingress",tool_name=tool_name,tool_call_id=tool_call_id,
+          strategy="tool_policy",action="bypass",
+          reason=paste0("trusted tool rule: ",policy$matched_rule),match_count=0L,score=0)
+        return(list(action="pass",reason=NULL,matches=character(),score=0))
+      }
       if (!length(private$ingress_pipeline))
         return(list(action="pass", reason=NULL, matches=character(), score=0))
       text <- .data_shield_flatten_tool_input(tool_name, input)
@@ -571,6 +648,8 @@ DataShield <- R6::R6Class(
            egress_pipeline = vapply(private$egress_pipeline, `[[`, character(1), "name"),
            ingress_pipeline = vapply(private$ingress_pipeline, `[[`, character(1), "name"),
            audit_events = length(private$audit_log), audit_max = private$audit_max,
+           tool_policy_default = private$tool_policy_config$default,
+           tool_policy_rules = names(private$tool_policy_config$rules),
            closed = private$closed)
     }
   ),
@@ -584,6 +663,7 @@ DataShield <- R6::R6Class(
     ingress_pipeline = NULL,
     audit_log = NULL,
     audit_max = 1000L,
+    tool_policy_config = NULL,
     closed = FALSE,
 
     assert_open = function() {
@@ -613,6 +693,20 @@ DataShield <- R6::R6Class(
       if (.data_shield_asset_expired(asset))
         stop("Data Shield asset policy expired: ", name, call.=FALSE)
       asset
+    },
+    resolve_tool_policy = function(tool_name) {
+      default <- private$tool_policy_config$default %||% "scan"
+      base <- list(execution=default, ingress=default, egress=default,
+                   matched_rule=NA_character_)
+      rules <- private$tool_policy_config$rules %||% list()
+      if (!length(rules)) return(base)
+      if (tool_name %in% names(rules))
+        return(c(rules[[tool_name]], matched_rule=tool_name))
+      for (pattern in names(rules)) {
+        if (grepl("*",pattern,fixed=TRUE) && .hook_pattern_matches(pattern,tool_name))
+          return(c(rules[[pattern]], matched_rule=pattern))
+      }
+      base
     },
     scan_raw_secrets = function(text, asset, edge, tool_name) {
       if (!isTRUE(asset$scan_secrets)) return(text)
@@ -653,6 +747,8 @@ DataShield <- R6::R6Class(
       } else if (identical(type, "ingress")) {
         private$ingress_pipeline[[length(private$ingress_pipeline) + 1L]] <- list(
           type = "scanner", name = cfg$name, fn = cfg$fn)
+      } else if (identical(type, "tool_policy")) {
+        private$tool_policy_config <- list(default=cfg$default, rules=cfg$rules)
       } else {
         stop("Unknown Data Shield strategy: ", type, call. = FALSE)
       }

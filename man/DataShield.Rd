@@ -37,6 +37,7 @@ shield$coverage()
     \item \href{#method-DataShield-register_data}{\code{DataShield$register_data()}}
     \item \href{#method-DataShield-register_asset}{\code{DataShield$register_asset()}}
     \item \href{#method-DataShield-asset_policy}{\code{DataShield$asset_policy()}}
+    \item \href{#method-DataShield-tool_policy}{\code{DataShield$tool_policy()}}
     \item \href{#method-DataShield-prompt_content}{\code{DataShield$prompt_content()}}
     \item \href{#method-DataShield-trusted_result}{\code{DataShield$trusted_result()}}
     \item \href{#method-DataShield-install}{\code{DataShield$install()}}
@@ -83,7 +84,8 @@ implemented; \code{"on"}/\code{"dp"} fail explicitly.}
 categorical treatment.}
       \item{\code{audit_max}}{Maximum in-memory non-sensitive decision events retained.}
       \item{\code{strategies}}{Optional ordered list from \code{\link[=shield_describe]{shield_describe()}},
-\code{\link[=shield_egress]{shield_egress()}}, \code{\link[=shield_regex]{shield_regex()}}, and \code{\link[=shield_ingress]{shield_ingress()}}. If supplied, only listed
+\code{\link[=shield_egress]{shield_egress()}}, \code{\link[=shield_regex]{shield_regex()}}, \code{\link[=shield_ingress]{shield_ingress()}}, and
+\code{\link[=shield_tool_policy]{shield_tool_policy()}}. If supplied, only listed
 strategies are enabled and list order controls egress execution order.}
     }
     \if{html}{\out{</div>}}
@@ -166,6 +168,18 @@ deterministic value indexing (reduces low-entropy false positives).}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$asset_policy(name)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-tool_policy"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-tool_policy}{}}}
+\subsection{\code{DataShield$tool_policy()}}{
+  Resolve effective Shield policy for one tool/agent name.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$tool_policy(tool_name)}
     \if{html}{\out{</div>}}
   }
 }

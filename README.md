@@ -117,7 +117,10 @@ client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
   shield_egress(max_rows = 0, on_fail = "redact"),
   shield_regex(on_fail = "redact"),
-  shield_ingress(on_fail = "ask")
+  shield_ingress(on_fail = "ask"),
+  shield_tool_policy(rules = list(
+    KMPlot = list(ingress = "scan", egress = "bypass")
+  ))
 ))
 
 # Explicit lifecycle for uploaded data / shared threads.
@@ -136,6 +139,8 @@ fail closed while a shield is active.
 detected; scalar/status/model-summary output still passes. `shield_regex()`
 handles unregistered PII/secrets; `shield_ingress()` scans every tool's arguments
 in the central permission gate and can block or request approval before execution.
+`shield_tool_policy()` provides exact/glob per-tool `scan`/`bypass`/`deny` rules;
+Shield bypass is audited and never bypasses the separate permission gate.
 See the full [Data Shield parameter
 reference](https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference).
 

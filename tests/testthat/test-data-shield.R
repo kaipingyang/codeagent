@@ -418,3 +418,38 @@ test_that("asset expiry and untagged mixed output fail safely", {
   # Untagged text does not inherit trust from any registered spec.
   expect_match(shield$scan_egress("mixed SECRET7"),"withheld")
 })
+
+
+test_that("tool policy egress bypass trusts only the explicit tool", {
+  shield <- DataShield$new(strategies=list(
+    shield_egress(max_rows=0),
+    shield_tool_policy(rules=list(KMPlot=list(egress="bypass")))))
+  trusted <- shield$scan_egress(mtcars,context=list(tool_name="KMPlot"))
+  ordinary <- shield$scan_egress(mtcars,context=list(tool_name="OtherPlot"))
+  expect_s3_class(trusted,"data.frame")
+  expect_match(ordinary,"tabular output withheld")
+  audit <- shield$audit()
+  expect_true(any(audit$strategy=="tool_policy" & audit$action=="bypass" &
+                  audit$tool_name=="KMPlot"))
+})
+
+test_that("tool policy deny and glob matching apply per edge", {
+  shield <- DataShield$new(strategies=list(
+    shield_tool_policy(rules=list(
+      DangerousExport=list(execution="deny"),
+      "btw_tool_docs_*"=list(egress="bypass")))))
+  denied <- shield$scan_ingress("DangerousExport",list())
+  expect_identical(denied$action,"block")
+  expect_identical(
+    shield$tool_policy("btw_tool_docs_help_page")$matched_rule,
+    "btw_tool_docs_*")
+  expect_identical(shield$tool_policy("Unknown")$egress,"scan")
+})
+
+test_that("tool policy validation rejects ambiguous rules", {
+  expect_s3_class(shield_tool_policy(rules=list()),"shield_strategy")
+  expect_error(shield_tool_policy(rules=list(KMPlot=list(egress="allow"))),
+               "scan/bypass/deny")
+  expect_error(shield_tool_policy(rules=list(KMPlot=list(unknown="scan"))),
+               "execution/ingress/egress")
+})

@@ -265,3 +265,21 @@ test_that("no Data Shield preserves ordinary read fast-path", {
   expect_silent(gate(req))
   expect_false(called)
 })
+
+
+test_that("Shield tool bypass never bypasses the independent permission gate", {
+  shield <- DataShield$new(strategies=list(
+    shield_tool_policy(rules=list(Write=list(ingress="bypass",egress="bypass")))))
+  policy <- codeagent:::.resolve_tool_policy(
+    list(tools=list(capabilities=list(write="deny"))))
+  mode_env <- new.env(); mode_env$mode <- "default"
+  ctx <- codeagent:::.make_gate_ctx(policy,mode_env)
+  ctx$data_shield <- shield
+  gate <- codeagent:::.tool_gate_fn(ctx)
+  req <- ellmer::ContentToolRequest(
+    id="call-trusted-write",name="Write",
+    arguments=list(file_path="safe.txt",content="hello"))
+  expect_error(gate(req),"Permission denied")
+  expect_true(any(shield$audit()$strategy=="tool_policy" &
+                  shield$audit()$action=="bypass"))
+})

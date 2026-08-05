@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+* **Per-tool/agent Shield policy**: new `shield_tool_policy()` supports exact or
+  `*`-glob rules with `scan` (default), explicit audited `bypass`, and `deny`
+  independently for execution, ingress and egress. Trusted tools such as KMPlot
+  may bypass only egress while retaining ingress scans; deny blocks execution.
+  Shield bypass never bypasses the separate central permission gate.
+
 * **Data Asset Policy** separates what an asset is (`kind`: dataset/spec/
   document/synthetic) from what the LLM may see (`llm_access`: prompt/egress
   none/schema/scan/raw). Kind-specific defaults keep datasets schema-only while
