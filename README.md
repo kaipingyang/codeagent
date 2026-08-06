@@ -129,6 +129,10 @@ client <- codeagent_client(chat, data_shield = list(
 shield <- DataShield$new(
   strategies = list(shield_describe(), shield_egress(max_rows = 0)))
 shield$register_data(df, name = "study")
+# Column-level raw override for public-dictionary columns (reason required):
+shield$register_data(vs, name = "vs",
+  column_access = list(TESTCD = list(prompt = "raw", egress = "raw",
+                                     reason = "SDTM public codelist")))
 client <- codeagent_client(chat, data_shield = shield)
 ```
 
@@ -140,7 +144,9 @@ fail closed while a shield is active.
 `shield_egress(max_rows = 0)` retains **no raw tabular line** when bulk output is
 detected; scalar/status/model-summary output still passes. `shield_regex()`
 handles unregistered PII/secrets; `shield_ingress()` scans every tool's arguments
-in the central permission gate and can block or request approval before execution.
+in the central permission gate and can block or request approval before execution
+(built-in rules are host-extensible: a `patterns=` name matching a built-in
+replaces it, a new name adds to it).
 `shield_tool_policy()` provides exact/glob per-tool `scan`/`bypass`/`deny` rules;
 Shield bypass is audited and never bypasses the separate permission gate.
 `shield_sandbox()` preserves project/temp `rwx` and process execution by default,

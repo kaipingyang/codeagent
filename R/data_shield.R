@@ -4,6 +4,29 @@
   structure(list(type = type, config = list(...)), class = "shield_strategy")
 }
 
+# Built-in ingress (pre-execution) blacklist, grouped by language. This is a
+# cheap high-confidence pre-filter, NOT the primary boundary (egress is), so it
+# targets common source-to-sink patterns rather than exhausting every variant.
+# Hosts extend or override per-rule via shield_ingress(patterns=), where a
+# same-named key replaces the built-in; include_defaults=FALSE drops all of it.
+# Add a rule = add a line here.
+.DATA_SHIELD_INGRESS_RULES <- list(
+  r = c(
+    r_serialize = "\\b(?:serialize|saveRDS|dput|jsonlite::toJSON|base64enc::base64encode|writeLines|write\\.csv|write\\.table|readr::write_[a-z]+|data\\.table::fwrite|fwrite|arrow::write_[a-z_]+|feather::write_feather|clipr::write_clip)\\s*\\(",
+    r_network = "\\b(?:httr2?::(?:request|POST|PUT|PATCH)|curl::|RCurl::)\\b"),
+  python = c(
+    py_serialize = "\\b(?:pickle\\.dumps?|json\\.dumps?|base64\\.b64encode)\\s*\\(",
+    py_pandas_export = "\\.to_(?:csv|json|parquet|pickle|feather|excel|sql|hdf|clipboard)\\s*\\(",
+    py_file_write = "\\bopen\\s*\\([^)]*[\"'](?:w|a|wb|ab|x)[\"']\\s*\\)",
+    py_network = "\\b(?:requests|httpx|aiohttp\\.[A-Za-z_]+)\\.(?:post|put|patch)\\s*\\(|\\burllib\\.request\\.(?:urlopen|Request)\\s*\\(",
+    py_df_print = "\\bprint\\s*\\(\\s*(?:df|data|dataset)\\b"),
+  bash = c(
+    sh_upload = "\\bcurl\\b[^\\n]*(?:--data|-d\\s|--upload-file|-T\\s)|\\bwget\\b[^\\n]*--post-data",
+    sh_net_transfer = "\\b(?:nc|netcat|ncat|scp|rsync|sftp)\\b|\\bssh\\b[^\\n]*(?:cat|tar|dd)\\b|>\\s*/dev/(?:tcp|udp)/",
+    sh_inline_eval = "\\b(?:python[0-9.]*|Rscript)\\s+-[ce]\\b",
+    sh_data_print = "\\b(?:cat|head|tail)\\s+[^\\n;|]*(?:\\.csv|\\.parquet|\\.sas7bdat|\\.xlsx)\\b",
+    sh_base64 = "\\bbase64\\s+"))
+
 #' Configure strict protected-data metadata
 #'
 #' @description
@@ -408,7 +431,10 @@ shield_tool_policy <- function(default = "scan", rules = list()) {
 #' @param langs Any of `"r"`, `"python"`, and `"bash"`; controls which
 #'   language-specific default rules are included.
 #' @param patterns Optional named regular expressions using PCRE
-#'   (Perl-Compatible Regular Expression) syntax, appended after defaults.
+#'   (Perl-Compatible Regular Expression) syntax. A name matching a built-in
+#'   rule (e.g. `py_pandas_export`) replaces that rule; a new name is added.
+#'   Hosts wanting file-managed blacklists read their own file (e.g.
+#'   `yaml::read_yaml()`) into a named vector and pass it here.
 #' @param include_defaults Include built-in serialization/encoding, network
 #'   transfer, shell data-file display, and protected-name preview rules.
 #' @param on_fail `"block"` rejects the tool call; `"ask"` forces the existing
@@ -427,18 +453,13 @@ shield_ingress <- function(langs = c("r", "python", "bash"), patterns = NULL,
       (!is.character(patterns) || is.null(names(patterns)) || any(!nzchar(names(patterns)))))
     stop("`patterns` must be a named character vector.", call. = FALSE)
   defaults <- character()
-  if (isTRUE(include_defaults) && "r" %in% langs) defaults <- c(defaults,
-    r_serialize = "\\b(?:serialize|saveRDS|dput|jsonlite::toJSON|base64enc::base64encode|write\\.csv|write\\.table)\\s*\\(",
-    r_network = "\\b(?:httr2?::(?:request|POST|PUT|PATCH)|curl::)\\b")
-  if (isTRUE(include_defaults) && "python" %in% langs) defaults <- c(defaults,
-    py_serialize = "\\b(?:pickle\\.dumps?|json\\.dumps?|base64\\.b64encode)\\s*\\(",
-    py_network = "\\brequests\\.(?:post|put|patch)\\s*\\(",
-    py_df_print = "\\bprint\\s*\\(\\s*(?:df|data|dataset)\\b")
-  if (isTRUE(include_defaults) && "bash" %in% langs) defaults <- c(defaults,
-    sh_upload = "\\bcurl\\b[^\\n]*(?:--data|-d\\s|--upload-file|-T\\s)|\\bwget\\b[^\\n]*--post-data",
-    sh_data_print = "\\b(?:cat|head|tail)\\s+[^\\n;|]*(?:\\.csv|\\.parquet|\\.sas7bdat|\\.xlsx)\\b",
-    sh_base64 = "\\bbase64\\s+")
-  resolved <- c(defaults, patterns %||% character())
+  if (isTRUE(include_defaults))
+    for (lg in langs) defaults <- c(defaults, .DATA_SHIELD_INGRESS_RULES[[lg]])
+  # Host patterns with a name matching a built-in REPLACE it (not append), so a
+  # host can retune a single rule; new names are added. include_defaults=FALSE
+  # drops built-ins entirely and uses only host patterns.
+  resolved <- defaults
+  if (length(patterns)) resolved[names(patterns)] <- patterns
   if (!length(resolved)) stop("At least one ingress pattern is required.", call. = FALSE)
   fn <- .data_shield_ingress_scanner(
     resolved, on_fail = match.arg(on_fail), ignore_case = ignore_case)
@@ -614,22 +635,34 @@ DataShield <- R6::R6Class(
     #'   `measure`, or `open`. Local heuristics classify unspecified columns.
     #' @param cols Optional explicit value-match columns. Default: columns
     #'   classified `identifier`/`quasi`.
+    #' @param column_access Optional named list of per-column raw-access
+    #'   overrides, each `list(prompt=, egress=, reason=, scan_secrets=)` using
+    #'   `none`/`schema`/`scan`/`raw`. A raw edge requires a non-empty `reason`;
+    #'   overrides missing it are dropped (with a warning) so the column falls
+    #'   back to its sensitivity tier. `egress="raw"` removes the column from the
+    #'   value-match index; `prompt="raw"` lets `DescribeData` enumerate its real
+    #'   values.
     #' @param min_len,min_card Minimum value length and column cardinality for
     #'   deterministic value indexing (reduces low-entropy false positives).
     register_data = function(df, name = NULL, sensitivity = NULL, cols = NULL,
-                             min_len = 3L, min_card = 8L) {
+                             column_access = NULL, min_len = 3L, min_card = 8L) {
       private$assert_open()
       if (!is.data.frame(df)) stop("`df` must be a data.frame.", call. = FALSE)
       if (is.null(name)) name <- paste0("dataset_", length(private$datasets) + 1L)
       if (!is.character(name) || length(name) != 1L || !nzchar(name))
         stop("`name` must be a non-empty character(1).", call. = FALSE)
       sensitivity <- .data_shield_classify_columns(df, sensitivity)
+      col_access <- .data_shield_resolve_column_access(df, column_access)
+      raw_egress_cols <- names(col_access)[vapply(
+        col_access, function(a) identical(a$egress, "raw"), logical(1L))]
       index_cols <- cols %||%
         names(sensitivity)[sensitivity %in% c("identifier", "quasi")]
+      index_cols <- setdiff(index_cols, raw_egress_cols)
       idx <- .data_shield_build_value_index(
         df, cols = index_cols, min_len = min_len, min_card = min_card)
       private$datasets[[name]] <- list(
         name = name, data = df, sensitivity = sensitivity,
+        column_access = col_access,
         index = idx, index_columns = index_cols)
       private$rebuild_index()
       invisible(length(ls(idx, all.names = TRUE)))
@@ -960,6 +993,8 @@ DataShield <- R6::R6Class(
       list(config = private$config, datasets = names(private$datasets),
            assets = names(private$assets),
            indexed_values = length(ls(private$index, all.names = TRUE)),
+           raw_access_columns = sum(vapply(private$datasets,
+             function(d) length(d$column_access %||% list()), integer(1L))),
            egress_pipeline = vapply(private$egress_pipeline, `[[`, character(1), "name"),
            ingress_pipeline = vapply(private$ingress_pipeline, `[[`, character(1), "name"),
            audit_events = length(private$audit_log), audit_max = private$audit_max,
@@ -1593,6 +1628,47 @@ DataShield <- R6::R6Class(
   out
 }
 
+# Validate per-column raw access overrides; drop (with warning) any override
+# lacking a reason or a raw edge so a mislabeled column falls back to its
+# sensitivity tier rather than silently leaking. Returns a named list keyed by
+# column, each list(prompt=, egress=, reason=, scan_secrets=).
+.data_shield_resolve_column_access <- function(df, column_access = NULL) {
+  if (is.null(column_access)) return(list())
+  if (!is.list(column_access) || is.null(names(column_access)))
+    stop("`column_access` must be a named list keyed by column.", call. = FALSE)
+  if (any(!names(column_access) %in% names(df)))
+    stop("`column_access` names must be columns in `df`.", call. = FALSE)
+  access_levels <- c("none", "schema", "scan", "raw")
+  out <- list()
+  for (cn in names(column_access)) {
+    spec <- column_access[[cn]]
+    if (!is.list(spec)) {
+      warning("column_access[['", cn, "']] ignored: must be a list.", call. = FALSE)
+      next
+    }
+    prompt <- spec$prompt %||% "raw"
+    egress <- spec$egress %||% "scan"
+    if (!prompt %in% access_levels || !egress %in% access_levels) {
+      warning("column_access[['", cn, "']] ignored: access must be none/schema/scan/raw.",
+              call. = FALSE)
+      next
+    }
+    is_raw <- identical(prompt, "raw") || identical(egress, "raw")
+    reason <- if (is.character(spec$reason) && length(spec$reason) == 1L &&
+                  nzchar(spec$reason)) spec$reason else NULL
+    if (is_raw && is.null(reason)) {
+      warning("column_access[['", cn, "']] ignored: raw access requires a non-empty `reason`.",
+              call. = FALSE)
+      next
+    }
+    out[[cn]] <- list(
+      prompt = prompt, egress = egress, reason = reason,
+      scan_secrets = isTRUE(spec$scan_secrets %||% TRUE))
+  }
+  out
+}
+
+
 .data_shield_type <- function(x) {
   if (inherits(x, "Date")) return("Date")
   if (inherits(x, "POSIXt")) return("datetime")
@@ -1615,6 +1691,7 @@ DataShield <- R6::R6Class(
 .data_shield_describe <- function(dataset, config) {
   df <- dataset$data
   sensitivity <- dataset$sensitivity
+  column_access <- dataset$column_access %||% list()
   k <- config$k_anon %||% 5L
   category_max <- config$category_max %||% 20L
   category_ratio <- config$category_ratio %||% 0.2
@@ -1624,6 +1701,16 @@ DataShield <- R6::R6Class(
     x <- df[[cn]]
     sens <- sensitivity[[cn]] %||% "identifier"
     typ <- .data_shield_type(x)
+    access <- column_access[[cn]]
+    if (!is.null(access) && identical(access$prompt, "raw")) {
+      # Explicit per-column raw prompt access: enumerate real values, no
+      # k-anonymity suppression. Guarded by resolve_column_access (reason set).
+      vals <- unique(as.character(x[!is.na(x)]))
+      lines <- c(lines, sprintf(
+        "- %s: type=%s; sensitivity=%s; access=raw; values=[%s]",
+        cn, typ, sens, paste(vals, collapse = ", ")))
+      next
+    }
     fields <- c(sprintf("type=%s", typ), sprintf("sensitivity=%s", sens),
                 sprintf("missing=%s", if (anyNA(x)) "yes" else "no"))
     if (sens %in% c("measure", "open")) {

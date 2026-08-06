@@ -135,8 +135,8 @@ counts.
 | Parameter | Default | Actual effect |
 |---|---|---|
 | `langs` | `c("r", "python", "bash")` | Select built-in rules for each code/shell language |
-| `patterns` | `NULL` | Optional named custom regex rules appended to defaults |
-| `include_defaults` | `TRUE` | Include serialization/base64/network/data-file-display and protected-name preview rules |
+| `patterns` | `NULL` | Named regex rules; a name matching a built-in **replaces** that rule, a new name is **added**. Host file-based blacklists read their own file into a named vector and pass it here |
+| `include_defaults` | `TRUE` | Include the built-in per-language rule set (`.DATA_SHIELD_INGRESS_RULES`): serialization/encoding, pandas/R writers, network transfer (incl. `nc`/`scp`/`/dev/tcp`), data-file display, and protected-name preview |
 | `on_fail` | `"block"` | `block`: reject the tool call; `ask`: force the existing permission approval UI/callback |
 | `ignore_case` | `TRUE` | Case-insensitive matching |
 
@@ -297,6 +297,58 @@ An untagged or mixed tool result remains scanned. Raw asset policies require a
 reason, expire with the owning DataShield session by default, may set a POSIXct
 expiry, and emit bypass audit events. Synthetic raw always keeps baseline
 PII/secret scanning; spec raw may explicitly set `scan_secrets = FALSE`.
+
+### Column-level raw access
+
+Assets are whole-object; `register_data(column_access=)` is the column-grained
+counterpart for a protected data.frame that contains a few public-dictionary
+columns (e.g. an SDTM `TESTCD` codelist) alongside protected ones. It reuses the
+same `none`/`schema`/`scan`/`raw` access levels as assets, split into
+`prompt`/`egress`, and a raw edge likewise requires a non-empty `reason`.
+
+```r
+shield$register_data(
+  vs, name = "vs",
+  sensitivity   = c(SUBJID = "identifier", TESTCD = "identifier"),
+  column_access = list(
+    TESTCD = list(prompt = "raw", egress = "raw",
+                  reason = "SDTM public codelist", scan_secrets = TRUE)))
+```
+
+- `prompt = "raw"` lets `DescribeData` enumerate that column's real values
+  (no k-anonymity suppression) so the model can write correct filters.
+- `egress = "raw"` removes the column from the value-match index, so its values
+  are not withheld from tool output.
+- An override **missing its `reason` is dropped with a warning**, and the column
+  falls back to its sensitivity tier — a mislabeled column fails safe, never
+  silently leaks. `coverage()$raw_access_columns` counts active overrides.
+
+### Host pattern: a provenance-tagging spec tool
+
+Raw asset egress needs a provenance tag. Rather than a framework "trusted tool"
+type, a host composes the existing primitives — `register_asset()` plus
+`trusted_result()` — inside its own tool:
+
+```r
+read_adam_spec_tool <- function(shield) {
+  ellmer::tool(
+    name = "ReadADaMSpec",
+    fun = function(path) {
+      text <- readLines(path, warn = FALSE)
+      shield$trusted_result(paste(text, collapse = "\n"), source = "adam_spec")
+    },
+    description = "Read a registered, LLM-safe ADaM specification.",
+    arguments = list(path = ellmer::type_string("Spec file path")))
+}
+# register once; the tool auto-tags provenance on every read
+shield$register_asset(adam_spec_path, name = "adam_spec", kind = "spec",
+  llm_access = list(prompt = "raw", egress = "raw"),
+  reason = "Validated public specification")
+```
+
+The agent calls `ReadADaMSpec` like any tool; the raw bypass is authorized by
+the registered asset policy and audited, and a mixed/untagged result from any
+other tool is still scanned.
 
 ## P0 — the foundation (available now)
 
@@ -519,3 +571,20 @@ detectors (row-cap, `value_match`, regex) miss adversarially obfuscated egress
 by the ingress blacklist and the no-network sandbox. The strongest guarantees
 come from the structural layers (metadata-only feeding + no-network execution),
 with scanning as defense-in-depth.
+
+Specific residual risks to weigh before relying on it:
+
+- **Layer composition matters.** Egress is the primary boundary. Enabling only
+  `shield_ingress()` (whose static rules can be obfuscated around) without
+  `shield_egress()` is **not** a safe configuration. Do not omit egress.
+- **The semantic reviewer is itself an LLM.** `shield_reviewer()` can be evaded
+  by a sufficiently obfuscated source-to-sink path and adds latency/cost per
+  reviewed call; it is defense-in-depth over the deterministic rails, not a
+  guarantee.
+- **`value_match` performance/false-positive rates are not yet benchmarked** on
+  large real datasets; the entropy/cardinality thresholds are conservative
+  defaults, not tuned against measured corpora.
+- **Images/multimodal and full OS isolation remain roadmap** (see the status
+  banner): a rendered table/plot of raw rows bypasses text scanning, and the
+  portable sandbox is a path/capability policy, not kernel isolation.
+

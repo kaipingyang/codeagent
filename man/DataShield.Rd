@@ -106,6 +106,7 @@ strategies are enabled and list order controls egress execution order.}
   name = NULL,
   sensitivity = NULL,
   cols = NULL,
+  column_access = NULL,
   min_len = 3L,
   min_card = 8L
 )}
@@ -121,6 +122,13 @@ strategies are enabled and list order controls egress execution order.}
 \code{measure}, or \code{open}. Local heuristics classify unspecified columns.}
       \item{\code{cols}}{Optional explicit value-match columns. Default: columns
 classified \code{identifier}/\code{quasi}.}
+      \item{\code{column_access}}{Optional named list of per-column raw-access
+overrides, each \code{list(prompt=, egress=, reason=, scan_secrets=)} using
+\code{none}/\code{schema}/\code{scan}/\code{raw}. A raw edge requires a non-empty \code{reason};
+overrides missing it are dropped (with a warning) so the column falls
+back to its sensitivity tier. \code{egress="raw"} removes the column from the
+value-match index; \code{prompt="raw"} lets \code{DescribeData} enumerate its real
+values.}
       \item{\code{min_len, min_card}}{Minimum value length and column cardinality for
 deterministic value indexing (reduces low-entropy false positives).}
     }

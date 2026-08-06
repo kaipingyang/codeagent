@@ -17,7 +17,10 @@ shield_ingress(
 language-specific default rules are included.}
 
 \item{patterns}{Optional named regular expressions using PCRE
-(Perl-Compatible Regular Expression) syntax, appended after defaults.}
+(Perl-Compatible Regular Expression) syntax. A name matching a built-in
+rule (e.g. \code{py_pandas_export}) replaces that rule; a new name is added.
+Hosts wanting file-managed blacklists read their own file (e.g.
+\code{yaml::read_yaml()}) into a named vector and pass it here.}
 
 \item{include_defaults}{Include built-in serialization/encoding, network
 transfer, shell data-file display, and protected-name preview rules.}

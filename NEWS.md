@@ -1,5 +1,21 @@
 # codeagent (development version)
 
+* **Column-level raw access**: `register_data(column_access=)` grants per-column
+  raw access on a protected data.frame (e.g. a public `TESTCD` codelist beside
+  protected columns), reusing the asset `none`/`schema`/`scan`/`raw` levels split
+  into `prompt`/`egress`. `prompt="raw"` makes `DescribeData` enumerate the real
+  values (no k-anonymity suppression); `egress="raw"` drops the column from the
+  value-match index. A raw edge requires a non-empty `reason`; an override
+  missing it is dropped with a warning and the column falls back to its
+  sensitivity tier (fails safe). `coverage()$raw_access_columns` counts overrides.
+
+* **Extensible ingress blacklist**: built-in `shield_ingress()` rules moved to a
+  grouped `.DATA_SHIELD_INGRESS_RULES` constant and expanded (pandas `to_*`, more
+  R writers, `urllib`/`httpx`/`aiohttp`, `nc`/`scp`/`rsync`/`/dev/tcp`, inline
+  `-e`/`-c` eval). A `patterns=` name matching a built-in now **replaces** that
+  rule (was append-only); new names are added. Hosts wanting file-managed
+  blacklists read their own file into a named vector and pass it via `patterns=`.
+
 * **Small-model semantic code reviewer**: new `shield_reviewer()` is an optional
   internal ingress rail (never a model-callable tool). It reviews only
   deterministic PII/value-sanitized tool code/arguments with a fresh, tool-less,
