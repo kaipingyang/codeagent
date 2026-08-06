@@ -104,6 +104,27 @@ test_that("value_match indexes high-entropy values, ignores low-card/small-int (
 })
 
 
+test_that("value index caps at max_index_values and warns on overflow", {
+  # build helper directly: 20 high-entropy values, cap at 5
+  df <- data.frame(id = paste0("HIGHENTROPY", sprintf("%03d", 1:20)),
+                   stringsAsFactors = FALSE)
+  idx <- codeagent:::.data_shield_build_value_index(
+    df, cols = "id", min_card = 8L, max_values = 5L)
+  expect_identical(attr(idx, "n"), 5L)
+  expect_true(attr(idx, "truncated"))
+  # full index is not truncated
+  full <- codeagent:::.data_shield_build_value_index(df, cols = "id", min_card = 8L)
+  expect_false(attr(full, "truncated"))
+  expect_identical(attr(full, "n"), 20L)
+  # register_data surfaces the cap as a warning
+  shield <- DataShield$new(max_rows = 0L)
+  expect_warning(
+    shield$register_data(df, name = "big",
+                         sensitivity = c(id = "identifier"),
+                         max_index_values = 5L),
+    "max_index_values")
+})
+
 test_that("DataShield$register_data withholds targeted value leaks", {
   shield <- DataShield$new(max_rows = 0L)
   df <- data.frame(name = paste0("Subject", 1:50), stringsAsFactors = FALSE)

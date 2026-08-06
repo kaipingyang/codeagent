@@ -644,8 +644,13 @@ DataShield <- R6::R6Class(
     #'   values.
     #' @param min_len,min_card Minimum value length and column cardinality for
     #'   deterministic value indexing (reduces low-entropy false positives).
+    #' @param max_index_values Cap on indexed values (default 500000, ~65MB of
+    #'   keys). On overflow, indexing stops and a warning is emitted; unindexed
+    #'   values are not caught by value_match and rely on the other egress
+    #'   layers. `NULL`/`Inf` disables the cap.
     register_data = function(df, name = NULL, sensitivity = NULL, cols = NULL,
-                             column_access = NULL, min_len = 3L, min_card = 8L) {
+                             column_access = NULL, min_len = 3L, min_card = 8L,
+                             max_index_values = 500000L) {
       private$assert_open()
       if (!is.data.frame(df)) stop("`df` must be a data.frame.", call. = FALSE)
       if (is.null(name)) name <- paste0("dataset_", length(private$datasets) + 1L)
@@ -659,7 +664,12 @@ DataShield <- R6::R6Class(
         names(sensitivity)[sensitivity %in% c("identifier", "quasi")]
       index_cols <- setdiff(index_cols, raw_egress_cols)
       idx <- .data_shield_build_value_index(
-        df, cols = index_cols, min_len = min_len, min_card = min_card)
+        df, cols = index_cols, min_len = min_len, min_card = min_card,
+        max_values = max_index_values)
+      if (isTRUE(attr(idx, "truncated")))
+        warning("value-match index hit max_index_values (", max_index_values,
+                ") for dataset '", name, "'; some values are unindexed and rely ",
+                "on the other egress layers.", call. = FALSE)
       private$datasets[[name]] <- list(
         name = name, data = df, sensitivity = sensitivity,
         column_access = col_access,
@@ -1562,10 +1572,14 @@ DataShield <- R6::R6Class(
 # Build a value index (hash set env) from a data.frame's sensitive columns.
 #' @keywords internal
 .data_shield_build_value_index <- function(df, cols = names(df),
-                                           min_len = 3L, min_card = 8L) {
+                                           min_len = 3L, min_card = 8L,
+                                           max_values = 500000L) {
   set <- new.env(parent = emptyenv())
   n <- 0L
+  truncated <- FALSE
+  max_values <- if (is.null(max_values) || is.na(max_values)) Inf else max_values
   for (cn in intersect(cols, names(df))) {
+    if (n >= max_values) { truncated <- TRUE; break }
     v <- df[[cn]]
     if (is.null(v)) next
     vals <- unique(v[!is.na(v)])
@@ -1574,10 +1588,12 @@ DataShield <- R6::R6Class(
     ch <- ch[nchar(ch) >= min_len]                        # too short -> skip
     ch <- ch[!grepl("^[0-9]{1,2}$", ch)]                  # pure small int -> skip
     for (x in .data_shield_normalize(ch)) {
+      if (n >= max_values) { truncated <- TRUE; break }
       assign(x, TRUE, envir = set); n <- n + 1L
     }
   }
   attr(set, "n") <- n
+  attr(set, "truncated") <- truncated
   set
 }
 

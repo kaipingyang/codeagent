@@ -1,5 +1,13 @@
 # codeagent (development version)
 
+* **Bounded value-match index**: `register_data(max_index_values=)` caps the
+  value-match hash index (default 500000 values, ~65MB of keys). Benchmarked on
+  CDISC ADaM data (`inst/bench/value_match_benchmark.R`): index memory grows
+  linearly and unbounded (~130MB / 1M values), so on overflow indexing stops and
+  a warning is emitted; unindexed values rely on the other egress layers. Zero
+  false positives on real clinical prose and real USUBJID/SUBJID caught, so the
+  min_len/min_card thresholds are unchanged.
+
 * **Column-level raw access**: `register_data(column_access=)` grants per-column
   raw access on a protected data.frame (e.g. a public `TESTCD` codelist beside
   protected columns), reusing the asset `none`/`schema`/`scan`/`raw` levels split

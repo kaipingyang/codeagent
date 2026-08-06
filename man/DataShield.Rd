@@ -108,7 +108,8 @@ strategies are enabled and list order controls egress execution order.}
   cols = NULL,
   column_access = NULL,
   min_len = 3L,
-  min_card = 8L
+  min_card = 8L,
+  max_index_values = 500000L
 )}
     \if{html}{\out{</div>}}
   }
@@ -131,6 +132,10 @@ value-match index; \code{prompt="raw"} lets \code{DescribeData} enumerate its re
 values.}
       \item{\code{min_len, min_card}}{Minimum value length and column cardinality for
 deterministic value indexing (reduces low-entropy false positives).}
+      \item{\code{max_index_values}}{Cap on indexed values (default 500000, ~65MB of
+keys). On overflow, indexing stops and a warning is emitted; unindexed
+values are not caught by value_match and rely on the other egress
+layers. \code{NULL}/\code{Inf} disables the cap.}
     }
     \if{html}{\out{</div>}}
   }
