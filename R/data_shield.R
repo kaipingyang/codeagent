@@ -58,19 +58,26 @@ shield_describe <- function(distributions = "off", k_anon = 5L,
 #'   deliberately expose that many leading lines and should only be used when
 #'   the caller accepts that disclosure.
 #' @param on_fail `"redact"` replaces unsafe output with a withheld notice;
-#'   `"block"` discards it with a blocked notice. Neither mode asks a user;
-#'   interactive `"ask"` is a later phase.
+#'   `"block"` discards it with a blocked notice; `"ask"` pauses before the
+#'   result reaches the LLM and uses the configured egress approval callback.
+#' @param allow_raw_approval When `on_fail="ask"`, expose the dangerous
+#'   `raw_once` choice. Default FALSE leaves only redact/block.
+#' @param approval_timeout Seconds before an async approval defaults to redact.
 #' @return A Data Shield strategy specification.
 #' @examples
 #' strict <- shield_egress(max_rows = 0, on_fail = "redact")
 #' no_value_index <- shield_egress(detectors = "row_cap", max_rows = 0)
 #' @export
 shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L,
-                          on_fail = c("redact", "block")) {
+                          on_fail = c("redact", "block", "ask"),
+                          allow_raw_approval = FALSE,
+                          approval_timeout = 60) {
   detectors <- match.arg(detectors, c("row_cap", "value_match"), several.ok = TRUE)
   .new_shield_strategy(
     "egress", detectors = detectors, max_rows = as.integer(max_rows),
-    on_fail = match.arg(on_fail))
+    on_fail = match.arg(on_fail),
+    allow_raw_approval = isTRUE(allow_raw_approval),
+    approval_timeout = as.numeric(approval_timeout))
 }
 
 .data_shield_extract_paths <- function(input) {
@@ -429,6 +436,7 @@ DataShield <- R6::R6Class(
         k_anon = as.integer(k_anon), category_max = as.integer(category_max),
         category_ratio = as.numeric(category_ratio),
         detectors = c("row_cap", "value_match"), on_fail = "redact",
+        allow_raw_approval = FALSE, approval_timeout = 60,
         describe_enabled = TRUE, egress_enabled = TRUE)
       private$datasets <- list()
       private$assets <- list()
@@ -445,7 +453,9 @@ DataShield <- R6::R6Class(
           type = "core", name = "egress",
           config = list(detectors = private$config$detectors,
                         max_rows = private$config$max_rows,
-                        on_fail = private$config$on_fail))
+                        on_fail = private$config$on_fail,
+                        allow_raw_approval = private$config$allow_raw_approval,
+                        approval_timeout = private$config$approval_timeout))
       } else {
         private$config$describe_enabled <- FALSE
         private$config$egress_enabled <- FALSE
@@ -633,13 +643,21 @@ DataShield <- R6::R6Class(
           reason=reason, match_count=match_count, score=score)
       }
       output <- result
+      raw_result <- result
       for (stage in private$egress_pipeline) {
         if (identical(stage$type, "core")) {
           cfg <- stage$config
+          audit_before <- length(private$audit_log)
           output <- .data_shield_filter_result(
             output, max_rows = cfg$max_rows, index = private$index,
             detectors = cfg$detectors, on_fail = cfg$on_fail,
             audit_fn = audit_fn)
+          if (identical(cfg$on_fail,"ask") && length(private$audit_log)>audit_before) {
+            event <- private$audit_log[[length(private$audit_log)]]
+            if (identical(event$action,"ask"))
+              return(private$resolve_egress_approval(
+                raw_result,output,event,cfg,context))
+          }
         } else if (identical(stage$type, "scanner")) {
           output <- .data_shield_apply_scanner(
             output, stage$fn, stage$name,
@@ -730,6 +748,16 @@ DataShield <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description Set the sync/promise egress approval callback.
+    #' @param fn Function receiving non-sensitive event metadata and returning
+    #'   `redact`, `block`, or (when enabled) `raw_once`; NULL clears it.
+    set_egress_ask = function(fn = NULL) {
+      private$assert_open()
+      if (!is.null(fn) && !is.function(fn)) stop("`fn` must be a function or NULL.",call.=FALSE)
+      private$egress_ask_fn <- fn
+      invisible(self)
+    },
+
     #' @description Return a copy of non-sensitive decision events.
     #' @param limit Optional number of most recent events.
     audit = function(limit = NULL) {
@@ -785,6 +813,7 @@ DataShield <- R6::R6Class(
            egress_pipeline = vapply(private$egress_pipeline, `[[`, character(1), "name"),
            ingress_pipeline = vapply(private$ingress_pipeline, `[[`, character(1), "name"),
            audit_events = length(private$audit_log), audit_max = private$audit_max,
+           egress_approval_callback = is.function(private$egress_ask_fn),
            tool_policy_default = private$tool_policy_config$default,
            tool_policy_rules = names(private$tool_policy_config$rules),
            sandbox = private$sandbox,
@@ -801,6 +830,7 @@ DataShield <- R6::R6Class(
     ingress_pipeline = NULL,
     audit_log = NULL,
     audit_max = 1000L,
+    egress_ask_fn = NULL,
     tool_policy_config = NULL,
     sandbox = NULL,
     sandbox_fallback_logged = FALSE,
@@ -826,6 +856,39 @@ DataShield <- R6::R6Class(
       if (length(private$audit_log) > private$audit_max)
         private$audit_log <- utils::tail(private$audit_log, private$audit_max)
       invisible(NULL)
+    },
+    resolve_egress_approval = function(raw_result, safe_result, event, config, context) {
+      allow_raw <- isTRUE(config$allow_raw_approval)
+      payload <- list(
+        tool_name=context$tool_name %||% NA_character_,
+        tool_call_id=context$tool_call_id %||% NA_character_,
+        strategy=event$strategy, reason=event$reason,
+        match_count=event$match_count, score=event$score,
+        allow_raw_approval=allow_raw,
+        timeout=config$approval_timeout %||% 60)
+      apply_choice <- function(choice) {
+        if (is.list(choice)) choice <- choice$choice %||% choice$action
+        choice <- as.character(choice %||% "redact")[[1L]]
+        if (!choice %in% c("redact","block","raw_once")) choice <- "redact"
+        if (identical(choice,"raw_once") && !allow_raw) choice <- "redact"
+        private$record_event(
+          edge="egress",tool_name=payload$tool_name,tool_call_id=payload$tool_call_id,
+          strategy="egress_approval",action=choice,
+          reason=paste0("approval for ",event$strategy),match_count=event$match_count,
+          score=event$score)
+        if (identical(choice,"raw_once")) return(raw_result)
+        if (identical(choice,"block"))
+          return(.data_shield_replace_result_text(
+            safe_result,"[data_shield] tool output blocked by user after egress review."))
+        safe_result
+      }
+      if (!is.function(private$egress_ask_fn)) return(apply_choice("redact"))
+      response <- tryCatch(private$egress_ask_fn(payload),error=function(e) "redact")
+      if (inherits(response,"promise")) {
+        timed <- .data_shield_promise_timeout(response,payload$timeout)
+        return(promises::then(timed,apply_choice))
+      }
+      apply_choice(response)
     },
     asset = function(name) {
       asset <- private$assets[[name]]
@@ -918,6 +981,26 @@ DataShield <- R6::R6Class(
     return(DataShield$new(strategies = x))
   stop("`data_shield` must be NULL, list(shield_*()), or a DataShield instance.",
        call. = FALSE)
+}
+
+.data_shield_replace_result_text <- function(result, text) {
+  if (isTRUE(tryCatch(S7::S7_inherits(result,ellmer::ContentToolResult),error=function(e)FALSE))) {
+    result@value <- text
+    return(result)
+  }
+  text
+}
+
+.data_shield_promise_timeout <- function(promise, seconds = 60) {
+  promises::promise(function(resolve, reject) {
+    settled <- FALSE
+    finish <- function(value) {
+      if (settled) return(invisible(NULL))
+      settled <<- TRUE; resolve(value); invisible(NULL)
+    }
+    promises::then(promises::as.promise(promise),finish,function(e)finish("redact"))
+    later::later(function()finish("redact"),delay=max(0,as.numeric(seconds)))
+  })
 }
 
 .data_shield_empty_audit <- function() {

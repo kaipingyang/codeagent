@@ -7,7 +7,9 @@
 shield_egress(
   detectors = c("row_cap", "value_match"),
   max_rows = 0L,
-  on_fail = c("redact", "block")
+  on_fail = c("redact", "block", "ask"),
+  allow_raw_approval = FALSE,
+  approval_timeout = 60
 )
 }
 \arguments{
@@ -20,8 +22,13 @@ deliberately expose that many leading lines and should only be used when
 the caller accepts that disclosure.}
 
 \item{on_fail}{\code{"redact"} replaces unsafe output with a withheld notice;
-\code{"block"} discards it with a blocked notice. Neither mode asks a user;
-interactive \code{"ask"} is a later phase.}
+\code{"block"} discards it with a blocked notice; \code{"ask"} pauses before the
+result reaches the LLM and uses the configured egress approval callback.}
+
+\item{allow_raw_approval}{When \code{on_fail="ask"}, expose the dangerous
+\code{raw_once} choice. Default FALSE leaves only redact/block.}
+
+\item{approval_timeout}{Seconds before an async approval defaults to redact.}
 }
 \value{
 A Data Shield strategy specification.

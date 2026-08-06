@@ -13,8 +13,8 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 
 > **Status — P0/P0.5/P1/P1.5/C2/C5-policy available; fuller design in
 > progress.** The egress row-cap, protected-value matching, strict DescribeData,
-> ordered scanners, universal pre-tool ingress, per-tool policy, and portable
-> path/symlink sandbox are wired. Reviewer, full OS execution adapter, and
+> ordered scanners, universal pre-tool ingress, per-tool policy, promise-backed
+> egress approval, and portable path/symlink sandbox are wired. Reviewer, full OS execution adapter, and
 > `distributions="on"/"dp"` remain roadmap. Off by default
 > (`data_shield = NULL`).
 
@@ -90,12 +90,19 @@ reviewer, and tool narrowing are defense-in-depth, not the boundary.
 |---|---|---|
 | `detectors` | `c("row_cap", "value_match")` | `row_cap` catches bulk tabular output; `value_match` catches indexed high-entropy values |
 | `max_rows` | `0` | On a bulk/tabular match, retain zero raw printed lines and return only a withheld/blocked notice. `5` would deliberately expose the first five printed lines |
-| `on_fail` | `"redact"` | `redact`: withheld notice; `block`: blocked notice. Neither asks a user yet |
+| `on_fail` | `"redact"` | `redact`: withheld notice; `block`: blocked notice; `ask`: pause before LLM delivery |
+| `allow_raw_approval` | `FALSE` | When asking, show only Redact/Block; TRUE adds dangerous Raw once |
+| `approval_timeout` | `60` | Async seconds before automatic redact |
 
 `max_rows = 0` does **not** block `print()` generally. `print(nrow(df))`, status
 messages, model summaries, plots, and errors pass unless another detector finds
 sensitive content. It triggers only when output has a data.frame/tibble or
 many-line rectangular-table shape.
+
+With `on_fail="ask"`, the raw result remains local while the callback/UI receives
+only tool name/id, strategy, reason label, match count, score, timeout and whether
+raw-once is enabled. Redact is the safe default for no callback, errors, invalid
+choices, ESC and timeout. Raw-once applies to one result only and is audited.
 
 ### `shield_describe()` — strict model-safe metadata
 

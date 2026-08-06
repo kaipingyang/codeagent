@@ -494,3 +494,61 @@ test_that("sandbox network/process/fallback policy is explicit and audited", {
   offline <- DataShield$new(strategies=list(shield_sandbox(backend="policy",network="deny")))
   expect_identical(offline$scan_ingress("WebPost",list(url="https://example.invalid"),capability="net")$action,"block")
 })
+
+
+test_that("egress ask defaults to redact and never exposes raw without explicit opt-in", {
+  shield <- DataShield$new(strategies=list(
+    shield_egress(max_rows=0,on_fail="ask",allow_raw_approval=FALSE)))
+  captured <- NULL
+  shield$set_egress_ask(function(event){captured <<- event; "raw_once"})
+  out <- shield$scan_egress(mtcars,context=list(tool_name="Dump"))
+  expect_true(is.character(out))
+  expect_match(out,"withheld")
+  expect_false(isTRUE(captured$allow_raw_approval))
+  expect_false(any(grepl("Mazda|mpg|cyl",unlist(captured),ignore.case=TRUE)))
+  expect_true(any(shield$audit()$strategy=="egress_approval" &
+                  shield$audit()$action=="redact"))
+})
+
+test_that("egress ask supports block and explicit raw once", {
+  block <- DataShield$new(strategies=list(shield_egress(max_rows=0,on_fail="ask")))
+  block$set_egress_ask(function(event)"block")
+  expect_match(block$scan_egress(mtcars),"blocked by user")
+
+  raw <- DataShield$new(strategies=list(
+    shield_egress(max_rows=0,on_fail="ask",allow_raw_approval=TRUE)))
+  raw$set_egress_ask(function(event)"raw_once")
+  result <- raw$scan_egress(mtcars)
+  expect_s3_class(result,"data.frame")
+  expect_true(any(raw$audit()$strategy=="egress_approval" &
+                  raw$audit()$action=="raw_once"))
+})
+
+test_that("egress ask no callback/error/invalid choice fail safe to redact", {
+  make <- function() DataShield$new(strategies=list(shield_egress(max_rows=0,on_fail="ask")))
+  expect_match(make()$scan_egress(mtcars),"withheld")
+  erroring <- make(); erroring$set_egress_ask(function(event)stop("boom"))
+  expect_match(erroring$scan_egress(mtcars),"withheld")
+  invalid <- make(); invalid$set_egress_ask(function(event)"allow")
+  expect_match(invalid$scan_egress(mtcars),"withheld")
+})
+
+test_that("async egress ask resolves choice and times out to redact", {
+  resolve_choice <- function(shield) {
+    p <- shield$scan_egress(mtcars)
+    expect_true(inherits(p,"promise"))
+    value <- NULL; done <- FALSE
+    promises::then(p,function(x){value <<- x;done <<- TRUE})
+    for(i in 1:200){later::run_now(0.01);if(done)break}
+    expect_true(done); value
+  }
+  blocked <- DataShield$new(strategies=list(
+    shield_egress(max_rows=0,on_fail="ask",approval_timeout=1)))
+  blocked$set_egress_ask(function(event)promises::promise_resolve("block"))
+  expect_match(resolve_choice(blocked),"blocked by user")
+
+  timeout <- DataShield$new(strategies=list(
+    shield_egress(max_rows=0,on_fail="ask",approval_timeout=0.01)))
+  timeout$set_egress_ask(function(event)promises::promise(function(resolve,reject){}))
+  expect_match(resolve_choice(timeout),"withheld")
+})

@@ -15,14 +15,15 @@ server_interaction(input, output, session, state)
 A list with \code{ask_fn} and \code{ask_question_fn} (promise-returning).
 }
 \description{
-Shared "pause -> wait for user -> resume" machinery for two
+Shared "pause -> wait for user -> resume" machinery for three
 features that ride the same promise-as-pause-signal design:
 \itemize{
 \item \strong{ask_fn} -- harness permission approval (Allow/Deny a risky tool).
 \item \strong{ask_question_fn} -- \code{AskUserQuestion} clarifying-question input.
+\item \strong{egress_ask_fn} -- Data Shield result choice (redact/block/raw-once).
 }
 
-Both store a single \code{state$pending_interaction} slot and expose an
+All store a single \code{state$pending_interaction} slot and expose an
 interaction bar in the chat footer. The promise returned by the ask
 functions is awaited by the (async) tool inside the streaming task; it is
 resolved by the Allow/Deny/Submit observers here.

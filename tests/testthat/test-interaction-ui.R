@@ -48,9 +48,10 @@ test_that(".interaction_bar_ui builds a free-text input for a choiceless questio
   expect_false(grepl("ca_q_choice", html))
 })
 
-test_that(".interaction_cancel_value denies approvals, blanks questions", {
+test_that(".interaction_cancel_value uses safe defaults", {
   expect_false(codeagent:::.interaction_cancel_value(list(type = "approval")))
   expect_identical(codeagent:::.interaction_cancel_value(list(type = "question")), "")
+  expect_identical(codeagent:::.interaction_cancel_value(list(type = "egress")), "redact")
   expect_null(codeagent:::.interaction_cancel_value(NULL))
 })
 
@@ -73,4 +74,25 @@ test_that(".resolve_pending resolves the stored promise once and clears the slot
   # Second call is a no-op (nothing pending).
   expect_false(codeagent:::.resolve_pending(st, FALSE))
   expect_equal(resolved$calls, 1L)
+})
+
+
+test_that(".interaction_bar_ui builds safe egress choices without raw content", {
+  pending <- list(type="egress",payload=list(
+    tool_name="DumpData",strategy="row_cap",reason="bulk tabular output",
+    match_count=51L,allow_raw_approval=FALSE))
+  html <- as.character(codeagent:::.interaction_bar_ui(pending))
+  expect_true(grepl("ca_egress_redact",html))
+  expect_true(grepl("ca_egress_block",html))
+  expect_false(grepl("ca_egress_raw",html))
+  expect_true(grepl("DumpData",html))
+})
+
+test_that("egress raw-once button requires explicit opt-in", {
+  pending <- list(type="egress",payload=list(
+    tool_name="Trusted",strategy="value_match",reason="protected value match",
+    match_count=1L,allow_raw_approval=TRUE))
+  html <- as.character(codeagent:::.interaction_bar_ui(pending))
+  expect_true(grepl("ca_egress_raw",html))
+  expect_true(grepl("ALLOW RAW ONCE",html))
 })

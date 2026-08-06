@@ -76,3 +76,53 @@ test_that("server_interaction Allow/Deny observers clear the pending interaction
     expect_null(shiny::isolate(session$userData$state$pending_interaction))
   })
 })
+
+
+test_that("server_interaction egress observers resolve redact/block/raw safely", {
+  run_choice <- function(input_name, allow_raw=FALSE) {
+    resolved <- new.env(); resolved$value <- NULL
+    shiny::testServer(function(input,output,session) {
+      state <- shiny::reactiveValues(pending_interaction=NULL)
+      server_interaction(input,output,session,state)
+      session$userData$state <- state
+    }, {
+      session$userData$state$pending_interaction <- list(
+        type="egress",payload=list(allow_raw_approval=allow_raw),
+        resolve=function(v) resolved$value <- v)
+      session$flushReact()
+      do.call(session$setInputs,stats::setNames(list(1),input_name))
+      expect_null(shiny::isolate(session$userData$state$pending_interaction))
+    })
+    resolved$value
+  }
+  expect_identical(run_choice("ca_egress_redact"),"redact")
+  expect_identical(run_choice("ca_egress_block"),"block")
+  expect_identical(run_choice("ca_egress_raw",TRUE),"raw_once")
+  expect_identical(run_choice("ca_egress_raw",FALSE),"redact")
+})
+
+
+test_that("Shiny egress ask promise resolves choice and timeout safely", {
+  run <- function(event, click=NULL) {
+    value <- NULL; done <- FALSE
+    shiny::testServer(function(input,output,session) {
+      state <- shiny::reactiveValues(pending_interaction=NULL)
+      interaction <- server_interaction(input,output,session,state)
+      session$userData$state <- state; session$userData$interaction <- interaction
+    }, {
+      p <- session$userData$interaction$egress_ask_fn(event)
+      promises::then(p,function(x){value <<- x;done <<- TRUE})
+      session$flushReact()
+      if (!is.null(click)) do.call(session$setInputs,stats::setNames(list(1),click))
+      for(i in 1:200){later::run_now(0.01);if(done)break}
+      expect_true(done)
+      expect_null(shiny::isolate(session$userData$state$pending_interaction))
+    })
+    value
+  }
+  event <- list(tool_name="Dump",strategy="row_cap",reason="bulk",
+                match_count=10L,allow_raw_approval=TRUE,timeout=1)
+  expect_identical(run(event,"ca_egress_raw"),"raw_once")
+  event$timeout <- 0.01
+  expect_identical(run(event),"redact")
+})

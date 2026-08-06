@@ -1,11 +1,12 @@
 #' @title Shiny interaction pause mechanism (Phase 3)
-#' @description Shared "pause -> wait for user -> resume" machinery for two
+#' @description Shared "pause -> wait for user -> resume" machinery for three
 #'   features that ride the same promise-as-pause-signal design:
 #'
 #'   * **ask_fn** -- harness permission approval (Allow/Deny a risky tool).
 #'   * **ask_question_fn** -- `AskUserQuestion` clarifying-question input.
+#'   * **egress_ask_fn** -- Data Shield result choice (redact/block/raw-once).
 #'
-#'   Both store a single `state$pending_interaction` slot and expose an
+#'   All store a single `state$pending_interaction` slot and expose an
 #'   interaction bar in the chat footer. The promise returned by the ask
 #'   functions is awaited by the (async) tool inside the streaming task; it is
 #'   resolved by the Allow/Deny/Submit observers here.
@@ -49,6 +50,30 @@ NULL
           resolve = resolve
         )
       })
+    })
+
+  }
+}
+
+# Build the promise-returning Data Shield egress approval callback. Payload is
+# non-sensitive metadata only; raw result stays inside the tool wrapper.
+.shiny_egress_ask_fn <- function(session, state) {
+  function(event) {
+    promises::promise(function(resolve, reject) {
+      token <- tryCatch(.generate_uuid_v4(),error=function(e)paste0("egress-",Sys.time()))
+      shiny::isolate({
+        state$pending_interaction <- list(
+          type="egress", token=token, payload=event, resolve=resolve)
+      })
+      timeout <- max(0,as.numeric(event$timeout %||% 60))
+      later::later(function() {
+        if (isTRUE(tryCatch(session$isClosed(),error=function(e) TRUE)))
+          return(invisible(NULL))
+        pending <- shiny::isolate(state$pending_interaction)
+        if (!is.null(pending) && identical(pending$type,"egress") &&
+            identical(pending$token,token))
+          .resolve_pending(state,"redact")
+      },delay=timeout)
     })
   }
 }
@@ -114,6 +139,30 @@ NULL
                          placeholder = "Type your answer..."),
       shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm")
     )
+  } else if (identical(pending$type, "egress")) {
+    p <- pending$payload
+    htmltools::tags$div(
+      style = paste(
+        "border-top:2px solid var(--bs-danger,#dc3545);",
+        "background:var(--bs-body-bg,#fff);",
+        "padding:8px 16px; display:flex; align-items:center; gap:10px;",
+        "text-align:left; box-shadow:0 -2px 8px rgba(0,0,0,.08);"),
+      htmltools::tags$span(
+        style="font-weight:600; flex:1; font-size:0.9em;",
+        "Data Shield blocked a tool result: ",
+        htmltools::tags$code(p$tool_name %||% "?"),
+        htmltools::tags$small(
+          style="display:block;color:#666;font-weight:400;",
+          paste0(p$strategy %||% "policy", " \u2014 ", p$reason %||% "policy match",
+                 " (matches: ", as.integer(p$match_count %||% 0L), ")"))),
+      shiny::actionButton("ca_egress_redact","Redact and continue",
+                          class="btn-warning btn-sm"),
+      shiny::actionButton("ca_egress_block","Block result",
+                          class="btn-secondary btn-sm"),
+      if (isTRUE(p$allow_raw_approval))
+        shiny::actionButton("ca_egress_raw","ALLOW RAW ONCE",
+                            class="btn-danger btn-sm")
+    )
   } else {
     NULL
   }
@@ -123,7 +172,9 @@ NULL
 # (FALSE) an approval, or an empty answer ("") a question. PURE.
 .interaction_cancel_value <- function(pending) {
   if (is.null(pending)) return(NULL)
-  if (identical(pending$type, "approval")) FALSE else ""
+  if (identical(pending$type, "approval")) return(FALSE)
+  if (identical(pending$type, "egress")) return("redact")
+  ""
 }
 
 #' Wire the interaction bar UI + observers into a Shiny session
@@ -155,6 +206,24 @@ server_interaction <- function(input, output, session, state) {
         session = session)
   })
 
+  # ---- Data Shield egress approval (result already executed, not yet in LLM) ----
+  shiny::observeEvent(input$ca_egress_redact, ignoreInit=TRUE, {
+    pending <- shiny::isolate(state$pending_interaction)
+    if (is.null(pending) || !identical(pending$type,"egress")) return()
+    .resolve_pending(state,"redact")
+  })
+  shiny::observeEvent(input$ca_egress_block, ignoreInit=TRUE, {
+    pending <- shiny::isolate(state$pending_interaction)
+    if (is.null(pending) || !identical(pending$type,"egress")) return()
+    .resolve_pending(state,"block")
+  })
+  shiny::observeEvent(input$ca_egress_raw, ignoreInit=TRUE, {
+    pending <- shiny::isolate(state$pending_interaction)
+    if (is.null(pending) || !identical(pending$type,"egress")) return()
+    choice <- if (isTRUE(pending$payload$allow_raw_approval)) "raw_once" else "redact"
+    .resolve_pending(state,choice)
+  })
+
   # ---- Submit (question answer) ----
   shiny::observeEvent(input$ca_q_submit, ignoreInit = TRUE, {
     pending <- shiny::isolate(state$pending_interaction)
@@ -173,6 +242,7 @@ server_interaction <- function(input, output, session, state) {
 
   list(
     ask_fn          = .shiny_ask_fn(session, state),
-    ask_question_fn = .shiny_ask_question_fn(session, state)
+    ask_question_fn = .shiny_ask_question_fn(session, state),
+    egress_ask_fn   = .shiny_egress_ask_fn(session, state)
   )
 }

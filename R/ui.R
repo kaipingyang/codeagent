@@ -362,6 +362,8 @@ codeagent_app <- function(
     interaction <- server_interaction(input, output, session, state)
     settings$shiny_ask_fn          <- interaction$ask_fn
     settings$shiny_ask_question_fn <- interaction$ask_question_fn
+    if (inherits(session_client$data_shield,"DataShield"))
+      session_client$data_shield$set_egress_ask(interaction$egress_ask_fn)
     # NB: tools are registered LAZILY in the onFlushed() init below (after the UI
     # + progress overlay render). Registering here would block the first flush and
     # defeat the instant-UI / overlay. (server_settings re-registers on mode change.)

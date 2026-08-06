@@ -213,6 +213,9 @@ codeagent_client <- function(
   }
 
   ask_fn <- if (interactive()) .console_ask_fn else NULL
+  if (interactive() && inherits(shield_state,"DataShield") &&
+      !isTRUE(shield_state$coverage()$egress_approval_callback))
+    shield_state$set_egress_ask(.console_egress_ask_fn)
   # register_tools = FALSE returns a cheap "shell" client (chat + settings +
   # system prompt, no tools registered) so callers like codeagent_app() can
   # render the UI instantly and defer the expensive tool registration
@@ -609,6 +612,21 @@ agent_loop <- function(user_input,
               tool_name, substr(as.character(cmd), 1L, 120L)))
   ans <- trimws(readLines(con = stdin(), n = 1L))
   identical(tolower(ans), "y")
+}
+
+# Sync CLI egress approval. Never prints the raw result.
+.console_egress_ask_fn <- function(event) {
+  cat(sprintf(
+    "\n[codeagent] Data Shield egress review\n  Tool: %s\n  Strategy: %s\n  Reason: %s\n  Matches: %d\n",
+    event$tool_name %||% "?", event$strategy %||% "?",
+    event$reason %||% "policy match", as.integer(event$match_count %||% 0L)))
+  choices <- c("Redact and continue", "Block result")
+  if (isTRUE(event$allow_raw_approval)) choices <- c(choices,"ALLOW RAW ONCE (dangerous)")
+  for (i in seq_along(choices)) cat(sprintf("  %d) %s\n",i,choices[[i]]))
+  cat("Choice [1]: ")
+  answer <- suppressWarnings(as.integer(trimws(readLines(con=stdin(),n=1L))))
+  if (is.na(answer) || answer < 1L || answer > length(choices)) answer <- 1L
+  c("redact","block","raw_once")[[answer]]
 }
 
 # ---------------------------------------------------------------------------

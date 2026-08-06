@@ -45,6 +45,7 @@ shield$coverage()
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
+    \item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
     \item \href{#method-DataShield-audit}{\code{DataShield$audit()}}
     \item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
@@ -290,6 +291,26 @@ deterministic value indexing (reduces low-entropy false positives).}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$add_scanner(name, fn)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-set_egress_ask"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-set_egress_ask}{}}}
+\subsection{\code{DataShield$set_egress_ask()}}{
+  Set the sync/promise egress approval callback.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$set_egress_ask(fn = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{fn}}{Function receiving non-sensitive event metadata and returning
+\code{redact}, \code{block}, or (when enabled) \code{raw_once}; NULL clears it.}
+    }
     \if{html}{\out{</div>}}
   }
 }
