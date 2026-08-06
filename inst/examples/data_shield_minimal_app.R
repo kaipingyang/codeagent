@@ -1,6 +1,7 @@
 # inst/examples/data_shield_minimal_app.R
 # =============================================================================
-# Data Shield — minimal upload demo (single focus: fileInput -> register_data)
+# Data Shield — minimal upload demo (fileInput -> register_data, live chat,
+# and a shield-strength selector to compare thin vs thick configurations)
 # =============================================================================
 # A deliberately small companion to data_shield_upload_app.R (which manually
 # invokes tools via buttons). This one wires a REAL codeagent_client into a
@@ -11,6 +12,11 @@
 # and watch Data Shield withhold/redact the tool results live, with the
 # non-sensitive audit log shown in the sidebar as it happens.
 #
+# The "Shield strength" selector swaps the ENTIRE strategy combination live —
+# including two intentionally UNSAFE combos (ingress-only, describe-only) so
+# you can see the exact leaks the combination-safety matrix documents
+# (tests/testthat/test-data-shield-combinations.R) happen live in the chat.
+#
 # Run:
 #   devtools::load_all(".")
 #   shiny::runApp("inst/examples/data_shield_minimal_app.R")
@@ -20,10 +26,41 @@ library(shiny)
 library(bslib)
 library(codeagent)
 
+# Named strategy combinations, thinnest to thickest. "unsafe_*" entries exist
+# to make the combination-safety matrix (vignette("data-shield") / G2 tests)
+# tangible: switch to one, ask the chat to dump the data, and watch it leak.
+SHIELD_PRESETS <- list(
+  strict = list(
+    label = "Strict (recommended: egress + ingress + regex + describe)",
+    build = function() DataShield$new(strategies = list(
+      shield_describe(k_anon = 3L),
+      shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0L,
+                    on_fail = "block"),
+      shield_regex(on_fail = "block"),
+      shield_ingress(on_fail = "block")))),
+  balanced = list(
+    label = "Balanced (egress + regex only)",
+    build = function() DataShield$new(strategies = list(
+      shield_egress(max_rows = 0L), shield_regex()))),
+  unsafe_ingress_only = list(
+    label = "⚠ UNSAFE demo: ingress-only (no egress boundary)",
+    build = function() DataShield$new(strategies = list(shield_ingress(on_fail = "block")))),
+  unsafe_describe_only = list(
+    label = "⚠ UNSAFE demo: describe-only (tool output unfiltered)",
+    build = function() DataShield$new(strategies = list(shield_describe(k_anon = 3L))))
+)
+
 ui <- page_sidebar(
   title = "Data Shield: minimal upload demo",
   sidebar = sidebar(
-    width = 320,
+    width = 340,
+    selectInput("preset", "Shield strength", choices = stats::setNames(
+      names(SHIELD_PRESETS), vapply(SHIELD_PRESETS, `[[`, "", "label"))),
+    tags$p(class = "text-muted small",
+          "The two ⚠ UNSAFE presets exist to demo the combination-safety",
+          " matrix live: with them active, try \"dump the uploaded data\" and",
+          " watch it leak (see test-data-shield-combinations.R)."),
+    hr(),
     fileInput("file", "Upload CSV", accept = c(".csv", "text/csv")),
     actionButton("sample", "Use generated sample data", class = "btn-sm"),
     hr(),
@@ -42,10 +79,7 @@ ui <- page_sidebar(
 server <- function(input, output, session) {
   # Per-session state: shield, uploaded data, and the Chat all live here.
   data_env <- new.env(parent = emptyenv())
-  shield <- DataShield$new(strategies = list(
-    shield_describe(k_anon = 3L),
-    shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0L),
-    shield_regex()))
+  shield_rv <- reactiveVal(NULL)
 
   dump_tool <- ellmer::tool(
     function() {
@@ -75,15 +109,37 @@ server <- function(input, output, session) {
     base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
     model       = Sys.getenv("CODEAGENT_MODEL", "gpt-4o-mini"),
     credentials = function() Sys.getenv("CODEAGENT_API_KEY"))
-  client <- codeagent_client(chat, register_tools = FALSE, data_shield = shield)
+  # data_shield=NULL here is deliberate: the harness's central ingress gate
+  # resolves the active shield from settings$data_shield_engine FIRST and only
+  # falls back to attr(chat, "codeagent_data_shield") when that is NULL. Baking
+  # a shield in at construction would freeze ingress scanning to that instance
+  # forever, so live preset-swapping (below) would silently stop affecting
+  # ingress. Leaving it NULL here and doing every install() through the shield
+  # instance itself keeps both egress (tool wrapping) and ingress in sync.
+  client <- codeagent_client(chat, register_tools = FALSE, data_shield = NULL)
   client$chat$register_tools(list(dump_tool, peek_tool))
-  shield$install(client$chat)   # wrap tools; registering data later still applies
+
+  # Swap the ENTIRE shield instance/strategy combination live. Existing
+  # registered data (if any) is re-registered into the fresh instance so
+  # switching presets mid-session does not lose the uploaded dataset. Tools
+  # are reset to their pristine (unwrapped) objects before re-installing, so
+  # switching presets never double-wraps a tool inside a stale wrapper.
+  apply_preset <- function(preset_name) {
+    new_shield <- SHIELD_PRESETS[[preset_name]]$build()
+    if (!is.null(data_env$uploaded))
+      new_shield$register_data(data_env$uploaded, name = "uploaded")
+    client$chat$set_tools(list(dump_tool, peek_tool))  # reset to unwrapped
+    new_shield$install(client$chat)                    # wrap once for this preset
+    shield_rv(new_shield)
+  }
 
   shinychat::chat_server("chat", client$chat, session = session)
 
+  observeEvent(input$preset, apply_preset(input$preset), ignoreInit = FALSE)
+
   register_upload <- function(df, source) {
     data_env$uploaded <- df
-    n_indexed <- shield$register_data(df, name = "uploaded")
+    n_indexed <- shield_rv()$register_data(df, name = "uploaded")
     output$status <- renderText(sprintf(
       "Source: %s\nShape: %d x %d\nHigh-entropy values indexed: %d",
       source, nrow(df), ncol(df), n_indexed))
@@ -112,7 +168,8 @@ server <- function(input, output, session) {
   # Cheap live refresh of the non-sensitive audit log while a chat is running.
   output$audit <- renderTable({
     invalidateLater(1000, session)
-    log <- shield$audit(limit = 8)
+    shield <- shield_rv()
+    log <- if (is.null(shield)) NULL else shield$audit(limit = 8)
     if (!NROW(log)) return(data.frame(info = "No decisions yet."))
     log[, c("tool_name", "strategy", "action", "match_count")]
   })

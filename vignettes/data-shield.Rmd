@@ -598,3 +598,90 @@ Specific residual risks to weigh before relying on it:
   banner): a rendered table/plot of raw rows bypasses text scanning, and the
   portable sandbox is a path/capability policy, not kernel isolation.
 
+---
+
+# 数据盾（Data Shield）中文版 — 概念总结与排列组合矩阵
+
+> 本节是上面英文版的中文摘要，供内部讨论用。概念定义以本节为准；实现细节/参数默认值以英文版对应小节为准（有变动以代码为准）。
+
+## 核心问题
+
+codeagent 接入敏感数据（临床/金融/PII）时，我们要保证：**LLM 只能看到元数据和描述性摘要，绝不能看到原始行级数据**。数据盾是**默认关闭、可插拔**的安全阀（`data_shield = NULL`），开启后由若干独立策略自由组合而成。
+
+## 两条边界，守住即可
+
+数据只有两条路能进 LLM：
+
+1. **Prompt 边**：包括框架自己的 ambient 注入（session 里 R 对象摘要）——这部分框架保证只给 schema（列名/类型/维度），不给值。
+2. **工具结果边**：任何工具返回、回灌给模型的内容——这是**主边界**，靠 egress 扫描守。
+
+子代理递归继承同一条边界；多模态（图片渲染出的原始数据）是已知盲区，冻结待开会。
+
+## 各策略速查
+
+| 策略 | 守哪条边 | 干什么 | 能不能单独撑起安全 |
+|---|---|---|---|
+| `shield_egress()` | 边2（工具结果） | `row_cap`（挡整批行）+ `value_match`（挡已注册的精确值） | ✅ **是主边界，不可省** |
+| `shield_regex()` | 边2 | 兜未注册数据的 PII/密钥（email/phone/token/身份证） | 只挡形状，不认自定义 ID |
+| `shield_describe()` | 边1 | `DescribeData` 工具，严格 schema+统计，永不给行 | 只管模型主动查询，不拦其他工具输出 |
+| `shield_ingress()` | 工具调用前 | 高置信正则预筛（序列化/网络外传/数据文件读显） | ❌ 静态规则，可被别名绕过 |
+| `shield_tool_policy()` | 逐工具 | 按工具名 `scan`/`bypass`/`deny` | 治理层，不是扫描层 |
+| `shield_sandbox()` | 进程/路径 | 项目内/临时目录默认可读写执行，防越权路径 | 增强层，非内容边界 |
+| `shield_reviewer()` | 工具调用前（exec/write/net） | 小模型语义审查脱敏代码 | 审查者本身是可被注入的 LLM |
+
+## 排列组合安全矩阵（实测，非猜测）
+
+以下结论来自 `tests/testthat/test-data-shield-combinations.R`（14 个断言，CI 强制锁死，任何未来重构破坏这个结论会立刻测试失败）：
+
+| 组合 | 整批数据泄漏 | 单值定点泄漏 | 别名绕过（`y<-study;print(y)`） | 结论 |
+|---|:---:|:---:|:---:|---|
+| 只开 `egress` | 挡 | 挡 | 挡（egress 不认代码路径，只认输出内容） | ✅ 安全底线 |
+| `egress`+`ingress`+`regex`（推荐） | 挡 | 挡 | 挡 | ✅ 推荐生产配置 |
+| **只开 `ingress`** | **漏** | **漏** | **漏（实测绕过）** | ⚠️ **不安全，勿单独使用** |
+| **只开 `describe`** | **漏** | **漏** | — | ⚠️ **不安全**（只管模型主动查询，不拦工具输出）|
+| 只开 `regex` | — | 漏（非 PII 形状的自定义 ID 认不出） | — | ⚠️ 仅挡常见 PII 形状 |
+
+**一句话结论：`shield_egress()` 是唯一不可省的边界，其余都是纵深防御，不能替代它。**
+
+## 三个"够用"的组合模板
+
+```r
+# 最严格：合规/领导演示场景
+strict <- list(
+  shield_describe(k_anon = 5),
+  shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0, on_fail = "block"),
+  shield_regex(on_fail = "block"),
+  shield_ingress(on_fail = "block"))
+
+# 均衡：日常开发，够用不烦
+balanced <- list(
+  shield_egress(max_rows = 0, on_fail = "redact"),
+  shield_regex(on_fail = "redact"))
+
+# 临床合规：加语义审查 + 严格 k-匿名
+clinical <- list(
+  shield_describe(k_anon = 5),
+  shield_egress(max_rows = 0),
+  shield_regex(),
+  shield_ingress(on_fail = "ask"),
+  shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask"))
+```
+
+`inst/examples/data_shield_minimal_app.R` 的 Shiny demo 提供一个下拉选择器，可实时切换以上组合，直接在真实聊天界面里对比"盾的厚薄"差异。
+
+## 已知真实缺口（非猜测，已记录待修）
+
+- **shinychat 原生附件绕过数据盾**：codeagent 主 UI 的 `allow_attachments=TRUE` 让用户直接拖文件进聊天框，这条路径**直进 prompt，不经过任何扫描**——跟 fileInput→`register_data()` 的受控注册路径完全不同。这是**已发现、未修复**的真实缺口（区别于下面两条已冻结待开会的议题）。
+- **DP 分布**、**多模态盲区**：技术上可做，但 epsilon/预算口径、OCR 误报策略需要开会拍板，不在工程层自行决定。
+
+## 术语对照
+
+| 英文 | 中文 |
+|---|---|
+| ingress | 工具调用进来的一刻（参数扫描点） |
+| egress | 工具结果要回灌模型的一刻（内容扫描点，主边界） |
+| row-cap | 行数上限，超过按批量数据处理 |
+| value-match | 精确值匹配，查已注册的高熵值索引 |
+| k-anonymity | k-匿名，类别标签至少 k 行支持才给 |
+| fail closed | 失败即拦，扫描器出错时默认拦截而非放行 |
+| provenance | 来源凭证，raw 放行必须能证明数据来自已登记资产 |
