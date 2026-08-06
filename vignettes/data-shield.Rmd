@@ -73,6 +73,26 @@ model-generated content is outbound, not inbound). The guarantee applies
       tools — both are enhancements, not the boundary)
 ```
 
+### Setup used by every snippet below
+
+Every code block in this vignette continues from a `chat` (a bare **ellmer**
+`Chat`, not the `CodeagentClient` wrapper) and a `shield` (a `DataShield`
+instance) built once, up front:
+
+```r
+chat <- ellmer::chat_openai_compatible(
+  base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
+  model       = Sys.getenv("CODEAGENT_MODEL"),
+  credentials = function() Sys.getenv("CODEAGENT_API_KEY"))
+shield <- DataShield$new()
+```
+
+`codeagent_client(chat, ...)` does **not** clone `chat` — `client$chat` is the
+exact same object you passed in (mutable R6/environment semantics), so a
+snippet may call either `chat$register_tool(...)` or
+`client$chat$register_tool(...)` interchangeably; this vignette uses the bare
+`chat` variable throughout for brevity.
+
 ## Design: composable strategies (not a fixed mode)
 
 `data_shield` accepts `NULL` (off), an ordered strategy list (creates one
@@ -83,7 +103,7 @@ already exist.
 
 ```{r}
 # Implemented now:
-client <- codeagent_client(..., data_shield = list(
+client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
   shield_egress(detectors = c("row_cap", "value_match"),
                 max_rows = 0, on_fail = "block"),
@@ -370,10 +390,14 @@ read_adam_spec_tool <- function(shield) {
     description = "Read a registered, LLM-safe ADaM specification.",
     arguments = list(path = ellmer::type_string("Spec file path")))
 }
-# register once; the tool auto-tags provenance on every read
+# register the asset policy once; the tool auto-tags provenance on every read
 shield$register_asset(adam_spec_path, name = "adam_spec", kind = "spec",
   llm_access = list(prompt = "raw", egress = "raw"),
   reason = "Validated public specification")
+# separately, register the TOOL itself so the model can call it at all, then
+# (re-)install so the egress wrapper picks up trusted_result()'s provenance
+chat$register_tool(read_adam_spec_tool(shield))
+shield$install(chat)
 ```
 
 The agent calls `ReadADaMSpec` like any tool; the raw bypass is authorized by

@@ -66,6 +66,25 @@ LLM 可以看到**元数据和描述性摘要**，但**绝不能看到原始行�
    （C5 沙箱：exec 无网/只读/独立用户；C1 收窄：可选删风险 tool —— 均为增强）
 ```
 
+### 下面每个代码片段共用的起手式
+
+本文档里每个代码块都接着一个已经建好的 `chat`（一个裸的 **ellmer** `Chat`，
+不是 `CodeagentClient` 包装器）和一个 `shield`（`DataShield` 实例）继续，
+两者只在最前面建一次：
+
+```r
+chat <- ellmer::chat_openai_compatible(
+  base_url    = Sys.getenv("CODEAGENT_BASE_URL"),
+  model       = Sys.getenv("CODEAGENT_MODEL"),
+  credentials = function() Sys.getenv("CODEAGENT_API_KEY"))
+shield <- DataShield$new()
+```
+
+`codeagent_client(chat, ...)` **不会**拷贝 `chat`——`client$chat` 跟你传进去的
+`chat` 是**同一个对象**（可变的 R6/环境语义），所以某个片段调用
+`chat$register_tool(...)` 还是 `client$chat$register_tool(...)` 效果相同；
+本文档统一用裸 `chat` 变量，图个简洁。
+
 ## 设计：可组合策略（不是固定模式）
 
 `data_shield` 接受 `NULL`（关闭）、一个有序策略列表（会创建一个私有 `DataShield` R6），
@@ -74,7 +93,7 @@ LLM 可以看到**元数据和描述性摘要**，但**绝不能看到原始行�
 
 ```{r}
 # 当前已实现：
-client <- codeagent_client(..., data_shield = list(
+client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
   shield_egress(detectors = c("row_cap", "value_match"),
                 max_rows = 0, on_fail = "block"),
@@ -350,10 +369,14 @@ read_adam_spec_tool <- function(shield) {
     description = "Read a registered, LLM-safe ADaM specification.",
     arguments = list(path = ellmer::type_string("Spec file path")))
 }
-# 只需注册一次；工具每次读取都会自动打上来源标记
+# 只需注册资产策略一次；工具每次读取都会自动打上来源标记
 shield$register_asset(adam_spec_path, name = "adam_spec", kind = "spec",
   llm_access = list(prompt = "raw", egress = "raw"),
   reason = "Validated public specification")
+# 另外，把工具本身挂到 chat 上，模型才能调用它；然后（重新）install
+# 一次，egress 包裹层才能读到 trusted_result() 打的来源标记
+chat$register_tool(read_adam_spec_tool(shield))
+shield$install(chat)
 ```
 
 Agent 像调用任何普通工具一样调用 `ReadADaMSpec`；raw 放行由已注册的资产策略
