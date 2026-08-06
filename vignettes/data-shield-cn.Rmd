@@ -688,3 +688,10 @@ unsafe_describe_only <- list(shield_describe(k_anon = 3))
   已知、尚未修复的缺口——与 `fileInput()` → `register_data()` 那条**受控、
   会扫描**的路径完全不同。在盾开启的情况下依赖附件功能前，请留意这条
   缺口。
+- **数据盾不管破坏性操作**（`rm -rf`、删表、强制推送）——这是另一个维度
+  （操作安全，不是数据保密），由权限门和 hooks 管，不归本文档任何
+  `shield_*()` 策略管。`shield_ingress()` 的模式匹配管道**可以**被借用来
+  做这件事，但它的内置默认规则聚焦于数据外泄，不是破坏性操作。具体机制
+  （`rules` deny glob、`PreToolUse` hook、自定义 `shield_ingress()` 规则）
+  以及为什么它们都防不住换种写法，见 `vignette("permissions")`
+  （英文版）的"Hooks"节。
