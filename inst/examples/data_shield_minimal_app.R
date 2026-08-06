@@ -124,6 +124,15 @@ server <- function(input, output, session) {
   # switching presets mid-session does not lose the uploaded dataset. Tools
   # are reset to their pristine (unwrapped) objects before re-installing, so
   # switching presets never double-wraps a tool inside a stale wrapper.
+  #
+  # The conversation is also cleared on every switch. Without this, a model
+  # that already refused a request earlier in the SAME thread tends to repeat
+  # its own prior refusal from conversational memory rather than re-invoking
+  # the tool -- so switching from a strict preset to an unsafe one can look
+  # like nothing changed, even though the underlying enforcement did change.
+  # shinychat::chat_clear() only wipes the visible UI log; the actual API
+  # history lives on the ellmer Chat object and needs set_turns(list())
+  # separately, or the model still "remembers" the old answer next turn.
   apply_preset <- function(preset_name) {
     new_shield <- SHIELD_PRESETS[[preset_name]]$build()
     if (!is.null(data_env$uploaded))
@@ -131,6 +140,14 @@ server <- function(input, output, session) {
     client$chat$set_tools(list(dump_tool, peek_tool))  # reset to unwrapped
     new_shield$install(client$chat)                    # wrap once for this preset
     shield_rv(new_shield)
+
+    had_history <- length(tryCatch(client$chat$get_turns(), error = function(e) list())) > 0L
+    client$chat$set_turns(list())
+    shinychat::chat_clear("chat", session = session)
+    if (had_history)
+      showNotification(
+        "Shield strength changed — conversation cleared so the next question re-verifies against the new policy instead of reusing an old answer.",
+        type = "message", duration = 6)
   }
 
   shinychat::chat_server("chat", client$chat, session = session)
