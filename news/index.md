@@ -2,6 +2,15 @@
 
 ## codeagent (development version)
 
+- **Data Shield egress approval**: `shield_egress(on_fail="ask")` pauses
+  after a local tool executes but before its result reaches the LLM.
+  Default choices are Redact/Block; dangerous `ALLOW RAW ONCE` appears
+  only with explicit `allow_raw_approval=TRUE` and never changes future
+  policy. CLI uses synchronous selection; Shiny uses a promise-backed
+  three-button interaction. Missing callbacks, invalid choices, errors
+  and timeouts default to redact. Approval payloads/audit contain
+  metadata only, never the raw result.
+
 - **Portable sandbox policy**: new
   [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
   keeps project/session-temp `rwx` and process execution by default

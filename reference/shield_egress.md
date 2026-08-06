@@ -18,7 +18,9 @@ that is too short to trigger the bulk row cap).
 shield_egress(
   detectors = c("row_cap", "value_match"),
   max_rows = 0L,
-  on_fail = c("redact", "block")
+  on_fail = c("redact", "block", "ask"),
+  allow_raw_approval = FALSE,
+  approval_timeout = 60
 )
 ```
 
@@ -39,8 +41,17 @@ shield_egress(
 - on_fail:
 
   `"redact"` replaces unsafe output with a withheld notice; `"block"`
-  discards it with a blocked notice. Neither mode asks a user;
-  interactive `"ask"` is a later phase.
+  discards it with a blocked notice; `"ask"` pauses before the result
+  reaches the LLM and uses the configured egress approval callback.
+
+- allow_raw_approval:
+
+  When `on_fail="ask"`, expose the dangerous `raw_once` choice. Default
+  FALSE leaves only redact/block.
+
+- approval_timeout:
+
+  Seconds before an async approval defaults to redact.
 
 ## Value
 

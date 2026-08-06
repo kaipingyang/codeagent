@@ -40,6 +40,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$add_scanner()`](#method-DataShield-add_scanner)
 
+- [`DataShield$set_egress_ask()`](#method-DataShield-set_egress_ask)
+
 - [`DataShield$audit()`](#method-DataShield-audit)
 
 - [`DataShield$clear_audit()`](#method-DataShield-clear_audit)
@@ -330,6 +332,23 @@ Add a custom scanner function to the end of the egress pipeline.
 
 ------------------------------------------------------------------------
 
+### `DataShield$set_egress_ask()`
+
+Set the sync/promise egress approval callback.
+
+#### Usage
+
+    DataShield$set_egress_ask(fn = NULL)
+
+#### Arguments
+
+- `fn`:
+
+  Function receiving non-sensitive event metadata and returning
+  `redact`, `block`, or (when enabled) `raw_once`; NULL clears it.
+
+------------------------------------------------------------------------
+
 ### `DataShield$audit()`
 
 Return a copy of non-sensitive decision events.
@@ -421,6 +440,12 @@ shield$coverage()
 #> $config$on_fail
 #> [1] "redact"
 #> 
+#> $config$allow_raw_approval
+#> [1] FALSE
+#> 
+#> $config$approval_timeout
+#> [1] 60
+#> 
 #> $config$describe_enabled
 #> [1] TRUE
 #> 
@@ -448,6 +473,9 @@ shield$coverage()
 #> 
 #> $audit_max
 #> [1] 1000
+#> 
+#> $egress_approval_callback
+#> [1] FALSE
 #> 
 #> $tool_policy_default
 #> [1] "scan"

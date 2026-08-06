@@ -1,13 +1,15 @@
 # Shiny interaction pause mechanism (Phase 3)
 
-Shared "pause -\> wait for user -\> resume" machinery for two features
+Shared "pause -\> wait for user -\> resume" machinery for three features
 that ride the same promise-as-pause-signal design:
 
 - **ask_fn** – harness permission approval (Allow/Deny a risky tool).
 
 - **ask_question_fn** – `AskUserQuestion` clarifying-question input.
 
-Both store a single `state$pending_interaction` slot and expose an
+- **egress_ask_fn** – Data Shield result choice (redact/block/raw-once).
+
+All store a single `state$pending_interaction` slot and expose an
 interaction bar in the chat footer. The promise returned by the ask
 functions is awaited by the (async) tool inside the streaming task; it
 is resolved by the Allow/Deny/Submit observers here.

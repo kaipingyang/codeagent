@@ -165,6 +165,16 @@ portable path policy blocks project-external and symlink-escaped paths;
 adapter is available. See the full [Data Shield parameter
 reference](https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference).
 
+Optional egress approval keeps raw disabled unless explicitly requested:
+
+``` r
+
+shield_egress(on_fail = "ask", allow_raw_approval = FALSE) # Redact / Block only
+shield_egress(on_fail = "ask", allow_raw_approval = TRUE)  # adds RAW ONCE warning
+```
+
+No callback, timeout, error, or invalid choice defaults to redact.
+
 The in-memory audit log records only non-sensitive decision metadata
 (strategy, action, reason label, count, tool/id), never matched values
 or raw results:
