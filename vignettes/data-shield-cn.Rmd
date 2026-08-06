@@ -40,6 +40,32 @@ LLM 可以看到**元数据和描述性摘要**，但**绝不能看到原始行�
 
 > 需单独处理的盲区：**图片/多模态**工具结果（渲染出原始行数据的表格/图表）会绕过文本扫描。
 
+### 技术架构一览
+
+```
+                         codeagent 中央 gate（唯一权威，已有双钩子）
+ 宿主/用户上传数据
+     │ shield$register_data(df, name, sensitivity)
+     ▼
+ ┌──────────────────┐   建 value 索引（敏感列去重高熵值，仅本地，不进模型）
+ │ 受保护数据注册     │────────────────────────────────┐
+ │ 绑 envir / 自动分类 │                                 │
+ └────────┬─────────┘                                  │
+          │ 唯一合法喂法                                 │
+          ▼                                             ▼
+   DescribeData(C6)                              value_match 查
+   硬化schema+统计+k匿名                          （小输出 × 预建索引 = 快）
+          │                                             │
+   ┌──────┴──────────── 模型上下文的两个入口（都要守）───┴──────────────┐
+   │  ① prompt 注入 ◄── ambient context ◄── 只喂安全画像                │
+   │  ② 工具结果：                                                       │
+   │       on_tool_request ─►[ ingress 管道：C2 黑名单 → C4 审核(exec) ]─► 执行 ─► 产出
+   │       产出 ─► on_tool_result ─►[ egress 管道：C3 row_cap → value_match → regex → C4 审核 ]─► 回灌模型
+   │                每策略 on_fail：pass|redact|block|ask；顺序执行 + fail_fast │
+   └────────────────────────────────────────────────────────────────────┘
+   （C5 沙箱：exec 无网/只读/独立用户；C1 收窄：可选删风险 tool —— 均为增强）
+```
+
 ## 设计：可组合策略（不是固定模式）
 
 `data_shield` 接受 `NULL`（关闭）、一个有序策略列表（会创建一个私有 `DataShield` R6），
@@ -576,9 +602,36 @@ clinical <- list(
   shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask"))
 ```
 
+### 两个刻意不安全的演示组合
+
+这两个组合复现了上面矩阵表里"单独使用不安全"的两行，和
+`inst/examples/data_shield_minimal_app.R` 的"Shield strength"选择器里接线的
+代码完全一致——在 demo 里切到其中一个，问聊天"dump the uploaded data"，
+亲眼看它当场泄漏。
+
+```r
+# 不安全：只开 ingress —— 完全没有 egress 边界。
+unsafe_ingress_only <- list(shield_ingress(on_fail = "block"))
+
+# 不安全：只开 describe —— DescribeData 注册了，但没有任何东西过滤
+# 其他工具返回的内容。
+unsafe_describe_only <- list(shield_describe(k_anon = 3))
+```
+
+- **`unsafe_ingress_only`** 只在工具执行前扫描*参数*（见前面参数参考里的
+  `shield_ingress()`）。它没有 `shield_egress()`，所以没有任何东西检查
+  工具**实际返回了什么**。它的静态正则规则也只看代码字面文本：
+  `y <- study; print(y)` 匹配不上任何"打印/dump 已知数据集名"的模式，
+  别名就这样溜过去了——这正是上面矩阵表里标记"已实测确认"的那个绕过。
+- **`unsafe_describe_only`** 只注册了 `DescribeData` 工具（见前面的
+  `shield_describe()`）。那个工具是模型自己经批准的查询通道；它不管
+  **其他**工具的返回值，所以一个简单返回原始 data.frame 的工具完全不受影响。
+- 两者都没有 `shield_egress()`——为什么这一个策略是所有其他组合都依赖的
+  基础，见上面的"排列组合安全性"。
+
 `inst/examples/data_shield_minimal_app.R` 提供一个实时的"Shield strength"
-（盾的强度）下拉选择器，涵盖以上模板加上面两个刻意不安全的组合，可以在
-运行中的聊天里实时切换，亲眼看到上表里的具体泄漏当场发生。
+（盾的强度）下拉选择器，涵盖以上三个模板加这两个刻意不安全的组合，可以在
+运行中的聊天里对这五种全部实时切换，亲眼看到上表里的具体泄漏当场发生。
 
 ## 诚实的局限性
 

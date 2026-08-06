@@ -44,6 +44,35 @@ model-generated content is outbound, not inbound). The guarantee applies
 > Blind spot to handle separately: an **image/multimodal** tool result (a
 > rendered table/plot of raw rows) bypasses text scanning.
 
+### Architecture at a glance
+
+```
+                     codeagent's central gate (sole authority, existing dual hooks)
+ Host/user uploads data
+     │ shield$register_data(df, name, sensitivity)
+     ▼
+ ┌────────────────────┐   builds a value index (deduped high-entropy values from
+ │ Protected data      │   sensitive columns, LOCAL ONLY, never sent to the model)
+ │ registration        │──────────────────────────────────────────┐
+ │ bound to an envir / │                                          │
+ │ auto-classified     │                                          │
+ └──────────┬──────────┘                                          │
+            │ the only sanctioned way to feed the model            │
+            ▼                                                     ▼
+     DescribeData (C6)                                    value_match lookup
+     hardened schema + stats + k-anonymity          (small output × prebuilt index = fast)
+            │                                                     │
+     ┌──────┴──────── the two entry points into model context (both must be guarded) ────┴──────┐
+     │  ① prompt injection ◄── ambient context ◄── only a safe profile is fed                    │
+     │  ② tool results:                                                                          │
+     │       on_tool_request ─►[ ingress pipeline: C2 blacklist → C4 review (exec) ]─► execute ─► output
+     │       output ─► on_tool_result ─►[ egress pipeline: C3 row_cap → value_match → regex → C4 review ]─► fed back to the model
+     │                per-strategy on_fail: pass|redact|block|ask; sequential execution + fail_fast │
+     └───────────────────────────────────────────────────────────────────────────────────────────┘
+     (C5 sandbox: exec no-network/read-only/separate user; C1 narrowing: optionally remove risky
+      tools — both are enhancements, not the boundary)
+```
+
 ## Design: composable strategies (not a fixed mode)
 
 `data_shield` accepts `NULL` (off), an ordered strategy list (creates one
@@ -614,10 +643,39 @@ clinical <- list(
   shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask"))
 ```
 
+### Two intentionally UNSAFE demo combinations
+
+These reproduce the two "not safe alone" rows of the matrix above, exactly as
+wired in `inst/examples/data_shield_minimal_app.R`'s "Shield strength"
+selector — switch to one there, ask the chat to dump the uploaded data, and
+watch it leak live.
+
+```r
+# UNSAFE: ingress-only — no egress boundary at all.
+unsafe_ingress_only <- list(shield_ingress(on_fail = "block"))
+
+# UNSAFE: describe-only — DescribeData is registered, but nothing filters
+# what OTHER tools return.
+unsafe_describe_only <- list(shield_describe(k_anon = 3))
+```
+
+- **`unsafe_ingress_only`** only scans tool *arguments* before execution (see
+  `shield_ingress()` in the parameter reference above). It has no `shield_egress()`,
+  so nothing inspects what a tool actually *returns*. Its static regex rules
+  also only see the literal code text: `y <- study; print(y)` does not match
+  any "print/dump a known dataset name" pattern, so the alias sails through —
+  this is the exact bypass the combination-safety table above marks "confirmed".
+- **`unsafe_describe_only`** only registers the `DescribeData` tool (see
+  `shield_describe()` above). That tool is the model's own sanctioned query
+  path; it does nothing to any *other* tool's return value, so a tool that
+  simply returns the raw data.frame is never touched.
+- Both omit `shield_egress()` — see "Combination safety" above for why that
+  is the one strategy every other combination depends on.
+
 `inst/examples/data_shield_minimal_app.R` has a live "Shield strength"
-selector covering these plus the two intentionally UNSAFE combos above, so you
-can switch between them in a running chat and watch the exact leaks in the
-table happen live.
+selector covering the three templates above plus these two intentionally
+UNSAFE combos, so you can switch between all five in a running chat and watch
+the exact leaks in the table happen live.
 
 ## Honest limits
 
