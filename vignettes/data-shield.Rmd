@@ -420,6 +420,11 @@ single indexed value withheld by `value_match`, unregistered PII redacted by
 `shield_regex`, a harmless shape summary passed through, and strict
 `DescribeData` metadata with raw identifiers suppressed.
 
+For a smaller single-focus demo — a real `codeagent_client` wired into a real
+`shinychat::chat_ui`, with `fileInput()` upload on one side and the live
+non-sensitive audit log on the other — see
+`inst/examples/data_shield_minimal_app.R`.
+
 > **Multi-user isolation:** create `DataShield$new()` inside the Shiny server
 > function, share it only among the intended chat threads, and register data via
 > `shield$register_data()`. Other browser sessions receive separate R6 instances
