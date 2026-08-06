@@ -1409,6 +1409,15 @@ prompt 边（<code>user_contents</code>），目前<strong>不经过任何 egres
 那条<strong>受控、
 会扫描</strong>的路径完全不同。在盾开启的情况下依赖附件功能前，请留意这条
 缺口。</li>
+<li>
+<strong>数据盾不管破坏性操作</strong>（<code>rm -rf</code>、删表、强制推送）——这是另一个维度
+（操作安全，不是数据保密），由权限门和 hooks 管，不归本文档任何
+<code>shield_*()</code> 策略管。<code><a href="../reference/shield_ingress.html">shield_ingress()</a></code>
+的模式匹配管道<strong>可以</strong>被借用来
+做这件事，但它的内置默认规则聚焦于数据外泄，不是破坏性操作。具体机制
+（<code>rules</code> deny glob、<code>PreToolUse</code> hook、自定义
+<code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> 规则） 以及为什么它们都防不住换种写法，见
+<code><a href="../articles/permissions.html">vignette("permissions")</a></code> （英文版）的”Hooks”节。</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

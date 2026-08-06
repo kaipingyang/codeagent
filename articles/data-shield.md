@@ -793,3 +793,15 @@ Specific residual risks to weigh before relying on it:
   layer. This is a known, unfixed gap — distinct from `fileInput()` →
   `register_data()`, which IS a controlled, scanned path. Track before
   relying on attachments with a shield enabled.
+- **Data Shield does not govern destructive operations** (`rm -rf`,
+  dropping a table, force-pushing) — that is a different axis (operation
+  safety, not data confidentiality) covered by the permission gate and
+  hooks, not by any `shield_*()` strategy here.
+  [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)’s
+  pattern-matching pipeline *can* be repurposed for it, but its built-in
+  defaults are exfiltration- focused, not destructiveness-focused. See
+  [`vignette("permissions")`](https://kaipingyang.github.io/codeagent/articles/permissions.md)’s
+  “Hooks” section for the actual mechanisms (a `rules` deny glob, a
+  `PreToolUse` hook, or a custom
+  [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
+  pattern) and why none of them are foolproof against rewording.

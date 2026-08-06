@@ -1493,6 +1493,18 @@ scanned</strong> by any egress layer. This is a known, unfixed gap —
 distinct from <code>fileInput()</code> → <code>register_data()</code>,
 which IS a controlled, scanned path. Track before relying on attachments
 with a shield enabled.</li>
+<li>
+<strong>Data Shield does not govern destructive operations</strong>
+(<code>rm -rf</code>, dropping a table, force-pushing) — that is a
+different axis (operation safety, not data confidentiality) covered by
+the permission gate and hooks, not by any <code>shield_*()</code>
+strategy here. <code><a href="../reference/shield_ingress.html">shield_ingress()</a></code>’s pattern-matching pipeline
+<em>can</em> be repurposed for it, but its built-in defaults are
+exfiltration- focused, not destructiveness-focused. See
+<code><a href="../articles/permissions.html">vignette("permissions")</a></code>’s “Hooks” section for the actual
+mechanisms (a <code>rules</code> deny glob, a <code>PreToolUse</code>
+hook, or a custom <code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> pattern) and why none of
+them are foolproof against rewording.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

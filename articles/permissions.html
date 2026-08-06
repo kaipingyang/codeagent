@@ -194,6 +194,114 @@ uses a console prompt instead.</p>
 <code>settings.json</code>) can return <code>"allow"</code>,
 <code>"deny"</code>, or fall through to the default gate — useful for
 policy-as-code.</p>
+<div class="section level3">
+<h3 id="what-happens-if-the-human-approves-something-dangerous-anyway">What happens if the human approves something dangerous anyway<a class="anchor" aria-label="anchor" href="#what-happens-if-the-human-approves-something-dangerous-anyway"></a>
+</h3>
+<p>The <code>ask</code> step exists so a human can decide — and a human
+can always say yes to something they shouldn’t. If the model requests
+<code>Bash: rm -rf ./data</code> and the operator clicks Allow,
+<strong>the gate itself has no opinion about whether that was a good
+idea</strong>; it already did its job by asking. If you want certain
+operations to be blocked <em>regardless of what gets clicked</em>, that
+veto has to live upstream of <code>ask_fn</code>, at one of these layers
+(weakest/simplest to strongest/most general):</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Layer</th>
+<th>Where</th>
+<th>Blocks before a human ever sees a prompt?</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>
+<code>rules</code> deny glob</td>
+<td>
+<code>settings.json</code> / <code>codeagent_client(rules=)</code>,
+e.g. <code>Bash(rm -rf *)</code>
+</td>
+<td>Yes — matches in <code>.gate_decide</code>’s fallback step, so
+<code>ask_fn</code> is never called</td>
+</tr>
+<tr class="even">
+<td>Data Shield
+<code>shield_ingress(patterns=, on_fail="block")</code>
+</td>
+<td>Repurposing Data Shield’s ingress scanner for a non-confidentiality
+rule</td>
+<td>Yes — <code>block</code> rejects unconditionally</td>
+</tr>
+<tr class="odd">
+<td>Data Shield
+<code>shield_tool_policy(rules=list(X=list(execution="deny")))</code>
+</td>
+<td>Same DataShield instance</td>
+<td>Yes — the whole tool is disabled</td>
+</tr>
+<tr class="even">
+<td>
+<code>PreToolUse</code> hook returning
+<code>action="deny"</code>
+</td>
+<td>
+<code>HookRegistry$register_pre()</code> /
+<code>settings.json</code> hooks</td>
+<td>Yes — fires before <code>.gate_decide</code> resolves to
+<code>ask</code> at all</td>
+</tr>
+</tbody>
+</table>
+<p>All four fire <em>before</em> the human is asked, so an operator’s
+later “yes” can never override them — that is the actual backstop this
+vignette’s diagram implies but doesn’t spell out.</p>
+</div>
+<div class="section level3">
+<h3 id="why-none-of-these-are-a-complete-answer">Why none of these are a complete answer<a class="anchor" aria-label="anchor" href="#why-none-of-these-are-a-complete-answer"></a>
+</h3>
+<p>Every one of the four is, underneath, a <strong>syntactic
+match</strong> — a glob, a regex, or whatever logic you put in the hook.
+That has the exact same blind spot as Data Shield’s own ingress scanner
+(see <code><a href="../articles/data-shield.html">vignette("data-shield")</a></code>): a rule written for
+<code>Bash(rm -rf *)</code> does not catch the model routing the same
+intent through <code>RunR</code>’s <code>system("rm -rf /x")</code> or
+R’s own <code>unlink(dir, recursive = TRUE)</code> (no literal “rm -rf”
+anywhere), a differently-destructive command
+(<code>git reset --hard</code>, <code>DROP TABLE</code>,
+<code>find . -delete</code>), a string built at runtime
+(<code>paste0("r","m ","-","r","f")</code>), or a script written to disk
+in one (innocuous-looking) step and executed in a second. Static rules
+are defense-in-depth, not a guarantee, for the same reason Data Shield’s
+own Honest Limits section gives.</p>
+<p>The two approaches that actually hold up against rewording are,
+symmetrically with Data Shield’s own design:</p>
+<ul>
+<li>
+<strong>A semantic reviewer</strong> (the same idea as
+<code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code>, applied to operation intent instead of
+data exfiltration) — classifies whether code <em>intends</em> something
+destructive regardless of syntax. Still an LLM, still evadable by a
+sufficiently adversarial prompt, but raises the bar past simple
+rewording.</li>
+<li>
+<strong>OS-level sandboxing</strong>
+(<code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code>’s full adapter, still roadmap) — a
+read-only or scoped-writable filesystem mount means the kernel refuses
+the underlying
+<code>unlink</code>/<code>rmdir</code>/<code>truncate</code> syscall no
+matter what language or obfuscation produced it. This is the only
+guarantee that does not depend on recognizing the command at all.</li>
+</ul>
+<p>Productizing this as a curated, cross-language rule set — rather than
+each host writing its own hook/rules from scratch — is an open design
+question, not yet implemented; the most consistent shape would reuse
+Data Shield’s own pipeline/audit-log/<code>install()</code> machinery
+(e.g. a <code>shield_destructive_ops()</code> strategy) rather than a
+second, competing “shield” concept.</p>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
