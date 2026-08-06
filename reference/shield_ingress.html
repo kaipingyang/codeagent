@@ -90,7 +90,10 @@ language-specific default rules are included.</p></dd>
 
 <dt id="arg-patterns">patterns<a class="anchor" aria-label="anchor" href="#arg-patterns"></a></dt>
 <dd><p>Optional named regular expressions using PCRE
-(Perl-Compatible Regular Expression) syntax, appended after defaults.</p></dd>
+(Perl-Compatible Regular Expression) syntax. A name matching a built-in
+rule (e.g. <code>py_pandas_export</code>) replaces that rule; a new name is added.
+Hosts wanting file-managed blacklists read their own file (e.g.
+<code><a href="https://yaml.r-lib.org/reference/read_yaml.html" class="external-link">yaml::read_yaml()</a></code>) into a named vector and pass it here.</p></dd>
 
 
 <dt id="arg-include-defaults">include_defaults<a class="anchor" aria-label="anchor" href="#arg-include-defaults"></a></dt>

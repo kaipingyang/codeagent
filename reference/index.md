@@ -282,6 +282,8 @@ Tool factories and registration.
   : Configure per-tool/agent Data Shield policy
 - [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
   : Configure portable sandbox policy
+- [`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)
+  : Configure a small-model semantic code reviewer
 
 ## Data exploration (WEAR)
 

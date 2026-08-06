@@ -83,14 +83,14 @@
 <p><strong>Status — P0/P0.5/P1/P1.5/C2/C5-policy available; fuller
 design in progress.</strong> The egress row-cap, protected-value
 matching, strict DescribeData, ordered scanners, universal pre-tool
-ingress, per-tool policy, promise-backed egress approval, and portable
-path/symlink sandbox are wired. Reviewer, full OS execution adapter, and
-<code>distributions="on"/"dp"</code> remain roadmap. Off by default
-(<code>data_shield = NULL</code>).</p>
+ingress, per-tool policy, promise-backed egress approval, portable
+path/symlink sandbox, and optional sanitized-code reviewer are wired.
+Full OS execution adapter and <code>distributions="on"/"dp"</code>
+remain roadmap. Off by default (<code>data_shield = NULL</code>).</p>
 </blockquote>
-<div class="section level2">
-<h2 id="why">Why<a class="anchor" aria-label="anchor" href="#why"></a>
-</h2>
+<div class="section level3">
+<h3 id="why">Why<a class="anchor" aria-label="anchor" href="#why"></a>
+</h3>
 <p>When codeagent is embedded as a backend over <strong>sensitive
 data</strong> (clinical, financial, PII), the guarantee we want is: the
 LLM may see <strong>metadata and descriptive summaries</strong>, but
@@ -99,9 +99,9 @@ LLM may see <strong>metadata and descriptive summaries</strong>, but
 default (<code>data_shield = NULL</code>), composed from independent
 strategies when on.</p>
 </div>
-<div class="section level2">
-<h2 id="the-core-two-edges">The core: two edges<a class="anchor" aria-label="anchor" href="#the-core-two-edges"></a>
-</h2>
+<div class="section level3">
+<h3 id="the-core-two-edges">The core: two edges<a class="anchor" aria-label="anchor" href="#the-core-two-edges"></a>
+</h3>
 <p>Strip away the agent machinery and data can reach the LLM through
 <strong>only two inbound edges</strong>. Guard both and you have guarded
 everything:</p>
@@ -127,9 +127,9 @@ tool result (a rendered table/plot of raw rows) bypasses text
 scanning.</p>
 </blockquote>
 </div>
-<div class="section level2">
-<h2 id="design-composable-strategies-not-a-fixed-mode">Design: composable strategies (not a fixed mode)<a class="anchor" aria-label="anchor" href="#design-composable-strategies-not-a-fixed-mode"></a>
-</h2>
+<div class="section level3">
+<h3 id="design-composable-strategies-not-a-fixed-mode">Design: composable strategies (not a fixed mode)<a class="anchor" aria-label="anchor" href="#design-composable-strategies-not-a-fixed-mode"></a>
+</h3>
 <p><code>data_shield</code> accepts <code>NULL</code> (off), an ordered
 strategy list (creates one private <code>DataShield</code> R6), or an
 explicit <code>DataShield</code> instance (for upload and intentional
@@ -148,22 +148,24 @@ already exist.</p>
 <span>    KMPlot <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>ingress <span class="op">=</span> <span class="st">"scan"</span>, egress <span class="op">=</span> <span class="st">"bypass"</span><span class="op">)</span>,</span>
 <span>    DangerousExport <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>execution <span class="op">=</span> <span class="st">"deny"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_sandbox.html">shield_sandbox</a></span><span class="op">(</span>project_root <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, backend <span class="op">=</span> <span class="st">"policy"</span><span class="op">)</span></span>
+<span>  <span class="fu"><a href="../reference/shield_sandbox.html">shield_sandbox</a></span><span class="op">(</span>project_root <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, backend <span class="op">=</span> <span class="st">"policy"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_reviewer.html">shield_reviewer</a></span><span class="op">(</span>model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_FAST_MODEL"</span><span class="op">)</span>,</span>
+<span>                  scope <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"exec"</span>, <span class="st">"write"</span>, <span class="st">"net"</span><span class="op">)</span>, on_risk <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Roadmap (not implemented yet):</span></span>
-<span><span class="co"># shield_reviewer(...), shield_narrow_tools()</span></span></code></pre></div>
+<span><span class="co"># shield_narrow_tools()</span></span></code></pre></div>
 <p>The main boundary is <strong>edge 2 (tool results)</strong>; sandbox,
 ingress blacklist, reviewer, and tool narrowing are defense-in-depth,
 not the boundary.</p>
 </div>
-<div class="section level2">
-<h2 id="current-parameter-reference">Current parameter reference<a class="anchor" aria-label="anchor" href="#current-parameter-reference"></a>
-</h2>
 <div class="section level3">
-<h3 id="data_shield-input">
-<code>data_shield</code> input<a class="anchor" aria-label="anchor" href="#data_shield-input"></a>
+<h3 id="current-parameter-reference">Current parameter reference<a class="anchor" aria-label="anchor" href="#current-parameter-reference"></a>
 </h3>
+<div class="section level4">
+<h4 id="data_shield-input">
+<code>data_shield</code> input<a class="anchor" aria-label="anchor" href="#data_shield-input"></a>
+</h4>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -191,10 +193,10 @@ chats</td>
 </tbody>
 </table>
 </div>
-<div class="section level3">
-<h3 id="shield_egress-core-tool-result-boundary">
+<div class="section level4">
+<h4 id="shield_egress-core-tool-result-boundary">
 <code>shield_egress()</code> — core tool-result boundary<a class="anchor" aria-label="anchor" href="#shield_egress-core-tool-result-boundary"></a>
-</h3>
+</h4>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -252,10 +254,10 @@ match count, score, timeout and whether raw-once is enabled. Redact is
 the safe default for no callback, errors, invalid choices, ESC and
 timeout. Raw-once applies to one result only and is audited.</p>
 </div>
-<div class="section level3">
-<h3 id="shield_describe-strict-model-safe-metadata">
+<div class="section level4">
+<h4 id="shield_describe-strict-model-safe-metadata">
 <code>shield_describe()</code> — strict model-safe metadata<a class="anchor" aria-label="anchor" href="#shield_describe-strict-model-safe-metadata"></a>
-</h3>
+</h4>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -301,10 +303,10 @@ treatment; otherwise <code>free_text</code>
 <code>measure</code>/<code>open</code> may show numeric/date min–max and
 safe category labels without counts.</p>
 </div>
-<div class="section level3">
-<h3 id="shield_regex-unregistered-piisecrets">
+<div class="section level4">
+<h4 id="shield_regex-unregistered-piisecrets">
 <code>shield_regex()</code> — unregistered PII/secrets<a class="anchor" aria-label="anchor" href="#shield_regex-unregistered-piisecrets"></a>
-</h3>
+</h4>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -351,11 +353,11 @@ identity-number rules</td>
 </tbody>
 </table>
 </div>
-<div class="section level3">
-<h3 id="shield_ingress-scan-every-tool-call-before-execution">
+<div class="section level4">
+<h4 id="shield_ingress-scan-every-tool-call-before-execution">
 <code>shield_ingress()</code> — scan every tool call before
 execution<a class="anchor" aria-label="anchor" href="#shield_ingress-scan-every-tool-call-before-execution"></a>
-</h3>
+</h4>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -376,13 +378,19 @@ execution<a class="anchor" aria-label="anchor" href="#shield_ingress-scan-every-
 <tr class="even">
 <td><code>patterns</code></td>
 <td><code>NULL</code></td>
-<td>Optional named custom regex rules appended to defaults</td>
+<td>Named regex rules; a name matching a built-in
+<strong>replaces</strong> that rule, a new name is
+<strong>added</strong>. Host file-based blacklists read their own file
+into a named vector and pass it here</td>
 </tr>
 <tr class="odd">
 <td><code>include_defaults</code></td>
 <td><code>TRUE</code></td>
-<td>Include serialization/base64/network/data-file-display and
-protected-name preview rules</td>
+<td>Include the built-in per-language rule set
+(<code>.DATA_SHIELD_INGRESS_RULES</code>): serialization/encoding,
+pandas/R writers, network transfer
+(incl. <code>nc</code>/<code>scp</code>/<code>/dev/tcp</code>),
+data-file display, and protected-name preview</td>
 </tr>
 <tr class="even">
 <td><code>on_fail</code></td>
@@ -405,11 +413,11 @@ high-confidence read-and-display, serialization, encoding, and
 network-transfer patterns. It is a cheap pre-filter; egress scanning
 remains the primary boundary because code can be obfuscated.</p>
 </div>
-<div class="section level3">
-<h3 id="shield_tool_policy-exactglob-trust-and-deny-rules">
+<div class="section level4">
+<h4 id="shield_tool_policy-exactglob-trust-and-deny-rules">
 <code>shield_tool_policy()</code> — exact/glob trust and deny
 rules<a class="anchor" aria-label="anchor" href="#shield_tool_policy-exactglob-trust-and-deny-rules"></a>
-</h3>
+</h4>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -450,11 +458,11 @@ LLM-safe, while <code>btw_tool_docs_*</code> can receive a broader
 trusted rule. This policy never bypasses codeagent’s independent
 permission system.</p>
 </div>
-<div class="section level3">
-<h3 id="shield_sandbox-portable-containment-without-crippling-the-agent">
+<div class="section level4">
+<h4 id="shield_sandbox-portable-containment-without-crippling-the-agent">
 <code>shield_sandbox()</code> — portable containment without
 crippling the agent<a class="anchor" aria-label="anchor" href="#shield_sandbox-portable-containment-without-crippling-the-agent"></a>
-</h3>
+</h4>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -526,7 +534,70 @@ fails closed for exec/net</td>
 policy. It is not advertised as kernel isolation: the capability probe
 found user/network/ mount namespaces but no bubblewrap/container, and
 plain <code>unshare</code> still sees the host filesystem. A future full
-adapter must move exec tools out of process. ###
+adapter must move exec tools out of process.</p>
+</div>
+<div class="section level4">
+<h4 id="shield_reviewer-optional-sanitized-code-semantic-rail">
+<code>shield_reviewer()</code> — optional sanitized-code semantic
+rail<a class="anchor" aria-label="anchor" href="#shield_reviewer-optional-sanitized-code-semantic-rail"></a>
+</h4>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th>Parameter</th>
+<th>Default</th>
+<th>Actual effect</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>client_factory</code></td>
+<td><code>NULL</code></td>
+<td>Optional function returning a fresh independent ellmer Chat</td>
+</tr>
+<tr class="even">
+<td><code>model</code></td>
+<td><code>CODEAGENT_FAST_MODEL</code></td>
+<td>Reviewer model; missing config follows <code>on_error</code>, never
+silently main model</td>
+</tr>
+<tr class="odd">
+<td><code>scope</code></td>
+<td>exec/write/net</td>
+<td>Only these tool capabilities incur review cost</td>
+</tr>
+<tr class="even">
+<td><code>on_risk</code></td>
+<td><code>"ask"</code></td>
+<td>Risk classification becomes ask or block</td>
+</tr>
+<tr class="odd">
+<td><code>on_error</code></td>
+<td><code>"ask"</code></td>
+<td>Missing model, timeout, request/JSON errors become ask or block; no
+approval→block</td>
+</tr>
+<tr class="even">
+<td><code>backend</code></td>
+<td><code>"remote_sanitized"</code></td>
+<td>Remote sees only regex/value-sanitized code; raw egress review is
+local-only roadmap</td>
+</tr>
+<tr class="odd">
+<td><code>timeout</code></td>
+<td><code>30</code></td>
+<td>Async review timeout seconds</td>
+</tr>
+</tbody>
+</table>
+<p>The reviewer is not a tool and cannot be skipped by the main model.
+It has no tools or history; code is delimited as untrusted data and
+parsed from fixed JSON (<code>risk</code>, <code>confidence</code>,
+<code>reason</code>). Deterministic ingress rules run first, so
+already-blocked calls incur no model cost. ###
 <code>DataShield$new()</code> direct lifecycle</p>
 <p>Direct constructor parameters (<code>max_rows</code>,
 <code>distributions</code>, <code>k_anon</code>,
@@ -543,9 +614,9 @@ strategies and preserves list order. Use
 <code>$close()</code> for dynamic/session-owned workflows.</p>
 </div>
 </div>
-<div class="section level2">
-<h2 id="plain-language-glossary">Plain-language glossary<a class="anchor" aria-label="anchor" href="#plain-language-glossary"></a>
-</h2>
+<div class="section level3">
+<h3 id="plain-language-glossary">Plain-language glossary<a class="anchor" aria-label="anchor" href="#plain-language-glossary"></a>
+</h3>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -622,6 +693,11 @@ support it</td>
 <td>If a safety scanner fails, block output instead of allowing it</td>
 </tr>
 <tr class="even">
+<td><strong>semantic reviewer</strong></td>
+<td>A separate small model that classifies what sanitized tool code is
+trying to do; it never sees raw data remotely</td>
+</tr>
+<tr class="odd">
 <td><strong>R6</strong></td>
 <td>R’s mutable object system; one <code>DataShield</code> owns private
 datasets/index/lifecycle</td>
@@ -629,9 +705,9 @@ datasets/index/lifecycle</td>
 </tbody>
 </table>
 </div>
-<div class="section level2">
-<h2 id="non-sensitive-audit-log">Non-sensitive audit log<a class="anchor" aria-label="anchor" href="#non-sensitive-audit-log"></a>
-</h2>
+<div class="section level3">
+<h3 id="non-sensitive-audit-log">Non-sensitive audit log<a class="anchor" aria-label="anchor" href="#non-sensitive-audit-log"></a>
+</h3>
 <p><code>shield$audit()</code> returns an in-memory data.frame of policy
 decisions:</p>
 <table class="table">
@@ -692,9 +768,9 @@ matches the policy instance.</p>
 <code class="sourceCode R"><span><span class="va">recent</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">shield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
-<div class="section level2">
-<h2 id="data-asset-policy-what-it-is-what-the-llm-may-see">Data Asset Policy: what it is × what the LLM may see<a class="anchor" aria-label="anchor" href="#data-asset-policy-what-it-is-what-the-llm-may-see"></a>
-</h2>
+<div class="section level3">
+<h3 id="data-asset-policy-what-it-is-what-the-llm-may-see">Data Asset Policy: what it is × what the LLM may see<a class="anchor" aria-label="anchor" href="#data-asset-policy-what-it-is-what-the-llm-may-see"></a>
+</h3>
 <p>Asset content type and LLM access are orthogonal:</p>
 <table class="table">
 <thead><tr class="header">
@@ -785,13 +861,72 @@ require a reason, expire with the owning DataShield session by default,
 may set a POSIXct expiry, and emit bypass audit events. Synthetic raw
 always keeps baseline PII/secret scanning; spec raw may explicitly set
 <code>scan_secrets = FALSE</code>.</p>
+<div class="section level4">
+<h4 id="column-level-raw-access">Column-level raw access<a class="anchor" aria-label="anchor" href="#column-level-raw-access"></a>
+</h4>
+<p>Assets are whole-object; <code>register_data(column_access=)</code>
+is the column-grained counterpart for a protected data.frame that
+contains a few public-dictionary columns (e.g. an SDTM
+<code>TESTCD</code> codelist) alongside protected ones. It reuses the
+same
+<code>none</code>/<code>schema</code>/<code>scan</code>/<code>raw</code>
+access levels as assets, split into
+<code>prompt</code>/<code>egress</code>, and a raw edge likewise
+requires a non-empty <code>reason</code>.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span></span>
+<span>  <span class="va">vs</span>, name <span class="op">=</span> <span class="st">"vs"</span>,</span>
+<span>  sensitivity   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>SUBJID <span class="op">=</span> <span class="st">"identifier"</span>, TESTCD <span class="op">=</span> <span class="st">"identifier"</span><span class="op">)</span>,</span>
+<span>  column_access <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    TESTCD <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>prompt <span class="op">=</span> <span class="st">"raw"</span>, egress <span class="op">=</span> <span class="st">"raw"</span>,</span>
+<span>                  reason <span class="op">=</span> <span class="st">"SDTM public codelist"</span>, scan_secrets <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<ul>
+<li>
+<code>prompt = "raw"</code> lets <code>DescribeData</code> enumerate
+that column’s real values (no k-anonymity suppression) so the model can
+write correct filters.</li>
+<li>
+<code>egress = "raw"</code> removes the column from the value-match
+index, so its values are not withheld from tool output.</li>
+<li>An override <strong>missing its <code>reason</code> is dropped with
+a warning</strong>, and the column falls back to its sensitivity tier —
+a mislabeled column fails safe, never silently leaks.
+<code>coverage()$raw_access_columns</code> counts active overrides.</li>
+</ul>
 </div>
-<div class="section level2">
-<h2 id="p0-the-foundation-available-now">P0 — the foundation (available now)<a class="anchor" aria-label="anchor" href="#p0-the-foundation-available-now"></a>
-</h2>
+<div class="section level4">
+<h4 id="host-pattern-a-provenance-tagging-spec-tool">Host pattern: a provenance-tagging spec tool<a class="anchor" aria-label="anchor" href="#host-pattern-a-provenance-tagging-spec-tool"></a>
+</h4>
+<p>Raw asset egress needs a provenance tag. Rather than a framework
+“trusted tool” type, a host composes the existing primitives —
+<code>register_asset()</code> plus <code>trusted_result()</code> —
+inside its own tool:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">read_adam_spec_tool</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">shield</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">tool</a></span><span class="op">(</span></span>
+<span>    name <span class="op">=</span> <span class="st">"ReadADaMSpec"</span>,</span>
+<span>    fun <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">path</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">text</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="va">path</span>, warn <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>      <span class="va">shield</span><span class="op">$</span><span class="fu">trusted_result</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">text</span>, collapse <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span>, source <span class="op">=</span> <span class="st">"adam_spec"</span><span class="op">)</span></span>
+<span>    <span class="op">}</span>,</span>
+<span>    description <span class="op">=</span> <span class="st">"Read a registered, LLM-safe ADaM specification."</span>,</span>
+<span>    arguments <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>path <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_string</a></span><span class="op">(</span><span class="st">"Spec file path"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span><span class="co"># register once; the tool auto-tags provenance on every read</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span><span class="va">adam_spec_path</span>, name <span class="op">=</span> <span class="st">"adam_spec"</span>, kind <span class="op">=</span> <span class="st">"spec"</span>,</span>
+<span>  llm_access <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>prompt <span class="op">=</span> <span class="st">"raw"</span>, egress <span class="op">=</span> <span class="st">"raw"</span><span class="op">)</span>,</span>
+<span>  reason <span class="op">=</span> <span class="st">"Validated public specification"</span><span class="op">)</span></span></code></pre></div>
+<p>The agent calls <code>ReadADaMSpec</code> like any tool; the raw
+bypass is authorized by the registered asset policy and audited, and a
+mixed/untagged result from any other tool is still scanned.</p>
+</div>
+</div>
+<div class="section level3">
+<h3 id="p0-the-foundation-available-now">P0 — the foundation (available now)<a class="anchor" aria-label="anchor" href="#p0-the-foundation-available-now"></a>
+</h3>
 <p>The minimal, deterministic slice that already gives real
 protection:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Easy entry: strategy specs create one private DataShield R6 for this client.</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
@@ -819,14 +954,14 @@ ambient injection already emits only
 <code>name [data.frame N x M: col:type, ...]</code> (no values); Data
 Shield keeps it that way.</li>
 </ul>
-<div class="section level3">
-<h3 id="runtime-uploads-in-shiny">Runtime uploads in Shiny<a class="anchor" aria-label="anchor" href="#runtime-uploads-in-shiny"></a>
-</h3>
+<div class="section level4">
+<h4 id="runtime-uploads-in-shiny">Runtime uploads in Shiny<a class="anchor" aria-label="anchor" href="#runtime-uploads-in-shiny"></a>
+</h4>
 <p>The dataset does <strong>not</strong> need to be known when the app
 starts. Register it in the upload observer immediately after reading it;
 tools may already be attached and wrapped, because value matching reads
 the live index at invocation time.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Inside each Shiny server session: one R6 may be shared by selected chats.</span></span>
 <span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -842,10 +977,10 @@ the live index at invocation time.</p>
 <span>  <span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"uploaded"</span><span class="op">)</span> <span class="co"># no advance columns needed</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>A complete runnable host-style Shiny example is installed at:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples/data_shield_upload_app.R"</span>, package <span class="op">=</span> <span class="st">"codeagent"</span><span class="op">)</span></span></code></pre></div>
 <p>From a development checkout:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"inst/examples/data_shield_upload_app.R"</span><span class="op">)</span></span></code></pre></div>
 <p>It demonstrates five outcomes after upload: bulk rows withheld by
@@ -854,6 +989,11 @@ the live index at invocation time.</p>
 <code>shield_regex</code>, a harmless shape summary passed through, and
 strict <code>DescribeData</code> metadata with raw identifiers
 suppressed.</p>
+<p>For a smaller single-focus demo — a real
+<code>codeagent_client</code> wired into a real
+<code><a href="https://posit-dev.github.io/shinychat/r/reference/chat_ui.html" class="external-link">shinychat::chat_ui</a></code>, with <code>fileInput()</code> upload on
+one side and the live non-sensitive audit log on the other — see
+<code>inst/examples/data_shield_minimal_app.R</code>.</p>
 <blockquote>
 <p><strong>Multi-user isolation:</strong> create
 <code>DataShield$new()</code> inside the Shiny server function, share it
@@ -895,9 +1035,9 @@ separate R6 instances and cannot see or influence its index.</p>
 </table>
 </div>
 </div>
-<div class="section level2">
-<h2 id="p1-describedata-strict-safe-metadata-contract">P1 <code>DescribeData</code>: strict safe metadata contract<a class="anchor" aria-label="anchor" href="#p1-describedata-strict-safe-metadata-contract"></a>
-</h2>
+<div class="section level3">
+<h3 id="p1-describedata-strict-safe-metadata-contract">P1 <code>DescribeData</code>: strict safe metadata contract<a class="anchor" aria-label="anchor" href="#p1-describedata-strict-safe-metadata-contract"></a>
+</h3>
 <p><code>DescribeData</code> is the sanctioned way for the model to
 understand protected data without receiving rows. Its output is
 determined by three orthogonal dimensions:</p>
@@ -980,13 +1120,13 @@ only when they are low-cardinality, low-uniqueness, non-PII, and every
 exposed level satisfies the k-anonymity threshold. Free text never
 receives real examples in strict mode.</p>
 </div>
-<div class="section level2">
-<h2 id="p1-5-ordered-egress-scanners">P1.5 ordered egress scanners<a class="anchor" aria-label="anchor" href="#p1-5-ordered-egress-scanners"></a>
-</h2>
+<div class="section level3">
+<h3 id="p1-5-ordered-egress-scanners">P1.5 ordered egress scanners<a class="anchor" aria-label="anchor" href="#p1-5-ordered-egress-scanners"></a>
+</h3>
 <p>Strategy-list order is the execution order.
 <code><a href="../reference/shield_regex.html">shield_regex()</a></code> catches sensitive content even when no
 data.frame was registered:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"redact"</span><span class="op">)</span>,</span>
@@ -1000,16 +1140,16 @@ result. Custom scanner functions may be appended with
 <code>shield$add_scanner(name, fn)</code>; invalid scanner
 results/errors fail closed.</p>
 </div>
-<div class="section level2">
-<h2 id="c2-universal-ingress-scanning">C2 universal ingress scanning<a class="anchor" aria-label="anchor" href="#c2-universal-ingress-scanning"></a>
-</h2>
+<div class="section level3">
+<h3 id="c2-universal-ingress-scanning">C2 universal ingress scanning<a class="anchor" aria-label="anchor" href="#c2-universal-ingress-scanning"></a>
+</h3>
 <p><code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> is installed into codeagent’s existing
 single central permission gate; it does not create a competing
 callback/gate. It scans every tool’s arguments before the read-only fast
 path. A <code>block</code> result raises <code>tool_reject</code>; an
 <code>ask</code> result reuses the current CLI/Shiny approval callback,
 including tool-call id correlation.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -1022,9 +1162,9 @@ including tool-call id correlation.</p>
 curl/requests calls, and shell display of data files are reviewed or
 blocked.</p>
 </div>
-<div class="section level2">
-<h2 id="c5-portable-sandbox-and-btw-boundary">C5 portable sandbox and btw boundary<a class="anchor" aria-label="anchor" href="#c5-portable-sandbox-and-btw-boundary"></a>
-</h2>
+<div class="section level3">
+<h3 id="c5-portable-sandbox-and-btw-boundary">C5 portable sandbox and btw boundary<a class="anchor" aria-label="anchor" href="#c5-portable-sandbox-and-btw-boundary"></a>
+</h3>
 <p><code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code> deliberately preserves coding
 capability: project and session-temp default to <code>rwx</code>,
 protected data defaults to <code>rw</code> but may be <code>rwx</code>,
@@ -1036,7 +1176,20 @@ cwd with <code><a href="https://fs.r-lib.org/reference/path_math.html" class="ex
 symlink to an external file passed our probe; its RunR executes through
 <code>evaluate</code> in the global environment and only restores
 cwd/options/envvars. Data Shield therefore applies uniformly to native,
-btw, MCP and host tools. ## Roadmap</p>
+btw, MCP and host tools.</p>
+</div>
+<div class="section level3">
+<h3 id="c4-semantic-reviewer">C4 semantic reviewer<a class="anchor" aria-label="anchor" href="#c4-semantic-reviewer"></a>
+</h3>
+<p><code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code> supplements deterministic ingress
+rules for indirect aliases, multi-step serialization and obfuscated
+source-to-sink intent. Remote reviewers receive only sanitized code and
+non-value metadata. A fresh independent Chat is created per review, with
+no tools/history. The default factory uses the parent provider plus
+<code>CODEAGENT_FAST_MODEL</code>; an explicit
+<code>client_factory</code> may provide a local or specialized reviewer.
+Missing/failed/invalid reviewers follow <code>on_error</code>; ask falls
+back to block when no approval channel exists. ## Roadmap</p>
 <ul>
 <li>
 <strong>P0.5 — <code>value_match</code> (available)</strong>:
@@ -1052,9 +1205,9 @@ k-supported labels; no distributions/counts/examples).
 <code>distributions="on"/"dp"</code> remain later phases.</li>
 </ul>
 </div>
-<div class="section level2">
-<h2 id="sub-agent-boundary">Sub-agent boundary<a class="anchor" aria-label="anchor" href="#sub-agent-boundary"></a>
-</h2>
+<div class="section level3">
+<h3 id="sub-agent-boundary">Sub-agent boundary<a class="anchor" aria-label="anchor" href="#sub-agent-boundary"></a>
+</h3>
 <p>Foreground sub-agents (<code>Agent</code>) inherit the exact same
 <code>DataShield</code> R6 before any of their tools can return content
 to the child model. This applies to both synchronous and concurrent
@@ -1075,13 +1228,15 @@ block or force approval. - <strong>C5 — portable
 <code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code> (available)</strong>: project/temp
 <code>rwx</code>, protected data <code>rw</code> by default,
 realpath/symlink containment and policy fallback; full OS process
-adapter remains roadmap. - <strong>P2 — reviewer (small model), sandbox
-(folder + no-network), differential privacy for distributions
-(opt-in).</strong></p>
+adapter remains roadmap. - <strong>C4 — <code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code>
+(available)</strong>: optional sanitized ingress-code semantic rail
+using a fresh small-model Chat; remote raw output remains forbidden. -
+<strong>P2 — full OS sandbox adapter and differential privacy for
+distributions (opt-in).</strong></p>
 </div>
-<div class="section level2">
-<h2 id="honest-limits">Honest limits<a class="anchor" aria-label="anchor" href="#honest-limits"></a>
-</h2>
+<div class="section level3">
+<h3 id="honest-limits">Honest limits<a class="anchor" aria-label="anchor" href="#honest-limits"></a>
+</h3>
 <p>Data Shield <strong>reduces</strong> disclosure risk; it does not
 eliminate it. Deterministic detectors (row-cap,
 <code>value_match</code>, regex) miss adversarially obfuscated egress
@@ -1089,6 +1244,282 @@ eliminate it. Deterministic detectors (row-cap,
 solved — by the ingress blacklist and the no-network sandbox. The
 strongest guarantees come from the structural layers (metadata-only
 feeding + no-network execution), with scanning as defense-in-depth.</p>
+<p>Specific residual risks to weigh before relying on it:</p>
+<ul>
+<li>
+<strong>Layer composition matters.</strong> Egress is the primary
+boundary. Enabling only <code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> (whose static
+rules can be obfuscated around) without <code><a href="../reference/shield_egress.html">shield_egress()</a></code> is
+<strong>not</strong> a safe configuration. Do not omit egress.</li>
+<li>
+<strong>The semantic reviewer is itself an LLM.</strong>
+<code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code> can be evaded by a sufficiently
+obfuscated source-to-sink path and adds latency/cost per reviewed call;
+it is defense-in-depth over the deterministic rails, not a
+guarantee.</li>
+<li>
+<strong><code>value_match</code> scales linearly and is now
+bounded.</strong> Benchmarked on CDISC ADaM data
+(<code>inst/bench/value_match_benchmark.R</code>): ~130 MB of keys and
+~10 s to index 1M high-entropy values, with zero false positives on
+ordinary clinical prose and real
+<code>USUBJID</code>/<code>SUBJID</code> caught. Because memory grows
+linearly and unbounded, <code>register_data(max_index_values=)</code>
+caps the index (default 500 000, ~65 MB); on overflow it warns and the
+unindexed tail relies on the other egress layers. The
+<code>min_len</code>/<code>min_card</code> thresholds performed well on
+real ids and are unchanged.</li>
+<li>
+<strong>Images/multimodal and full OS isolation remain
+roadmap</strong> (see the status banner): a rendered table/plot of raw
+rows bypasses text scanning, and the portable sandbox is a
+path/capability policy, not kernel isolation.</li>
+</ul>
+<hr>
+</div>
+<div class="section level2">
+<h2 id="数据盾data-shield中文版-概念总结与排列组合矩阵">数据盾（Data Shield）中文版 — 概念总结与排列组合矩阵<a class="anchor" aria-label="anchor" href="#%E6%95%B0%E6%8D%AE%E7%9B%BEdata-shield%E4%B8%AD%E6%96%87%E7%89%88-%E6%A6%82%E5%BF%B5%E6%80%BB%E7%BB%93%E4%B8%8E%E6%8E%92%E5%88%97%E7%BB%84%E5%90%88%E7%9F%A9%E9%98%B5"></a>
+</h2>
+<blockquote>
+<p>本节是上面英文版的中文摘要，供内部讨论用。概念定义以本节为准；实现细节/参数默认值以英文版对应小节为准（有变动以代码为准）。</p>
+</blockquote>
+<div class="section level3">
+<h3 id="核心问题">核心问题<a class="anchor" aria-label="anchor" href="#%E6%A0%B8%E5%BF%83%E9%97%AE%E9%A2%98"></a>
+</h3>
+<p>codeagent 接入敏感数据（临床/金融/PII）时，我们要保证：<strong>LLM
+只能看到元数据和描述性摘要，绝不能看到原始行级数据</strong>。数据盾是<strong>默认关闭、可插拔</strong>的安全阀（<code>data_shield = NULL</code>），开启后由若干独立策略自由组合而成。</p>
+</div>
+<div class="section level3">
+<h3 id="两条边界守住即可">两条边界，守住即可<a class="anchor" aria-label="anchor" href="#%E4%B8%A4%E6%9D%A1%E8%BE%B9%E7%95%8C%E5%AE%88%E4%BD%8F%E5%8D%B3%E5%8F%AF"></a>
+</h3>
+<p>数据只有两条路能进 LLM：</p>
+<ol style="list-style-type: decimal">
+<li>
+<strong>Prompt 边</strong>：包括框架自己的 ambient 注入（session 里
+R 对象摘要）——这部分框架保证只给 schema（列名/类型/维度），不给值。</li>
+<li>
+<strong>工具结果边</strong>：任何工具返回、回灌给模型的内容——这是<strong>主边界</strong>，靠
+egress 扫描守。</li>
+</ol>
+<p>子代理递归继承同一条边界；多模态（图片渲染出的原始数据）是已知盲区，冻结待开会。</p>
+</div>
+<div class="section level3">
+<h3 id="各策略速查">各策略速查<a class="anchor" aria-label="anchor" href="#%E5%90%84%E7%AD%96%E7%95%A5%E9%80%9F%E6%9F%A5"></a>
+</h3>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr class="header">
+<th>策略</th>
+<th>守哪条边</th>
+<th>干什么</th>
+<th>能不能单独撑起安全</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code><a href="../reference/shield_egress.html">shield_egress()</a></code></td>
+<td>边2（工具结果）</td>
+<td>
+<code>row_cap</code>（挡整批行）+
+<code>value_match</code>（挡已注册的精确值）</td>
+<td>✅ <strong>是主边界，不可省</strong>
+</td>
+</tr>
+<tr class="even">
+<td><code><a href="../reference/shield_regex.html">shield_regex()</a></code></td>
+<td>边2</td>
+<td>兜未注册数据的 PII/密钥（email/phone/token/身份证）</td>
+<td>只挡形状，不认自定义 ID</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../reference/shield_describe.html">shield_describe()</a></code></td>
+<td>边1</td>
+<td>
+<code>DescribeData</code> 工具，严格 schema+统计，永不给行</td>
+<td>只管模型主动查询，不拦其他工具输出</td>
+</tr>
+<tr class="even">
+<td><code><a href="../reference/shield_ingress.html">shield_ingress()</a></code></td>
+<td>工具调用前</td>
+<td>高置信正则预筛（序列化/网络外传/数据文件读显）</td>
+<td>❌ 静态规则，可被别名绕过</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../reference/shield_tool_policy.html">shield_tool_policy()</a></code></td>
+<td>逐工具</td>
+<td>按工具名
+<code>scan</code>/<code>bypass</code>/<code>deny</code>
+</td>
+<td>治理层，不是扫描层</td>
+</tr>
+<tr class="even">
+<td><code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code></td>
+<td>进程/路径</td>
+<td>项目内/临时目录默认可读写执行，防越权路径</td>
+<td>增强层，非内容边界</td>
+</tr>
+<tr class="odd">
+<td><code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code></td>
+<td>工具调用前（exec/write/net）</td>
+<td>小模型语义审查脱敏代码</td>
+<td>审查者本身是可被注入的 LLM</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="排列组合安全矩阵实测非猜测">排列组合安全矩阵（实测，非猜测）<a class="anchor" aria-label="anchor" href="#%E6%8E%92%E5%88%97%E7%BB%84%E5%90%88%E5%AE%89%E5%85%A8%E7%9F%A9%E9%98%B5%E5%AE%9E%E6%B5%8B%E9%9D%9E%E7%8C%9C%E6%B5%8B"></a>
+</h3>
+<p>以下结论来自
+<code>tests/testthat/test-data-shield-combinations.R</code>（14
+个断言，CI 强制锁死，任何未来重构破坏这个结论会立刻测试失败）：</p>
+<table class="table">
+<colgroup>
+<col width="14%">
+<col width="23%">
+<col width="23%">
+<col width="23%">
+<col width="14%">
+</colgroup>
+<thead><tr class="header">
+<th>组合</th>
+<th align="center">整批数据泄漏</th>
+<th align="center">单值定点泄漏</th>
+<th align="center">别名绕过（<code>y&lt;-study;print(y)</code>）</th>
+<th>结论</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>只开 <code>egress</code>
+</td>
+<td align="center">挡</td>
+<td align="center">挡</td>
+<td align="center">挡（egress 不认代码路径，只认输出内容）</td>
+<td>✅ 安全底线</td>
+</tr>
+<tr class="even">
+<td>
+<code>egress</code>+<code>ingress</code>+<code>regex</code>（推荐）</td>
+<td align="center">挡</td>
+<td align="center">挡</td>
+<td align="center">挡</td>
+<td>✅ 推荐生产配置</td>
+</tr>
+<tr class="odd">
+<td><strong>只开 <code>ingress</code></strong></td>
+<td align="center"><strong>漏</strong></td>
+<td align="center"><strong>漏</strong></td>
+<td align="center"><strong>漏（实测绕过）</strong></td>
+<td>⚠️ <strong>不安全，勿单独使用</strong>
+</td>
+</tr>
+<tr class="even">
+<td><strong>只开 <code>describe</code></strong></td>
+<td align="center"><strong>漏</strong></td>
+<td align="center"><strong>漏</strong></td>
+<td align="center">—</td>
+<td>⚠️ <strong>不安全</strong>（只管模型主动查询，不拦工具输出）</td>
+</tr>
+<tr class="odd">
+<td>只开 <code>regex</code>
+</td>
+<td align="center">—</td>
+<td align="center">漏（非 PII 形状的自定义 ID 认不出）</td>
+<td align="center">—</td>
+<td>⚠️ 仅挡常见 PII 形状</td>
+</tr>
+</tbody>
+</table>
+<p><strong>一句话结论：<code><a href="../reference/shield_egress.html">shield_egress()</a></code>
+是唯一不可省的边界，其余都是纵深防御，不能替代它。</strong></p>
+</div>
+<div class="section level3">
+<h3 id="三个够用的组合模板">三个”够用”的组合模板<a class="anchor" aria-label="anchor" href="#%E4%B8%89%E4%B8%AA%E5%A4%9F%E7%94%A8%E7%9A%84%E7%BB%84%E5%90%88%E6%A8%A1%E6%9D%BF"></a>
+</h3>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 最严格：合规/领导演示场景</span></span>
+<span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"row_cap"</span>, <span class="st">"value_match"</span><span class="op">)</span>, max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 均衡：日常开发，够用不烦</span></span>
+<span><span class="va">balanced</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"redact"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"redact"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 临床合规：加语义审查 + 严格 k-匿名</span></span>
+<span><span class="va">clinical</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_reviewer.html">shield_reviewer</a></span><span class="op">(</span>model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_FAST_MODEL"</span><span class="op">)</span>, on_risk <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p><code>inst/examples/data_shield_minimal_app.R</code> 的 Shiny demo
+提供一个下拉选择器，可实时切换以上组合，直接在真实聊天界面里对比”盾的厚薄”差异。</p>
+</div>
+<div class="section level3">
+<h3 id="已知真实缺口非猜测已记录待修">已知真实缺口（非猜测，已记录待修）<a class="anchor" aria-label="anchor" href="#%E5%B7%B2%E7%9F%A5%E7%9C%9F%E5%AE%9E%E7%BC%BA%E5%8F%A3%E9%9D%9E%E7%8C%9C%E6%B5%8B%E5%B7%B2%E8%AE%B0%E5%BD%95%E5%BE%85%E4%BF%AE"></a>
+</h3>
+<ul>
+<li>
+<strong>shinychat 原生附件绕过数据盾</strong>：codeagent 主 UI 的
+<code>allow_attachments=TRUE</code>
+让用户直接拖文件进聊天框，这条路径<strong>直进
+prompt，不经过任何扫描</strong>——跟
+fileInput→<code>register_data()</code>
+的受控注册路径完全不同。这是<strong>已发现、未修复</strong>的真实缺口（区别于下面两条已冻结待开会的议题）。</li>
+<li>
+<strong>DP
+分布</strong>、<strong>多模态盲区</strong>：技术上可做，但
+epsilon/预算口径、OCR 误报策略需要开会拍板，不在工程层自行决定。</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="术语对照">术语对照<a class="anchor" aria-label="anchor" href="#%E6%9C%AF%E8%AF%AD%E5%AF%B9%E7%85%A7"></a>
+</h3>
+<table class="table">
+<thead><tr class="header">
+<th>英文</th>
+<th>中文</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>ingress</td>
+<td>工具调用进来的一刻（参数扫描点）</td>
+</tr>
+<tr class="even">
+<td>egress</td>
+<td>工具结果要回灌模型的一刻（内容扫描点，主边界）</td>
+</tr>
+<tr class="odd">
+<td>row-cap</td>
+<td>行数上限，超过按批量数据处理</td>
+</tr>
+<tr class="even">
+<td>value-match</td>
+<td>精确值匹配，查已注册的高熵值索引</td>
+</tr>
+<tr class="odd">
+<td>k-anonymity</td>
+<td>k-匿名，类别标签至少 k 行支持才给</td>
+</tr>
+<tr class="even">
+<td>fail closed</td>
+<td>失败即拦，扫描器出错时默认拦截而非放行</td>
+</tr>
+<tr class="odd">
+<td>provenance</td>
+<td>来源凭证，raw 放行必须能证明数据来自已登记资产</td>
+</tr>
+</tbody>
+</table>
+</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

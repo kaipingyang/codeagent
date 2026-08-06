@@ -28,7 +28,11 @@ shield_ingress(
 - patterns:
 
   Optional named regular expressions using PCRE (Perl-Compatible Regular
-  Expression) syntax, appended after defaults.
+  Expression) syntax. A name matching a built-in rule (e.g.
+  `py_pandas_export`) replaces that rule; a new name is added. Hosts
+  wanting file-managed blacklists read their own file (e.g.
+  [`yaml::read_yaml()`](https://yaml.r-lib.org/reference/read_yaml.html))
+  into a named vector and pass it here.
 
 - include_defaults:
 

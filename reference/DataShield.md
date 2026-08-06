@@ -42,6 +42,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$set_egress_ask()`](#method-DataShield-set_egress_ask)
 
+- [`DataShield$bind_reviewer_factory()`](#method-DataShield-bind_reviewer_factory)
+
 - [`DataShield$audit()`](#method-DataShield-audit)
 
 - [`DataShield$clear_audit()`](#method-DataShield-clear_audit)
@@ -124,8 +126,10 @@ Register one protected data.frame.
       name = NULL,
       sensitivity = NULL,
       cols = NULL,
+      column_access = NULL,
       min_len = 3L,
-      min_card = 8L
+      min_card = 8L,
+      max_index_values = 500000L
     )
 
 #### Arguments
@@ -149,10 +153,27 @@ Register one protected data.frame.
   Optional explicit value-match columns. Default: columns classified
   `identifier`/`quasi`.
 
+- `column_access`:
+
+  Optional named list of per-column raw-access overrides, each
+  `list(prompt=, egress=, reason=, scan_secrets=)` using
+  `none`/`schema`/`scan`/`raw`. A raw edge requires a non-empty
+  `reason`; overrides missing it are dropped (with a warning) so the
+  column falls back to its sensitivity tier. `egress="raw"` removes the
+  column from the value-match index; `prompt="raw"` lets `DescribeData`
+  enumerate its real values.
+
 - `min_len, min_card`:
 
   Minimum value length and column cardinality for deterministic value
   indexing (reduces low-entropy false positives).
+
+- `max_index_values`:
+
+  Cap on indexed values (default 500000, ~65MB of keys). On overflow,
+  indexing stops and a warning is emitted; unindexed values are not
+  caught by value_match and rely on the other egress layers.
+  `NULL`/`Inf` disables the cap.
 
 ------------------------------------------------------------------------
 
@@ -349,6 +370,22 @@ Set the sync/promise egress approval callback.
 
 ------------------------------------------------------------------------
 
+### `DataShield$bind_reviewer_factory()`
+
+Bind codeagent's parent-provider reviewer Chat factory.
+
+#### Usage
+
+    DataShield$bind_reviewer_factory(fn)
+
+#### Arguments
+
+- `fn`:
+
+  Function accepting optional model and returning a fresh Chat.
+
+------------------------------------------------------------------------
+
 ### `DataShield$audit()`
 
 Return a copy of non-sensitive decision events.
@@ -462,6 +499,9 @@ shield$coverage()
 #> $indexed_values
 #> [1] 0
 #> 
+#> $raw_access_columns
+#> [1] 0
+#> 
 #> $egress_pipeline
 #> [1] "egress" "regex" 
 #> 
@@ -485,6 +525,12 @@ shield$coverage()
 #> 
 #> $sandbox
 #> NULL
+#> 
+#> $reviewers
+#> [1] 0
+#> 
+#> $reviewer_factory_bound
+#> [1] FALSE
 #> 
 #> $closed
 #> [1] FALSE

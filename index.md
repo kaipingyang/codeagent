@@ -132,13 +132,18 @@ client <- codeagent_client(chat, data_shield = list(
   shield_tool_policy(rules = list(
     KMPlot = list(ingress = "scan", egress = "bypass")
   )),
-  shield_sandbox(project_root = getwd(), backend = "policy")
+  shield_sandbox(project_root = getwd(), backend = "policy"),
+  shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask")
 ))
 
 # Explicit lifecycle for uploaded data / shared threads.
 shield <- DataShield$new(
   strategies = list(shield_describe(), shield_egress(max_rows = 0)))
 shield$register_data(df, name = "study")
+# Column-level raw override for public-dictionary columns (reason required):
+shield$register_data(vs, name = "vs",
+  column_access = list(TESTCD = list(prompt = "raw", egress = "raw",
+                                     reason = "SDTM public codelist")))
 client <- codeagent_client(chat, data_shield = shield)
 ```
 
@@ -154,7 +159,9 @@ output is detected; scalar/status/model-summary output still passes.
 handles unregistered PII/secrets;
 [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
 scans every tool’s arguments in the central permission gate and can
-block or request approval before execution.
+block or request approval before execution (built-in rules are
+host-extensible: a `patterns=` name matching a built-in replaces it, a
+new name adds to it).
 [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md)
 provides exact/glob per-tool `scan`/`bypass`/`deny` rules; Shield bypass
 is audited and never bypasses the separate permission gate.
@@ -162,7 +169,13 @@ is audited and never bypasses the separate permission gate.
 preserves project/temp `rwx` and process execution by default, while
 portable path policy blocks project-external and symlink-escaped paths;
 `backend="auto"` currently reports/falls back to policy unless a full OS
-adapter is available. See the full [Data Shield parameter
+adapter is available.
+[`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)
+is an optional internal rail: a fresh, tool-less ellmer Chat reviews
+only deterministically sanitized code/arguments; remote reviewers never
+receive raw data/output, and missing/failed reviewers follow
+configurable ask/block fail-closed policy. See the full [Data Shield
+parameter
 reference](https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference).
 
 Optional egress approval keeps raw disabled unless explicitly requested:

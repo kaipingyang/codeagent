@@ -3,12 +3,12 @@
 > **Status — P0/P0.5/P1/P1.5/C2/C5-policy available; fuller design in
 > progress.** The egress row-cap, protected-value matching, strict
 > DescribeData, ordered scanners, universal pre-tool ingress, per-tool
-> policy, promise-backed egress approval, and portable path/symlink
-> sandbox are wired. Reviewer, full OS execution adapter, and
-> `distributions="on"/"dp"` remain roadmap. Off by default
+> policy, promise-backed egress approval, portable path/symlink sandbox,
+> and optional sanitized-code reviewer are wired. Full OS execution
+> adapter and `distributions="on"/"dp"` remain roadmap. Off by default
 > (`data_shield = NULL`).
 
-## Why
+### Why
 
 When codeagent is embedded as a backend over **sensitive data**
 (clinical, financial, PII), the guarantee we want is: the LLM may see
@@ -17,7 +17,7 @@ data**. Data Shield is an **opt-in, pluggable valve** that enforces this
 — off by default (`data_shield = NULL`), composed from independent
 strategies when on.
 
-## The core: two edges
+### The core: two edges
 
 Strip away the agent machinery and data can reach the LLM through **only
 two inbound edges**. Guard both and you have guarded everything:
@@ -37,7 +37,7 @@ applies **recursively to sub-agents** — each has its own two edges.
 > Blind spot to handle separately: an **image/multimodal** tool result
 > (a rendered table/plot of raw rows) bypasses text scanning.
 
-## Design: composable strategies (not a fixed mode)
+### Design: composable strategies (not a fixed mode)
 
 `data_shield` accepts `NULL` (off), an ordered strategy list (creates
 one private `DataShield` R6), or an explicit `DataShield` instance (for
@@ -58,20 +58,22 @@ client <- codeagent_client(..., data_shield = list(
     KMPlot = list(ingress = "scan", egress = "bypass"),
     DangerousExport = list(execution = "deny")
   )),
-  shield_sandbox(project_root = getwd(), backend = "policy")
+  shield_sandbox(project_root = getwd(), backend = "policy"),
+  shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"),
+                  scope = c("exec", "write", "net"), on_risk = "ask")
 ))
 
 # Roadmap (not implemented yet):
-# shield_reviewer(...), shield_narrow_tools()
+# shield_narrow_tools()
 ```
 
 The main boundary is **edge 2 (tool results)**; sandbox, ingress
 blacklist, reviewer, and tool narrowing are defense-in-depth, not the
 boundary.
 
-## Current parameter reference
+### Current parameter reference
 
-### `data_shield` input
+#### `data_shield` input
 
 | Value | Effect |
 |----|----|
@@ -79,7 +81,7 @@ boundary.
 | `list(shield_*())` | Strategies run in list order; codeagent creates one private `DataShield` R6 for this client |
 | `DataShield$new(...)` | Explicit lifecycle for uploads and deliberate sharing among selected chats |
 
-### `shield_egress()` — core tool-result boundary
+#### `shield_egress()` — core tool-result boundary
 
 | Parameter | Default | Actual effect |
 |----|----|----|
@@ -102,7 +104,7 @@ timeout and whether raw-once is enabled. Redact is the safe default for
 no callback, errors, invalid choices, ESC and timeout. Raw-once applies
 to one result only and is audited.
 
-### `shield_describe()` — strict model-safe metadata
+#### `shield_describe()` — strict model-safe metadata
 
 | Parameter | Default | Actual effect |
 |----|----|----|
@@ -115,7 +117,7 @@ Sensitivity still clamps output: `identifier`/`quasi` values stay
 suppressed; `measure`/`open` may show numeric/date min–max and safe
 category labels without counts.
 
-### `shield_regex()` — unregistered PII/secrets
+#### `shield_regex()` — unregistered PII/secrets
 
 | Parameter | Default | Actual effect |
 |----|----|----|
@@ -125,13 +127,13 @@ category labels without counts.
 | `on_fail` | `"redact"` | `redact`: preserve safe surrounding text; `block`: replace the whole result |
 | `ignore_case` | `TRUE` | Case-insensitive matching for all rules |
 
-### `shield_ingress()` — scan every tool call before execution
+#### `shield_ingress()` — scan every tool call before execution
 
 | Parameter | Default | Actual effect |
 |----|----|----|
 | `langs` | `c("r", "python", "bash")` | Select built-in rules for each code/shell language |
-| `patterns` | `NULL` | Optional named custom regex rules appended to defaults |
-| `include_defaults` | `TRUE` | Include serialization/base64/network/data-file-display and protected-name preview rules |
+| `patterns` | `NULL` | Named regex rules; a name matching a built-in **replaces** that rule, a new name is **added**. Host file-based blacklists read their own file into a named vector and pass it here |
+| `include_defaults` | `TRUE` | Include the built-in per-language rule set (`.DATA_SHIELD_INGRESS_RULES`): serialization/encoding, pandas/R writers, network transfer (incl. `nc`/`scp`/`/dev/tcp`), data-file display, and protected-name preview |
 | `on_fail` | `"block"` | `block`: reject the tool call; `ask`: force the existing permission approval UI/callback |
 | `ignore_case` | `TRUE` | Case-insensitive matching |
 
@@ -142,7 +144,7 @@ read-and-display, serialization, encoding, and network-transfer
 patterns. It is a cheap pre-filter; egress scanning remains the primary
 boundary because code can be obfuscated.
 
-### `shield_tool_policy()` — exact/glob trust and deny rules
+#### `shield_tool_policy()` — exact/glob trust and deny rules
 
 | Setting | Meaning |
 |----|----|
@@ -158,7 +160,7 @@ developer guarantees all outputs are LLM-safe, while `btw_tool_docs_*`
 can receive a broader trusted rule. This policy never bypasses
 codeagent’s independent permission system.
 
-### `shield_sandbox()` — portable containment without crippling the agent
+#### `shield_sandbox()` — portable containment without crippling the agent
 
 | Parameter | Default | Actual effect |
 |----|----|----|
@@ -176,8 +178,25 @@ Current implementation is a portable central-gate path/capability
 policy. It is not advertised as kernel isolation: the capability probe
 found user/network/ mount namespaces but no bubblewrap/container, and
 plain `unshare` still sees the host filesystem. A future full adapter
-must move exec tools out of process. \### `DataShield$new()` direct
-lifecycle
+must move exec tools out of process.
+
+#### `shield_reviewer()` — optional sanitized-code semantic rail
+
+| Parameter | Default | Actual effect |
+|----|----|----|
+| `client_factory` | `NULL` | Optional function returning a fresh independent ellmer Chat |
+| `model` | `CODEAGENT_FAST_MODEL` | Reviewer model; missing config follows `on_error`, never silently main model |
+| `scope` | exec/write/net | Only these tool capabilities incur review cost |
+| `on_risk` | `"ask"` | Risk classification becomes ask or block |
+| `on_error` | `"ask"` | Missing model, timeout, request/JSON errors become ask or block; no approval→block |
+| `backend` | `"remote_sanitized"` | Remote sees only regex/value-sanitized code; raw egress review is local-only roadmap |
+| `timeout` | `30` | Async review timeout seconds |
+
+The reviewer is not a tool and cannot be skipped by the main model. It
+has no tools or history; code is delimited as untrusted data and parsed
+from fixed JSON (`risk`, `confidence`, `reason`). Deterministic ingress
+rules run first, so already-blocked calls incur no model cost. \###
+`DataShield$new()` direct lifecycle
 
 Direct constructor parameters (`max_rows`, `distributions`, `k_anon`,
 `category_max`, `category_ratio`, `audit_max`) create the default
@@ -188,7 +207,7 @@ strategies and preserves list order. Use `shield$register_data()`,
 `$install()`, `$describe()`, `$audit()`, `$clear_audit()`, `$clear()`,
 and `$close()` for dynamic/session-owned workflows.
 
-## Plain-language glossary
+### Plain-language glossary
 
 | Term | Plain meaning |
 |----|----|
@@ -205,9 +224,10 @@ and `$close()` for dynamic/session-owned workflows.
 | **span** | Start/end character positions of a detected sensitive substring, enabling precise replacement |
 | **k-anonymity threshold** | Do not expose a category label unless at least `k` rows support it |
 | **fail closed** | If a safety scanner fails, block output instead of allowing it |
+| **semantic reviewer** | A separate small model that classifies what sanitized tool code is trying to do; it never sees raw data remotely |
 | **R6** | R’s mutable object system; one `DataShield` owns private datasets/index/lifecycle |
 
-## Non-sensitive audit log
+### Non-sensitive audit log
 
 `shield$audit()` returns an in-memory data.frame of policy decisions:
 
@@ -232,7 +252,7 @@ recent <- shield$audit(limit=100)
 shield$clear_audit()
 ```
 
-## Data Asset Policy: what it is × what the LLM may see
+### Data Asset Policy: what it is × what the LLM may see
 
 Asset content type and LLM access are orthogonal:
 
@@ -284,7 +304,64 @@ may set a POSIXct expiry, and emit bypass audit events. Synthetic raw
 always keeps baseline PII/secret scanning; spec raw may explicitly set
 `scan_secrets = FALSE`.
 
-## P0 — the foundation (available now)
+#### Column-level raw access
+
+Assets are whole-object; `register_data(column_access=)` is the
+column-grained counterpart for a protected data.frame that contains a
+few public-dictionary columns (e.g. an SDTM `TESTCD` codelist) alongside
+protected ones. It reuses the same `none`/`schema`/`scan`/`raw` access
+levels as assets, split into `prompt`/`egress`, and a raw edge likewise
+requires a non-empty `reason`.
+
+``` r
+
+shield$register_data(
+  vs, name = "vs",
+  sensitivity   = c(SUBJID = "identifier", TESTCD = "identifier"),
+  column_access = list(
+    TESTCD = list(prompt = "raw", egress = "raw",
+                  reason = "SDTM public codelist", scan_secrets = TRUE)))
+```
+
+- `prompt = "raw"` lets `DescribeData` enumerate that column’s real
+  values (no k-anonymity suppression) so the model can write correct
+  filters.
+- `egress = "raw"` removes the column from the value-match index, so its
+  values are not withheld from tool output.
+- An override **missing its `reason` is dropped with a warning**, and
+  the column falls back to its sensitivity tier — a mislabeled column
+  fails safe, never silently leaks. `coverage()$raw_access_columns`
+  counts active overrides.
+
+#### Host pattern: a provenance-tagging spec tool
+
+Raw asset egress needs a provenance tag. Rather than a framework
+“trusted tool” type, a host composes the existing primitives —
+`register_asset()` plus `trusted_result()` — inside its own tool:
+
+``` r
+
+read_adam_spec_tool <- function(shield) {
+  ellmer::tool(
+    name = "ReadADaMSpec",
+    fun = function(path) {
+      text <- readLines(path, warn = FALSE)
+      shield$trusted_result(paste(text, collapse = "\n"), source = "adam_spec")
+    },
+    description = "Read a registered, LLM-safe ADaM specification.",
+    arguments = list(path = ellmer::type_string("Spec file path")))
+}
+# register once; the tool auto-tags provenance on every read
+shield$register_asset(adam_spec_path, name = "adam_spec", kind = "spec",
+  llm_access = list(prompt = "raw", egress = "raw"),
+  reason = "Validated public specification")
+```
+
+The agent calls `ReadADaMSpec` like any tool; the raw bypass is
+authorized by the registered asset policy and audited, and a
+mixed/untagged result from any other tool is still scanned.
+
+### P0 — the foundation (available now)
 
 The minimal, deterministic slice that already gives real protection:
 
@@ -314,7 +391,7 @@ client$data_shield$install(client$chat)
   already emits only `name [data.frame N x M: col:type, ...]` (no
   values); Data Shield keeps it that way.
 
-### Runtime uploads in Shiny
+#### Runtime uploads in Shiny
 
 The dataset does **not** need to be known when the app starts. Register
 it in the upload observer immediately after reading it; tools may
@@ -360,6 +437,12 @@ unregistered PII redacted by `shield_regex`, a harmless shape summary
 passed through, and strict `DescribeData` metadata with raw identifiers
 suppressed.
 
+For a smaller single-focus demo — a real `codeagent_client` wired into a
+real
+[`shinychat::chat_ui`](https://posit-dev.github.io/shinychat/r/reference/chat_ui.html),
+with `fileInput()` upload on one side and the live non-sensitive audit
+log on the other — see `inst/examples/data_shield_minimal_app.R`.
+
 > **Multi-user isolation:** create `DataShield$new()` inside the Shiny
 > server function, share it only among the intended chat threads, and
 > register data via `shield$register_data()`. Other browser sessions
@@ -375,7 +458,7 @@ Illustrative behaviour of the P0 row-cap (implemented):
 | a status message                        | passes                 |
 | `print(summary(fit))`                   | passes (not row data)  |
 
-## P1 `DescribeData`: strict safe metadata contract
+### P1 `DescribeData`: strict safe metadata contract
 
 `DescribeData` is the sanctioned way for the model to understand
 protected data without receiving rows. Its output is determined by three
@@ -403,7 +486,7 @@ they are low-cardinality, low-uniqueness, non-PII, and every exposed
 level satisfies the k-anonymity threshold. Free text never receives real
 examples in strict mode.
 
-## P1.5 ordered egress scanners
+### P1.5 ordered egress scanners
 
 Strategy-list order is the execution order.
 [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
@@ -425,7 +508,7 @@ spans; `block` discards the whole model-facing result. Custom scanner
 functions may be appended with `shield$add_scanner(name, fn)`; invalid
 scanner results/errors fail closed.
 
-## C2 universal ingress scanning
+### C2 universal ingress scanning
 
 [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
 is installed into codeagent’s existing single central permission gate;
@@ -449,7 +532,7 @@ Defaults intentionally do not reject every `Read` or `print`:
 curl/requests calls, and shell display of data files are reviewed or
 blocked.
 
-## C5 portable sandbox and btw boundary
+### C5 portable sandbox and btw boundary
 
 [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
 deliberately preserves coding capability: project and session-temp
@@ -464,7 +547,19 @@ with
 but a project-internal symlink to an external file passed our probe; its
 RunR executes through `evaluate` in the global environment and only
 restores cwd/options/envvars. Data Shield therefore applies uniformly to
-native, btw, MCP and host tools. \## Roadmap
+native, btw, MCP and host tools.
+
+### C4 semantic reviewer
+
+[`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)
+supplements deterministic ingress rules for indirect aliases, multi-step
+serialization and obfuscated source-to-sink intent. Remote reviewers
+receive only sanitized code and non-value metadata. A fresh independent
+Chat is created per review, with no tools/history. The default factory
+uses the parent provider plus `CODEAGENT_FAST_MODEL`; an explicit
+`client_factory` may provide a local or specialized reviewer.
+Missing/failed/invalid reviewers follow `on_error`; ask falls back to
+block when no approval channel exists. \## Roadmap
 
 - **P0.5 — `value_match` (available)**: deterministically catches
   *targeted* leaks the row-cap lets through (e.g. printing one patient’s
@@ -476,7 +571,7 @@ native, btw, MCP and host tools. \## Roadmap
   distributions/counts/examples). `distributions="on"/"dp"` remain later
   phases.
 
-## Sub-agent boundary
+### Sub-agent boundary
 
 Foreground sub-agents (`Agent`) inherit the exact same `DataShield` R6
 before any of their tools can return content to the child model. This
@@ -499,11 +594,14 @@ portable
 [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
 (available)**: project/temp `rwx`, protected data `rw` by default,
 realpath/symlink containment and policy fallback; full OS process
-adapter remains roadmap. - **P2 — reviewer (small model), sandbox
-(folder + no-network), differential privacy for distributions
+adapter remains roadmap. - **C4 —
+[`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)
+(available)**: optional sanitized ingress-code semantic rail using a
+fresh small-model Chat; remote raw output remains forbidden. - **P2 —
+full OS sandbox adapter and differential privacy for distributions
 (opt-in).**
 
-## Honest limits
+### Honest limits
 
 Data Shield **reduces** disclosure risk; it does not eliminate it.
 Deterministic detectors (row-cap, `value_match`, regex) miss
@@ -512,3 +610,129 @@ printing); those are mitigated — not solved — by the ingress blacklist
 and the no-network sandbox. The strongest guarantees come from the
 structural layers (metadata-only feeding + no-network execution), with
 scanning as defense-in-depth.
+
+Specific residual risks to weigh before relying on it:
+
+- **Layer composition matters.** Egress is the primary boundary.
+  Enabling only
+  [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)
+  (whose static rules can be obfuscated around) without
+  [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md)
+  is **not** a safe configuration. Do not omit egress.
+- **The semantic reviewer is itself an LLM.**
+  [`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)
+  can be evaded by a sufficiently obfuscated source-to-sink path and
+  adds latency/cost per reviewed call; it is defense-in-depth over the
+  deterministic rails, not a guarantee.
+- **`value_match` scales linearly and is now bounded.** Benchmarked on
+  CDISC ADaM data (`inst/bench/value_match_benchmark.R`): ~130 MB of
+  keys and ~10 s to index 1M high-entropy values, with zero false
+  positives on ordinary clinical prose and real `USUBJID`/`SUBJID`
+  caught. Because memory grows linearly and unbounded,
+  `register_data(max_index_values=)` caps the index (default 500 000,
+  ~65 MB); on overflow it warns and the unindexed tail relies on the
+  other egress layers. The `min_len`/`min_card` thresholds performed
+  well on real ids and are unchanged.
+- **Images/multimodal and full OS isolation remain roadmap** (see the
+  status banner): a rendered table/plot of raw rows bypasses text
+  scanning, and the portable sandbox is a path/capability policy, not
+  kernel isolation.
+
+------------------------------------------------------------------------
+
+## 数据盾（Data Shield）中文版 — 概念总结与排列组合矩阵
+
+> 本节是上面英文版的中文摘要，供内部讨论用。概念定义以本节为准；实现细节/参数默认值以英文版对应小节为准（有变动以代码为准）。
+
+### 核心问题
+
+codeagent 接入敏感数据（临床/金融/PII）时，我们要保证：**LLM
+只能看到元数据和描述性摘要，绝不能看到原始行级数据**。数据盾是**默认关闭、可插拔**的安全阀（`data_shield = NULL`），开启后由若干独立策略自由组合而成。
+
+### 两条边界，守住即可
+
+数据只有两条路能进 LLM：
+
+1.  **Prompt 边**：包括框架自己的 ambient 注入（session 里 R
+    对象摘要）——这部分框架保证只给 schema（列名/类型/维度），不给值。
+2.  **工具结果边**：任何工具返回、回灌给模型的内容——这是**主边界**，靠
+    egress 扫描守。
+
+子代理递归继承同一条边界；多模态（图片渲染出的原始数据）是已知盲区，冻结待开会。
+
+### 各策略速查
+
+| 策略 | 守哪条边 | 干什么 | 能不能单独撑起安全 |
+|----|----|----|----|
+| [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md) | 边2（工具结果） | `row_cap`（挡整批行）+ `value_match`（挡已注册的精确值） | ✅ **是主边界，不可省** |
+| [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md) | 边2 | 兜未注册数据的 PII/密钥（email/phone/token/身份证） | 只挡形状，不认自定义 ID |
+| [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md) | 边1 | `DescribeData` 工具，严格 schema+统计，永不给行 | 只管模型主动查询，不拦其他工具输出 |
+| [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md) | 工具调用前 | 高置信正则预筛（序列化/网络外传/数据文件读显） | ❌ 静态规则，可被别名绕过 |
+| [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md) | 逐工具 | 按工具名 `scan`/`bypass`/`deny` | 治理层，不是扫描层 |
+| [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md) | 进程/路径 | 项目内/临时目录默认可读写执行，防越权路径 | 增强层，非内容边界 |
+| [`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md) | 工具调用前（exec/write/net） | 小模型语义审查脱敏代码 | 审查者本身是可被注入的 LLM |
+
+### 排列组合安全矩阵（实测，非猜测）
+
+以下结论来自 `tests/testthat/test-data-shield-combinations.R`（14
+个断言，CI 强制锁死，任何未来重构破坏这个结论会立刻测试失败）：
+
+| 组合 | 整批数据泄漏 | 单值定点泄漏 | 别名绕过（`y<-study;print(y)`） | 结论 |
+|----|:--:|:--:|:--:|----|
+| 只开 `egress` | 挡 | 挡 | 挡（egress 不认代码路径，只认输出内容） | ✅ 安全底线 |
+| `egress`+`ingress`+`regex`（推荐） | 挡 | 挡 | 挡 | ✅ 推荐生产配置 |
+| **只开 `ingress`** | **漏** | **漏** | **漏（实测绕过）** | ⚠️ **不安全，勿单独使用** |
+| **只开 `describe`** | **漏** | **漏** | — | ⚠️ **不安全**（只管模型主动查询，不拦工具输出） |
+| 只开 `regex` | — | 漏（非 PII 形状的自定义 ID 认不出） | — | ⚠️ 仅挡常见 PII 形状 |
+
+**一句话结论：[`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md)
+是唯一不可省的边界，其余都是纵深防御，不能替代它。**
+
+### 三个”够用”的组合模板
+
+``` r
+
+# 最严格：合规/领导演示场景
+strict <- list(
+  shield_describe(k_anon = 5),
+  shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0, on_fail = "block"),
+  shield_regex(on_fail = "block"),
+  shield_ingress(on_fail = "block"))
+
+# 均衡：日常开发，够用不烦
+balanced <- list(
+  shield_egress(max_rows = 0, on_fail = "redact"),
+  shield_regex(on_fail = "redact"))
+
+# 临床合规：加语义审查 + 严格 k-匿名
+clinical <- list(
+  shield_describe(k_anon = 5),
+  shield_egress(max_rows = 0),
+  shield_regex(),
+  shield_ingress(on_fail = "ask"),
+  shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask"))
+```
+
+`inst/examples/data_shield_minimal_app.R` 的 Shiny demo
+提供一个下拉选择器，可实时切换以上组合，直接在真实聊天界面里对比”盾的厚薄”差异。
+
+### 已知真实缺口（非猜测，已记录待修）
+
+- **shinychat 原生附件绕过数据盾**：codeagent 主 UI 的
+  `allow_attachments=TRUE` 让用户直接拖文件进聊天框，这条路径**直进
+  prompt，不经过任何扫描**——跟 fileInput→`register_data()`
+  的受控注册路径完全不同。这是**已发现、未修复**的真实缺口（区别于下面两条已冻结待开会的议题）。
+- **DP 分布**、**多模态盲区**：技术上可做，但 epsilon/预算口径、OCR
+  误报策略需要开会拍板，不在工程层自行决定。
+
+### 术语对照
+
+| 英文        | 中文                                           |
+|-------------|------------------------------------------------|
+| ingress     | 工具调用进来的一刻（参数扫描点）               |
+| egress      | 工具结果要回灌模型的一刻（内容扫描点，主边界） |
+| row-cap     | 行数上限，超过按批量数据处理                   |
+| value-match | 精确值匹配，查已注册的高熵值索引               |
+| k-anonymity | k-匿名，类别标签至少 k 行支持才给              |
+| fail closed | 失败即拦，扫描器出错时默认拦截而非放行         |
+| provenance  | 来源凭证，raw 放行必须能证明数据来自已登记资产 |
