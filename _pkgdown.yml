@@ -168,6 +168,7 @@ reference:
       - shield_ingress
       - shield_tool_policy
       - shield_sandbox
+      - shield_reviewer
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."

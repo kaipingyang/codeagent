@@ -46,6 +46,7 @@ shield$coverage()
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
     \item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
+    \item \href{#method-DataShield-bind_reviewer_factory}{\code{DataShield$bind_reviewer_factory()}}
     \item \href{#method-DataShield-audit}{\code{DataShield$audit()}}
     \item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
@@ -310,6 +311,25 @@ deterministic value indexing (reduces low-entropy false positives).}
     \describe{
       \item{\code{fn}}{Function receiving non-sensitive event metadata and returning
 \code{redact}, \code{block}, or (when enabled) \code{raw_once}; NULL clears it.}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-bind_reviewer_factory"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-bind_reviewer_factory}{}}}
+\subsection{\code{DataShield$bind_reviewer_factory()}}{
+  Bind codeagent's parent-provider reviewer Chat factory.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$bind_reviewer_factory(fn)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{fn}}{Function accepting optional model and returning a fresh Chat.}
     }
     \if{html}{\out{</div>}}
   }

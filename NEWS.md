@@ -1,5 +1,15 @@
 # codeagent (development version)
 
+* **Small-model semantic code reviewer**: new `shield_reviewer()` is an optional
+  internal ingress rail (never a model-callable tool). It reviews only
+  deterministic PII/value-sanitized tool code/arguments with a fresh, tool-less,
+  history-free ellmer Chat. Explicit `client_factory` wins; otherwise the parent
+  provider is reused with `CODEAGENT_FAST_MODEL` (never silently the main model).
+  Scope defaults to exec/write/net; risk/error independently choose ask/block;
+  async turns await a timed promise. Structured JSON parsing and reviewer
+  failures fail closed. Remote mode never receives raw data/output; raw review is
+  reserved for an explicit future local-only egress mode.
+
 * **Data Shield egress approval**: `shield_egress(on_fail="ask")` pauses after a
   local tool executes but before its result reaches the LLM. Default choices are
   Redact/Block; dangerous `ALLOW RAW ONCE` appears only with explicit

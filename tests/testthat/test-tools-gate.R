@@ -297,3 +297,28 @@ test_that("portable sandbox blocks project-external Read before read fast-path",
     id="sandbox-read",name="Read",arguments=list(file_path=outside))
   expect_error(gate(req),"outside sandbox roots")
 })
+
+
+test_that("central gate awaits promise-valued Data Shield reviewer decision", {
+  shield <- DataShield$new(strategies=list(
+    shield_reviewer(model="fast",scope="exec",on_risk="ask")))
+  testthat::local_mocked_bindings(
+    .data_shield_invoke_reviewer=function(...)
+      promises::promise_resolve(list(error=FALSE,risk="serialization",confidence=.9,reason="risk")),
+    .package="codeagent")
+  policy <- codeagent:::.resolve_tool_policy(list())
+  mode_env <- new.env(); mode_env$mode <- "default"
+  asked <- FALSE
+  ctx <- codeagent:::.make_gate_ctx(policy,mode_env,
+    ask_fn=function(name,input,id=NULL){asked <<- TRUE; TRUE})
+  ctx$data_shield <- shield
+  gate <- codeagent:::.tool_gate_fn(ctx)
+  req <- ellmer::ContentToolRequest(id="review-promise",name="RunR",arguments=list(code="x"))
+  result <- gate(req)
+  expect_true(inherits(result,"promise"))
+  done <- FALSE; promises::then(result,function(x)done<<-TRUE)
+  # run_now pumps the shared global later loop; tolerate stray bad callbacks
+  # left enqueued by earlier async tests so this poll only drives our promise.
+  for(i in 1:100){tryCatch(later::run_now(.01),error=function(e)NULL);if(done)break}
+  expect_true(done); expect_true(asked)
+})

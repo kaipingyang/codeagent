@@ -189,49 +189,45 @@ register_tool_meta <- function(name,
     # Data Shield ingress runs for EVERY tool before capability/read fast-paths.
     shield <- ctx$data_shield %||%
       tryCatch(attr(ctx$chat, "codeagent_data_shield"), error=function(e) NULL)
+    tool_call_id <- tryCatch(request@id, error=function(e) NULL)
     shield_decision <- if (inherits(shield, "DataShield"))
       tryCatch(shield$scan_ingress(
-        name, input, tool_call_id = tryCatch(request@id, error=function(e) NULL),
-        capability = cap),
-               error=function(e) list(action="block", reason="Data Shield ingress failed safely"))
+        name, input, tool_call_id = tool_call_id, capability = cap),
+        error=function(e) list(action="block", reason="Data Shield ingress failed safely"))
       else list(action="pass")
-    if (identical(shield_decision$action, "block"))
-      return(deny(name, input, shield_decision$reason %||% "Data Shield ingress blocked"))
-    shield_ask <- identical(shield_decision$action, "ask")
 
-    ov  <- ctx$policy$overrides[[name]]
-    # benign tools auto-allow only when Data Shield did not force approval.
-    if (!shield_ask && is.null(ov) && identical(cap, "read")) return(invisible())
+    continue_after_shield <- function(shield_decision) {
+      if (identical(shield_decision$action, "block"))
+        return(deny(name, input, shield_decision$reason %||% "Data Shield ingress blocked"))
+      shield_ask <- identical(shield_decision$action, "ask")
+      ov <- ctx$policy$overrides[[name]]
+      if (!shield_ask && is.null(ov) && identical(cap, "read")) return(invisible())
+      decision <- if (shield_ask) "ask" else tryCatch(
+        .gate_decide(name, input, ctx$policy, resolve_mode(), ctx$rules, cap),
+        error = function(e) "allow")
+      if (identical(decision, "allow")) return(invisible())
+      if (identical(decision, "deny")) return(deny(name, input, cap))
 
-    decision <- if (shield_ask) "ask" else tryCatch(
-      .gate_decide(name, input, ctx$policy, resolve_mode(), ctx$rules, cap),
-      error = function(e) "allow")
-
-    if (identical(decision, "allow")) return(invisible())
-    if (identical(decision, "deny"))  return(deny(name, input, cap))
-
-    # decision == "ask"
-    ask_fn <- ctx$ask_fn
-    # Pass the tool-call id to ask_fns that want it (those declaring `id=` or
-    # `...`); older `(name, input)` ask_fns are called unchanged. This lets a
-    # host correlate the gate's question to the `on_tool_request` preview by id
-    # (needed when same-name/same-arg tools run concurrently).
-    res <- if (is.function(ask_fn)) {
-      fmls <- names(formals(ask_fn))
-      if ("id" %in% fmls || "..." %in% fmls)
-        tryCatch(ask_fn(name, input,
-                        id = tryCatch(request@id, error = function(e) NULL)),
-                 error = function(e) FALSE)
-      else
-        tryCatch(ask_fn(name, input), error = function(e) FALSE)
-    } else FALSE
-    if (inherits(res, "promise")) {                                   # async (Shiny)
-      return(promises::then(res, function(ok) {
-        if (isTRUE(ok)) invisible(NULL) else deny(name, input, cap)
-      }))
+      ask_fn <- ctx$ask_fn
+      res <- if (is.function(ask_fn)) {
+        fmls <- names(formals(ask_fn))
+        if ("id" %in% fmls || "..." %in% fmls)
+          tryCatch(ask_fn(name, input, id=tool_call_id), error=function(e) FALSE)
+        else tryCatch(ask_fn(name, input), error=function(e) FALSE)
+      } else FALSE
+      if (inherits(res, "promise"))
+        return(promises::then(res, function(ok) {
+          if (isTRUE(ok)) invisible(NULL) else deny(name, input, cap)
+        }))
+      if (isTRUE(res)) return(invisible())
+      deny(name, input, cap)
     }
-    if (isTRUE(res)) return(invisible())                              # sync approved
-    deny(name, input, cap)
+
+    if (inherits(shield_decision, "promise"))
+      return(promises::then(
+        shield_decision, continue_after_shield,
+        function(e) deny(name,input,"Data Shield reviewer failed safely")))
+    continue_after_shield(shield_decision)
   }
 }
 

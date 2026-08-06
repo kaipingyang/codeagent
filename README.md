@@ -121,7 +121,8 @@ client <- codeagent_client(chat, data_shield = list(
   shield_tool_policy(rules = list(
     KMPlot = list(ingress = "scan", egress = "bypass")
   )),
-  shield_sandbox(project_root = getwd(), backend = "policy")
+  shield_sandbox(project_root = getwd(), backend = "policy"),
+  shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask")
 ))
 
 # Explicit lifecycle for uploaded data / shared threads.
@@ -145,7 +146,10 @@ Shield bypass is audited and never bypasses the separate permission gate.
 `shield_sandbox()` preserves project/temp `rwx` and process execution by default,
 while portable path policy blocks project-external and symlink-escaped paths;
 `backend="auto"` currently reports/falls back to policy unless a full OS adapter
-is available.
+is available. `shield_reviewer()` is an optional internal rail: a fresh,
+tool-less ellmer Chat reviews only deterministically sanitized code/arguments;
+remote reviewers never receive raw data/output, and missing/failed reviewers
+follow configurable ask/block fail-closed policy.
 See the full [Data Shield parameter
 reference](https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference).
 

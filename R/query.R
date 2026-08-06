@@ -212,6 +212,15 @@ codeagent_client <- function(
                                error = function(e) settings$model)
   }
 
+  if (inherits(shield_state,"DataShield") && shield_state$coverage()$reviewers > 0L &&
+      !isTRUE(shield_state$coverage()$reviewer_factory_bound)) {
+    reviewer_settings <- settings
+    shield_state$bind_reviewer_factory(function(model) {
+      cfg <- reviewer_settings; cfg$model <- model
+      .make_chat(cfg,cwd)
+    })
+  }
+
   ask_fn <- if (interactive()) .console_ask_fn else NULL
   if (interactive() && inherits(shield_state,"DataShield") &&
       !isTRUE(shield_state$coverage()$egress_approval_callback))
