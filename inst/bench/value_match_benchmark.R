@@ -4,14 +4,14 @@
 # Not part of the test suite (slow, needs {pharmaverseadam}). Run manually:
 #   Rscript inst/bench/value_match_benchmark.R
 #
-# It answers the three open G1 questions with real CDISC ADaM data plus a
-# scaled-up copy:
+# It answers the three open G1 questions with open-source pharmaverse
+# CDISC-ADaM-format example data plus a scaled-up copy:
 #   1. Index memory + build time as row/value count grows (is an unbounded
 #      hash env a problem? do we need max_index_values?).
 #   2. False positives: does scanning ordinary English text spuriously hit
 #      indexed values?
-#   3. False negatives: are real short ids (4-digit SUBJID) indexed/caught, or
-#      dropped by the min_len/min_card thresholds?
+#   3. False negatives: are pharmaverse short ids (4-digit SUBJID) indexed/caught,
+#      or dropped by the min_len/min_card thresholds?
 
 if (!requireNamespace("pharmaverseadam", quietly = TRUE)) {
   stop("Install {pharmaverseadam} to run this benchmark: ",
@@ -28,12 +28,12 @@ env_bytes <- function(e) sum(vapply(ls(e, all.names = TRUE),
 
 section <- function(x) cat("\n== ", x, " ==\n", sep = "")
 
-# ---- load real data --------------------------------------------------------
+# ---- load pharmaverse example data -----------------------------------------
 data("adsl", package = "pharmaverseadam")
 data("adlb", package = "pharmaverseadam")   # ~83k rows
 id_cols <- c("USUBJID", "SUBJID")
 
-section("Real ADSL identifiers")
+section("pharmaverse ADSL identifiers")
 cat(sprintf("adsl: %d rows; USUBJID card=%d (e.g. %s); SUBJID card=%d (e.g. %s)\n",
     nrow(adsl), length(unique(adsl$USUBJID)), adsl$USUBJID[[1]],
     length(unique(adsl$SUBJID)), adsl$SUBJID[[1]]))
@@ -67,8 +67,8 @@ prose <- c(
 fp <- sum(vapply(prose, function(s) scan(s, idx)$hit, logical(1)))
 cat(sprintf("  prose lines=%d  false-positive hits=%d\n", length(prose), fp))
 
-# ---- 3. false negatives on real ids ---------------------------------------
-section("False negatives: are real ids caught?")
+# ---- 3. false negatives on pharmaverse ids ---------------------------------
+section("False negatives: are pharmaverse ids caught?")
 u_hit <- scan(sprintf("enrolled subject %s today", adsl$USUBJID[[1]]), idx)$hit
 s_id  <- adsl$SUBJID[[1]]
 s_hit <- scan(sprintf("subject id %s", s_id), idx)$hit
