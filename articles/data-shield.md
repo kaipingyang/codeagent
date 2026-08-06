@@ -684,7 +684,7 @@ defense-in-depth and cannot substitute for it.**
 
 ``` r
 
-# Strict: compliance / leadership demos
+# Strict: compliance / audit demos
 strict <- list(
   shield_describe(k_anon = 5),
   shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0, on_fail = "block"),
@@ -773,14 +773,15 @@ Specific residual risks to weigh before relying on it:
   adds latency/cost per reviewed call; it is defense-in-depth over the
   deterministic rails, not a guarantee.
 - **`value_match` scales linearly and is now bounded.** Benchmarked on
-  CDISC ADaM data (`inst/bench/value_match_benchmark.R`): ~130 MB of
-  keys and ~10 s to index 1M high-entropy values, with zero false
-  positives on ordinary clinical prose and real `USUBJID`/`SUBJID`
+  open-source CDISC-ADaM-format example data from the {pharmaverse}
+  project (`inst/bench/value_match_benchmark.R`): ~130 MB of keys and
+  ~10 s to index 1M high-entropy values, with zero false positives on
+  ordinary clinical prose and pharmaverse-format `USUBJID`/`SUBJID`
   caught. Because memory grows linearly and unbounded,
   `register_data(max_index_values=)` caps the index (default 500 000,
   ~65 MB); on overflow it warns and the unindexed tail relies on the
   other egress layers. The `min_len`/`min_card` thresholds performed
-  well on real ids and are unchanged.
+  well on these ids and are unchanged.
 - **Images/multimodal and full OS isolation remain roadmap** (see the
   status banner): a rendered table/plot of raw rows bypasses text
   scanning, and the portable sandbox is a path/capability policy, not

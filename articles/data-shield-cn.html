@@ -1300,7 +1300,7 @@ CI 测试套件，不是一段描述性文字）：未来任何破坏这些结�
 <h3 id="三个可以直接用的组合模板">三个可以直接用的组合模板<a class="anchor" aria-label="anchor" href="#%E4%B8%89%E4%B8%AA%E5%8F%AF%E4%BB%A5%E7%9B%B4%E6%8E%A5%E7%94%A8%E7%9A%84%E7%BB%84%E5%90%88%E6%A8%A1%E6%9D%BF"></a>
 </h3>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 严格：合规/领导演示场景</span></span>
+<code class="sourceCode R"><span><span class="co"># 严格：合规/审计演示场景</span></span>
 <span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"row_cap"</span>, <span class="st">"value_match"</span><span class="op">)</span>, max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
@@ -1383,16 +1383,16 @@ egress。</li>
 “数据来源到去处”路径绕过，且每次审查都增加延迟/成本；它是确定性防线
 之上的纵深防御，不是保证。</li>
 <li>
-<strong><code>value_match</code> 线性增长，现已有上限。</strong> 在
-CDISC ADaM 真实数据上做过
-benchmark（<code>inst/bench/value_match_benchmark.R</code>）：索引 100
-万个高熵值 约需 130 MB 内存、约 10
-秒构建时间，对普通临床文本零误报，真实的
-<code>USUBJID</code>/<code>SUBJID</code>
-均能命中。由于内存线性且无界增长，
-<code>register_data(max_index_values=)</code> 给索引设了上限（默认 50
-万，约 65 MB）；超限时会发出警告，未被索引的部分依赖其他 egress 层兜底。
-<code>min_len</code>/<code>min_card</code> 阈值在真实 ID
+<strong><code>value_match</code> 线性增长，现已有上限。</strong>
+在开源 {pharmaverse} 项目的 CDISC-ADaM 格式示例数据上做过
+benchmark（<code>inst/bench/value_match_benchmark.R</code>）： 索引 100
+万个高熵值约需 130 MB 内存、约 10 秒构建时间，对普通临床文本
+零误报，pharmaverse 格式的 <code>USUBJID</code>/<code>SUBJID</code>
+均能命中。由于内存线性且
+无界增长，<code>register_data(max_index_values=)</code>
+给索引设了上限（默认 50 万， 约 65
+MB）；超限时会发出警告，未被索引的部分依赖其他 egress 层兜底。
+<code>min_len</code>/<code>min_card</code> 阈值在这些 ID
 上表现良好，未做调整。</li>
 <li>
 <strong>图片/多模态和完整 OS

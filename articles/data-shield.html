@@ -1380,7 +1380,7 @@ cannot substitute for it.</strong></p>
 <h3 id="three-ready-to-use-combination-templates">Three ready-to-use combination templates<a class="anchor" aria-label="anchor" href="#three-ready-to-use-combination-templates"></a>
 </h3>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Strict: compliance / leadership demos</span></span>
+<code class="sourceCode R"><span><span class="co"># Strict: compliance / audit demos</span></span>
 <span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"row_cap"</span>, <span class="st">"value_match"</span><span class="op">)</span>, max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
@@ -1467,16 +1467,17 @@ it is defense-in-depth over the deterministic rails, not a
 guarantee.</li>
 <li>
 <strong><code>value_match</code> scales linearly and is now
-bounded.</strong> Benchmarked on CDISC ADaM data
+bounded.</strong> Benchmarked on open-source CDISC-ADaM-format example
+data from the {pharmaverse} project
 (<code>inst/bench/value_match_benchmark.R</code>): ~130 MB of keys and
 ~10 s to index 1M high-entropy values, with zero false positives on
-ordinary clinical prose and real
+ordinary clinical prose and pharmaverse-format
 <code>USUBJID</code>/<code>SUBJID</code> caught. Because memory grows
 linearly and unbounded, <code>register_data(max_index_values=)</code>
 caps the index (default 500 000, ~65 MB); on overflow it warns and the
 unindexed tail relies on the other egress layers. The
 <code>min_len</code>/<code>min_card</code> thresholds performed well on
-real ids and are unchanged.</li>
+these ids and are unchanged.</li>
 <li>
 <strong>Images/multimodal and full OS isolation remain
 roadmap</strong> (see the status banner): a rendered table/plot of raw
