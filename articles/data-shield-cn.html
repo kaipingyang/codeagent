@@ -5,12 +5,12 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Data Shield: strict data-safety mode (design preview) • codeagent</title>
+<title>数据盾（Data Shield）：严格数据安全模式（设计预览，中文版） • codeagent</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Data Shield: strict data-safety mode (design preview)">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -71,74 +71,71 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>Data Shield: strict data-safety mode (design preview)</h1>
+      <h1>数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/main/vignettes/data-shield.Rmd" class="external-link"><code>vignettes/data-shield.Rmd</code></a></small>
-      <div class="d-none name"><code>data-shield.Rmd</code></div>
+      <small class="dont-index">Source: <a href="https://github.com/kaipingyang/codeagent/blob/main/vignettes/data-shield-cn.Rmd" class="external-link"><code>vignettes/data-shield-cn.Rmd</code></a></small>
+      <div class="d-none name"><code>data-shield-cn.Rmd</code></div>
     </div>
 
     
     
 <blockquote>
-<p><strong>Status — P0/P0.5/P1/P1.5/C2/C5-policy available; fuller
-design in progress.</strong> The egress row-cap, protected-value
-matching, strict DescribeData, ordered scanners, universal pre-tool
-ingress, per-tool policy, promise-backed egress approval, portable
-path/symlink sandbox, and optional sanitized-code reviewer are wired.
-Full OS execution adapter and <code>distributions="on"/"dp"</code>
-remain roadmap. Off by default (<code>data_shield = NULL</code>).</p>
+<p><strong>本文是英文版 <code><a href="../articles/data-shield.html">vignette("data-shield")</a></code>
+的完整中文翻译</strong>，供内部讨论使用。概念定义、参数默认值以本文为准；如与代码有出入，以代码为准（两版会同步更新，但请以英文版
++ 代码作为最终权威来源）。</p>
+</blockquote>
+<blockquote>
+<p><strong>状态 — P0/P0.5/P1/P1.5/C2/C5-policy
+已实现；完整设计仍在推进。</strong> egress
+行数上限、受保护值精确匹配、严格
+<code>DescribeData</code>、有序扫描器管道、
+通用工具调用前置扫描、按工具策略、基于 promise 的 egress 审批、便携式
+路径/符号链接沙箱、以及可选的脱敏代码语义审查器均已接线完成。完整 OS
+执行隔离适配器与 <code>distributions="on"/"dp"</code>
+仍是路线图项。默认关闭 （<code>data_shield = NULL</code>）。</p>
 </blockquote>
 <div class="section level2">
-<h2 id="why">Why<a class="anchor" aria-label="anchor" href="#why"></a>
+<h2 id="为什么需要它">为什么需要它<a class="anchor" aria-label="anchor" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E5%AE%83"></a>
 </h2>
-<p>When codeagent is embedded as a backend over <strong>sensitive
-data</strong> (clinical, financial, PII), the guarantee we want is: the
-LLM may see <strong>metadata and descriptive summaries</strong>, but
-<strong>never raw row-level data</strong>. Data Shield is an
-<strong>opt-in, pluggable valve</strong> that enforces this — off by
-default (<code>data_shield = NULL</code>), composed from independent
-strategies when on.</p>
+<p>当 codeagent
+作为后端接入<strong>敏感数据</strong>（临床、金融、PII）时，我们要的保证是：
+LLM
+可以看到<strong>元数据和描述性摘要</strong>，但<strong>绝不能看到原始行级数据</strong>。数据盾是一个
+<strong>默认关闭、可插拔</strong>的安全阀（<code>data_shield = NULL</code>），开启时由若干独立策略组合而成。</p>
 </div>
 <div class="section level2">
-<h2 id="the-core-two-edges">The core: two edges<a class="anchor" aria-label="anchor" href="#the-core-two-edges"></a>
+<h2 id="核心两条边">核心：两条边<a class="anchor" aria-label="anchor" href="#%E6%A0%B8%E5%BF%83%E4%B8%A4%E6%9D%A1%E8%BE%B9"></a>
 </h2>
-<p>Strip away the agent machinery and data can reach the LLM through
-<strong>only two inbound edges</strong>. Guard both and you have guarded
-everything:</p>
+<p>去掉 agent 的其他机制，数据只有<strong>两条入边</strong>能到达
+LLM。守住这两条，就等于守住了一切：</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Prompt / system-prompt content</strong> — including the
-framework’s own <strong>ambient-context auto-injection</strong>
-(codeagent can inject a summary of R session objects into the system
-reminder). This is the part we control and must keep
-<strong>schema-only</strong> (names / types / dimensions), never
-values.</li>
+<strong>Prompt / system-prompt
+内容</strong>——包括框架自己的<strong>ambient-context 自动注入</strong>
+（codeagent 会把 R session 里对象的摘要注入进 system
+reminder）。这部分是我们 自己控制的，必须保持<strong>只给
+schema</strong>（列名/类型/维度），绝不给值。</li>
 <li>
-<strong>Tool results</strong> — whatever a tool returns and that is
-fed back to the model.</li>
+<strong>工具结果</strong>——任何工具返回、并回灌给模型的内容。</li>
 </ol>
-<p>Everything else reduces to these two (RAG and errors arrive as one of
-them; model-generated content is outbound, not inbound). The guarantee
-applies <strong>recursively to sub-agents</strong> — each has its own
-two edges.</p>
+<p>其余情况都能归约到这两条（RAG
+和错误信息都算其中一条；模型生成的内容是出边，
+不是入边）。这个保证<strong>递归适用于子代理</strong>——每个子代理都有自己的两条边。</p>
 <blockquote>
-<p>Blind spot to handle separately: an <strong>image/multimodal</strong>
-tool result (a rendered table/plot of raw rows) bypasses text
-scanning.</p>
+<p>需单独处理的盲区：<strong>图片/多模态</strong>工具结果（渲染出原始行数据的表格/图表）会绕过文本扫描。</p>
 </blockquote>
 </div>
 <div class="section level2">
-<h2 id="design-composable-strategies-not-a-fixed-mode">Design: composable strategies (not a fixed mode)<a class="anchor" aria-label="anchor" href="#design-composable-strategies-not-a-fixed-mode"></a>
+<h2 id="设计可组合策略不是固定模式">设计：可组合策略（不是固定模式）<a class="anchor" aria-label="anchor" href="#%E8%AE%BE%E8%AE%A1%E5%8F%AF%E7%BB%84%E5%90%88%E7%AD%96%E7%95%A5%E4%B8%8D%E6%98%AF%E5%9B%BA%E5%AE%9A%E6%A8%A1%E5%BC%8F"></a>
 </h2>
-<p><code>data_shield</code> accepts <code>NULL</code> (off), an ordered
-strategy list (creates one private <code>DataShield</code> R6), or an
-explicit <code>DataShield</code> instance (for upload and intentional
-session/thread sharing). Implemented strategies are shown first; planned
-strategies are listed separately so the examples never imply they
-already exist.</p>
+<p><code>data_shield</code> 接受
+<code>NULL</code>（关闭）、一个有序策略列表（会创建一个私有
+<code>DataShield</code> R6）， 或一个显式的 <code>DataShield</code>
+实例（用于上传数据、有意在 session/thread 间共享）。
+已实现的策略先展示；规划中的策略单独列出，以免示例暗示它们已经存在。</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Implemented now:</span></span>
+<code class="sourceCode R"><span><span class="co"># 当前已实现：</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">...</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"row_cap"</span>, <span class="st">"value_match"</span><span class="op">)</span>,</span>
@@ -154,18 +151,17 @@ already exist.</p>
 <span>                  scope <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"exec"</span>, <span class="st">"write"</span>, <span class="st">"net"</span><span class="op">)</span>, on_risk <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Roadmap (not implemented yet):</span></span>
+<span><span class="co"># 路线图（尚未实现）：</span></span>
 <span><span class="co"># shield_narrow_tools()</span></span></code></pre></div>
-<p>The main boundary is <strong>edge 2 (tool results)</strong>; sandbox,
-ingress blacklist, reviewer, and tool narrowing are defense-in-depth,
-not the boundary.</p>
+<p>主边界是<strong>边 2（工具结果）</strong>；沙箱、ingress
+黑名单、审查器、工具收窄都是纵深防御， 不是边界本身。</p>
 </div>
 <div class="section level2">
-<h2 id="current-parameter-reference">Current parameter reference<a class="anchor" aria-label="anchor" href="#current-parameter-reference"></a>
+<h2 id="当前参数参考">当前参数参考<a class="anchor" aria-label="anchor" href="#%E5%BD%93%E5%89%8D%E5%8F%82%E6%95%B0%E5%8F%82%E8%80%83"></a>
 </h2>
 <div class="section level3">
-<h3 id="data_shield-input">
-<code>data_shield</code> input<a class="anchor" aria-label="anchor" href="#data_shield-input"></a>
+<h3 id="data_shield-输入">
+<code>data_shield</code> 输入<a class="anchor" aria-label="anchor" href="#data_shield-%E8%BE%93%E5%85%A5"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -173,30 +169,29 @@ not the boundary.</p>
 <col width="50%">
 </colgroup>
 <thead><tr class="header">
-<th>Value</th>
-<th>Effect</th>
+<th>值</th>
+<th>效果</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>NULL</code></td>
-<td>Shield completely off; existing codeagent behaviour unchanged</td>
+<td>完全关闭；codeagent 现有行为不变</td>
 </tr>
 <tr class="even">
 <td><code>list(shield_*())</code></td>
-<td>Strategies run in list order; codeagent creates one private
-<code>DataShield</code> R6 for this client</td>
+<td>策略按列表顺序执行；codeagent 为该 client 创建一个私有
+<code>DataShield</code> R6</td>
 </tr>
 <tr class="odd">
 <td><code>DataShield$new(...)</code></td>
-<td>Explicit lifecycle for uploads and deliberate sharing among selected
-chats</td>
+<td>显式生命周期，用于上传数据、在多个 chat 间有意共享</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="section level3">
-<h3 id="shield_egress-core-tool-result-boundary">
-<code>shield_egress()</code> — core tool-result boundary<a class="anchor" aria-label="anchor" href="#shield_egress-core-tool-result-boundary"></a>
+<h3 id="shield_egress-核心的工具结果边界">
+<code>shield_egress()</code> —— 核心的工具结果边界<a class="anchor" aria-label="anchor" href="#shield_egress-%E6%A0%B8%E5%BF%83%E7%9A%84%E5%B7%A5%E5%85%B7%E7%BB%93%E6%9E%9C%E8%BE%B9%E7%95%8C"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -205,59 +200,56 @@ chats</td>
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Parameter</th>
-<th>Default</th>
-<th>Actual effect</th>
+<th>参数</th>
+<th>默认值</th>
+<th>实际效果</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>detectors</code></td>
 <td><code>c("row_cap", "value_match")</code></td>
 <td>
-<code>row_cap</code> catches bulk tabular output;
-<code>value_match</code> catches indexed high-entropy values</td>
+<code>row_cap</code> 挡整批表格输出；<code>value_match</code>
+挡已索引的高熵值</td>
 </tr>
 <tr class="even">
 <td><code>max_rows</code></td>
 <td><code>0</code></td>
-<td>On a bulk/tabular match, retain zero raw printed lines and return
-only a withheld/blocked notice. <code>5</code> would deliberately expose
-the first five printed lines</td>
+<td>命中整批/表格状输出时，保留 0 行原始打印内容，只返回一句
+withheld/blocked 提示。设为 <code>5</code> 会故意暴露前 5 行</td>
 </tr>
 <tr class="odd">
 <td><code>on_fail</code></td>
 <td><code>"redact"</code></td>
 <td>
-<code>redact</code>: withheld notice; <code>block</code>: blocked
-notice; <code>ask</code>: pause before LLM delivery</td>
+<code>redact</code>：withheld 提示；<code>block</code>：blocked
+提示；<code>ask</code>：交给 LLM 前先暂停</td>
 </tr>
 <tr class="even">
 <td><code>allow_raw_approval</code></td>
 <td><code>FALSE</code></td>
-<td>When asking, show only Redact/Block; TRUE adds dangerous Raw
-once</td>
+<td>询问时默认只显示 Redact/Block；设 TRUE 会加一个危险的”Raw
+once”选项</td>
 </tr>
 <tr class="odd">
 <td><code>approval_timeout</code></td>
 <td><code>60</code></td>
-<td>Async seconds before automatic redact</td>
+<td>异步场景下多少秒后自动 redact</td>
 </tr>
 </tbody>
 </table>
-<p><code>max_rows = 0</code> does <strong>not</strong> block
-<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code> generally. <code>print(nrow(df))</code>, status
-messages, model summaries, plots, and errors pass unless another
-detector finds sensitive content. It triggers only when output has a
-data.frame/tibble or many-line rectangular-table shape.</p>
-<p>With <code>on_fail="ask"</code>, the raw result remains local while
-the callback/UI receives only tool name/id, strategy, reason label,
-match count, score, timeout and whether raw-once is enabled. Redact is
-the safe default for no callback, errors, invalid choices, ESC and
-timeout. Raw-once applies to one result only and is audited.</p>
+<p><code>max_rows = 0</code> <strong>不会</strong>泛化地拦所有
+<code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code>。<code>print(nrow(df))</code>、状态消息、
+模型摘要、图表、错误信息都会放行，除非其他检测器命中敏感内容。只有输出具备
+data.frame/tibble 打印签名或多行矩形表格外观时才会触发。</p>
+<p><code>on_fail="ask"</code> 时，原始结果留在本地，回调/UI 只收到 tool
+名/id、策略、原因标签、 命中数、分数、超时时间、以及是否启用了
+raw-once。无回调、报错、非法选择、ESC、 超时的默认安全动作都是
+redact。Raw-once 只对本次结果生效，且会被审计。</p>
 </div>
 <div class="section level3">
-<h3 id="shield_describe-strict-model-safe-metadata">
-<code>shield_describe()</code> — strict model-safe metadata<a class="anchor" aria-label="anchor" href="#shield_describe-strict-model-safe-metadata"></a>
+<h3 id="shield_describe-严格的模型安全元数据">
+<code>shield_describe()</code> —— 严格的模型安全元数据<a class="anchor" aria-label="anchor" href="#shield_describe-%E4%B8%A5%E6%A0%BC%E7%9A%84%E6%A8%A1%E5%9E%8B%E5%AE%89%E5%85%A8%E5%85%83%E6%95%B0%E6%8D%AE"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -266,47 +258,43 @@ timeout. Raw-once applies to one result only and is audited.</p>
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Parameter</th>
-<th>Default</th>
-<th>Actual effect</th>
+<th>参数</th>
+<th>默认值</th>
+<th>实际效果</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>distributions</code></td>
 <td><code>"off"</code></td>
-<td>Implemented strict mode: no histograms, quantiles, means, category
-counts, rows, or free-text examples. <code>on</code>/<code>dp</code> are
-roadmap and fail explicitly</td>
+<td>已实现的严格模式：不给直方图/分位数/均值/类别计数/行/自由文本示例。<code>on</code>/<code>dp</code>
+是路线图项，会显式报错</td>
 </tr>
 <tr class="even">
 <td><code>k_anon</code></td>
 <td><code>5</code></td>
-<td>Category labels supported by fewer than k rows become
+<td>支持行数少于 k 的类别标签会变成
 <code>&lt;rare suppressed&gt;</code>
 </td>
 </tr>
 <tr class="odd">
 <td><code>category_max</code></td>
 <td><code>20</code></td>
-<td>Maximum distinct character values for categorical treatment</td>
+<td>判定为分类处理的最大字符值去重数</td>
 </tr>
 <tr class="even">
 <td><code>category_ratio</code></td>
 <td><code>0.2</code></td>
-<td>Maximum distinct/non-missing ratio for character-categorical
-treatment; otherwise <code>free_text</code>
-</td>
+<td>判定为字符分类处理的最大去重/非缺失比率</td>
 </tr>
 </tbody>
 </table>
-<p>Sensitivity still clamps output:
-<code>identifier</code>/<code>quasi</code> values stay suppressed;
-<code>measure</code>/<code>open</code> may show numeric/date min–max and
-safe category labels without counts.</p>
+<p>敏感度仍然钳制输出：<code>identifier</code>/<code>quasi</code>
+值始终被抑制；<code>measure</code>/<code>open</code> 可能给 数值/日期的
+min-max 和安全的类别标签（不给计数）。</p>
 </div>
 <div class="section level3">
-<h3 id="shield_regex-unregistered-piisecrets">
-<code>shield_regex()</code> — unregistered PII/secrets<a class="anchor" aria-label="anchor" href="#shield_regex-unregistered-piisecrets"></a>
+<h3 id="shield_regex-未注册的-pii密钥">
+<code>shield_regex()</code> —— 未注册的 PII/密钥<a class="anchor" aria-label="anchor" href="#shield_regex-%E6%9C%AA%E6%B3%A8%E5%86%8C%E7%9A%84-pii%E5%AF%86%E9%92%A5"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -315,49 +303,44 @@ safe category labels without counts.</p>
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Parameter</th>
-<th>Default</th>
-<th>Actual effect</th>
+<th>参数</th>
+<th>默认值</th>
+<th>实际效果</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>patterns</code></td>
 <td><code>NULL</code></td>
-<td>Optional named regular-expression rules using PCRE (Perl-Compatible
-Regular Expression) syntax,
-e.g. <code>c(study_id = "STUDY-[0-9]+")</code>; appended to defaults
-when enabled</td>
+<td>可选的具名正则规则，使用 PCRE 语法，例如
+<code>c(study_id = "STUDY-[0-9]+")</code>；开启时追加到默认规则</td>
 </tr>
 <tr class="even">
 <td><code>include_defaults</code></td>
 <td><code>TRUE</code></td>
-<td>Email, phone-like, common-token-prefix, and 18-character
-identity-number rules</td>
+<td>email、类电话号码、常见 token 前缀、18 位身份证号规则</td>
 </tr>
 <tr class="odd">
 <td><code>replacement</code></td>
 <td><code>"[REDACTED]"</code></td>
-<td>Marker inserted once per merged matching span</td>
+<td>每个合并后的命中片段插入一次的标记</td>
 </tr>
 <tr class="even">
 <td><code>on_fail</code></td>
 <td><code>"redact"</code></td>
 <td>
-<code>redact</code>: preserve safe surrounding text;
-<code>block</code>: replace the whole result</td>
+<code>redact</code>：保留安全的周边文本；<code>block</code>：替换整个结果</td>
 </tr>
 <tr class="odd">
 <td><code>ignore_case</code></td>
 <td><code>TRUE</code></td>
-<td>Case-insensitive matching for all rules</td>
+<td>所有规则大小写不敏感</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="section level3">
-<h3 id="shield_ingress-scan-every-tool-call-before-execution">
-<code>shield_ingress()</code> — scan every tool call before
-execution<a class="anchor" aria-label="anchor" href="#shield_ingress-scan-every-tool-call-before-execution"></a>
+<h3 id="shield_ingress-每次工具调用执行前先扫描">
+<code>shield_ingress()</code> —— 每次工具调用执行前先扫描<a class="anchor" aria-label="anchor" href="#shield_ingress-%E6%AF%8F%E6%AC%A1%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8%E6%89%A7%E8%A1%8C%E5%89%8D%E5%85%88%E6%89%AB%E6%8F%8F"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -366,58 +349,52 @@ execution<a class="anchor" aria-label="anchor" href="#shield_ingress-scan-every-
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Parameter</th>
-<th>Default</th>
-<th>Actual effect</th>
+<th>参数</th>
+<th>默认值</th>
+<th>实际效果</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>langs</code></td>
 <td><code>c("r", "python", "bash")</code></td>
-<td>Select built-in rules for each code/shell language</td>
+<td>为每种代码/shell 语言选择内置规则</td>
 </tr>
 <tr class="even">
 <td><code>patterns</code></td>
 <td><code>NULL</code></td>
-<td>Named regex rules; a name matching a built-in
-<strong>replaces</strong> that rule, a new name is
-<strong>added</strong>. Host file-based blacklists read their own file
-into a named vector and pass it here</td>
+<td>具名正则规则；名字与内置规则同名会<strong>替换</strong>该规则，新名字会<strong>追加</strong>。宿主要用文件管理黑名单，自己读文件成具名向量传进来即可</td>
 </tr>
 <tr class="odd">
 <td><code>include_defaults</code></td>
 <td><code>TRUE</code></td>
-<td>Include the built-in per-language rule set
-(<code>.DATA_SHIELD_INGRESS_RULES</code>): serialization/encoding,
-pandas/R writers, network transfer
-(incl. <code>nc</code>/<code>scp</code>/<code>/dev/tcp</code>),
-data-file display, and protected-name preview</td>
+<td>包含内置的按语言分组规则集（<code>.DATA_SHIELD_INGRESS_RULES</code>）：序列化/编码、pandas/R
+写文件、网络传输（含
+<code>nc</code>/<code>scp</code>/<code>/dev/tcp</code>）、数据文件显示、受保护名称预览</td>
 </tr>
 <tr class="even">
 <td><code>on_fail</code></td>
 <td><code>"block"</code></td>
 <td>
-<code>block</code>: reject the tool call; <code>ask</code>: force
-the existing permission approval UI/callback</td>
+<code>block</code>：拒绝该工具调用；<code>ask</code>：强制走现有权限审批
+UI/回调</td>
 </tr>
 <tr class="odd">
 <td><code>ignore_case</code></td>
 <td><code>TRUE</code></td>
-<td>Case-insensitive matching</td>
+<td>大小写不敏感</td>
 </tr>
 </tbody>
 </table>
-<p>Ingress scans <strong>all</strong> tool arguments before the usual
-read/write/exec capability fast paths, including unknown and read-only
-tools. It does not ban ordinary reading: defaults focus on
-high-confidence read-and-display, serialization, encoding, and
-network-transfer patterns. It is a cheap pre-filter; egress scanning
-remains the primary boundary because code can be obfuscated.</p>
+<p>Ingress
+在通常的读/写/执行能力快速路径<strong>之前</strong>扫描<strong>所有</strong>工具参数，包括未知
+工具和只读工具。它不禁止普通读取：默认规则聚焦于高置信度的”读取并显示”、
+序列化、编码、网络传输模式。它是廉价的预筛，因为代码可以被混淆，所以
+egress 扫描才是主边界。</p>
 </div>
 <div class="section level3">
-<h3 id="shield_tool_policy-exactglob-trust-and-deny-rules">
-<code>shield_tool_policy()</code> — exact/glob trust and deny
-rules<a class="anchor" aria-label="anchor" href="#shield_tool_policy-exactglob-trust-and-deny-rules"></a>
+<h3 id="shield_tool_policy-按工具精确名glob-的信任与拒绝规则">
+<code>shield_tool_policy()</code> —— 按工具精确名/glob
+的信任与拒绝规则<a class="anchor" aria-label="anchor" href="#shield_tool_policy-%E6%8C%89%E5%B7%A5%E5%85%B7%E7%B2%BE%E7%A1%AE%E5%90%8Dglob-%E7%9A%84%E4%BF%A1%E4%BB%BB%E4%B8%8E%E6%8B%92%E7%BB%9D%E8%A7%84%E5%88%99"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -425,44 +402,41 @@ rules<a class="anchor" aria-label="anchor" href="#shield_tool_policy-exactglob-t
 <col width="50%">
 </colgroup>
 <thead><tr class="header">
-<th>Setting</th>
-<th>Meaning</th>
+<th>设置</th>
+<th>含义</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>default="scan"</code></td>
-<td>Every tool is scanned unless a rule overrides it</td>
+<td>每个工具默认都扫描，除非有规则覆盖</td>
 </tr>
 <tr class="even">
 <td><code>execution="deny"</code></td>
-<td>Reject the tool before execution</td>
+<td>执行前直接拒绝该工具</td>
 </tr>
 <tr class="odd">
 <td><code>ingress="bypass"</code></td>
-<td>Skip Shield argument scanning, but still apply permission gate</td>
+<td>跳过盾的参数扫描，但权限门仍然生效</td>
 </tr>
 <tr class="even">
 <td><code>egress="bypass"</code></td>
-<td>Return that tool’s output without Shield filtering; audit every
-bypass</td>
+<td>该工具的输出不经盾过滤直接返回；每次 bypass 都会审计</td>
 </tr>
 <tr class="odd">
 <td><code>egress="deny"</code></td>
-<td>Replace the result with an explicit policy-denied notice</td>
+<td>把结果替换成一句明确的”策略拒绝”提示</td>
 </tr>
 </tbody>
 </table>
-<p>Rules support exact names and <code>*</code> globs. Exact wins;
-otherwise the first matching glob wins. For example, <code>KMPlot</code>
-may bypass egress when its developer guarantees all outputs are
-LLM-safe, while <code>btw_tool_docs_*</code> can receive a broader
-trusted rule. This policy never bypasses codeagent’s independent
-permission system.</p>
+<p>规则支持精确名和 <code>*</code> glob。精确匹配优先；否则第一个匹配的
+glob 生效。例如， 当开发者能保证 <code>KMPlot</code> 的所有输出都对 LLM
+安全时，可以让它 bypass egress； 而 <code>btw_tool_docs_*</code>
+可以拿到一条更宽的信任规则。这条策略<strong>永远不会</strong>绕过
+codeagent 独立的权限系统。</p>
 </div>
 <div class="section level3">
-<h3 id="shield_sandbox-portable-containment-without-crippling-the-agent">
-<code>shield_sandbox()</code> — portable containment without
-crippling the agent<a class="anchor" aria-label="anchor" href="#shield_sandbox-portable-containment-without-crippling-the-agent"></a>
+<h3 id="shield_sandbox-便携式容纳不阉割-agent-能力">
+<code>shield_sandbox()</code> —— 便携式容纳，不阉割 agent 能力<a class="anchor" aria-label="anchor" href="#shield_sandbox-%E4%BE%BF%E6%90%BA%E5%BC%8F%E5%AE%B9%E7%BA%B3%E4%B8%8D%E9%98%89%E5%89%B2-agent-%E8%83%BD%E5%8A%9B"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -471,76 +445,72 @@ crippling the agent<a class="anchor" aria-label="anchor" href="#shield_sandbox-p
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Parameter</th>
-<th>Default</th>
-<th>Actual effect</th>
+<th>参数</th>
+<th>默认值</th>
+<th>实际效果</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>project_root</code></td>
 <td><code><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd()</a></code></td>
-<td>Project root allowed by path policy</td>
+<td>路径策略允许的项目根目录</td>
 </tr>
 <tr class="even">
 <td><code>protected_paths</code></td>
-<td>none</td>
-<td>Extra registered data roots; longest matching root controls
-mode</td>
+<td>无</td>
+<td>额外注册的数据根目录；匹配最长的根目录决定模式</td>
 </tr>
 <tr class="odd">
 <td><code>temp_root</code></td>
-<td>new session temp</td>
-<td>Isolated temporary root</td>
+<td>新建的 session 临时目录</td>
+<td>隔离的临时根目录</td>
 </tr>
 <tr class="even">
 <td><code>modes</code></td>
-<td>project <code>rwx</code>, data <code>rw</code>, temp
+<td>项目 <code>rwx</code>、数据 <code>rw</code>、临时
 <code>rwx</code>
 </td>
-<td>Logical Shield capabilities (not chmod bits)</td>
+<td>逻辑上的盾能力（不是 chmod 位）</td>
 </tr>
 <tr class="odd">
 <td><code>process_exec</code></td>
 <td><code>TRUE</code></td>
-<td>Preserve RunR/Bash/Python; FALSE blocks exec tools</td>
+<td>保留 RunR/Bash/Python；FALSE 会拦所有执行类工具</td>
 </tr>
 <tr class="even">
 <td><code>network</code></td>
 <td><code>"tool_policy"</code></td>
-<td>Let tool policy decide; <code>"deny"</code> blocks net
-capability</td>
+<td>交给工具策略决定；<code>"deny"</code> 直接拦网络能力</td>
 </tr>
 <tr class="odd">
 <td><code>symlink_escape</code></td>
 <td><code>"deny"</code></td>
-<td>Resolve real paths and reject links escaping allowed roots</td>
+<td>解析真实路径，拒绝逃逸出允许根目录的软链接</td>
 </tr>
 <tr class="even">
 <td><code>backend</code></td>
 <td><code>"auto"</code></td>
 <td>
-<code>policy</code>, <code>auto</code>, or
+<code>policy</code>、<code>auto</code>、或
 <code>required</code>
 </td>
 </tr>
 <tr class="odd">
 <td><code>on_unavailable</code></td>
 <td><code>"policy"</code></td>
-<td>Full OS adapter unavailable → policy fallback; <code>block</code>
-fails closed for exec/net</td>
+<td>完整 OS 适配器不可用时降级为策略；<code>block</code> 对 exec/net
+严格拒绝</td>
 </tr>
 </tbody>
 </table>
-<p>Current implementation is a portable central-gate path/capability
-policy. It is not advertised as kernel isolation: the capability probe
-found user/network/ mount namespaces but no bubblewrap/container, and
-plain <code>unshare</code> still sees the host filesystem. A future full
-adapter must move exec tools out of process.</p>
+<p>当前实现是一个便携式的中央门路径/能力策略，<strong>不</strong>对外宣称是内核级隔离：
+能力探测发现有 user/network/mount namespace，但没有 bubblewrap/容器，
+普通 <code>unshare</code>
+仍能看到宿主文件系统。未来完整适配器需要把执行类工具挪出进程。</p>
 </div>
 <div class="section level3">
-<h3 id="shield_reviewer-optional-sanitized-code-semantic-rail">
-<code>shield_reviewer()</code> — optional sanitized-code semantic
-rail<a class="anchor" aria-label="anchor" href="#shield_reviewer-optional-sanitized-code-semantic-rail"></a>
+<h3 id="shield_reviewer-可选的脱敏代码语义审查">
+<code>shield_reviewer()</code> —— 可选的脱敏代码语义审查<a class="anchor" aria-label="anchor" href="#shield_reviewer-%E5%8F%AF%E9%80%89%E7%9A%84%E8%84%B1%E6%95%8F%E4%BB%A3%E7%A0%81%E8%AF%AD%E4%B9%89%E5%AE%A1%E6%9F%A5"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -549,78 +519,72 @@ rail<a class="anchor" aria-label="anchor" href="#shield_reviewer-optional-saniti
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Parameter</th>
-<th>Default</th>
-<th>Actual effect</th>
+<th>参数</th>
+<th>默认值</th>
+<th>实际效果</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>client_factory</code></td>
 <td><code>NULL</code></td>
-<td>Optional function returning a fresh independent ellmer Chat</td>
+<td>可选的函数，返回一个全新的独立 ellmer Chat</td>
 </tr>
 <tr class="even">
 <td><code>model</code></td>
 <td><code>CODEAGENT_FAST_MODEL</code></td>
-<td>Reviewer model; missing config follows <code>on_error</code>, never
-silently main model</td>
+<td>审查模型；未配置时按 <code>on_error</code>
+处理，绝不静默回退主模型</td>
 </tr>
 <tr class="odd">
 <td><code>scope</code></td>
 <td>exec/write/net</td>
-<td>Only these tool capabilities incur review cost</td>
+<td>只有这些工具能力才产生审查开销</td>
 </tr>
 <tr class="even">
 <td><code>on_risk</code></td>
 <td><code>"ask"</code></td>
-<td>Risk classification becomes ask or block</td>
+<td>风险分类结果变成 ask 或 block</td>
 </tr>
 <tr class="odd">
 <td><code>on_error</code></td>
 <td><code>"ask"</code></td>
-<td>Missing model, timeout, request/JSON errors become ask or block; no
-approval→block</td>
+<td>模型缺失、超时、请求/JSON 错误都变成 ask 或 block；无审批通道则
+block</td>
 </tr>
 <tr class="even">
 <td><code>backend</code></td>
 <td><code>"remote_sanitized"</code></td>
-<td>Remote sees only regex/value-sanitized code; raw egress review is
-local-only roadmap</td>
+<td>远程只看脱敏后的代码；raw egress 审查是仅本地的路线图项</td>
 </tr>
 <tr class="odd">
 <td><code>timeout</code></td>
 <td><code>30</code></td>
-<td>Async review timeout seconds</td>
+<td>异步审查超时秒数</td>
 </tr>
 </tbody>
 </table>
-<p>The reviewer is not a tool and cannot be skipped by the main model.
-It has no tools or history; code is delimited as untrusted data and
-parsed from fixed JSON (<code>risk</code>, <code>confidence</code>,
-<code>reason</code>). Deterministic ingress rules run first, so
-already-blocked calls incur no model cost.</p>
+<p>审查器不是一个工具，主模型无法跳过它。它没有工具、没有历史记录；代码被标记为
+不可信数据，输出按固定
+JSON（<code>risk</code>、<code>confidence</code>、<code>reason</code>）解析。确定性的
+ingress 规则先跑，所以已经被拦下的调用不产生模型开销。</p>
 </div>
 <div class="section level3">
-<h3 id="datashieldnew-direct-lifecycle">
-<code>DataShield$new()</code> direct lifecycle<a class="anchor" aria-label="anchor" href="#datashieldnew-direct-lifecycle"></a>
+<h3 id="datashieldnew-直接生命周期管理">
+<code>DataShield$new()</code> 直接生命周期管理<a class="anchor" aria-label="anchor" href="#datashieldnew-%E7%9B%B4%E6%8E%A5%E7%94%9F%E5%91%BD%E5%91%A8%E6%9C%9F%E7%AE%A1%E7%90%86"></a>
 </h3>
-<p>Direct constructor parameters (<code>max_rows</code>,
-<code>distributions</code>, <code>k_anon</code>,
-<code>category_max</code>, <code>category_ratio</code>,
-<code>audit_max</code>) create the default DescribeData + core egress
-configuration when <code>strategies = NULL</code>.
-<code>audit_max</code> defaults to 1000 non-sensitive decision events;
-<code>0</code> disables recording. Supplying
-<code>strategies = list(...)</code> enables <strong>only</strong> listed
-strategies and preserves list order. Use
-<code>shield$register_data()</code>, <code>$install()</code>,
-<code>$describe()</code>, <code>$audit()</code>,
-<code>$clear_audit()</code>, <code>$clear()</code>, and
-<code>$close()</code> for dynamic/session-owned workflows.</p>
+<p><code>strategies = NULL</code>
+时，构造函数直接参数（<code>max_rows</code>、<code>distributions</code>、
+<code>k_anon</code>、<code>category_max</code>、<code>category_ratio</code>、<code>audit_max</code>）会创建默认的
+DescribeData + 核心 egress 配置。<code>audit_max</code> 默认 1000
+条非敏感决策事件； 设为 <code>0</code> 禁用记录。传
+<code>strategies = list(...)</code>
+只会启用<strong>列出的</strong>策略， 并保持列表顺序。动态/session
+拥有的工作流用 <code>shield$register_data()</code>、
+<code>$install()</code>、<code>$describe()</code>、<code>$audit()</code>、<code>$clear_audit()</code>、<code>$clear()</code>、<code>$close()</code>。</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="plain-language-glossary">Plain-language glossary<a class="anchor" aria-label="anchor" href="#plain-language-glossary"></a>
+<h2 id="通俗术语表">通俗术语表<a class="anchor" aria-label="anchor" href="#%E9%80%9A%E4%BF%97%E6%9C%AF%E8%AF%AD%E8%A1%A8"></a>
 </h2>
 <table class="table">
 <colgroup>
@@ -628,215 +592,197 @@ strategies and preserves list order. Use
 <col width="50%">
 </colgroup>
 <thead><tr class="header">
-<th>Term</th>
-<th>Plain meaning</th>
+<th>术语</th>
+<th>通俗含义</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><strong>ingress</strong></td>
-<td>A tool call’s name/arguments entering local execution; scanned
-before the tool runs</td>
+<td>工具调用的名字/参数进入本地执行的那一刻；工具运行前扫描</td>
 </tr>
 <tr class="even">
 <td><strong>egress</strong></td>
-<td>Content leaving a local tool and about to enter the LLM</td>
+<td>内容离开本地工具、即将进入 LLM 的那一刻</td>
 </tr>
 <tr class="odd">
 <td><strong>row-cap</strong></td>
-<td>A limit on how many printed table lines may pass; <code>0</code>
-means no raw line</td>
+<td>打印表格行数的上限；<code>0</code> 表示不放行任何原始行</td>
 </tr>
 <tr class="even">
 <td><strong>value-match</strong></td>
-<td>Exact matching against high-entropy values indexed from registered
-protected data</td>
+<td>对照已注册受保护数据索引出的高熵值做精确匹配</td>
 </tr>
 <tr class="odd">
 <td><strong>PII</strong></td>
-<td>Personally identifiable information, such as email, phone, identity
-number, or name</td>
+<td>个人可识别信息，如邮箱、电话、身份证号、姓名</td>
 </tr>
 <tr class="even">
 <td><strong>kind</strong></td>
-<td>What a registered asset is (dataset/spec/document/synthetic), not
-its R data type or access level</td>
+<td>一份已注册资产<strong>是什么</strong>（dataset/spec/document/synthetic），不是它的
+R 数据类型或访问级别</td>
 </tr>
 <tr class="odd">
 <td><strong>provenance</strong></td>
-<td>A verifiable source tag showing which registered asset produced a
-result</td>
+<td>可验证的来源标签，证明某个结果来自哪份已注册资产</td>
 </tr>
 <tr class="even">
 <td><strong>raw access</strong></td>
-<td>Content may enter an LLM edge without row/value restrictions;
-optional secret/PII scanning may still apply</td>
+<td>内容可以不受行/值限制地进入某条 LLM 边；仍可能应用可选的 secret/PII
+扫描</td>
 </tr>
 <tr class="odd">
 <td><strong>regex</strong></td>
-<td>Regular expression: a text pattern such as
-<code>STUDY-[0-9]+</code>
-</td>
+<td>正则表达式：如 <code>STUDY-[0-9]+</code> 这样的文本模式</td>
 </tr>
 <tr class="even">
 <td><strong>PCRE</strong></td>
-<td>Perl-Compatible Regular Expression, the regex syntax used by R with
-<code>perl=TRUE</code>
-</td>
+<td>Perl 兼容正则表达式，R 用 <code>perl=TRUE</code>
+时使用的正则语法</td>
 </tr>
 <tr class="odd">
 <td><strong>span</strong></td>
-<td>Start/end character positions of a detected sensitive substring,
-enabling precise replacement</td>
+<td>检测到的敏感子串的起止字符位置，用于精确替换</td>
 </tr>
 <tr class="even">
 <td><strong>k-anonymity threshold</strong></td>
-<td>Do not expose a category label unless at least <code>k</code> rows
-support it</td>
+<td>除非至少 k 行支持，否则不暴露某个类别标签</td>
 </tr>
 <tr class="odd">
 <td><strong>fail closed</strong></td>
-<td>If a safety scanner fails, block output instead of allowing it</td>
+<td>安全扫描器出错时，默认拦截输出而非放行</td>
 </tr>
 <tr class="even">
 <td><strong>semantic reviewer</strong></td>
-<td>A separate small model that classifies what sanitized tool code is
-trying to do; it never sees raw data remotely</td>
+<td>一个独立的小模型，用来分类脱敏后的工具代码想做什么；它绝不会远程看到原始数据</td>
 </tr>
 <tr class="odd">
 <td><strong>R6</strong></td>
-<td>R’s mutable object system; one <code>DataShield</code> owns private
-datasets/index/lifecycle</td>
+<td>R 的可变对象系统；一个 <code>DataShield</code>
+持有私有的数据集/索引/生命周期</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="section level2">
-<h2 id="non-sensitive-audit-log">Non-sensitive audit log<a class="anchor" aria-label="anchor" href="#non-sensitive-audit-log"></a>
+<h2 id="非敏感审计日志">非敏感审计日志<a class="anchor" aria-label="anchor" href="#%E9%9D%9E%E6%95%8F%E6%84%9F%E5%AE%A1%E8%AE%A1%E6%97%A5%E5%BF%97"></a>
 </h2>
-<p><code>shield$audit()</code> returns an in-memory data.frame of policy
-decisions:</p>
+<p><code>shield$audit()</code> 返回一个内存中的策略决策 data.frame：</p>
 <table class="table">
 <colgroup>
 <col width="50%">
 <col width="50%">
 </colgroup>
 <thead><tr class="header">
-<th>Field</th>
-<th>Meaning</th>
+<th>字段</th>
+<th>含义</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>timestamp</code></td>
-<td>UTC event time</td>
+<td>UTC 事件时间</td>
 </tr>
 <tr class="even">
 <td><code>edge</code></td>
 <td>
-<code>ingress</code> (before tool) or <code>egress</code> (before
-LLM)</td>
+<code>ingress</code>（工具执行前）或 <code>egress</code>（进 LLM
+前）</td>
 </tr>
 <tr class="odd">
 <td>
 <code>tool_name</code>, <code>tool_call_id</code>
 </td>
-<td>Non-sensitive correlation identifiers</td>
+<td>非敏感的关联标识符</td>
 </tr>
 <tr class="even">
 <td><code>strategy</code></td>
 <td>
-<code>row_cap</code>, <code>value_match</code>, <code>regex</code>,
-<code>ingress</code>, or custom scanner name</td>
+<code>row_cap</code>、<code>value_match</code>、<code>regex</code>、<code>ingress</code>，或自定义
+scanner 名</td>
 </tr>
 <tr class="odd">
 <td>
 <code>action</code>, <code>reason</code>
 </td>
 <td>
-<code>redact</code>/<code>block</code>/<code>ask</code> and a
-rule/reason label</td>
+<code>redact</code>/<code>block</code>/<code>ask</code>
+和一个规则/原因标签</td>
 </tr>
 <tr class="even">
 <td>
 <code>match_count</code>, <code>score</code>
 </td>
-<td>Number of matches and normalized risk score</td>
+<td>命中数量和归一化风险分数</td>
 </tr>
 </tbody>
 </table>
-<p>It <strong>never stores</strong> raw tool arguments/results, matched
-values, data rows, span text, or hashes. <code>audit_max</code> bounds
-memory (oldest events are dropped); use
-<code>shield$clear_audit()</code> to clear it. Each
-<code>DataShield</code> R6 has its own log, so session/thread isolation
-matches the policy instance.</p>
+<p>它<strong>绝不存储</strong>原始工具输入/输出、命中的值、数据行、span
+文本、或哈希值。 <code>audit_max</code>
+限制内存（最旧的事件会被丢弃）；用 <code>shield$clear_audit()</code>
+清空。 每个 <code>DataShield</code> R6 都有自己的日志，所以
+session/thread 隔离与策略实例保持一致。</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">recent</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">shield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="data-asset-policy-what-it-is-what-the-llm-may-see">Data Asset Policy: what it is × what the LLM may see<a class="anchor" aria-label="anchor" href="#data-asset-policy-what-it-is-what-the-llm-may-see"></a>
+<h2 id="数据资产策略资产是什么-llm-能看到多少">数据资产策略：资产是什么 × LLM 能看到多少<a class="anchor" aria-label="anchor" href="#%E6%95%B0%E6%8D%AE%E8%B5%84%E4%BA%A7%E7%AD%96%E7%95%A5%E8%B5%84%E4%BA%A7%E6%98%AF%E4%BB%80%E4%B9%88-llm-%E8%83%BD%E7%9C%8B%E5%88%B0%E5%A4%9A%E5%B0%91"></a>
 </h2>
-<p>Asset content type and LLM access are orthogonal:</p>
+<p>资产的内容类型和 LLM 访问级别是<strong>正交</strong>的两个轴：</p>
 <table class="table">
 <thead><tr class="header">
 <th><code>kind</code></th>
-<th>Default prompt</th>
-<th>Default egress</th>
-<th>Typical use</th>
+<th>默认 prompt</th>
+<th>默认 egress</th>
+<th>典型用途</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>dataset</code></td>
 <td><code>schema</code></td>
 <td><code>scan</code></td>
-<td>patient/analysis data</td>
+<td>患者/分析数据</td>
 </tr>
 <tr class="even">
 <td><code>spec</code></td>
 <td><code>raw</code></td>
 <td><code>scan</code></td>
-<td>ADaM spec, SDTMIG, public dictionaries</td>
+<td>ADaM spec、SDTMIG、公开字典</td>
 </tr>
 <tr class="odd">
 <td><code>synthetic</code></td>
 <td><code>raw</code></td>
 <td><code>scan</code></td>
-<td>dummy/edge-case test data</td>
+<td>dummy/边界情况测试数据</td>
 </tr>
 <tr class="even">
 <td><code>document</code></td>
 <td><code>scan</code></td>
 <td><code>scan</code></td>
-<td>ordinary reference documents</td>
+<td>普通参考文档</td>
 </tr>
 </tbody>
 </table>
 <table class="table">
-<colgroup>
-<col width="50%">
-<col width="50%">
-</colgroup>
 <thead><tr class="header">
-<th>Access</th>
-<th>Meaning</th>
+<th>访问级别</th>
+<th>含义</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>none</code></td>
-<td>content unavailable to that LLM edge</td>
+<td>该 LLM 边完全看不到内容</td>
 </tr>
 <tr class="even">
 <td><code>schema</code></td>
-<td>only strict DescribeData-style metadata</td>
+<td>只给严格 DescribeData 风格的元数据</td>
 </tr>
 <tr class="odd">
 <td><code>scan</code></td>
-<td>content must pass configured Shield scanners</td>
+<td>内容必须经过已配置的盾扫描器</td>
 </tr>
 <tr class="even">
 <td><code>raw</code></td>
-<td>bypass row/value restrictions; baseline secret/PII regex still
-applies unless explicitly disabled</td>
+<td>绕过行/值限制；除非显式关闭，否则仍跑基础 secret/PII 正则</td>
 </tr>
 </tbody>
 </table>
@@ -852,8 +798,8 @@ applies unless explicitly disabled</td>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">prompt_text</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">prompt_content</span><span class="op">(</span><span class="st">"adam_spec"</span><span class="op">)</span></span></code></pre></div>
-<p>Raw egress never follows from <code>kind</code> alone. It requires
-explicit policy and provenance:</p>
+<p>Raw egress <strong>不会</strong>仅凭 <code>kind</code>
+就自动放行，它需要显式策略 + 来源凭证（provenance）：</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span></span>
 <span>  <span class="va">adam_spec</span>, name <span class="op">=</span> <span class="st">"adam_spec"</span>, kind <span class="op">=</span> <span class="st">"spec"</span>,</span>
@@ -861,23 +807,21 @@ explicit policy and provenance:</p>
 <span>  reason <span class="op">=</span> <span class="st">"Validated public specification"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">tool_result</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">trusted_result</span><span class="op">(</span><span class="va">value</span>, source <span class="op">=</span> <span class="st">"adam_spec"</span><span class="op">)</span></span></code></pre></div>
-<p>An untagged or mixed tool result remains scanned. Raw asset policies
-require a reason, expire with the owning DataShield session by default,
-may set a POSIXct expiry, and emit bypass audit events. Synthetic raw
-always keeps baseline PII/secret scanning; spec raw may explicitly set
-<code>scan_secrets = FALSE</code>.</p>
+<p>未打标签或混合内容的工具结果仍会被扫描。Raw 资产策略必须填
+<code>reason</code>，默认 随所属 DataShield 的 session 过期，可设置
+POSIXct 过期时间，且每次都会产生 bypass 审计事件。Synthetic 的 raw
+始终保留基础 PII/secret 扫描；spec 的 raw 可以显式设置
+<code>scan_secrets = FALSE</code>。</p>
 <div class="section level3">
-<h3 id="column-level-raw-access">Column-level raw access<a class="anchor" aria-label="anchor" href="#column-level-raw-access"></a>
+<h3 id="列级-raw-访问">列级 raw 访问<a class="anchor" aria-label="anchor" href="#%E5%88%97%E7%BA%A7-raw-%E8%AE%BF%E9%97%AE"></a>
 </h3>
-<p>Assets are whole-object; <code>register_data(column_access=)</code>
-is the column-grained counterpart for a protected data.frame that
-contains a few public-dictionary columns (e.g. an SDTM
-<code>TESTCD</code> codelist) alongside protected ones. It reuses the
-same
+<p>资产是整份对象级别的；<code>register_data(column_access=)</code>
+是<strong>列粒度</strong>的对应机制，
+用于一个大部分受保护、但含少量公开字典列（例如 SDTM 的
+<code>TESTCD</code> 代码表）的 data.frame。它复用与资产相同的
 <code>none</code>/<code>schema</code>/<code>scan</code>/<code>raw</code>
-access levels as assets, split into
-<code>prompt</code>/<code>egress</code>, and a raw edge likewise
-requires a non-empty <code>reason</code>.</p>
+访问级别，拆成 <code>prompt</code>/<code>egress</code> 两个 scope，raw
+边同样要求非空的 <code>reason</code>。</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span></span>
 <span>  <span class="va">vs</span>, name <span class="op">=</span> <span class="st">"vs"</span>,</span>
@@ -887,25 +831,24 @@ requires a non-empty <code>reason</code>.</p>
 <span>                  reason <span class="op">=</span> <span class="st">"SDTM public codelist"</span>, scan_secrets <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
-<code>prompt = "raw"</code> lets <code>DescribeData</code> enumerate
-that column’s real values (no k-anonymity suppression) so the model can
-write correct filters.</li>
+<code>prompt = "raw"</code> 让 <code>DescribeData</code>
+枚举该列的真实值（不做 k-匿名抑制），
+这样模型才能写出正确的过滤条件。</li>
 <li>
-<code>egress = "raw"</code> removes the column from the value-match
-index, so its values are not withheld from tool output.</li>
-<li>An override <strong>missing its <code>reason</code> is dropped with
-a warning</strong>, and the column falls back to its sensitivity tier —
-a mislabeled column fails safe, never silently leaks.
-<code>coverage()$raw_access_columns</code> counts active overrides.</li>
+<code>egress = "raw"</code> 把该列从 value-match
+索引中移除，所以它的值不会从工具 输出中被扣留。</li>
+<li>缺少 <code>reason</code> 的 override
+<strong>会被丢弃并发出警告</strong>，该列退回到它的敏感度档位——
+一个标错的列会安全降级，绝不会静默泄漏。<code>coverage()$raw_access_columns</code>
+统计当前生效的 override 数量。</li>
 </ul>
 </div>
 <div class="section level3">
-<h3 id="host-pattern-a-provenance-tagging-spec-tool">Host pattern: a provenance-tagging spec tool<a class="anchor" aria-label="anchor" href="#host-pattern-a-provenance-tagging-spec-tool"></a>
+<h3 id="宿主模式一个自带来源标记的-spec-工具">宿主模式：一个自带来源标记的 spec 工具<a class="anchor" aria-label="anchor" href="#%E5%AE%BF%E4%B8%BB%E6%A8%A1%E5%BC%8F%E4%B8%80%E4%B8%AA%E8%87%AA%E5%B8%A6%E6%9D%A5%E6%BA%90%E6%A0%87%E8%AE%B0%E7%9A%84-spec-%E5%B7%A5%E5%85%B7"></a>
 </h3>
-<p>Raw asset egress needs a provenance tag. Rather than a framework
-“trusted tool” type, a host composes the existing primitives —
-<code>register_asset()</code> plus <code>trusted_result()</code> —
-inside its own tool:</p>
+<p>Raw 资产的 egress 需要来源凭证。与其在框架里造一个”trusted
+tool”类型， 不如让宿主用现成的原语——<code>register_asset()</code> 加
+<code>trusted_result()</code>——自己 拼一个工具：</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">read_adam_spec_tool</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">shield</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">tool</a></span><span class="op">(</span></span>
@@ -917,57 +860,54 @@ inside its own tool:</p>
 <span>    description <span class="op">=</span> <span class="st">"Read a registered, LLM-safe ADaM specification."</span>,</span>
 <span>    arguments <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>path <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_string</a></span><span class="op">(</span><span class="st">"Spec file path"</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
-<span><span class="co"># register once; the tool auto-tags provenance on every read</span></span>
+<span><span class="co"># 只需注册一次；工具每次读取都会自动打上来源标记</span></span>
 <span><span class="va">shield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span><span class="va">adam_spec_path</span>, name <span class="op">=</span> <span class="st">"adam_spec"</span>, kind <span class="op">=</span> <span class="st">"spec"</span>,</span>
 <span>  llm_access <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>prompt <span class="op">=</span> <span class="st">"raw"</span>, egress <span class="op">=</span> <span class="st">"raw"</span><span class="op">)</span>,</span>
 <span>  reason <span class="op">=</span> <span class="st">"Validated public specification"</span><span class="op">)</span></span></code></pre></div>
-<p>The agent calls <code>ReadADaMSpec</code> like any tool; the raw
-bypass is authorized by the registered asset policy and audited, and a
-mixed/untagged result from any other tool is still scanned.</p>
+<p>Agent 像调用任何普通工具一样调用 <code>ReadADaMSpec</code>；raw
+放行由已注册的资产策略
+授权并被审计，而任何其他工具返回的混合/未打标签结果仍会被扫描。</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="p0-the-foundation-available-now">P0 — the foundation (available now)<a class="anchor" aria-label="anchor" href="#p0-the-foundation-available-now"></a>
+<h2 id="p0-地基现已可用">P0 —— 地基（现已可用）<a class="anchor" aria-label="anchor" href="#p0-%E5%9C%B0%E5%9F%BA%E7%8E%B0%E5%B7%B2%E5%8F%AF%E7%94%A8"></a>
 </h2>
-<p>The minimal, deterministic slice that already gives real
-protection:</p>
+<p>已经能提供真实保护的最小确定性切片：</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Easy entry: strategy specs create one private DataShield R6 for this client.</span></span>
+<code class="sourceCode R"><span><span class="co"># 简单入口：策略 spec 会为这个 client 创建一个私有 DataShield R6。</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span></span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Harness-only client: attach tools, then install its R6 engine.</span></span>
+<span><span class="co"># 仅 harness 场景：先挂工具，再安装它的 R6 引擎。</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, register_tools <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">chat</span><span class="op">$</span><span class="fu">register_tool</span><span class="op">(</span><span class="va">my_tool</span><span class="op">)</span></span>
 <span><span class="va">client</span><span class="op">$</span><span class="va">data_shield</span><span class="op">$</span><span class="fu">install</span><span class="op">(</span><span class="va">client</span><span class="op">$</span><span class="va">chat</span><span class="op">)</span></span></code></pre></div>
 <ul>
 <li>
-<strong>Edge 2 — shape-based egress row-cap.</strong> codeagent does
-<strong>not</strong> inspect code or block <code>print</code>. It looks
-only at the <strong>shape</strong> of a tool’s returned text: output
-with a data.frame / tibble print signature or a many-row rectangular
-table is truncated to a shape summary; scalars, messages, <strong>model
-summaries</strong>, plots and errors pass through untouched.
-Content-agnostic and tunable via <code>max_rows</code>.</li>
+<strong>边 2 —— 基于形状的 egress 行数上限。</strong> codeagent
+<strong>不</strong>检查代码，也不拦 <code>print</code>
+本身。它只看工具返回文本的<strong>形状</strong>：具有 data.frame/tibble
+打印
+签名或多行矩形表格的输出，会被截断成一句形状摘要；标量、消息、<strong>模型摘要</strong>、
+图表和错误信息原样放行。与内容无关，可通过 <code>max_rows</code>
+调节。</li>
 <li>
-<strong>Edge 1 — ambient stays schema-only.</strong> codeagent’s
-ambient injection already emits only
-<code>name [data.frame N x M: col:type, ...]</code> (no values); Data
-Shield keeps it that way.</li>
+<strong>边 1 —— ambient 注入保持仅 schema。</strong> codeagent 的
+ambient 注入本来就只 给出
+<code>name [data.frame N x M: col:type, ...]</code>（不给值）；数据盾保持这个不变。</li>
 </ul>
 <div class="section level3">
-<h3 id="runtime-uploads-in-shiny">Runtime uploads in Shiny<a class="anchor" aria-label="anchor" href="#runtime-uploads-in-shiny"></a>
+<h3 id="shiny-中的运行时上传">Shiny 中的运行时上传<a class="anchor" aria-label="anchor" href="#shiny-%E4%B8%AD%E7%9A%84%E8%BF%90%E8%A1%8C%E6%97%B6%E4%B8%8A%E4%BC%A0"></a>
 </h3>
-<p>The dataset does <strong>not</strong> need to be known when the app
-starts. Register it in the upload observer immediately after reading it;
-tools may already be attached and wrapped, because value matching reads
-the live index at invocation time.</p>
+<p>数据集<strong>不需要</strong>在 app 启动时就已知。在上传的 observer
+里，读完文件后立刻 注册即可；工具可能已经挂好并被包裹了，因为 value
+matching 在每次调用时 读取的是活的索引。</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Inside each Shiny server session: one R6 may be shared by selected chats.</span></span>
+<code class="sourceCode R"><span><span class="co"># 每个 Shiny server session 内部：一个 R6 可以被选定的多个 chat 共享。</span></span>
 <span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">data_env</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">new.env</a></span><span class="op">(</span>parent <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/environment.html" class="external-link">emptyenv</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
@@ -979,73 +919,71 @@ the live index at invocation time.</p>
 <span><span class="fu">observeEvent</span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">file</span>, <span class="op">{</span></span>
 <span>  <span class="va">df</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/utils/read.table.html" class="external-link">read.csv</a></span><span class="op">(</span><span class="va">input</span><span class="op">$</span><span class="va">file</span><span class="op">$</span><span class="va">datapath</span><span class="op">)</span></span>
 <span>  <span class="va">data_env</span><span class="op">$</span><span class="va">uploaded</span> <span class="op">&lt;-</span> <span class="va">df</span></span>
-<span>  <span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"uploaded"</span><span class="op">)</span> <span class="co"># no advance columns needed</span></span>
+<span>  <span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"uploaded"</span><span class="op">)</span> <span class="co"># 无需预先知道列</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
-<p>A complete runnable host-style Shiny example is installed at:</p>
+<p>一个完整可运行的宿主风格 Shiny 示例安装在：</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples/data_shield_upload_app.R"</span>, package <span class="op">=</span> <span class="st">"codeagent"</span><span class="op">)</span></span></code></pre></div>
-<p>From a development checkout:</p>
+<p>从开发检出目录：</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"inst/examples/data_shield_upload_app.R"</span><span class="op">)</span></span></code></pre></div>
-<p>It demonstrates five outcomes after upload: bulk rows withheld by
-<code>row_cap</code>, a single indexed value withheld by
-<code>value_match</code>, unregistered PII redacted by
-<code>shield_regex</code>, a harmless shape summary passed through, and
-strict <code>DescribeData</code> metadata with raw identifiers
-suppressed.</p>
-<p>For a smaller single-focus demo — a real
-<code>codeagent_client</code> wired into a real
-<code><a href="https://posit-dev.github.io/shinychat/r/reference/chat_ui.html" class="external-link">shinychat::chat_ui</a></code>, with <code>fileInput()</code> upload on
-one side and the live non-sensitive audit log on the other — see
-<code>inst/examples/data_shield_minimal_app.R</code>.</p>
+<p>它演示了上传后的五种结果：整批行被 <code>row_cap</code>
+扣留、单个已索引值被 <code>value_match</code> 扣留、未注册 PII 被
+<code>shield_regex</code> 脱敏、无害的形状摘要 正常放行、以及严格
+<code>DescribeData</code> 元数据抑制了原始标识符。</p>
+<p>若要一个更小、聚焦单一场景的演示——一个真实的
+<code>codeagent_client</code> 接进一个 真实的
+<code><a href="https://posit-dev.github.io/shinychat/r/reference/chat_ui.html" class="external-link">shinychat::chat_ui</a></code>，一侧是 <code>fileInput()</code>
+上传，另一侧是实时的 非敏感审计日志——见
+<code>inst/examples/data_shield_minimal_app.R</code>。</p>
 <blockquote>
-<p><strong>Multi-user isolation:</strong> create
-<code>DataShield$new()</code> inside the Shiny server function, share it
-only among the intended chat threads, and register data via
-<code>shield$register_data()</code>. Other browser sessions receive
-separate R6 instances and cannot see or influence its index.</p>
+<p><strong>多用户隔离：</strong> 在 Shiny server
+函数<strong>内部</strong>创建 <code>DataShield$new()</code>， 只在目标
+chat 线程之间共享它，并通过 <code>shield$register_data()</code>
+注册数据。 其他浏览器 session 会拿到各自独立的 R6
+实例，看不到也影响不了这个索引。</p>
 </blockquote>
-<p>Illustrative behaviour of the P0 row-cap (implemented):</p>
+<p>P0 行数上限的直观行为（已实现）：</p>
 <table class="table">
 <thead><tr class="header">
-<th>tool output</th>
-<th>P0 action</th>
+<th>工具输出</th>
+<th>P0 动作</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td>
-<code>print(mtcars)</code> (bulk rows)</td>
-<td>capped → shape summary</td>
+<code>print(mtcars)</code>（整批行）</td>
+<td>截断 → 形状摘要</td>
 </tr>
 <tr class="even">
-<td>a tibble print (<code># A tibble: 320 x 12</code>)</td>
-<td>capped</td>
+<td>tibble 打印（<code># A tibble: 320 x 12</code>）</td>
+<td>截断</td>
 </tr>
 <tr class="odd">
 <td>
 <code>print(nrow(df))</code> → <code>320</code>
 </td>
-<td>passes</td>
+<td>放行</td>
 </tr>
 <tr class="even">
-<td>a status message</td>
-<td>passes</td>
+<td>一条状态消息</td>
+<td>放行</td>
 </tr>
 <tr class="odd">
 <td><code>print(summary(fit))</code></td>
-<td>passes (not row data)</td>
+<td>放行（不是行数据）</td>
 </tr>
 </tbody>
 </table>
 </div>
 </div>
 <div class="section level2">
-<h2 id="p1-describedata-strict-safe-metadata-contract">P1 <code>DescribeData</code>: strict safe metadata contract<a class="anchor" aria-label="anchor" href="#p1-describedata-strict-safe-metadata-contract"></a>
+<h2 id="p1-describedata严格安全元数据契约">P1 <code>DescribeData</code>：严格安全元数据契约<a class="anchor" aria-label="anchor" href="#p1-describedata%E4%B8%A5%E6%A0%BC%E5%AE%89%E5%85%A8%E5%85%83%E6%95%B0%E6%8D%AE%E5%A5%91%E7%BA%A6"></a>
 </h2>
-<p><code>DescribeData</code> is the sanctioned way for the model to
-understand protected data without receiving rows. Its output is
-determined by three orthogonal dimensions:</p>
+<p><code>DescribeData</code>
+是模型理解受保护数据、但不接收行的<strong>唯一合法途径</strong>。它的输出
+由三个正交维度共同决定：</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -1053,32 +991,30 @@ determined by three orthogonal dimensions:</p>
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Dimension</th>
-<th>Values</th>
-<th>Purpose</th>
+<th>维度</th>
+<th>取值</th>
+<th>目的</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>Global policy</td>
+<td>全局策略</td>
 <td><code>distributions = "off" / "on" / "dp"</code></td>
-<td>strict defaults to no distributions; <code>on</code> is explicit
-opt-in; <code>dp</code> adds noise + budget</td>
+<td>严格默认不给分布；<code>on</code> 是显式 opt-in；<code>dp</code>
+加噪声 + 预算</td>
 </tr>
 <tr class="even">
-<td>Column sensitivity</td>
+<td>列敏感度</td>
 <td><code>identifier / quasi / measure / open</code></td>
-<td>business role that clamps the maximum disclosure for that
-column</td>
+<td>钳制该列最大披露程度的业务角色</td>
 </tr>
 <tr class="odd">
-<td>Data type</td>
+<td>数据类型</td>
 <td>numeric / factor / character / Date / …</td>
-<td>determines the safe representation: range, labels, or free-text
-marker</td>
+<td>决定安全表示形式：范围、标签、还是自由文本标记</td>
 </tr>
 </tbody>
 </table>
-<p>Strict (<code>distributions = "off"</code>) matrix:</p>
+<p>严格模式（<code>distributions = "off"</code>）矩阵：</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -1086,51 +1022,48 @@ marker</td>
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Metadata</th>
+<th>元数据</th>
 <th>identifier / quasi</th>
 <th>measure / open</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>column name, type, missing presence</td>
-<td>shown</td>
-<td>shown</td>
+<td>列名、类型、是否缺失</td>
+<td>显示</td>
+<td>显示</td>
 </tr>
 <tr class="even">
-<td>numeric/date min–max</td>
-<td>hidden</td>
-<td>shown</td>
+<td>数值/日期 min-max</td>
+<td>隐藏</td>
+<td>显示</td>
 </tr>
 <tr class="odd">
-<td>low-cardinality categorical labels</td>
-<td>hidden</td>
-<td>shown without counts; levels with support <code>&lt; k</code> are
-suppressed</td>
+<td>低基数分类标签</td>
+<td>隐藏</td>
+<td>显示但不给计数；支持行数 <code>&lt; k</code> 的水平被抑制</td>
 </tr>
 <tr class="even">
-<td>real free-text examples</td>
-<td>hidden</td>
-<td>hidden</td>
+<td>真实自由文本示例</td>
+<td>隐藏</td>
+<td>隐藏</td>
 </tr>
 <tr class="odd">
-<td>histogram, quantiles, mean/SD, category counts</td>
-<td>hidden</td>
-<td>hidden (<code>on</code>/<code>dp</code> opt-in only)</td>
+<td>直方图、分位数、均值/标准差、类别计数</td>
+<td>隐藏</td>
+<td>隐藏（仅 <code>on</code>/<code>dp</code> opt-in）</td>
 </tr>
 </tbody>
 </table>
-<p>A factor is not automatically safe: a factorised subject ID remains
-an <code>identifier</code>. Character columns receive categorical labels
-only when they are low-cardinality, low-uniqueness, non-PII, and every
-exposed level satisfies the k-anonymity threshold. Free text never
-receives real examples in strict mode.</p>
+<p>factor 类型不代表自动安全：一个被 factor 化的受试者 ID 仍然是
+<code>identifier</code>。 字符列只有在低基数、低唯一性、非
+PII、且每个暴露的水平都满足 k-匿名阈值时，
+才会给出分类标签。自由文本在严格模式下永远不给真实示例。</p>
 </div>
 <div class="section level2">
-<h2 id="p1-5-ordered-egress-scanners">P1.5 ordered egress scanners<a class="anchor" aria-label="anchor" href="#p1-5-ordered-egress-scanners"></a>
+<h2 id="p1-5-有序-egress-扫描器">P1.5 有序 egress 扫描器<a class="anchor" aria-label="anchor" href="#p1-5-%E6%9C%89%E5%BA%8F-egress-%E6%89%AB%E6%8F%8F%E5%99%A8"></a>
 </h2>
-<p>Strategy-list order is the execution order.
-<code><a href="../reference/shield_regex.html">shield_regex()</a></code> catches sensitive content even when no
-data.frame was registered:</p>
+<p>策略列表的顺序就是执行顺序。即使没有注册任何
+data.frame，<code><a href="../reference/shield_regex.html">shield_regex()</a></code> 也能抓到敏感内容：</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -1138,127 +1071,120 @@ data.frame was registered:</p>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>patterns<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>study_id<span class="op">=</span><span class="st">"STUDY-[0-9]+"</span><span class="op">)</span>,</span>
 <span>               include_defaults<span class="op">=</span><span class="cn">FALSE</span>, on_fail<span class="op">=</span><span class="st">"block"</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Built-ins cover email, phone-like strings, common API-token prefixes
-and 18-character identity-number shapes. <code>redact</code> replaces
-only matched spans; <code>block</code> discards the whole model-facing
-result. Custom scanner functions may be appended with
-<code>shield$add_scanner(name, fn)</code>; invalid scanner
-results/errors fail closed.</p>
+<p>内置规则覆盖 email、类电话号码字符串、常见 API-token 前缀、18
+位身份证号 形状。<code>redact</code>
+只替换命中的片段；<code>block</code> 丢弃整个面向模型的结果。可以用
+<code>shield$add_scanner(name, fn)</code> 追加自定义 scanner
+函数；非法的 scanner 结果/错误会 fail closed。</p>
 </div>
 <div class="section level2">
-<h2 id="c2-universal-ingress-scanning">C2 universal ingress scanning<a class="anchor" aria-label="anchor" href="#c2-universal-ingress-scanning"></a>
+<h2 id="c2-通用-ingress-扫描">C2 通用 ingress 扫描<a class="anchor" aria-label="anchor" href="#c2-%E9%80%9A%E7%94%A8-ingress-%E6%89%AB%E6%8F%8F"></a>
 </h2>
-<p><code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> is installed into codeagent’s existing
-single central permission gate; it does not create a competing
-callback/gate. It scans every tool’s arguments before the read-only fast
-path. A <code>block</code> result raises <code>tool_reject</code>; an
-<code>ask</code> result reuses the current CLI/Shiny approval callback,
-including tool-call id correlation.</p>
+<p><code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> 被安装进 codeagent
+现有的<strong>唯一中央权限门</strong>，不会创建
+一个与之竞争的回调/门。它在只读快速路径之前扫描每个工具的参数。<code>block</code>
+结果会抛出 <code>tool_reject</code>；<code>ask</code> 结果复用当前
+CLI/Shiny 的审批回调， 包括 tool-call id 的关联。</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Defaults intentionally do not reject every <code>Read</code> or
-<code>print</code>: <code>nrow(study)</code> and
-<code>print("done")</code> pass, while <code>head(study)</code>,
-<code>dput(study)</code>, base64/pickle/JSON serialization, upload-style
-curl/requests calls, and shell display of data files are reviewed or
-blocked.</p>
+<p>默认规则刻意不会拒绝每一次 <code>Read</code> 或
+<code>print</code>：<code>nrow(study)</code> 和
+<code>print("done")</code> 会放行，而
+<code>head(study)</code>、<code>dput(study)</code>、 base64/pickle/JSON
+序列化、上传风格的 curl/requests 调用、shell 里显示
+数据文件，都会被审查或拦截。</p>
 </div>
 <div class="section level2">
-<h2 id="c5-portable-sandbox-and-btw-boundary">C5 portable sandbox and btw boundary<a class="anchor" aria-label="anchor" href="#c5-portable-sandbox-and-btw-boundary"></a>
+<h2 id="c5-便携式沙箱与-btw-边界">C5 便携式沙箱与 btw 边界<a class="anchor" aria-label="anchor" href="#c5-%E4%BE%BF%E6%90%BA%E5%BC%8F%E6%B2%99%E7%AE%B1%E4%B8%8E-btw-%E8%BE%B9%E7%95%8C"></a>
 </h2>
-<p><code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code> deliberately preserves coding
-capability: project and session-temp default to <code>rwx</code>,
-protected data defaults to <code>rw</code> but may be <code>rwx</code>,
-and process execution stays enabled. Its current portable backend blocks
-explicit paths outside allowed roots, rejects symlink escape, and
-applies network/process capability policy in the central gate.</p>
-<p>btw is not assumed to provide OS isolation. Its file tools enforce
-cwd with <code><a href="https://fs.r-lib.org/reference/path_math.html" class="external-link">fs::path_has_parent()</a></code> but a project-internal
-symlink to an external file passed our probe; its RunR executes through
-<code>evaluate</code> in the global environment and only restores
-cwd/options/envvars. Data Shield therefore applies uniformly to native,
-btw, MCP and host tools.</p>
+<p><code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code> 刻意保留编码能力：项目目录和 session
+临时目录默认 <code>rwx</code>，受保护数据默认 <code>rw</code> 但可设为
+<code>rwx</code>，进程执行能力保持开启。当前
+便携式后端会拦截允许根目录之外的显式路径、拒绝符号链接逃逸、并在中央
+门里应用网络/进程能力策略。</p>
+<p>btw 不被假定提供 OS 级隔离。它的文件工具用
+<code><a href="https://fs.r-lib.org/reference/path_math.html" class="external-link">fs::path_has_parent()</a></code> 强制限定
+cwd，但我们的探测发现一个项目内指向外部文件的符号链接能够通过； 它的
+RunR 在全局环境里通过 <code>evaluate</code> 执行，只恢复
+cwd/options/环境变量。 因此数据盾对 native、btw、MCP
+和宿主工具一视同仁地生效。</p>
 </div>
 <div class="section level2">
-<h2 id="c4-semantic-reviewer">C4 semantic reviewer<a class="anchor" aria-label="anchor" href="#c4-semantic-reviewer"></a>
+<h2 id="c4-语义审查器">C4 语义审查器<a class="anchor" aria-label="anchor" href="#c4-%E8%AF%AD%E4%B9%89%E5%AE%A1%E6%9F%A5%E5%99%A8"></a>
 </h2>
-<p><code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code> supplements deterministic ingress
-rules for indirect aliases, multi-step serialization and obfuscated
-source-to-sink intent. Remote reviewers receive only sanitized code and
-non-value metadata. A fresh independent Chat is created per review, with
-no tools/history. The default factory uses the parent provider plus
-<code>CODEAGENT_FAST_MODEL</code>; an explicit
-<code>client_factory</code> may provide a local or specialized reviewer.
-Missing/failed/invalid reviewers follow <code>on_error</code>; ask falls
-back to block when no approval channel exists.</p>
+<p><code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code> 对确定性 ingress
+规则起补充作用，用于间接别名、多步
+序列化、以及混淆过的”数据来源到去处”意图。远程审查器只收到脱敏后的代码
+和非值元数据。每次审查都会创建一个全新的独立 Chat，无工具、无历史记录。
+默认工厂使用父级 provider 加 <code>CODEAGENT_FAST_MODEL</code>；显式
+<code>client_factory</code>
+可以提供本地或专用的审查器。缺失/失败/非法的审查器结果都按
+<code>on_error</code> 处理；无审批通道时 ask 会退化为 block。</p>
 </div>
 <div class="section level2">
-<h2 id="roadmap">Roadmap<a class="anchor" aria-label="anchor" href="#roadmap"></a>
+<h2 id="路线图">路线图<a class="anchor" aria-label="anchor" href="#%E8%B7%AF%E7%BA%BF%E5%9B%BE"></a>
 </h2>
 <ul>
 <li>
-<strong>P0.5 — <code>value_match</code> (available)</strong>:
-deterministically catches <em>targeted</em> leaks the row-cap lets
-through (e.g. printing one patient’s name), by matching tool output
-against high-entropy values registered with
-<code>shield$register_data()</code>.</li>
+<strong>P0.5 ——
+<code>value_match</code>（已实现）</strong>：通过对照用
+<code>shield$register_data()</code>
+注册的高熵值匹配工具输出，确定性地抓住行数
+上限漏过的<strong>定点</strong>泄漏（例如只 print
+一个病人的名字）。</li>
 <li>
-<strong>P1 — <code>DescribeData</code> + protected-data registry
-(strict available)</strong>: the model’s sanctioned hardened view
-(schema, sensitivity, missing presence, measure/open ranges and
-k-supported labels; no distributions/counts/examples).
-<code>distributions="on"/"dp"</code> remain later phases.</li>
+<strong>P1 —— <code>DescribeData</code> +
+受保护数据注册表（严格模式已实现）</strong>：模型的
+经批准的强化视图（schema、敏感度、是否缺失、measure/open 的范围和 满足
+k-支持的标签；不给分布/计数/示例）。<code>distributions="on"/"dp"</code>
+仍是后续阶段。</li>
 <li>
-<strong>P1.5 — ordered scanner pipeline +
-<code><a href="../reference/shield_regex.html">shield_regex()</a></code> (available)</strong>: unregistered
-PII/secrets are redacted/blocked with precise spans; custom scanner
-failures fail closed.</li>
+<strong>P1.5 —— 有序 scanner 管道 +
+<code><a href="../reference/shield_regex.html">shield_regex()</a></code>（已实现）</strong>：未注册的
+PII/密钥会被精确定位并脱敏/拦截；自定义 scanner 失败会 fail
+closed。</li>
 <li>
-<strong>C2 — <code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> (available)</strong>: all
-tool arguments pass the central permission gate; deterministic
-high-confidence rules block or force approval.</li>
+<strong>C2 ——
+<code><a href="../reference/shield_ingress.html">shield_ingress()</a></code>（已实现）</strong>：所有工具参数都经过中央权限门；
+确定性的高置信度规则会拦截或强制审批。</li>
 <li>
-<strong>C5 — portable <code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code>
-(available)</strong>: project/temp <code>rwx</code>, protected data
-<code>rw</code> by default, realpath/symlink containment and policy
-fallback; full OS process adapter remains roadmap.</li>
+<strong>C5 —— 便携式
+<code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code>（已实现）</strong>：项目/临时目录默认
+<code>rwx</code>，受保护数据默认 <code>rw</code>，具备
+realpath/符号链接容纳和策略降级； 完整 OS 进程适配器仍是路线图项。</li>
 <li>
-<strong>C4 — <code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code> (available)</strong>:
-optional sanitized ingress-code semantic rail using a fresh small-model
-Chat; remote raw output remains forbidden.</li>
-<li><strong>P2 — full OS sandbox adapter and differential privacy for
-distributions (opt-in).</strong></li>
+<strong>C4 ——
+<code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code>（已实现）</strong>：可选的脱敏 ingress
+代码语义 审查，使用一个全新的小模型 Chat；远程 raw 输出仍被禁止。</li>
+<li><strong>P2 —— 完整 OS
+沙箱适配器，以及分布查询的差分隐私（opt-in）。</strong></li>
 </ul>
 </div>
 <div class="section level2">
-<h2 id="sub-agent-boundary">Sub-agent boundary<a class="anchor" aria-label="anchor" href="#sub-agent-boundary"></a>
+<h2 id="子代理边界">子代理边界<a class="anchor" aria-label="anchor" href="#%E5%AD%90%E4%BB%A3%E7%90%86%E8%BE%B9%E7%95%8C"></a>
 </h2>
-<p>Foreground sub-agents (<code>Agent</code>) inherit the exact same
-<code>DataShield</code> R6 before any of their tools can return content
-to the child model. This applies to both synchronous and concurrent
-async Agent calls. While a shield is active, codeagent deliberately
-skips btw/custom-agent delegation paths that cannot accept the policy
-engine.</p>
-<p><code>BackgroundAgent</code> and <code>/bg</code> currently
-<strong>fail closed</strong> under Data Shield: their mirai worker is a
-separate R process and cannot safely share the session’s R6 state or
-protected-value index. Use foreground <code>Agent</code> until a
-per-owner worker reconstruction protocol is implemented.</p>
+<p>前台子代理（<code>Agent</code>）在其任何工具能把内容返回给子模型之前，会继承<strong>完全
+同一个</strong> <code>DataShield</code> R6。这对同步和并发异步的 Agent
+调用都适用。当盾激活 时，codeagent 会刻意跳过那些无法接受策略引擎的
+btw/自定义 agent 委派路径。</p>
+<p><code>BackgroundAgent</code> 和 <code>/bg</code> 在数据盾开启时目前会
+<strong>fail closed</strong>：它们的 mirai worker 是一个独立的 R
+进程，无法安全地共享 session 的 R6 状态或
+受保护值索引。在实现按所有者重建 worker 的协议之前，请使用前台
+<code>Agent</code>。</p>
 </div>
 <div class="section level2">
-<h2 id="combination-safety-what-each-combination-actually-protects-against">Combination safety: what each combination actually protects
-against<a class="anchor" aria-label="anchor" href="#combination-safety-what-each-combination-actually-protects-against"></a>
+<h2 id="排列组合安全性每种组合到底能防住什么">排列组合安全性：每种组合到底能防住什么<a class="anchor" aria-label="anchor" href="#%E6%8E%92%E5%88%97%E7%BB%84%E5%90%88%E5%AE%89%E5%85%A8%E6%80%A7%E6%AF%8F%E7%A7%8D%E7%BB%84%E5%90%88%E5%88%B0%E5%BA%95%E8%83%BD%E9%98%B2%E4%BD%8F%E4%BB%80%E4%B9%88"></a>
 </h2>
-<p>Data Shield is composed from independent strategies, so it is
-possible to enable a combination that <em>looks</em> protective but is
-not. The table below is sourced directly from
-<code>tests/testthat/test-data-shield-combinations.R</code> (a CI suite,
-not prose): a future refactor that breaks any of these conclusions fails
-that suite immediately, rather than silently drifting out of date.</p>
+<p>数据盾由独立策略组合而成，所以有可能启用一种<strong>看起来</strong>有保护、实际上没有
+的组合。下表<strong>直接来自</strong>
+<code>tests/testthat/test-data-shield-combinations.R</code> （这是一个
+CI 测试套件，不是一段描述性文字）：未来任何破坏这些结论的重构
+会立刻让这个测试套件失败，而不是悄悄过时。</p>
 <table class="table">
 <colgroup>
 <col width="14%">
@@ -1268,140 +1194,136 @@ that suite immediately, rather than silently drifting out of date.</p>
 <col width="14%">
 </colgroup>
 <thead><tr class="header">
-<th>Combination</th>
-<th align="center">Bulk dump</th>
-<th align="center">Targeted single value</th>
-<th align="center">Alias bypass
-(<code>y &lt;- study; print(y)</code>)</th>
-<th>Verdict</th>
+<th>组合</th>
+<th align="center">整批数据泄漏</th>
+<th align="center">定点单值泄漏</th>
+<th align="center">别名绕过（<code>y &lt;- study; print(y)</code>）</th>
+<th>结论</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td>
-<code><a href="../reference/shield_egress.html">shield_egress()</a></code> alone</td>
-<td align="center">withheld</td>
-<td align="center">withheld</td>
-<td align="center">withheld (egress inspects output content, not the
-code path)</td>
-<td>✅ safe floor</td>
+<td>只开 <code><a href="../reference/shield_egress.html">shield_egress()</a></code>
+</td>
+<td align="center">挡住</td>
+<td align="center">挡住</td>
+<td align="center">挡住（egress 检查的是输出内容，不是代码路径）</td>
+<td>✅ 安全底线</td>
 </tr>
 <tr class="even">
 <td>
-<code>egress</code> + <code>ingress</code> + <code>regex</code>
-(recommended)</td>
-<td align="center">withheld</td>
-<td align="center">withheld</td>
-<td align="center">withheld</td>
-<td>✅ recommended</td>
+<code>egress</code> + <code>ingress</code> +
+<code>regex</code>（推荐）</td>
+<td align="center">挡住</td>
+<td align="center">挡住</td>
+<td align="center">挡住</td>
+<td>✅ 推荐配置</td>
 </tr>
 <tr class="odd">
-<td><strong><code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> alone</strong></td>
-<td align="center"><strong>leaks</strong></td>
-<td align="center"><strong>leaks</strong></td>
-<td align="center"><strong>leaks (confirmed)</strong></td>
-<td>⚠️ <strong>not safe alone</strong>
+<td><strong>只开 <code><a href="../reference/shield_ingress.html">shield_ingress()</a></code></strong></td>
+<td align="center"><strong>泄漏</strong></td>
+<td align="center"><strong>泄漏</strong></td>
+<td align="center"><strong>泄漏（已实测确认）</strong></td>
+<td>⚠️ <strong>单独使用不安全</strong>
 </td>
 </tr>
 <tr class="even">
-<td><strong><code><a href="../reference/shield_describe.html">shield_describe()</a></code> alone</strong></td>
-<td align="center"><strong>leaks</strong></td>
-<td align="center"><strong>leaks</strong></td>
+<td><strong>只开 <code><a href="../reference/shield_describe.html">shield_describe()</a></code></strong></td>
+<td align="center"><strong>泄漏</strong></td>
+<td align="center"><strong>泄漏</strong></td>
 <td align="center">—</td>
-<td>⚠️ <strong>not safe alone</strong> (only governs the model’s own
-metadata query; does not filter other tools’ output)</td>
+<td>⚠️
+<strong>单独使用不安全</strong>（只管理模型自己的元数据查询，不过滤其他工具的输出）</td>
 </tr>
 <tr class="odd">
-<td>
-<code><a href="../reference/shield_regex.html">shield_regex()</a></code> alone</td>
+<td>只开 <code><a href="../reference/shield_regex.html">shield_regex()</a></code>
+</td>
 <td align="center">—</td>
-<td align="center">leaks for non-PII-shaped custom ids</td>
+<td align="center">非 PII 形状的自定义 ID 会泄漏</td>
 <td align="center">—</td>
-<td>⚠️ only catches common PII shapes</td>
+<td>⚠️ 只能挡住常见 PII 形状</td>
 </tr>
 </tbody>
 </table>
-<p><strong>The one-line takeaway: <code><a href="../reference/shield_egress.html">shield_egress()</a></code> is the
-only non-optional boundary. Every other strategy is defense-in-depth and
-cannot substitute for it.</strong></p>
+<p><strong>一句话结论：<code><a href="../reference/shield_egress.html">shield_egress()</a></code>
+是唯一不可省的边界。其余所有策略都是纵深 防御，不能替代它。</strong></p>
 <div class="section level3">
-<h3 id="three-ready-to-use-combination-templates">Three ready-to-use combination templates<a class="anchor" aria-label="anchor" href="#three-ready-to-use-combination-templates"></a>
+<h3 id="三个可以直接用的组合模板">三个可以直接用的组合模板<a class="anchor" aria-label="anchor" href="#%E4%B8%89%E4%B8%AA%E5%8F%AF%E4%BB%A5%E7%9B%B4%E6%8E%A5%E7%94%A8%E7%9A%84%E7%BB%84%E5%90%88%E6%A8%A1%E6%9D%BF"></a>
 </h3>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Strict: compliance / leadership demos</span></span>
+<code class="sourceCode R"><span><span class="co"># 严格：合规/领导演示场景</span></span>
 <span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"row_cap"</span>, <span class="st">"value_match"</span><span class="op">)</span>, max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Balanced: everyday development, low friction</span></span>
+<span><span class="co"># 均衡：日常开发，摩擦小</span></span>
 <span><span class="va">balanced</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"redact"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"redact"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Clinical: adds the semantic reviewer + strict k-anonymity</span></span>
+<span><span class="co"># 临床：加语义审查器 + 严格 k-匿名</span></span>
 <span><span class="va">clinical</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_reviewer.html">shield_reviewer</a></span><span class="op">(</span>model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_FAST_MODEL"</span><span class="op">)</span>, on_risk <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p><code>inst/examples/data_shield_minimal_app.R</code> has a live
-“Shield strength” selector covering these plus the two intentionally
-UNSAFE combos above, so you can switch between them in a running chat
-and watch the exact leaks in the table happen live.</p>
+<p><code>inst/examples/data_shield_minimal_app.R</code>
+提供一个实时的”Shield strength”
+（盾的强度）下拉选择器，涵盖以上模板加上面两个刻意不安全的组合，可以在
+运行中的聊天里实时切换，亲眼看到上表里的具体泄漏当场发生。</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="honest-limits">Honest limits<a class="anchor" aria-label="anchor" href="#honest-limits"></a>
+<h2 id="诚实的局限性">诚实的局限性<a class="anchor" aria-label="anchor" href="#%E8%AF%9A%E5%AE%9E%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"></a>
 </h2>
-<p>Data Shield <strong>reduces</strong> disclosure risk; it does not
-eliminate it. Deterministic detectors (row-cap,
-<code>value_match</code>, regex) miss adversarially obfuscated egress
-(e.g. base64-encoding data before printing); those are mitigated — not
-solved — by the ingress blacklist and the no-network sandbox. The
-strongest guarantees come from the structural layers (metadata-only
-feeding + no-network execution), with scanning as defense-in-depth.</p>
-<p>Specific residual risks to weigh before relying on it:</p>
+<p>数据盾<strong>降低</strong>披露风险，但<strong>不能消除</strong>它。确定性检测器（行数上限、
+<code>value_match</code>、正则）会漏掉对抗式混淆的 egress（例如先把数据
+base64 编码再打印）；这些情况靠 ingress
+黑名单和无网络沙箱来<strong>缓解</strong>——而不是
+彻底解决。最强的保证来自结构性层面（只喂元数据 + 无网络执行），扫描
+只是纵深防御。</p>
+<p>依赖它之前需要权衡的具体残余风险：</p>
 <ul>
 <li>
-<strong>Layer composition matters — see the combination-safety table
-above.</strong> Enabling only <code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> or only
-<code><a href="../reference/shield_describe.html">shield_describe()</a></code> without <code><a href="../reference/shield_egress.html">shield_egress()</a></code> is
-<strong>not</strong> a safe configuration. Do not omit egress.</li>
+<strong>层组合很重要——见上面的排列组合安全表。</strong> 只开
+<code><a href="../reference/shield_ingress.html">shield_ingress()</a></code> 或只开
+<code><a href="../reference/shield_describe.html">shield_describe()</a></code>、不开
+<code><a href="../reference/shield_egress.html">shield_egress()</a></code>，<strong>不是</strong>安全配置。 不要省略
+egress。</li>
 <li>
-<strong>The semantic reviewer is itself an LLM.</strong>
-<code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code> can be evaded by a sufficiently
-obfuscated source-to-sink path and adds latency/cost per reviewed call;
-it is defense-in-depth over the deterministic rails, not a
-guarantee.</li>
+<strong>语义审查器本身就是一个 LLM。</strong>
+<code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code> 可能被足够混淆的
+“数据来源到去处”路径绕过，且每次审查都增加延迟/成本；它是确定性防线
+之上的纵深防御，不是保证。</li>
 <li>
-<strong><code>value_match</code> scales linearly and is now
-bounded.</strong> Benchmarked on CDISC ADaM data
-(<code>inst/bench/value_match_benchmark.R</code>): ~130 MB of keys and
-~10 s to index 1M high-entropy values, with zero false positives on
-ordinary clinical prose and real
-<code>USUBJID</code>/<code>SUBJID</code> caught. Because memory grows
-linearly and unbounded, <code>register_data(max_index_values=)</code>
-caps the index (default 500 000, ~65 MB); on overflow it warns and the
-unindexed tail relies on the other egress layers. The
-<code>min_len</code>/<code>min_card</code> thresholds performed well on
-real ids and are unchanged.</li>
+<strong><code>value_match</code> 线性增长，现已有上限。</strong> 在
+CDISC ADaM 真实数据上做过
+benchmark（<code>inst/bench/value_match_benchmark.R</code>）：索引 100
+万个高熵值 约需 130 MB 内存、约 10
+秒构建时间，对普通临床文本零误报，真实的
+<code>USUBJID</code>/<code>SUBJID</code>
+均能命中。由于内存线性且无界增长，
+<code>register_data(max_index_values=)</code> 给索引设了上限（默认 50
+万，约 65 MB）；超限时会发出警告，未被索引的部分依赖其他 egress 层兜底。
+<code>min_len</code>/<code>min_card</code> 阈值在真实 ID
+上表现良好，未做调整。</li>
 <li>
-<strong>Images/multimodal and full OS isolation remain
-roadmap</strong> (see the status banner): a rendered table/plot of raw
-rows bypasses text scanning, and the portable sandbox is a
-path/capability policy, not kernel isolation.</li>
+<strong>图片/多模态和完整 OS
+隔离仍是路线图项</strong>（见文首状态横幅）：渲染出
+原始行数据的表格/图表会绕过文本扫描，便携式沙箱是路径/能力策略，
+不是内核级隔离。</li>
 <li>
-<strong><code>shinychat</code> file attachments bypass Data Shield
-entirely.</strong> codeagent’s main UI enables
-<code>chat_ui(allow_attachments = TRUE)</code>; a user-dragged
-attachment goes straight into the prompt edge
-(<code>user_contents</code>) and is currently <strong>not
-scanned</strong> by any egress layer. This is a known, unfixed gap —
-distinct from <code>fileInput()</code> → <code>register_data()</code>,
-which IS a controlled, scanned path. Track before relying on attachments
-with a shield enabled.</li>
+<strong><code>shinychat</code> 文件附件会完全绕过数据盾。</strong>
+codeagent 主 UI 启用了
+<code>chat_ui(allow_attachments = TRUE)</code>；用户手动拖入的附件直接进入
+prompt 边（<code>user_contents</code>），目前<strong>不经过任何 egress
+层扫描</strong>。这是一个 已知、尚未修复的缺口——与
+<code>fileInput()</code> → <code>register_data()</code>
+那条<strong>受控、
+会扫描</strong>的路径完全不同。在盾开启的情况下依赖附件功能前，请留意这条
+缺口。</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

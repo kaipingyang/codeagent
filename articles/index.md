@@ -32,3 +32,5 @@
 
 - [Data Shield: strict data-safety mode (design
   preview)](https://kaipingyang.github.io/codeagent/articles/data-shield.md):
+- [数据盾（Data
+  Shield）：严格数据安全模式（设计预览，中文版）](https://kaipingyang.github.io/codeagent/articles/data-shield-cn.md):
