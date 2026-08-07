@@ -20,7 +20,27 @@ NULL
 #' * `PERMISSION_DENIED`     -- When a tool call is blocked by permissions
 #' * `PERMISSION_REQUEST`    -- When permission mode is "ask" (bubble/default)
 #' * `USER_MESSAGE`          -- When user sends a message to the agent
+#'   (codeagent's name for Claude Code's `UserPromptSubmit`)
 #' * `ASSISTANT_MESSAGE`     -- When the assistant produces a text response
+#'   (codeagent-only; Claude Code has no equivalent event)
+#' * `SESSION_END`           -- When the agent loop terminates (any reason)
+#' * `POST_COMPACT`          -- After context compaction completes
+#' * `STOP_FAILURE`          -- When the loop terminates on an error
+#' * `NOTIFICATION`          -- Generic user-facing notification
+#' * `TASK_CREATED`          -- When a task is created (TaskCreate tool)
+#' * `TASK_COMPLETED`        -- When a task transitions to completed
+#' * `WORKTREE_CREATE`       -- When a sub-agent git worktree is created
+#' * `WORKTREE_REMOVE`       -- When a sub-agent git worktree is removed
+#' * `INSTRUCTIONS_LOADED`   -- When a CLAUDE.md instruction file is loaded
+#' * `FILE_CHANGED`          -- Filesystem change under cwd (Shiny only)
+#' * `CONFIG_CHANGE`         -- settings file change (Shiny only)
+#'
+#' The following Claude Code events are defined for parity but have no live
+#' trigger in codeagent (they never fire); see the inline notes:
+#' * `ELICITATION` / `ELICITATION_RESULT` -- need MCP elicitation (mcptools lacks it)
+#' * `TEAMMATE_IDLE`         -- codeagent teams are one-shot mirai workers (no idle state)
+#' * `SETUP`                 -- no init/maintenance lifecycle phase
+#' * `CWD_CHANGED`           -- no run-time cwd-change behaviour
 #'
 #' @export
 HookEvent <- list(
@@ -36,7 +56,32 @@ HookEvent <- list(
   STOP                  = "Stop",
   PRE_COMPACT           = "PreCompact",
   SUBAGENT_START        = "SubagentStart",
-  SUBAGENT_STOP         = "SubagentStop"
+  SUBAGENT_STOP         = "SubagentStop",
+  # CC parity -- A group: real trigger points (fire live)
+  SESSION_END           = "SessionEnd",
+  POST_COMPACT          = "PostCompact",
+  STOP_FAILURE          = "StopFailure",
+  NOTIFICATION          = "Notification",
+  TASK_CREATED          = "TaskCreated",
+  TASK_COMPLETED        = "TaskCompleted",
+  WORKTREE_CREATE       = "WorktreeCreate",
+  WORKTREE_REMOVE       = "WorktreeRemove",
+  INSTRUCTIONS_LOADED   = "InstructionsLoaded",
+  # CC parity -- B group: Shiny-only (watcher/later driven; CLI cannot pump later)
+  FILE_CHANGED          = "FileChanged",
+  CONFIG_CHANGE         = "ConfigChange",
+  # CC parity -- C group: defined for a complete allowlist, but NO live trigger.
+  #   ELICITATION/ELICITATION_RESULT: need MCP elicitation; mcptools 0.2.1 only
+  #     pulls tools over stdio, so these can never fire until upstream adds it.
+  #   TEAMMATE_IDLE: codeagent teams are one-shot mirai workers (team.R worker_loop
+  #     claim->run->complete->exit); there is no long-lived idle teammate state.
+  #   SETUP: no init/maintenance lifecycle phase in codeagent.
+  #   CWD_CHANGED: codeagent never changes cwd mid-run, so nothing to observe.
+  ELICITATION           = "Elicitation",
+  ELICITATION_RESULT    = "ElicitationResult",
+  TEAMMATE_IDLE         = "TeammateIdle",
+  SETUP                 = "Setup",
+  CWD_CHANGED           = "CwdChanged"
 )
 
 # ---------------------------------------------------------------------------
@@ -244,6 +289,105 @@ HookRegistry <- R6::R6Class(
     run_subagent_stop = function(description = "", result = NULL, context = list()) {
       for (hook in private$hooks[[HookEvent$SUBAGENT_STOP]])
         .run_hook_timed(hook$fn, hook$timeout_ms, description, result, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire SessionEnd hooks when the agent loop terminates.
+    #'   Callback: `function(reason, context)`. Return value ignored.
+    #'   `reason` mirrors CC's exit reasons where they map (e.g. "completed",
+    #'   "max_turns", "budget_exceeded", "error").
+    run_session_end = function(reason = "completed", context = list()) {
+      for (hook in private$hooks[[HookEvent$SESSION_END]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, reason, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire PostCompact hooks after context compaction completes.
+    #'   Callback: `function(trigger, compact_summary, context)`. Return ignored.
+    run_post_compact = function(trigger = "auto", compact_summary = "", context = list()) {
+      for (hook in private$hooks[[HookEvent$POST_COMPACT]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, trigger, compact_summary, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire StopFailure hooks when the loop ends on an error.
+    #'   Callback: `function(error, context)`. Return value ignored.
+    run_stop_failure = function(error = "", context = list()) {
+      for (hook in private$hooks[[HookEvent$STOP_FAILURE]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, error, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire Notification hooks for user-facing notifications.
+    #'   Callback: `function(message, notification_type, context)`. Return ignored.
+    run_notification = function(message = "", notification_type = "info", context = list()) {
+      for (hook in private$hooks[[HookEvent$NOTIFICATION]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, message, notification_type, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire TaskCreated hooks when a task is created.
+    #'   Callback: `function(task_id, task_subject, context)`. Return ignored.
+    run_task_created = function(task_id = "", task_subject = "", context = list()) {
+      for (hook in private$hooks[[HookEvent$TASK_CREATED]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, task_id, task_subject, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire TaskCompleted hooks when a task becomes completed.
+    #'   Callback: `function(task_id, task_subject, context)`. Return ignored.
+    run_task_completed = function(task_id = "", task_subject = "", context = list()) {
+      for (hook in private$hooks[[HookEvent$TASK_COMPLETED]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, task_id, task_subject, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire WorktreeCreate hooks when a sub-agent worktree is made.
+    #'   Callback: `function(name, context)`. Return value ignored.
+    run_worktree_create = function(name = "", context = list()) {
+      for (hook in private$hooks[[HookEvent$WORKTREE_CREATE]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, name, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire WorktreeRemove hooks when a sub-agent worktree is removed.
+    #'   Callback: `function(worktree_path, context)`. Return value ignored.
+    run_worktree_remove = function(worktree_path = "", context = list()) {
+      for (hook in private$hooks[[HookEvent$WORKTREE_REMOVE]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, worktree_path, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire InstructionsLoaded hooks when a CLAUDE.md file loads.
+    #'   Callback: `function(file_path, memory_type, load_reason, context)`.
+    #'   Return ignored. NOTE: `memory_type` is a best-effort approximation
+    #'   (User/Project by path prefix; no Managed concept) and `load_reason` is
+    #'   always "session_start" -- codeagent has no nested/glob/include/compact
+    #'   load paths, so these fields are NOT field-for-field equal to CC.
+    run_instructions_loaded = function(file_path = "", memory_type = "Project",
+                                       load_reason = "session_start", context = list()) {
+      for (hook in private$hooks[[HookEvent$INSTRUCTIONS_LOADED]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, file_path, memory_type,
+                        load_reason, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire FileChanged hooks (Shiny-only; watcher-driven).
+    #'   Callback: `function(file_path, event, context)` where `event` is one of
+    #'   "change"/"add"/"unlink". Return value ignored. Not fired on the CLI --
+    #'   the synchronous CLI loop cannot pump the `later` queue watcher needs.
+    run_file_changed = function(file_path = "", event = "change", context = list()) {
+      for (hook in private$hooks[[HookEvent$FILE_CHANGED]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, file_path, event, context)
+      invisible(NULL)
+    },
+
+    #' @description Fire ConfigChange hooks (Shiny-only; watcher-driven).
+    #'   Callback: `function(source, file_path, context)`. Return value ignored.
+    #'   Not fired on the CLI (see [run_file_changed] note).
+    run_config_change = function(source = "user_settings", file_path = "", context = list()) {
+      for (hook in private$hooks[[HookEvent$CONFIG_CHANGE]])
+        .run_hook_timed(hook$fn, hook$timeout_ms, source, file_path, context)
       invisible(NULL)
     },
 

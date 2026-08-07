@@ -4,10 +4,12 @@
 \alias{task_create_tool}
 \title{Create the TaskCreate tool}
 \usage{
-task_create_tool(store)
+task_create_tool(store, hooks = NULL)
 }
 \arguments{
 \item{store}{Environment. Per-session task store from \code{.new_task_store()}.}
+
+\item{hooks}{A \link{HookRegistry} or NULL. Fires \code{TaskCreated} on create.}
 }
 \value{
 An \code{ellmer::tool()} object.

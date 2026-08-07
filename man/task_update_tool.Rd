@@ -4,10 +4,13 @@
 \alias{task_update_tool}
 \title{Create the TaskUpdate tool}
 \usage{
-task_update_tool(store)
+task_update_tool(store, hooks = NULL)
 }
 \arguments{
 \item{store}{Environment. Per-session task store from \code{.new_task_store()}.}
+
+\item{hooks}{A \link{HookRegistry} or NULL. Fires \code{TaskCompleted} on the
+pending/in_progress -> completed transition (once, not on repeat updates).}
 }
 \value{
 An \code{ellmer::tool()} object.

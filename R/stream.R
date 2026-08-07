@@ -163,7 +163,9 @@ codeagent_stream_async <- function(
     }, error = function(e) {
       # acc is visible here (outer-scope variable in the async closure).
       recovered <- tryCatch(
-        .handle_agent_error(e, chat, actual_input, compaction_ctrl),
+        .handle_agent_error(e, chat, actual_input, compaction_ctrl,
+                            hooks = tryCatch(settings$hooks_registry,
+                                             error = function(e2) NULL)),
         error = function(e2) paste0("[error] ", conditionMessage(e2)))
       if (!is.null(on_error)) on_error(conditionMessage(e), is.character(recovered))
       invisible(list(text = acc, usage = NULL, stop_reason = "error"))

@@ -201,6 +201,20 @@ codeagent_client <- function(
   settings$hooks_registry      <- tryCatch(.hooks_from_settings(settings),
                                            error = function(e) NULL)
 
+  # Replay InstructionsLoaded for each CLAUDE.md-style file that contributed
+  # context. The load happened inside load_settings() (before hooks existed),
+  # so we replay from the recorded path list. memory_type/load_reason are
+  # best-effort approximations -- see .load_claude_md and run_instructions_loaded.
+  if (!is.null(settings$hooks_registry)) {
+    loaded <- attr(settings$claude_md, "loaded_files") %||% character(0)
+    home_n <- tryCatch(normalizePath("~", mustWork = FALSE), error = function(e) "~")
+    for (fp in loaded) {
+      mtype <- if (startsWith(fp, home_n)) "User" else "Project"
+      tryCatch(settings$hooks_registry$run_instructions_loaded(
+        fp, mtype, "session_start", list()), error = function(e) NULL)
+    }
+  }
+
   if (is.null(chat)) {
     chat <- .make_chat(settings, cwd)
   } else {
@@ -410,8 +424,17 @@ agent_loop <- function(user_input,
   if (!is.null(hooks)) tryCatch(
     hooks$run_pre_compact("auto", list(tokens = current_tokens)),
     error = function(e) NULL)
+  tokens_before <- current_tokens
   compaction_ctrl$maybe_compact(chat, settings$model_limit %||% 200000L,
                                 compact_model = .resolve_compact_model(chat, settings))
+  # Fire PostCompact only if compaction actually ran (token count dropped).
+  if (!is.null(hooks)) {
+    tokens_after <- tryCatch(estimate_tokens(chat), error = function(e) tokens_before)
+    if (tokens_after < tokens_before)
+      tryCatch(hooks$run_post_compact("auto", "", list(
+        tokens_before = tokens_before, tokens_after = tokens_after)),
+        error = function(e) NULL)
+  }
 
   # 4. Resource management
   resource_state$maybe_replace(chat)
@@ -423,7 +446,7 @@ agent_loop <- function(user_input,
   response <- tryCatch({
     chat$chat(actual_input)
   }, error = function(e) {
-    .handle_agent_error(e, chat, actual_input, compaction_ctrl)
+    .handle_agent_error(e, chat, actual_input, compaction_ctrl, hooks = hooks)
   })
 
   if (!is.character(response)) response <- "[No text response]"
@@ -551,7 +574,8 @@ agent_loop <- function(user_input,
   tryCatch(register_lint_tools(chat),                         error = function(e) NULL)
   if (!is.null(settings$mcp_config))
     tryCatch(register_mcp_client(chat, settings$mcp_config),  error = function(e) NULL)
-  tryCatch(register_task_tools(chat),                         error = function(e) NULL)
+  tryCatch(register_task_tools(chat, settings$hooks_registry),
+                                                              error = function(e) NULL)
   # Opt-in: reuse btw's task helpers (skill/README/context) as LLM tools.
   tryCatch(register_btw_task_tools(chat, settings),           error = function(e) NULL)
   tryCatch(register_todo_tool(chat, settings$session_id %||% "default"),
@@ -666,16 +690,30 @@ agent_loop <- function(user_input,
 }
 
 .handle_agent_error <- function(e, chat, input, compaction_ctrl,
-                                 max_retries = 3L) {
+                                 max_retries = 3L, hooks = NULL) {
   msg   <- conditionMessage(e)
   clean <- cli::ansi_strip(msg)
+
+  # Fire StopFailure + Notification at a genuinely-terminal error return (a
+  # give-up path), NOT on paths that recover via retry. Returns `txt` so callers
+  # can `return(.fail(...))` inline.
+  .fail <- function(txt, detail = clean) {
+    if (!is.null(hooks)) {
+      tryCatch(hooks$run_stop_failure(detail, list(input = input)),
+               error = function(e2) NULL)
+      tryCatch(hooks$run_notification(txt, "error", list()),
+               error = function(e2) NULL)
+    }
+    txt
+  }
 
   # PTL: compact then retry once
   if (grepl(.ERR_PTL, clean, ignore.case = TRUE)) {
     compaction_ctrl$handle_ptl_error(chat, error = clean)
     return(tryCatch(
       chat$chat(input),
-      error = function(e2) paste0("[PTL Error after compact] ", conditionMessage(e2))
+      error = function(e2) .fail(paste0("[PTL Error after compact] ",
+                                        conditionMessage(e2)), conditionMessage(e2))
     ))
   }
 
@@ -684,8 +722,9 @@ agent_loop <- function(user_input,
   if (grepl(.ERR_TRUNCATED, clean, ignore.case = TRUE)) {
     return(tryCatch(
       chat$chat(input),
-      error = function(e2) paste0(
-        "[Incomplete/truncated response] ", conditionMessage(e2))
+      error = function(e2) .fail(paste0(
+        "[Incomplete/truncated response] ", conditionMessage(e2)),
+        conditionMessage(e2))
     ))
   }
 
@@ -699,9 +738,10 @@ agent_loop <- function(user_input,
       result <- tryCatch(chat$chat(input), error = function(e2) e2)
       if (is.character(result)) return(result)
       if (!grepl(.ERR_RATE_LIMIT, conditionMessage(result), ignore.case = TRUE))
-        return(paste0("[Error] ", conditionMessage(result)))
+        return(.fail(paste0("[Error] ", conditionMessage(result)),
+                     conditionMessage(result)))
     }
-    return(paste0("[Rate limit] Gave up after ", max_retries, " retries."))
+    return(.fail(paste0("[Rate limit] Gave up after ", max_retries, " retries.")))
   }
 
   # Network: retry with backoff
@@ -711,13 +751,13 @@ agent_loop <- function(user_input,
       result <- tryCatch(chat$chat(input), error = function(e2) e2)
       if (is.character(result)) return(result)
     }
-    return(paste0("[Network Error] ", clean))
+    return(.fail(paste0("[Network Error] ", clean)))
   }
 
   # Auth: no retry, surface clearly
   if (grepl(.ERR_AUTH, clean, ignore.case = TRUE))
-    return(paste0("[Auth Error] Check CODEAGENT_API_KEY. ", clean))
+    return(.fail(paste0("[Auth Error] Check CODEAGENT_API_KEY. ", clean)))
 
   # Unknown: surface as-is
-  paste0("[Error] ", clean)
+  .fail(paste0("[Error] ", clean))
 }

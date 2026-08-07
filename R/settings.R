@@ -280,8 +280,9 @@ load_settings <- function(cwd = getwd()) {
   candidates <- c(candidates, rev(walk))   # outermost first, cwd last
 
   # Read existing, de-duplicated by normalized path, preserving order.
-  seen  <- character(0)
-  parts <- character(0)
+  seen   <- character(0)
+  loaded <- character(0)   # paths that actually contributed content (for InstructionsLoaded)
+  parts  <- character(0)
   for (cand in candidates) {
     if (!file.exists(cand)) next
     norm <- tryCatch(normalizePath(cand, mustWork = FALSE), error = function(e) cand)
@@ -291,11 +292,17 @@ load_settings <- function(cwd = getwd()) {
     if (is.null(lines) || !length(lines)) next
     body <- paste(lines, collapse = "\n")
     if (!nzchar(trimws(body))) next
+    loaded <- c(loaded, norm)
     parts <- c(parts, sprintf("<!-- source: %s -->\n%s", norm, body))
   }
 
   if (!length(parts)) return(NULL)
-  paste(parts, collapse = "\n\n")
+  out <- paste(parts, collapse = "\n\n")
+  # Attach the list of contributing files so the caller can replay
+  # InstructionsLoaded hooks once the HookRegistry exists (the load happens
+  # inside load_settings(), before hooks are constructed).
+  attr(out, "loaded_files") <- loaded
+  out
 }
 
 # ---------------------------------------------------------------------------

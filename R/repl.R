@@ -463,18 +463,28 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
   }
 
   history <- character(0)  # in-session line history for up/down recall
+  # SessionEnd hooks (CC parity): fire on genuine session end/switch points --
+  # EOF, /exit, /clear -- matching CC's executeSessionEndHooks(reason). Not on
+  # every turn (that is Stop). hooks live on the client's settings.
+  repl_hooks <- tryCatch(client$settings$hooks_registry, error = function(e) NULL)
+  .fire_session_end <- function(reason) {
+    if (!is.null(repl_hooks))
+      tryCatch(repl_hooks$run_session_end(reason, list(session_id = session_id)),
+               error = function(e) NULL)
+  }
   repeat {
     line <- .console_read_line(prompt_str, history, con, cancel_env)
-    if (is.null(line)) break  # EOF (Ctrl-D / closed connection)
+    if (is.null(line)) { .fire_session_end("prompt_input_exit"); break }  # EOF
     if (nzchar(trimws(line))) history <- c(history, line)
     act <- .repl_dispatch(line)
 
     # --- meta commands (do not reach the model) ---
     handled <- switch(act$action,
       noop = TRUE,
-      exit = { cat("Bye.\n"); return(invisible(session_id)) },
+      exit = { .fire_session_end("prompt_input_exit"); cat("Bye.\n"); return(invisible(session_id)) },
       help = { cat(.repl_help, "\n"); TRUE },
       clear = {
+        .fire_session_end("clear")
         tryCatch(client$chat$set_turns(list()), error = function(e) NULL)
         cat("[history cleared]\n"); TRUE
       },
@@ -700,12 +710,14 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         sp <- cli::cli_progress_step("Thinking...", spinner = TRUE)
         resp <- tryCatch(client$chat$chat(actual_input),
                          error = function(e)
-                           .handle_agent_error(e, client$chat, actual_input, compaction_ctrl))
+                           .handle_agent_error(e, client$chat, actual_input,
+                                               compaction_ctrl, hooks = repl_hooks))
         cli::cli_progress_done(id = sp)
       }, error = function(e)
         resp <<- tryCatch(client$chat$chat(actual_input),
                           error = function(e2)
-                            .handle_agent_error(e2, client$chat, actual_input, compaction_ctrl)))
+                            .handle_agent_error(e2, client$chat, actual_input,
+                                                compaction_ctrl, hooks = repl_hooks)))
       cat(if (is.character(resp)) .render_markdown(resp) else "[no response]", "\n")
       # Non-streaming path still needs teardown (save + budget).
       tryCatch(save_session(client$chat, cwd, session_id), error = function(e) NULL)

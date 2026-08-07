@@ -4,10 +4,13 @@
 \alias{register_task_tools}
 \title{Register task management tools to an ellmer Chat object}
 \usage{
-register_task_tools(chat)
+register_task_tools(chat, hooks = NULL)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
+
+\item{hooks}{A \link{HookRegistry} or NULL, forwarded to the task tools so they
+fire \code{TaskCreated} / \code{TaskCompleted}.}
 }
 \value{
 Invisibly returns \code{chat}.

@@ -86,7 +86,7 @@ codeagent_console(client)
 |---------|---------|
 | **Agent loop** | `agent_loop()` with max_turns, budget tracking, compaction |
 | **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
-| **Hooks** | 12 lifecycle events (tool, permission, message, session), configurable from `settings.json` |
+| **Hooks** | 27 Claude Code-aligned lifecycle events (tool, permission, message, session, task, worktree, compaction), configurable from `settings.json` |
 | **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, an "N% context left" indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds |
 | **System prompt** | Tone, task, convention, tool-use, and R-specific behavioural guidance |
 | **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff |

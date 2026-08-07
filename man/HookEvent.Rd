@@ -17,6 +17,28 @@ Named list of lifecycle event names that can be hooked.
 \item \code{PERMISSION_DENIED}     -- When a tool call is blocked by permissions
 \item \code{PERMISSION_REQUEST}    -- When permission mode is "ask" (bubble/default)
 \item \code{USER_MESSAGE}          -- When user sends a message to the agent
+(codeagent's name for Claude Code's \code{UserPromptSubmit})
 \item \code{ASSISTANT_MESSAGE}     -- When the assistant produces a text response
+(codeagent-only; Claude Code has no equivalent event)
+\item \code{SESSION_END}           -- When the agent loop terminates (any reason)
+\item \code{POST_COMPACT}          -- After context compaction completes
+\item \code{STOP_FAILURE}          -- When the loop terminates on an error
+\item \code{NOTIFICATION}          -- Generic user-facing notification
+\item \code{TASK_CREATED}          -- When a task is created (TaskCreate tool)
+\item \code{TASK_COMPLETED}        -- When a task transitions to completed
+\item \code{WORKTREE_CREATE}       -- When a sub-agent git worktree is created
+\item \code{WORKTREE_REMOVE}       -- When a sub-agent git worktree is removed
+\item \code{INSTRUCTIONS_LOADED}   -- When a CLAUDE.md instruction file is loaded
+\item \code{FILE_CHANGED}          -- Filesystem change under cwd (Shiny only)
+\item \code{CONFIG_CHANGE}         -- settings file change (Shiny only)
+}
+
+The following Claude Code events are defined for parity but have no live
+trigger in codeagent (they never fire); see the inline notes:
+\itemize{
+\item \code{ELICITATION} / \code{ELICITATION_RESULT} -- need MCP elicitation (mcptools lacks it)
+\item \code{TEAMMATE_IDLE}         -- codeagent teams are one-shot mirai workers (no idle state)
+\item \code{SETUP}                 -- no init/maintenance lifecycle phase
+\item \code{CWD_CHANGED}           -- no run-time cwd-change behaviour
 }
 }

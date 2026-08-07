@@ -313,6 +313,16 @@ codeagent_app <- function(
       length(tryCatch(chat_obj$get_tools(), error = function(e) list())) > 0L else
       tools_ready
 
+    # SessionEnd hook (CC parity): fire when the browser session ends, matching
+    # CC's executeSessionEndHooks. hooks live on the session's settings.
+    local({
+      sess_hooks <- tryCatch(settings$hooks_registry, error = function(e) NULL)
+      if (!is.null(sess_hooks))
+        session$onSessionEnded(function()
+          tryCatch(sess_hooks$run_session_end("other", list()),
+                   error = function(e) NULL))
+    })
+
     # Shared reactive state (single reactiveValues, no scattered reactiveVal)
     state <- shiny::reactiveValues(
       session_id      = tryCatch(.generate_uuid_v4(), error = function(e) "default"),

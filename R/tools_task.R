@@ -49,10 +49,11 @@ NULL
 #' Create the TaskCreate tool
 #'
 #' @param store Environment. Per-session task store from `.new_task_store()`.
+#' @param hooks A [HookRegistry] or NULL. Fires `TaskCreated` on create.
 #' @return An `ellmer::tool()` object.
 #' @keywords internal
-task_create_tool <- function(store) {
-  force(store)
+task_create_tool <- function(store, hooks = NULL) {
+  force(store); force(hooks)
   ellmer::tool(
     name = "TaskCreate",
     fun = function(subject, description, active_form = NULL) {
@@ -69,6 +70,10 @@ task_create_tool <- function(store) {
         created_at  = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
       )
       .task_set(id, task, store)
+      if (!is.null(hooks))
+        tryCatch(hooks$run_task_created(id, subject,
+                                        list(description = description)),
+                 error = function(e) NULL)
       paste0("Created task #", id, ": ", subject)
     },
     description = "Create a new pending task in the task list.",
@@ -133,10 +138,12 @@ task_get_tool <- function(store) {
 #' Create the TaskUpdate tool
 #'
 #' @param store Environment. Per-session task store from `.new_task_store()`.
+#' @param hooks A [HookRegistry] or NULL. Fires `TaskCompleted` on the
+#'   pending/in_progress -> completed transition (once, not on repeat updates).
 #' @return An `ellmer::tool()` object.
 #' @keywords internal
-task_update_tool <- function(store) {
-  force(store)
+task_update_tool <- function(store, hooks = NULL) {
+  force(store); force(hooks)
   ellmer::tool(
     name = "TaskUpdate",
     fun = function(task_id, status = NULL, subject = NULL,
@@ -146,6 +153,7 @@ task_update_tool <- function(store) {
       task <- .task_get(id, store)
       if (is.null(task)) return(paste0("[Error] Task not found: #", task_id))
 
+      was_completed <- identical(task$status, "completed")
       if (!is.null(status))      task$status      <- status
       if (!is.null(subject))     task$subject      <- subject
       if (!is.null(description)) task$description  <- description
@@ -162,6 +170,12 @@ task_update_tool <- function(store) {
       }
 
       .task_set(id, task, store)
+      # Fire TaskCompleted only on the transition INTO completed (not on a
+      # repeat update of an already-completed task).
+      if (!is.null(hooks) && identical(task$status, "completed") && !was_completed)
+        tryCatch(hooks$run_task_completed(id, task$subject,
+                                          list(description = task$description)),
+                 error = function(e) NULL)
       paste0("Updated task #", id, " (", task$subject, "): status=", task$status)
     },
     description = paste0(
@@ -239,13 +253,15 @@ task_list_tool <- function(store) {
 #' agents do not collide on task IDs.
 #'
 #' @param chat An `ellmer::Chat` object.
+#' @param hooks A [HookRegistry] or NULL, forwarded to the task tools so they
+#'   fire `TaskCreated` / `TaskCompleted`.
 #' @return Invisibly returns `chat`.
 #' @export
-register_task_tools <- function(chat) {
+register_task_tools <- function(chat, hooks = NULL) {
   store <- .new_task_store()
-  chat$register_tool(task_create_tool(store))
+  chat$register_tool(task_create_tool(store, hooks))
   chat$register_tool(task_get_tool(store))
-  chat$register_tool(task_update_tool(store))
+  chat$register_tool(task_update_tool(store, hooks))
   chat$register_tool(task_list_tool(store))
   invisible(chat)
 }

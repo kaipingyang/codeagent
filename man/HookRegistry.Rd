@@ -74,6 +74,17 @@ Return value ignored (informational only).
     \item \href{#method-HookRegistry-run_pre_compact}{\code{HookRegistry$run_pre_compact()}}
     \item \href{#method-HookRegistry-run_subagent_start}{\code{HookRegistry$run_subagent_start()}}
     \item \href{#method-HookRegistry-run_subagent_stop}{\code{HookRegistry$run_subagent_stop()}}
+    \item \href{#method-HookRegistry-run_session_end}{\code{HookRegistry$run_session_end()}}
+    \item \href{#method-HookRegistry-run_post_compact}{\code{HookRegistry$run_post_compact()}}
+    \item \href{#method-HookRegistry-run_stop_failure}{\code{HookRegistry$run_stop_failure()}}
+    \item \href{#method-HookRegistry-run_notification}{\code{HookRegistry$run_notification()}}
+    \item \href{#method-HookRegistry-run_task_created}{\code{HookRegistry$run_task_created()}}
+    \item \href{#method-HookRegistry-run_task_completed}{\code{HookRegistry$run_task_completed()}}
+    \item \href{#method-HookRegistry-run_worktree_create}{\code{HookRegistry$run_worktree_create()}}
+    \item \href{#method-HookRegistry-run_worktree_remove}{\code{HookRegistry$run_worktree_remove()}}
+    \item \href{#method-HookRegistry-run_instructions_loaded}{\code{HookRegistry$run_instructions_loaded()}}
+    \item \href{#method-HookRegistry-run_file_changed}{\code{HookRegistry$run_file_changed()}}
+    \item \href{#method-HookRegistry-run_config_change}{\code{HookRegistry$run_config_change()}}
     \item \href{#method-HookRegistry-clear}{\code{HookRegistry$clear()}}
     \item \href{#method-HookRegistry-count}{\code{HookRegistry$count()}}
   }
@@ -285,6 +296,187 @@ Callback: \verb{function(description, result, context)}. Return ignored.
     \preformatted{HookRegistry$run_subagent_stop(
   description = "",
   result = NULL,
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_session_end"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_session_end}{}}}
+\subsection{\code{HookRegistry$run_session_end()}}{
+  Fire SessionEnd hooks when the agent loop terminates.
+Callback: \verb{function(reason, context)}. Return value ignored.
+\code{reason} mirrors CC's exit reasons where they map (e.g. "completed",
+"max_turns", "budget_exceeded", "error").
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_session_end(reason = "completed", context = list())}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_post_compact"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_post_compact}{}}}
+\subsection{\code{HookRegistry$run_post_compact()}}{
+  Fire PostCompact hooks after context compaction completes.
+Callback: \verb{function(trigger, compact_summary, context)}. Return ignored.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_post_compact(
+  trigger = "auto",
+  compact_summary = "",
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_stop_failure"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_stop_failure}{}}}
+\subsection{\code{HookRegistry$run_stop_failure()}}{
+  Fire StopFailure hooks when the loop ends on an error.
+Callback: \verb{function(error, context)}. Return value ignored.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_stop_failure(error = "", context = list())}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_notification"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_notification}{}}}
+\subsection{\code{HookRegistry$run_notification()}}{
+  Fire Notification hooks for user-facing notifications.
+Callback: \verb{function(message, notification_type, context)}. Return ignored.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_notification(
+  message = "",
+  notification_type = "info",
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_task_created"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_task_created}{}}}
+\subsection{\code{HookRegistry$run_task_created()}}{
+  Fire TaskCreated hooks when a task is created.
+Callback: \verb{function(task_id, task_subject, context)}. Return ignored.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_task_created(
+  task_id = "",
+  task_subject = "",
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_task_completed"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_task_completed}{}}}
+\subsection{\code{HookRegistry$run_task_completed()}}{
+  Fire TaskCompleted hooks when a task becomes completed.
+Callback: \verb{function(task_id, task_subject, context)}. Return ignored.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_task_completed(
+  task_id = "",
+  task_subject = "",
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_worktree_create"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_worktree_create}{}}}
+\subsection{\code{HookRegistry$run_worktree_create()}}{
+  Fire WorktreeCreate hooks when a sub-agent worktree is made.
+Callback: \verb{function(name, context)}. Return value ignored.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_worktree_create(name = "", context = list())}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_worktree_remove"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_worktree_remove}{}}}
+\subsection{\code{HookRegistry$run_worktree_remove()}}{
+  Fire WorktreeRemove hooks when a sub-agent worktree is removed.
+Callback: \verb{function(worktree_path, context)}. Return value ignored.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_worktree_remove(worktree_path = "", context = list())}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_instructions_loaded"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_instructions_loaded}{}}}
+\subsection{\code{HookRegistry$run_instructions_loaded()}}{
+  Fire InstructionsLoaded hooks when a CLAUDE.md file loads.
+Callback: \verb{function(file_path, memory_type, load_reason, context)}.
+Return ignored. NOTE: \code{memory_type} is a best-effort approximation
+(User/Project by path prefix; no Managed concept) and \code{load_reason} is
+always "session_start" -- codeagent has no nested/glob/include/compact
+load paths, so these fields are NOT field-for-field equal to CC.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_instructions_loaded(
+  file_path = "",
+  memory_type = "Project",
+  load_reason = "session_start",
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_file_changed"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_file_changed}{}}}
+\subsection{\code{HookRegistry$run_file_changed()}}{
+  Fire FileChanged hooks (Shiny-only; watcher-driven).
+Callback: \verb{function(file_path, event, context)} where \code{event} is one of
+"change"/"add"/"unlink". Return value ignored. Not fired on the CLI --
+the synchronous CLI loop cannot pump the \code{later} queue watcher needs.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_file_changed(
+  file_path = "",
+  event = "change",
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_config_change"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_config_change}{}}}
+\subsection{\code{HookRegistry$run_config_change()}}{
+  Fire ConfigChange hooks (Shiny-only; watcher-driven).
+Callback: \verb{function(source, file_path, context)}. Return value ignored.
+Not fired on the CLI (see \link{run_file_changed} note).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_config_change(
+  source = "user_settings",
+  file_path = "",
   context = list()
 )}
     \if{html}{\out{</div>}}
