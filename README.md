@@ -150,7 +150,9 @@ into the message (value_match) or PII/token shapes (regex) and by default
 safety…" UI). The input gate runs on **all input**, not just typed text: it
 scans typed text and text-bearing attachments, and exposes an optional
 `data_shield_image_scanner` hook for image attachments (default `NULL` = images
-are not scanned; host may inject an OCR/VLM scanner). It runs automatically at
+are not scanned; host may inject an OCR/VLM scanner). A ready-made OCR scanner
+ships as `data_shield_ocr_scanner(shield)` (opt-in; uses the optional
+`tesseract` `Suggests` dep and degrades to pass when it is absent). It runs automatically at
 the UserPromptSubmit point of both entry paths — the agent loop (CLI) and the
 Shiny stream — when a shield is active. It is kept separate from the
 `UserPromptSubmit` hook, which may block or append context but — matching Claude

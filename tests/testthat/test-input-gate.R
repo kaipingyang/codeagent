@@ -135,3 +135,66 @@ test_that(".input_gate_scan skips images when no scanner is set (blind spot)", {
     list("clean text", ci), settings = list(data_shield_engine = sh))
   expect_identical(res$action, "pass")
 })
+
+test_that("data_shield_ocr_scanner degrades to pass when tesseract absent", {
+  # Guard is requireNamespace: with the pkg missing the scanner must never block.
+  skip_if(requireNamespace("tesseract", quietly = TRUE),
+          "tesseract installed -- this test asserts the absent-dep path")
+  sh <- make_shield()
+  scan <- codeagent::data_shield_ocr_scanner(sh)
+  ci <- tryCatch(ellmer::content_image_url("https://example.com/x.png"),
+                 error = function(e) NULL)
+  skip_if(is.null(ci), "ellmer content_image_url unavailable")
+  expect_identical(scan(ci)$action, "pass")
+})
+
+test_that("data_shield_ocr_scanner blocks on a protected value in the image", {
+  skip_if_not_installed("tesseract")
+  sh <- make_shield()
+  # Render a protected value (SUBJECT001) into a PNG for the OCR to read back.
+  f <- tempfile(fileext = ".png")
+  grDevices::png(f, width = 320, height = 80)
+  op <- graphics::par(mar = c(0, 0, 0, 0))
+  graphics::plot.new()
+  graphics::text(0.5, 0.5, "SUBJECT001", cex = 3)
+  graphics::par(op)
+  grDevices::dev.off()
+  ci <- ellmer::content_image_file(f)
+  scan <- codeagent::data_shield_ocr_scanner(sh, on_fail = "block")
+  res  <- scan(ci)
+  expect_identical(res$action, "block")
+  expect_match(res$text, "image blocked")
+})
+
+test_that("data_shield_ocr_scanner passes a clean image (no protected text)", {
+  skip_if_not_installed("tesseract")
+  sh <- make_shield()
+  f <- tempfile(fileext = ".png")
+  grDevices::png(f, width = 320, height = 80)
+  op <- graphics::par(mar = c(0, 0, 0, 0))
+  graphics::plot.new()
+  graphics::text(0.5, 0.5, "hello world", cex = 3)
+  graphics::par(op)
+  grDevices::dev.off()
+  ci <- ellmer::content_image_file(f)
+  scan <- codeagent::data_shield_ocr_scanner(sh)
+  expect_identical(scan(ci)$action, "pass")
+})
+
+test_that(".input_gate_scan wires data_shield_ocr_scanner via settings", {
+  skip_if_not_installed("tesseract")
+  sh <- make_shield()
+  f <- tempfile(fileext = ".png")
+  grDevices::png(f, width = 320, height = 80)
+  op <- graphics::par(mar = c(0, 0, 0, 0))
+  graphics::plot.new()
+  graphics::text(0.5, 0.5, "SUBJECT002", cex = 3)
+  graphics::par(op)
+  grDevices::dev.off()
+  ci <- ellmer::content_image_file(f)
+  res <- codeagent:::.input_gate_scan(
+    list("look", ci),
+    settings = list(data_shield_engine = sh,
+                    data_shield_image_scanner = codeagent::data_shield_ocr_scanner(sh)))
+  expect_identical(res$action, "block")
+})

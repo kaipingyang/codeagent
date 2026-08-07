@@ -66,7 +66,8 @@ Suggests:
     callr,
     vitals,
     keyring,
-    webfakes
+    webfakes,
+    tesseract
 Config/testthat/edition: 3
 Remotes:
     tidyverse/ellmer,

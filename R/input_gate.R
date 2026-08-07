@@ -147,3 +147,78 @@ NULL
 
   list(action = "pass", input = input)
 }
+
+# Extract a local file path for OCR from an ellmer ContentImage, decoding an
+# inline base64 image to a temp file when needed. Returns "" when the image
+# cannot be resolved to a path (e.g. a remote URL tesseract can still fetch is
+# handled separately by the caller).
+#' @keywords internal
+.input_gate_image_source <- function(content_image) {
+  # Inline (base64): decode to a temp file tesseract can read.
+  data <- tryCatch(content_image@data, error = function(e) NULL)
+  type <- tryCatch(content_image@type, error = function(e) NULL)
+  if (is.character(data) && length(data) == 1L && nzchar(data)) {
+    ext <- if (is.character(type) && grepl("/", type, fixed = TRUE))
+      sub(".*/", "", type) else "png"
+    tmp <- tempfile(fileext = paste0(".", ext))
+    ok <- tryCatch({ writeBin(base64enc::base64decode(data), tmp); TRUE },
+                   error = function(e) FALSE)
+    if (isTRUE(ok)) return(list(path = tmp, cleanup = TRUE))
+  }
+  # Remote URL: tesseract::ocr() accepts a URL directly.
+  url <- tryCatch(content_image@url, error = function(e) NULL)
+  if (is.character(url) && length(url) == 1L && nzchar(url))
+    return(list(path = url, cleanup = FALSE))
+  list(path = "", cleanup = FALSE)
+}
+
+#' Build an OCR-backed image scanner for the Data Shield input gate.
+#'
+#' Returns a `function(content_image) -> list(action, ...)` suitable for the
+#' `image_scanner` slot of [.input_gate_scan()] (or `settings$data_shield_image_scanner`).
+#' It OCRs the image with the optional \pkg{tesseract} package, then runs the
+#' extracted text through the shield's `scan_prompt()`. Images are otherwise a
+#' blind spot at edge 1 (the model sees pixels, not the redactable text inside
+#' them); this closes the gap for text baked into screenshots.
+#'
+#' This is **opt-in** (scheme A): the default `data_shield_image_scanner` stays
+#' `NULL`, so the host must wire this in explicitly. Reasons: OCR is a real
+#' per-image cost, it can false-positive, and \pkg{tesseract} is a `Suggests`
+#' dependency (a C library + language data, not installed by default). When
+#' \pkg{tesseract} is missing the scanner degrades to `pass` (never blocks on a
+#' missing optional dep) --- so the image is treated as an accepted blind spot,
+#' matching the no-scanner default.
+#'
+#' @param shield A `DataShield` engine (its `scan_prompt()` backs the scan).
+#' @param on_fail How an OCR hit is handled: `"block"` (default --- immutable
+#'   image cannot be redacted in place, so the whole turn is blocked) or
+#'   `"pass"` (audit-only; log but let it through).
+#' @param engine Optional pre-built `tesseract::tesseract()` engine (language,
+#'   whitelist, etc.). `NULL` uses tesseract's default English engine.
+#' @return A scanner function returning `list(action = "block"/"pass", text=)`.
+#' @export
+data_shield_ocr_scanner <- function(shield, on_fail = c("block", "pass"),
+                                    engine = NULL) {
+  force(shield)
+  on_fail <- match.arg(on_fail)
+  force(engine)
+  function(content_image) {
+    if (!requireNamespace("tesseract", quietly = TRUE))
+      return(list(action = "pass"))          # optional dep absent -> blind spot
+    if (is.null(shield) || !inherits(shield, "DataShield"))
+      return(list(action = "pass"))
+    src <- .input_gate_image_source(content_image)
+    if (!nzchar(src$path)) return(list(action = "pass"))
+    on.exit(if (isTRUE(src$cleanup)) unlink(src$path), add = TRUE)
+    txt <- tryCatch(tesseract::ocr(src$path, engine = engine),
+                    error = function(e) "")
+    if (!is.character(txt) || length(txt) != 1L || !nzchar(trimws(txt)))
+      return(list(action = "pass"))
+    r <- tryCatch(shield$scan_prompt(txt, on_fail = "block"),
+                  error = function(e) list(action = "pass"))
+    if (!identical(r$action, "pass") && identical(on_fail, "block"))
+      return(list(action = "block",
+                  text = "[data_shield] image blocked: OCR found protected content."))
+    list(action = "pass")
+  }
+}

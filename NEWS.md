@@ -16,6 +16,16 @@
   the UserPromptSubmit **hook** may block/append but never redacts (CC parity);
   the Data Shield **input gate** may redact (its confidentiality job).
 
+* **`data_shield_ocr_scanner()`: an opt-in OCR image scanner for the input
+  gate.** Closes the image blind spot for text baked into screenshots: it OCRs
+  the attachment with the optional \pkg{tesseract} package (a `Suggests` dep),
+  then runs the extracted text through `scan_prompt()`, blocking the turn on a
+  protected-value hit. Opt-in (scheme A) — the default
+  `data_shield_image_scanner` stays `NULL`; wire it explicitly via
+  `settings$data_shield_image_scanner = data_shield_ocr_scanner(shield)`. When
+  \pkg{tesseract} is not installed the scanner degrades to `pass` (never blocks
+  on a missing optional dep).
+
 * **`UserPromptSubmit` hook can now block or add context** (was notify-only).
   Renamed `UserMessage` -> `UserPromptSubmit` to align with Claude Code's public
   hook event name. A hook may return `action = "block"` (the prompt never
