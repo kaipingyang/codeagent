@@ -315,12 +315,18 @@ codeagent_app <- function(
 
     # SessionEnd hook (CC parity): fire when the browser session ends, matching
     # CC's executeSessionEndHooks. hooks live on the session's settings.
+    # Also start filesystem-watch hooks (FileChanged / ConfigChange) here, since
+    # the Shiny reactive loop pumps `later` so watcher callbacks dispatch.
     local({
       sess_hooks <- tryCatch(settings$hooks_registry, error = function(e) NULL)
-      if (!is.null(sess_hooks))
-        session$onSessionEnded(function()
+      watch_handle <- tryCatch(.start_hook_watchers(sess_hooks, cwd = cwd),
+                               error = function(e) NULL)
+      session$onSessionEnded(function() {
+        if (!is.null(watch_handle)) tryCatch(watch_handle$stop(), error = function(e) NULL)
+        if (!is.null(sess_hooks))
           tryCatch(sess_hooks$run_session_end("other", list()),
-                   error = function(e) NULL))
+                   error = function(e) NULL)
+      })
     })
 
     # Shared reactive state (single reactiveValues, no scattered reactiveVal)

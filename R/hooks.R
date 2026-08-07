@@ -399,7 +399,13 @@ HookRegistry <- R6::R6Class(
     },
 
     #' @description Count total registered hooks across all events.
-    count = function() sum(vapply(private$hooks, length, integer(1)))
+    count = function() sum(vapply(private$hooks, length, integer(1))),
+
+    #' @description TRUE if at least one hook is registered for `event`.
+    #' @param event Character. One of [HookEvent] values.
+    has_hooks = function(event) {
+      length(private$hooks[[event]]) > 0L
+    }
   )
 )
 

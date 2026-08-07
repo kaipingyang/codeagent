@@ -1,5 +1,19 @@
 # codeagent (development version)
 
+* **Hooks aligned with Claude Code's 27 lifecycle events** (was 12). Events
+  with a real trigger fire live: `SessionEnd`, `PostCompact`, `StopFailure`,
+  `Notification`, `TaskCreated`/`TaskCompleted` (through the TaskCreate/TaskUpdate
+  tools), and `InstructionsLoaded` (replayed from the loaded CLAUDE.md files).
+  `FileChanged`/`ConfigChange` are driven by the `watcher` package and work in
+  BOTH the Shiny app and the CLI REPL -- the prompt reads keys non-blockingly so
+  an idle session still dispatches filesystem-watch callbacks (needs `watcher`
+  installed; no-op otherwise). Remaining CC events are defined for a complete
+  allowlist but have no live trigger yet (`Elicitation`/`ElicitationResult` need
+  MCP elicitation; `TeammateIdle`/`Setup`/`CwdChanged` have no matching phase;
+  `WorktreeCreate`/`WorktreeRemove` deferred until cross-process team events).
+  `AssistantMessage` stays notify-only (Claude Code has no such event).
+
+
 * **Bounded value-match index**: `register_data(max_index_values=)` caps the
   value-match hash index (default 500000 values, ~65MB of keys). Benchmarked on
   open-source CDISC-ADaM-format example data from the {pharmaverse} project

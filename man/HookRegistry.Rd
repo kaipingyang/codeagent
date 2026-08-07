@@ -87,6 +87,7 @@ Return value ignored (informational only).
     \item \href{#method-HookRegistry-run_config_change}{\code{HookRegistry$run_config_change()}}
     \item \href{#method-HookRegistry-clear}{\code{HookRegistry$clear()}}
     \item \href{#method-HookRegistry-count}{\code{HookRegistry$count()}}
+    \item \href{#method-HookRegistry-has_hooks}{\code{HookRegistry$has_hooks()}}
   }
 }
 \if{html}{\out{<hr>}}
@@ -503,6 +504,25 @@ Not fired on the CLI (see \link{run_file_changed} note).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$count()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-has_hooks"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-has_hooks}{}}}
+\subsection{\code{HookRegistry$has_hooks()}}{
+  TRUE if at least one hook is registered for \code{event}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$has_hooks(event)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{event}}{Character. One of \link{HookEvent} values.}
+    }
     \if{html}{\out{</div>}}
   }
 }

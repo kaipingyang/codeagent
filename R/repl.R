@@ -472,8 +472,19 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       tryCatch(repl_hooks$run_session_end(reason, list(session_id = session_id)),
                error = function(e) NULL)
   }
+  # Filesystem-watch hooks (FileChanged / ConfigChange). Only starts if a hook
+  # is registered AND `watcher` is installed (else NULL). When active, the
+  # prompt reads keys non-blockingly so the idle REPL still pumps `later` and
+  # dispatches watcher callbacks; with no watcher we keep the cheaper blocking
+  # read. Always stopped on exit (return / EOF / interrupt) via on.exit.
+  watch_handle <- tryCatch(.start_hook_watchers(repl_hooks, cwd = cwd),
+                           error = function(e) NULL)
+  pump_later <- !is.null(watch_handle)
+  on.exit(if (!is.null(watch_handle))
+    tryCatch(watch_handle$stop(), error = function(e) NULL), add = TRUE)
   repeat {
-    line <- .console_read_line(prompt_str, history, con, cancel_env)
+    line <- .console_read_line(prompt_str, history, con, cancel_env,
+                               pump_later = pump_later)
     if (is.null(line)) { .fire_session_end("prompt_input_exit"); break }  # EOF
     if (nzchar(trimws(line))) history <- c(history, line)
     act <- .repl_dispatch(line)
@@ -877,7 +888,8 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 # cancel_env: an environment with a $last_cancel_time field, shared across
 # calls from the same REPL session so double-Ctrl+C can be detected.
 .console_read_line <- function(prompt, history = character(0), con = stdin(),
-                                cancel_env = new.env(parent = emptyenv())) {
+                                cancel_env = new.env(parent = emptyenv()),
+                                pump_later = FALSE) {
   supported <- tryCatch(keypress::has_keypress_support(), error = function(e) FALSE)
   if (!isTRUE(supported)) {
     # Cooked-mode fallback (pipes, tests, unsupported terminals).
@@ -895,7 +907,20 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
                 search_match = NULL)
   .console_redraw(prompt, state)
   repeat {
-    key <- tryCatch(keypress::keypress(), error = function(e) "enter")
+    if (isTRUE(pump_later)) {
+      # Non-blocking read so the idle prompt still pumps the `later` queue --
+      # lets background watcher (FileChanged/ConfigChange) callbacks dispatch
+      # while the user is just sitting at the prompt. keypress(block=FALSE)
+      # returns NA when no key is available.
+      key <- tryCatch(keypress::keypress(block = FALSE), error = function(e) "enter")
+      if (length(key) != 1L || is.na(key)) {
+        tryCatch(later::run_now(0), error = function(e) NULL)
+        Sys.sleep(0.02)          # ~50 Hz: imperceptible latency, negligible CPU
+        next
+      }
+    } else {
+      key <- tryCatch(keypress::keypress(), error = function(e) "enter")
+    }
     state <- .console_apply_key(state, key)
     # Persist last_cancel_time back to the shared env so it survives
     # across successive _console_read_line calls within the same session.
