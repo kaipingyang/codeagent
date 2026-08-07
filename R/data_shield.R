@@ -922,6 +922,113 @@ DataShield <- R6::R6Class(
       private$run_reviewers(1L,text,context,capability)
     },
 
+    #' @description Scan a user prompt BEFORE it reaches the model (edge 1).
+    #'   This is the Data Shield half of the prompt gate: it detects protected
+    #'   data the user may have pasted into their message. Unlike egress (which
+    #'   withholds a whole unsafe tool result), prompt redaction replaces ONLY
+    #'   the matched values / PII spans and keeps the rest of the user's text --
+    #'   the user's original wording is otherwise preserved.
+    #'
+    #'   Two detectors, both reusing existing machinery:
+    #'   * value_match: does the prompt contain a REGISTERED protected value
+    #'     (e.g. a real USUBJID)? O(1) hash lookup via the value index.
+    #'   * regex/PII: email / phone / token / id shapes.
+    #'
+    #' @param text Character scalar. The raw user prompt.
+    #' @param on_fail `"redact"` (default, replace matches, keep rest),
+    #'   `"block"` (reject the whole turn), or `"ask"` (defer to approval).
+    #' @param on_progress Optional `function(list(stage, status, matched,
+    #'   elapsed_ms))` progress callback so a UI can show "scanning data
+    #'   safety...". NULL (default) is silent and zero-overhead.
+    #' @param context Optional non-sensitive context (e.g. `tool_call_id`).
+    #' @return List: `action` (`"pass"`/`"redact"`/`"block"`/`"ask"`),
+    #'   `text` (possibly redacted prompt), `matches` (count), `score`.
+    scan_prompt = function(text, on_fail = c("redact", "block", "ask"),
+                           on_progress = NULL, context = list()) {
+      private$assert_open()
+      on_fail <- match.arg(on_fail)
+      if (!is.character(text) || length(text) != 1L || !nzchar(text))
+        return(list(action = "pass", text = text, matches = 0L, score = 0))
+
+      emit <- function(stage, status, matched = 0L, t0 = NULL) {
+        if (!is.function(on_progress)) return(invisible(NULL))
+        elapsed <- if (is.null(t0)) 0 else (proc.time()[["elapsed"]] - t0) * 1000
+        tryCatch(on_progress(list(stage = stage, status = status,
+                                  matched = matched, elapsed_ms = elapsed)),
+                 error = function(e) NULL)
+      }
+      total_matches <- 0L
+      current <- text
+
+      # --- B: regex / PII (cheap, always run) -------------------------------
+      t0 <- proc.time()[["elapsed"]]
+      emit("regex", "scanning")
+      regex_fn <- .data_shield_regex_scanner(
+        .data_shield_default_regex_patterns(),
+        replacement = "[REDACTED]",
+        on_fail = if (identical(on_fail, "block")) "block" else "redact",
+        ignore_case = TRUE)
+      rx <- tryCatch(regex_fn(current, list(edge = "prompt")),
+                     error = function(e) list(sanitized = current, valid = TRUE,
+                                              spans = data.frame(), action = "pass"))
+      rx_hits <- tryCatch(nrow(rx$spans), error = function(e) 0L) %||% 0L
+      if (rx_hits > 0L) {
+        total_matches <- total_matches + rx_hits
+        if (identical(on_fail, "block")) {
+          private$record_event(edge = "prompt", tool_name = context$tool_name %||% NA_character_,
+            tool_call_id = context$tool_call_id, strategy = "regex", action = "block",
+            reason = "PII/token shape in prompt", match_count = rx_hits, score = 1)
+          emit("regex", "done", rx_hits, t0)
+          return(list(action = "block",
+                      text = "[data_shield] prompt blocked: contains PII/token pattern.",
+                      matches = total_matches, score = 1))
+        }
+        current <- rx$sanitized   # redact spans, keep rest
+      }
+      emit("regex", "done", rx_hits, t0)
+
+      # --- A: value_match against the registered protected-value index ------
+      if (is.environment(private$index)) {
+        t1 <- proc.time()[["elapsed"]]
+        emit("value_match", "scanning")
+        vm <- tryCatch(.data_shield_value_scan(current, private$index),
+                       error = function(e) list(hit = FALSE, n = 0L, values = character(0)))
+        if (isTRUE(vm$hit)) {
+          total_matches <- total_matches + vm$n
+          if (identical(on_fail, "block")) {
+            private$record_event(edge = "prompt", tool_name = context$tool_name %||% NA_character_,
+              tool_call_id = context$tool_call_id, strategy = "value_match", action = "block",
+              reason = "protected value pasted into prompt", match_count = vm$n,
+              score = min(1, vm$n / 5))
+            emit("value_match", "done", vm$n, t1)
+            return(list(action = "block",
+                        text = sprintf("[data_shield] prompt blocked: contains %d protected data value(s).", vm$n),
+                        matches = total_matches, score = min(1, vm$n / 5)))
+          }
+          if (identical(on_fail, "ask")) {
+            private$record_event(edge = "prompt", tool_name = context$tool_name %||% NA_character_,
+              tool_call_id = context$tool_call_id, strategy = "value_match", action = "ask",
+              reason = "protected value pasted into prompt", match_count = vm$n,
+              score = min(1, vm$n / 5))
+            emit("value_match", "done", vm$n, t1)
+            return(list(action = "ask", text = current, matches = total_matches,
+                        score = min(1, vm$n / 5)))
+          }
+          # redact: replace each matched raw token with [REDACTED], keep rest.
+          current <- .data_shield_redact_values(current, vm$values, private$index)
+          private$record_event(edge = "prompt", tool_name = context$tool_name %||% NA_character_,
+            tool_call_id = context$tool_call_id, strategy = "value_match", action = "redact",
+            reason = "protected value redacted from prompt", match_count = vm$n,
+            score = min(1, vm$n / 5))
+        }
+        emit("value_match", "done", vm$n %||% 0L, t1)
+      }
+
+      list(action = if (total_matches > 0L) "redact" else "pass",
+           text = current, matches = total_matches,
+           score = if (total_matches > 0L) min(1, total_matches / 5) else 0)
+    },
+
     #' @description Add a custom scanner function to the end of the egress pipeline.
     add_scanner = function(name, fn) {
       private$assert_open()
@@ -1610,6 +1717,40 @@ DataShield <- R6::R6Class(
   hit  <- norm[vapply(norm, function(t) exists(t, envir = index, inherits = FALSE),
                       logical(1))]
   list(hit = length(hit) > 0L, n = length(hit), values = unique(hit))
+}
+
+# Redact protected values FROM a user prompt, keeping the rest of the text.
+# Unlike egress (which withholds a whole result), here we replace only the
+# tokens that hash into the protected-value index, so the user's surrounding
+# wording survives. `text` is the original prompt; `index` is the value index.
+#' @keywords internal
+.data_shield_redact_values <- function(text, matched_norm, index,
+                                       replacement = "[REDACTED]") {
+  if (!is.character(text) || length(text) != 1L || !nzchar(text)) return(text)
+  if (!is.environment(index)) return(text)
+  # Re-tokenise the ORIGINAL text so we can locate raw tokens (with their real
+  # casing/format) whose normalized form is a protected value.
+  toks <- unique(strsplit(text, "[^[:alnum:].]+", perl = TRUE)[[1L]])
+  toks <- gsub("^\\.+|\\.+$", "", toks)
+  toks <- toks[nchar(toks) >= 3L]
+  if (!length(toks)) return(text)
+  out <- text
+  for (tok in toks) {
+    norm <- .data_shield_normalize(tok)
+    if (!exists(norm, envir = index, inherits = FALSE)) next
+    # Replace this raw token wherever it appears, on token boundaries only
+    # (avoid partial-word hits). Fixed match on the literal token.
+    pat <- paste0("(?<![[:alnum:].])", .data_shield_escape_regex(tok),
+                  "(?![[:alnum:].])")
+    out <- gsub(pat, replacement, out, perl = TRUE)
+  }
+  out
+}
+
+# Escape regex metacharacters in a literal token.
+#' @keywords internal
+.data_shield_escape_regex <- function(x) {
+  gsub("([.\\\\+*?\\[^\\]$(){}=!<>|:#/-])", "\\\\\\1", x, perl = TRUE)
 }
 
 # Classify columns locally (never sent to the model). Overrides remain the

@@ -16,10 +16,14 @@ Named list of lifecycle event names that can be hooked.
 \item \code{POST_TOOL_USE_FAILURE} -- After a tool throws an error
 \item \code{PERMISSION_DENIED}     -- When a tool call is blocked by permissions
 \item \code{PERMISSION_REQUEST}    -- When permission mode is "ask" (bubble/default)
-\item \code{USER_MESSAGE}          -- When user sends a message to the agent
+\item \code{USER_PROMPT_SUBMIT}    -- When user submits a prompt, before it reaches the
+model (aligns with Claude Code's public \code{UserPromptSubmit} hook event)
 (codeagent's name for Claude Code's \code{UserPromptSubmit})
-\item \code{ASSISTANT_MESSAGE}     -- When the assistant produces a text response
-(codeagent-only; Claude Code has no equivalent event)
+\item \code{ASSISTANT_MESSAGE}     -- When the assistant produces a text response.
+NOTE: name collides with Claude Agent SDK's \code{AssistantMessage} \emph{message
+type} but is used here as a \emph{hook event}; Claude Code has no such event
+(it uses \code{Stop} + \code{last_assistant_message}). Kept for its downstream
+consumer (ui_customizations.R); TODO: evaluate merging into \code{Stop}.
 \item \code{SESSION_END}           -- When the agent loop terminates (any reason)
 \item \code{POST_COMPACT}          -- After context compaction completes
 \item \code{STOP_FAILURE}          -- When the loop terminates on an error

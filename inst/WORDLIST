@@ -153,6 +153,7 @@ UI
 UIs
 untyped
 UserMessage
+UserPromptSubmit
 UUID
 verifier
 WebFetch

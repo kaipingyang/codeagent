@@ -398,10 +398,48 @@ agent_loop <- function(user_input,
     tryCatch(hooks$run_session_start(list(cwd = cwd, session_id = session_id)),
              error = function(e) NULL)
 
+  # 1a.5 Fire UserPromptSubmit hook BEFORE reminder injection (CC parity): a
+  #   hook may block the turn (prompt never reaches the model) or append
+  #   additional_context. It acts on the raw user_input only -- the reminder is
+  #   framework-injected ambient text, not user-typed content. NEVER rewrites
+  #   the user's original text (matching CC's UserPromptSubmit contract).
+  ups_context <- NULL
+  if (!is.null(hooks)) {
+    ups <- tryCatch(hooks$run_user_prompt_submit(user_input),
+                    error = function(e) list(action = "allow"))
+    if (identical(ups$action, "block")) {
+      if (!is.null(session_id))
+        tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)
+      return(list(response    = ups$message %||% "[Blocked by UserPromptSubmit hook]",
+                  session_id  = session_id,
+                  stop_reason = "hook_blocked"))
+    }
+    ups_context <- ups$additional_context
+  }
+
+  # 1a.6 Data Shield prompt gate (edge 1): the shield's own confidentiality
+  #   scan of the user prompt. SEPARATE system from the hook above -- unlike the
+  #   hook it MAY redact (replace protected values / PII the user pasted in,
+  #   keeping the rest of the text). block -> reject the turn; redact -> continue
+  #   with the sanitized text. This is the Data Shield half of the prompt gate
+  #   (hooks half is the UserPromptSubmit hook above); see R/prompt_gate.R.
+  pg <- .prompt_gate_scan(user_input, settings, chat)
+  if (identical(pg$action, "block")) {
+    if (!is.null(session_id))
+      tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)
+    return(list(response    = pg$text %||% "[Blocked by Data Shield prompt gate]",
+                session_id  = session_id,
+                stop_reason = "shield_blocked"))
+  }
+  user_input <- pg$text %||% user_input   # may be redacted; rest preserved
+
   # 1b. Inject system-reminder (dynamic context into user message, not system prompt)
   #     This mirrors Claude Code's <system-reminder> pattern: ephemeral metadata
-  #     injected at message time so it doesn't invalidate the prompt cache.
+  #     injected at message time so it doesn't invalidate the prompt cache. Any
+  #     UserPromptSubmit additional_context is appended here too (append-only).
   reminder <- .build_system_reminder(settings, iteration, cwd, query = user_input)
+  if (!is.null(ups_context) && nzchar(ups_context))
+    reminder <- if (nzchar(reminder)) paste0(reminder, "\n\n", ups_context) else ups_context
   actual_input <- if (nzchar(reminder))
     paste0(user_input, "\n\n", reminder)
   else
@@ -439,10 +477,7 @@ agent_loop <- function(user_input,
   # 4. Resource management
   resource_state$maybe_replace(chat)
 
-  # 5. Fire UserMessage hook
-  if (!is.null(hooks)) tryCatch(hooks$run_user_message(user_input), error = function(e) NULL)
-
-  # 6. Send (with system-reminder injected into actual_input)
+  # 5. Send (with system-reminder injected into actual_input)
   response <- tryCatch({
     chat$chat(actual_input)
   }, error = function(e) {

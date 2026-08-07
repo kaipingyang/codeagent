@@ -1,5 +1,25 @@
 # codeagent (development version)
 
+* **Prompt gate (edge 1): Data Shield now scans the user prompt before it
+  reaches the model.** Previously Data Shield only guarded tool traffic (edge 2:
+  `scan_ingress`/`scan_egress`); the user's own message went to the model
+  unscanned. `DataShield$scan_prompt()` adds edge-1 protection: it detects a
+  registered protected value pasted into the prompt (value_match, O(1) hash
+  lookup) and PII/token shapes (regex), and by default **redacts only the
+  matched spans while keeping the rest of the user's text** (`on_fail =
+  "redact"`/`"block"`/`"ask"`). A `on_progress` callback lets a UI show
+  "scanning data safety…". Wired via `R/prompt_gate.R` `.prompt_gate_scan()` at
+  the agent-loop UserPromptSubmit point. Two systems stay separate: the
+  UserPromptSubmit **hook** may block/append but never redacts (CC parity); the
+  Data Shield **prompt gate** may redact (its confidentiality job).
+
+* **`UserPromptSubmit` hook can now block or add context** (was notify-only).
+  Renamed `UserMessage` -> `UserPromptSubmit` to align with Claude Code's public
+  hook event name. A hook may return `action = "block"` (the prompt never
+  reaches the model) or `"add_context"` (append text to what is sent) -- never
+  rewrites the user's original wording, matching CC's contract. `run_user_message`
+  -> `run_user_prompt_submit`.
+
 * **Hooks aligned with Claude Code's 27 lifecycle events** (was 12). Events
   with a real trigger fire live: `SessionEnd`, `PostCompact`, `StopFailure`,
   `Notification`, `TaskCreated`/`TaskCompleted` (through the TaskCreate/TaskUpdate

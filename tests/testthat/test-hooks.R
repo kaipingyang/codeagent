@@ -7,7 +7,7 @@
 test_that("HookEvent exposes the original 12 lifecycle events", {
   expect_true(all(c(
     "PreToolUse", "PostToolUse", "PostToolUseFailure",
-    "PermissionDenied", "PermissionRequest", "UserMessage", "AssistantMessage",
+    "PermissionDenied", "PermissionRequest", "UserPromptSubmit", "AssistantMessage",
     "SessionStart", "Stop", "PreCompact", "SubagentStart", "SubagentStop"
   ) %in% unlist(HookEvent)))
 })
@@ -15,7 +15,7 @@ test_that("HookEvent exposes the original 12 lifecycle events", {
 test_that("HookEvent covers all 27 Claude Code events + AssistantMessage", {
   cc_events <- c(
     "PreToolUse", "PostToolUse", "PostToolUseFailure", "Notification",
-    "UserMessage",  # = CC UserPromptSubmit (renamed)
+    "UserPromptSubmit",  # aligned with CC's public event name
     "SessionStart", "SessionEnd", "Stop", "StopFailure", "SubagentStart",
     "SubagentStop", "PreCompact", "PostCompact", "PermissionRequest",
     "PermissionDenied", "Setup", "TeammateIdle", "TaskCreated", "TaskCompleted",

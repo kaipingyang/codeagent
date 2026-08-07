@@ -45,9 +45,18 @@ Returns list with \code{action}:
 }
 }
 
-\subsection{UserMessage callback: \verb{function(message)}}{
+\subsection{UserPromptSubmit callback: \verb{function(message)}}{
 
-Return value ignored (informational only).
+Aligns with Claude Code's \code{UserPromptSubmit} contract. Returns a list with
+\code{action}:
+\itemize{
+\item \code{"allow"} (or NULL) -- proceed unchanged
+\item \code{"block"} -- reject this turn; the user prompt never reaches the model
+(optional \code{message} becomes the response shown instead)
+\item \code{"add_context"} -- proceed, but APPEND \code{additional_context} to what is sent
+to the model (never rewrites the user's original text -- matching CC, which
+only supports block + additionalContext, not redaction of user input)
+}
 }
 
 \subsection{AssistantMessage callback: \verb{function(message)}}{
@@ -67,7 +76,7 @@ Return value ignored (informational only).
     \item \href{#method-HookRegistry-run_failure}{\code{HookRegistry$run_failure()}}
     \item \href{#method-HookRegistry-run_permission_denied}{\code{HookRegistry$run_permission_denied()}}
     \item \href{#method-HookRegistry-run_permission_request}{\code{HookRegistry$run_permission_request()}}
-    \item \href{#method-HookRegistry-run_user_message}{\code{HookRegistry$run_user_message()}}
+    \item \href{#method-HookRegistry-run_user_prompt_submit}{\code{HookRegistry$run_user_prompt_submit()}}
     \item \href{#method-HookRegistry-run_assistant_message}{\code{HookRegistry$run_assistant_message()}}
     \item \href{#method-HookRegistry-run_session_start}{\code{HookRegistry$run_session_start()}}
     \item \href{#method-HookRegistry-run_stop}{\code{HookRegistry$run_stop()}}
@@ -211,13 +220,17 @@ Returns "allow", "deny", or NULL (fall through to ask_fn).
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-HookRegistry-run_user_message"></a>}}
-\if{latex}{\out{\hypertarget{method-HookRegistry-run_user_message}{}}}
-\subsection{\code{HookRegistry$run_user_message()}}{
-  Fire UserMessage hooks (informational).
+\if{html}{\out{<a id="method-HookRegistry-run_user_prompt_submit"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_user_prompt_submit}{}}}
+\subsection{\code{HookRegistry$run_user_prompt_submit()}}{
+  Fire UserPromptSubmit hooks (before the prompt reaches the
+model). Aligns with Claude Code's \code{UserPromptSubmit}: a hook may \code{block}
+the turn or append \code{additional_context}, but NEVER rewrites the user's
+original text. Returns a list: \code{list(action = "block", message = ...)}
+if any hook blocked, else \verb{list(action = "allow", additional_context = <appended text or NULL>)}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{HookRegistry$run_user_message(message)}
+    \preformatted{HookRegistry$run_user_prompt_submit(message)}
     \if{html}{\out{</div>}}
   }
 }

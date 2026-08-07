@@ -35,6 +35,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 （git 忽略）。`git add/commit/push` 前扫描 diff（`git diff --cached | grep -iE 'api[_-]?key|token|secret|sk-|ghp_|dapi|azuredatabricks\.net|serving-endpoints'`）；
 打印 remote URL 时用 `sed -E 's#//[^@]*@#//***@#g'` 掩码，**绝不回显完整 token**。详见 skill `no-secrets`。
 
+**知识产权铁律 — 对齐是"对标公开接口/行为"，绝不是"复刻源码"：** codeagent 的设计参考对象是
+Claude Code 和 Claude Agent SDK，对齐**只**针对它们的**公开接口 / 公开文档 / 公开可观察行为**
+（如 hook 事件名 `UserPromptSubmit`/`PreToolUse`、公开字段契约 `block`/`additionalContext`、SDK
+`__init__.py` 导出的公开类型）——这些是官方要求用户在配置里书写的接口契约，复刻接口名/契约不构成侵权
+（接口对标，非实现照搬）。**绝不**在代码、注释、commit message、plan、对话、文档里出现"读/复刻/移植
+Claude Code **源码**"、"反编译/逆向"、"基于源码学习/确认其实现"这类措辞——即使实际只是学习公开行为，
+这类字面也有被解读为"照搬源码"的风险。commit message 与文档一律写"**对标 Claude Code / Claude Agent
+SDK 公开 hooks 接口 / 公开行为**"，不写"源码"。历史遗留的风险措辞发现即修（如需改历史 commit message，
+留备份分支后 rebase reword，本条已于 2026-08-07 清理一例）。
+
+**命名双向对齐 CC + Claude Agent SDK（含历史漂移备案）：** 本项目最早复刻时**先参考 Claude Agent SDK、
+后参考 Claude Code**，故部分历史命名源自 SDK 而非 CC，可能与 CC 现行事件名不完全一致：
+- `UserMessage`（旧）= CC 公开事件 `UserPromptSubmit`（对齐后应逐步统一到 CC 名）。
+- `AssistantMessage`：**与 Claude Agent SDK 的公开类型 `AssistantMessage` 同名但语义漂移**——SDK 里它是
+  一个**消息类型**（`Message` 家族），codeagent 里却把它当成一个 **hook 事件**用；CC 的 `HOOK_EVENTS`
+  里**没有**这个事件（"模型输出后"CC 用 `Stop` + `last_assistant_message` 字段表达）。因有下游消费方
+  （`ui_customizations.R`），暂保留不废弃，挂 TODO 待未来评估合并进 `Stop`。
+- 新增/改名 hook 事件时，优先对齐 CC 公开事件名；若 CC 无对应而 SDK 有，注明来源与语义层级（事件 vs 消息类型），
+  避免再次同名漂移。
+
 **每次改完代码必须重装包并更新 codegraph：**
 ```r
 pak::local_install(".", ask = FALSE, upgrade = FALSE)

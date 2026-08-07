@@ -1,7 +1,7 @@
 #' @title Tool Hook System
 #' @description Lifecycle hook system for codeagent.
 #'   Supports PreToolUse, PostToolUse, PostToolUseFailure, PermissionDenied,
-#'   UserMessage, AssistantMessage, and custom event hooks.
+#'   UserPromptSubmit, AssistantMessage, and custom event hooks.
 #' @name hooks
 #' @keywords internal
 NULL
@@ -19,10 +19,14 @@ NULL
 #' * `POST_TOOL_USE_FAILURE` -- After a tool throws an error
 #' * `PERMISSION_DENIED`     -- When a tool call is blocked by permissions
 #' * `PERMISSION_REQUEST`    -- When permission mode is "ask" (bubble/default)
-#' * `USER_MESSAGE`          -- When user sends a message to the agent
+#' * `USER_PROMPT_SUBMIT`    -- When user submits a prompt, before it reaches the
+#'   model (aligns with Claude Code's public `UserPromptSubmit` hook event)
 #'   (codeagent's name for Claude Code's `UserPromptSubmit`)
-#' * `ASSISTANT_MESSAGE`     -- When the assistant produces a text response
-#'   (codeagent-only; Claude Code has no equivalent event)
+#' * `ASSISTANT_MESSAGE`     -- When the assistant produces a text response.
+#'   NOTE: name collides with Claude Agent SDK's `AssistantMessage` *message
+#'   type* but is used here as a *hook event*; Claude Code has no such event
+#'   (it uses `Stop` + `last_assistant_message`). Kept for its downstream
+#'   consumer (ui_customizations.R); TODO: evaluate merging into `Stop`.
 #' * `SESSION_END`           -- When the agent loop terminates (any reason)
 #' * `POST_COMPACT`          -- After context compaction completes
 #' * `STOP_FAILURE`          -- When the loop terminates on an error
@@ -49,7 +53,7 @@ HookEvent <- list(
   POST_TOOL_USE_FAILURE = "PostToolUseFailure",
   PERMISSION_DENIED     = "PermissionDenied",
   PERMISSION_REQUEST    = "PermissionRequest",
-  USER_MESSAGE          = "UserMessage",
+  USER_PROMPT_SUBMIT    = "UserPromptSubmit",
   ASSISTANT_MESSAGE     = "AssistantMessage",
   # Lifecycle events (M5)
   SESSION_START         = "SessionStart",
@@ -116,8 +120,15 @@ HookEvent <- list(
 #' * `"deny"` -- reject
 #' * NULL / `"ask"` -- fall through to default ask_fn
 #'
-#' ## UserMessage callback: `function(message)`
-#' Return value ignored (informational only).
+#' ## UserPromptSubmit callback: `function(message)`
+#' Aligns with Claude Code's `UserPromptSubmit` contract. Returns a list with
+#' `action`:
+#' * `"allow"` (or NULL) -- proceed unchanged
+#' * `"block"` -- reject this turn; the user prompt never reaches the model
+#'   (optional `message` becomes the response shown instead)
+#' * `"add_context"` -- proceed, but APPEND `additional_context` to what is sent
+#'   to the model (never rewrites the user's original text -- matching CC, which
+#'   only supports block + additionalContext, not redaction of user input)
 #'
 #' ## AssistantMessage callback: `function(message)`
 #' Return value ignored (informational only).
@@ -238,11 +249,27 @@ HookRegistry <- R6::R6Class(
       NULL
     },
 
-    #' @description Fire UserMessage hooks (informational).
-    run_user_message = function(message) {
-      for (hook in private$hooks[[HookEvent$USER_MESSAGE]])
-        .run_hook_timed(hook$fn, hook$timeout_ms, message)
-      invisible(NULL)
+    #' @description Fire UserPromptSubmit hooks (before the prompt reaches the
+    #'   model). Aligns with Claude Code's `UserPromptSubmit`: a hook may `block`
+    #'   the turn or append `additional_context`, but NEVER rewrites the user's
+    #'   original text. Returns a list: `list(action = "block", message = ...)`
+    #'   if any hook blocked, else `list(action = "allow", additional_context =
+    #'   <appended text or NULL>)`.
+    run_user_prompt_submit = function(message) {
+      ctx <- character(0)
+      for (hook in private$hooks[[HookEvent$USER_PROMPT_SUBMIT]]) {
+        result <- .run_hook_timed(hook$fn, hook$timeout_ms, message)
+        if (is.null(result)) next
+        action <- result[["action"]] %||% "allow"
+        if (identical(action, "block"))
+          return(list(action = "block",
+                      message = result[["message"]] %||% "Blocked by hook."))
+        if (identical(action, "add_context") &&
+            !is.null(result[["additional_context"]]))
+          ctx <- c(ctx, as.character(result[["additional_context"]]))
+      }
+      list(action = "allow",
+           additional_context = if (length(ctx)) paste(ctx, collapse = "\n") else NULL)
     },
 
     #' @description Fire AssistantMessage hooks (informational).

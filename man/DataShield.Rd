@@ -44,6 +44,7 @@ shield$coverage()
     \item \href{#method-DataShield-describe}{\code{DataShield$describe()}}
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
+    \item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
     \item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
     \item \href{#method-DataShield-bind_reviewer_factory}{\code{DataShield$bind_reviewer_factory()}}
@@ -294,6 +295,51 @@ layers. \code{NULL}/\code{Inf} disables the cap.}
   }
   \subsection{Returns}{
     List with action (\code{pass}, \code{block}, or \code{ask}), reason, matches and score.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-scan_prompt"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-scan_prompt}{}}}
+\subsection{\code{DataShield$scan_prompt()}}{
+  Scan a user prompt BEFORE it reaches the model (edge 1).
+This is the Data Shield half of the prompt gate: it detects protected
+data the user may have pasted into their message. Unlike egress (which
+withholds a whole unsafe tool result), prompt redaction replaces ONLY
+the matched values / PII spans and keeps the rest of the user's text --
+the user's original wording is otherwise preserved.
+
+Two detectors, both reusing existing machinery:
+\itemize{
+\item value_match: does the prompt contain a REGISTERED protected value
+(e.g. a real USUBJID)? O(1) hash lookup via the value index.
+\item regex/PII: email / phone / token / id shapes.
+}
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$scan_prompt(
+  text,
+  on_fail = c("redact", "block", "ask"),
+  on_progress = NULL,
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{text}}{Character scalar. The raw user prompt.}
+      \item{\code{on_fail}}{\code{"redact"} (default, replace matches, keep rest),
+\code{"block"} (reject the whole turn), or \code{"ask"} (defer to approval).}
+      \item{\code{on_progress}}{Optional \verb{function(list(stage, status, matched, elapsed_ms))} progress callback so a UI can show "scanning data
+safety...". NULL (default) is silent and zero-overhead.}
+      \item{\code{context}}{Optional non-sensitive context (e.g. \code{tool_call_id}).}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    List: \code{action} (\code{"pass"}/\code{"redact"}/\code{"block"}/\code{"ask"}),
+\code{text} (possibly redacted prompt), \code{matches} (count), \code{score}.
   }
 }
 

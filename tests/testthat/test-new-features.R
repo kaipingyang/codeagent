@@ -28,7 +28,7 @@ test_that("PermissionMode includes bubble", {
 test_that("HookEvent has all 7 event types", {
   expected <- c("PreToolUse", "PostToolUse", "PostToolUseFailure",
                 "PermissionDenied", "PermissionRequest",
-                "UserMessage", "AssistantMessage")
+                "UserPromptSubmit", "AssistantMessage")
   for (e in expected)
     expect_true(e %in% unlist(HookEvent), info = paste("Missing:", e))
 })
@@ -36,7 +36,7 @@ test_that("HookEvent has all 7 event types", {
 test_that("HookRegistry register() accepts valid events", {
   reg <- HookRegistry$new()
   expect_no_error(
-    reg$register(HookEvent$USER_MESSAGE, function(msg) NULL)
+    reg$register(HookEvent$USER_PROMPT_SUBMIT, function(msg) NULL)
   )
   expect_equal(reg$count(), 1L)
 })
@@ -49,12 +49,13 @@ test_that("HookRegistry register() rejects unknown events", {
   )
 })
 
-test_that("HookRegistry run_user_message fires callback", {
+test_that("HookRegistry run_user_prompt_submit fires callback and allows by default", {
   reg <- HookRegistry$new()
   received <- NULL
-  reg$register(HookEvent$USER_MESSAGE, function(msg) { received <<- msg })
-  reg$run_user_message("hello")
+  reg$register(HookEvent$USER_PROMPT_SUBMIT, function(msg) { received <<- msg; NULL })
+  res <- reg$run_user_prompt_submit("hello")
   expect_equal(received, "hello")
+  expect_identical(res$action, "allow")
 })
 
 test_that("HookRegistry run_assistant_message fires callback", {
@@ -111,7 +112,7 @@ test_that("HookRegistry legacy register_pre/register_post still work", {
 
 test_that("HookRegistry clear() removes all hooks", {
   reg <- HookRegistry$new()
-  reg$register(HookEvent$USER_MESSAGE, function(m) NULL)
+  reg$register(HookEvent$USER_PROMPT_SUBMIT, function(m) NULL)
   reg$register(HookEvent$ASSISTANT_MESSAGE, function(m) NULL)
   expect_equal(reg$count(), 2L)
   reg$clear()
