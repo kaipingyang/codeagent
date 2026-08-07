@@ -170,6 +170,17 @@ a **configurable scanner list** (`data_shield_input_scanners` /
 secure-by-default): a host may drop a detector, e.g. `c("value_match")` keeps
 registered-value matching but skips PII regex.
 
+**Protected-data schema in the system prompt** (querychat-style): when a shield
+is active, each registered dataset's *filtered* schema (identifier values
+suppressed, rare categories hidden — the same output `DescribeData` produces) is
+injected into the system prompt, so the model knows what protected data exists
+without calling the tool first (it no longer fabricates column names/dims). The
+`DescribeData` tool remains the live on-demand fallback. Data registered before
+the client is built is in the initial prompt; for data uploaded at runtime, call
+`refresh_data_shield_context(client)` after `register_data()` to rebuild the
+system prompt (preserves history, one-time cache miss). `register_data()` does
+not auto-refresh — the shield stays decoupled from the Chat.
+
 `shield_egress(max_rows = 0)` retains **no raw tabular line** when bulk output is
 detected; scalar/status/model-summary output still passes. `shield_regex()`
 handles unregistered PII/secrets; `shield_ingress()` scans every tool's arguments

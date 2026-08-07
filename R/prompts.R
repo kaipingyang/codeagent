@@ -129,6 +129,18 @@ NULL
     "- Permission mode: ", settings$permission_mode %||% "default", "\n",
     "- Max turns: ", settings$max_turns %||% 100L))
 
+  # Data Shield protected-data schema (querychat-style ambient injection): when
+  # a shield is active, list every registered dataset's filtered schema so the
+  # model knows what protected data exists without calling DescribeData first
+  # (prevents it fabricating column names / dims). Reads live engine state; a
+  # NULL shield or no datasets yields "" (dropped). Refresh after runtime
+  # register_data via refresh_data_shield_context().
+  shield <- settings$data_shield_engine
+  if (inherits(shield, "DataShield")) {
+    sblock <- tryCatch(shield$schema_block(), error = function(e) "")
+    if (is.character(sblock) && nzchar(sblock)) parts <- c(parts, sblock)
+  }
+
   paste(parts, collapse = "\n\n")
 }
 

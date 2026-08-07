@@ -42,6 +42,7 @@ shield$coverage()
     \item \href{#method-DataShield-trusted_result}{\code{DataShield$trusted_result()}}
     \item \href{#method-DataShield-install}{\code{DataShield$install()}}
     \item \href{#method-DataShield-describe}{\code{DataShield$describe()}}
+    \item \href{#method-DataShield-schema_block}{\code{DataShield$schema_block()}}
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
@@ -245,6 +246,24 @@ layers. \code{NULL}/\code{Inf} disables the cap.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$describe(name = NULL)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-schema_block"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-schema_block}{}}}
+\subsection{\code{DataShield$schema_block()}}{
+  Build a system-prompt block listing every registered
+protected dataset with its filtered schema (the same per-dataset output
+\code{DescribeData} produces). Reused by the system-prompt builder so the
+model knows what protected data exists without calling the tool first.
+Reads live engine state, so it reflects the current dataset set (grows
+as \code{register_data} is called). Returns \code{""} when no dataset is
+registered or \code{DescribeData} is disabled.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$schema_block()}
     \if{html}{\out{</div>}}
   }
 }

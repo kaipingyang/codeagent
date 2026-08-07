@@ -787,6 +787,34 @@ DataShield <- R6::R6Class(
       .data_shield_describe(dataset, private$config)
     },
 
+    #' @description Build a system-prompt block listing every registered
+    #'   protected dataset with its filtered schema (the same per-dataset output
+    #'   `DescribeData` produces). Reused by the system-prompt builder so the
+    #'   model knows what protected data exists without calling the tool first.
+    #'   Reads live engine state, so it reflects the current dataset set (grows
+    #'   as `register_data` is called). Returns `""` when no dataset is
+    #'   registered or `DescribeData` is disabled.
+    schema_block = function() {
+      private$assert_open()
+      if (!isTRUE(private$config$describe_enabled)) return("")
+      nms <- names(private$datasets)
+      if (!length(nms)) return("")
+      blocks <- vapply(nms, function(nm) {
+        tryCatch(.data_shield_describe(private$datasets[[nm]], private$config),
+                 error = function(e) "")
+      }, character(1))
+      blocks <- blocks[nzchar(blocks)]
+      if (!length(blocks)) return("")
+      paste0(
+        "<protected-data>\n",
+        "The following datasets are under Data Shield protection. The schemas ",
+        "below are already filtered (identifier values suppressed, rare ",
+        "categories hidden). Call the DescribeData tool for the authoritative ",
+        "live view; never assume unlisted columns or values.\n\n",
+        paste(blocks, collapse = "\n\n"),
+        "\n</protected-data>")
+    },
+
     #' @description Apply the ordered egress strategy pipeline to a tool result.
     #' @param result Tool return value.
     #' @param context Optional non-sensitive context (`tool_name`, `tool_call_id`).
@@ -1344,6 +1372,33 @@ DataShield <- R6::R6Class(
     }
   )
 )
+
+#' Refresh the Data Shield schema block in a client's system prompt
+#'
+#' Rebuilds the full system prompt (which includes each registered protected
+#' dataset's filtered schema) and re-applies it to the client's Chat via
+#' `set_system_prompt()`. Call this after registering or uploading data at
+#' runtime (e.g. a Shiny `fileInput` handler) so the model sees the new
+#' dataset's schema. Datasets registered before the client was built are already
+#' in the initial system prompt and need no refresh.
+#'
+#' `set_system_prompt()` replaces the prompt wholesale but preserves the
+#' conversation history (turns), so the running chat is unaffected apart from a
+#' one-time prompt-cache miss.
+#'
+#' @param client A `CodeagentClient` (or a bare ellmer `Chat`, using default
+#'   settings/cwd).
+#' @return The `client`, invisibly.
+#' @export
+refresh_data_shield_context <- function(client) {
+  chat     <- if (inherits(client, "CodeagentClient")) client$chat else client
+  settings <- if (inherits(client, "CodeagentClient")) client$settings else list()
+  cwd      <- settings$cwd %||% getwd()
+  if (!inherits(chat, "Chat")) return(invisible(client))
+  sp <- tryCatch(.build_system_prompt(settings, cwd), error = function(e) NULL)
+  if (!is.null(sp)) tryCatch(chat$set_system_prompt(sp), error = function(e) NULL)
+  invisible(client)
+}
 
 # Resolve NULL / strategy-list / explicit DataShield to one R6 engine.
 #' @keywords internal

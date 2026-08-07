@@ -140,6 +140,12 @@ server <- function(input, output, session) {
     client$chat$set_tools(list(dump_tool, peek_tool))  # reset to unwrapped
     new_shield$install(client$chat)                    # wrap once for this preset
     shield_rv(new_shield)
+    # Point the harness (and the schema-injection path) at the active shield:
+    # this demo swaps the shield per preset rather than baking one into the
+    # client, so keep settings$data_shield_engine in sync, then refresh the
+    # system prompt so the model sees the current preset's protected schema.
+    client$settings$data_shield_engine <- new_shield
+    codeagent::refresh_data_shield_context(client)
 
     had_history <- length(tryCatch(client$chat$get_turns(), error = function(e) list())) > 0L
     client$chat$set_turns(list())
@@ -157,6 +163,11 @@ server <- function(input, output, session) {
   register_upload <- function(df, source) {
     data_env$uploaded <- df
     n_indexed <- shield_rv()$register_data(df, name = "uploaded")
+    # Data uploaded at runtime is not in the initial system prompt, so refresh
+    # it: the model now sees the uploaded dataset's (filtered) schema without
+    # having to call DescribeData first. Host responsibility -- register_data
+    # does NOT auto-refresh (keeps the shield decoupled from the Chat).
+    codeagent::refresh_data_shield_context(client)
     output$status <- renderText(sprintf(
       "Source: %s\nShape: %d x %d\nHigh-entropy values indexed: %d",
       source, nrow(df), ncol(df), n_indexed))
