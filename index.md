@@ -154,16 +154,23 @@ cross-process `BackgroundAgent`/`/bg` fail closed while a shield is
 active.
 
 Data Shield guards **both edges into the model**. Edge 2 (tool traffic)
-is the `scan_ingress`/`scan_egress` layer below. Edge 1 (the user’s own
-prompt) is the **prompt gate**: `scan_prompt()` detects a registered
+is the `scan_ingress`/`scan_egress` layer below. Edge 1 (everything the
+user sends) is the **input gate**: `scan_prompt()` detects a registered
 protected value pasted into the message (value_match) or PII/token
 shapes (regex) and by default **redacts only the matched spans, keeping
 the rest of the user’s text** (`on_fail = "redact"`/`"block"`/`"ask"`;
-pass `on_progress` to drive a “scanning data safety…” UI). This runs
-automatically at the agent-loop UserPromptSubmit point when a shield is
-active. It is kept separate from the `UserPromptSubmit` hook, which may
-block or append context but — matching Claude Code — never rewrites the
-user’s input; only the shield redacts.
+pass `on_progress` to drive a “scanning data safety…” UI). The input
+gate runs on **all input**, not just typed text: it scans typed text and
+text-bearing attachments, and exposes an optional
+`data_shield_image_scanner` hook for image attachments (default `NULL` =
+images are not scanned; host may inject an OCR/VLM scanner). A
+ready-made OCR scanner ships as `data_shield_ocr_scanner(shield)`
+(opt-in; uses the optional `tesseract` `Suggests` dep and degrades to
+pass when it is absent). It runs automatically at the UserPromptSubmit
+point of both entry paths — the agent loop (CLI) and the Shiny stream —
+when a shield is active. It is kept separate from the `UserPromptSubmit`
+hook, which may block or append context but — matching Claude Code —
+never rewrites the user’s input; only the shield redacts.
 
 `shield_egress(max_rows = 0)` retains **no raw tabular line** when bulk
 output is detected; scalar/status/model-summary output still passes.

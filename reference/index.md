@@ -284,6 +284,8 @@ Tool factories and registration.
   : Configure portable sandbox policy
 - [`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)
   : Configure a small-model semantic code reviewer
+- [`data_shield_ocr_scanner()`](https://kaipingyang.github.io/codeagent/reference/data_shield_ocr_scanner.md)
+  : Build an OCR-backed image scanner for the Data Shield input gate.
 
 ## Data exploration (WEAR)
 
