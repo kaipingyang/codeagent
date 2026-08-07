@@ -169,6 +169,7 @@ reference:
       - shield_tool_policy
       - shield_sandbox
       - shield_reviewer
+      - data_shield_ocr_scanner
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."
