@@ -99,6 +99,7 @@ object for an independent user/thread boundary.</p>
 <li><p><a href="#method-DataShield-scan_egress"><code>DataShield$scan_egress()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_ingress"><code>DataShield$scan_ingress()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_prompt"><code>DataShield$scan_prompt()</code></a></p></li>
+<li><p><a href="#method-DataShield-scan_response"><code>DataShield$scan_response()</code></a></p></li>
 <li><p><a href="#method-DataShield-add_scanner"><code>DataShield$add_scanner()</code></a></p></li>
 <li><p><a href="#method-DataShield-set_egress_ask"><code>DataShield$set_egress_ask()</code></a></p></li>
 <li><p><a href="#method-DataShield-bind_reviewer_factory"><code>DataShield$bind_reviewer_factory()</code></a></p></li>
@@ -378,7 +379,8 @@ the user's original wording is otherwise preserved.</p>
 <span>  <span class="va">text</span>,</span>
 <span>  on_fail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"redact"</span>, <span class="st">"block"</span>, <span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  on_progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  scanners <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"regex"</span>, <span class="st">"value_match"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
@@ -394,7 +396,16 @@ the user's original wording is otherwise preserved.</p>
 safety...". NULL (default) is silent and zero-overhead.</p></dd>
 
       <dt><code>context</code></dt>
-<dd><p>Optional non-sensitive context (e.g. <code>tool_call_id</code>).</p></dd>
+<dd><p>Optional non-sensitive context (e.g. <code>tool_call_id</code>,
+<code>edge</code>). <code>context$edge</code> labels audit events; defaults to <code>"prompt"</code> so
+the reusable output-side wrapper (<code>scan_response</code>) can pass
+<code>edge = "response"</code> to distinguish direction in the audit log.</p></dd>
+
+      <dt><code>scanners</code></dt>
+<dd><p>Character vector selecting which detectors run, a subset
+of <code>c("regex", "value_match")</code>. Default runs both (secure-by-default);
+a host may drop one via <code>settings$data_shield_input_scanners</code> /
+<code>data_shield_output_scanners</code>.</p></dd>
 
 
 </dl><p></p></div>
@@ -406,10 +417,53 @@ safety...". NULL (default) is silent and zero-overhead.</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-DataShield-scan_response"></a><div class="section">
+<h3 id="datashield-scan-response-"><code>DataShield$scan_response()</code><a class="anchor" aria-label="anchor" href="#datashield-scan-response-"></a></h3>
+<p>Scan the model's final reply BEFORE it reaches the user
+(edge 3, the output gate). Symmetric to <code>scan_prompt</code> (edge 1): the
+model may reproduce a protected value it inferred from tool output even
+when the user's input was clean, so the reply is scanned on the way out.
+A thin wrapper over <code>scan_prompt</code> – identical detectors (value_match +
+PII regex), differing only in the audit <code>edge</code> label (<code>"response"</code>).</p><div class="section">
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_response</span><span class="op">(</span></span>
+<span>  <span class="va">text</span>,</span>
+<span>  on_fail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"redact"</span>, <span class="st">"block"</span>, <span class="st">"ask"</span><span class="op">)</span>,</span>
+<span>  scanners <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"regex"</span>, <span class="st">"value_match"</span><span class="op">)</span>,</span>
+<span>  on_progress <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>text</code></dt>
+<dd><p>Character scalar. The model's final reply.</p></dd>
+
+      <dt><code>on_fail</code></dt>
+<dd><p><code>"redact"</code> (default), <code>"block"</code>, or <code>"ask"</code>.</p></dd>
+
+      <dt><code>scanners</code></dt>
+<dd><p>Subset of <code>c("regex", "value_match")</code>; default both.</p></dd>
+
+      <dt><code>on_progress</code></dt>
+<dd><p>Optional progress callback (see <code>scan_prompt</code>).</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>Optional non-sensitive context; <code>edge</code> is forced to
+<code>"response"</code>.</p></dd>
+
+
+</dl><p></p></div>
+</div><p></p><div class="section">
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<p>Same shape as <code>scan_prompt</code>.</p>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-DataShield-add_scanner"></a><div class="section">
 <h3 id="datashield-add-scanner-"><code>DataShield$add_scanner()</code><a class="anchor" aria-label="anchor" href="#datashield-add-scanner-"></a></h3>
 <p>Add a custom scanner function to the end of the egress pipeline.</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">add_scanner</span><span class="op">(</span><span class="va">name</span>, <span class="va">fn</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -418,10 +472,10 @@ safety...". NULL (default) is silent and zero-overhead.</p></dd>
 <p></p><hr><a id="method-DataShield-set_egress_ask"></a><div class="section">
 <h3 id="datashield-set-egress-ask-"><code>DataShield$set_egress_ask()</code><a class="anchor" aria-label="anchor" href="#datashield-set-egress-ask-"></a></h3>
 <p>Set the sync/promise egress approval callback.</p><div class="section">
-<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">set_egress_ask</span><span class="op">(</span>fn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fn</code></dt>
 <dd><p>Function receiving non-sensitive event metadata and returning
 <code>redact</code>, <code>block</code>, or (when enabled) <code>raw_once</code>; NULL clears it.</p></dd>
@@ -435,10 +489,10 @@ safety...". NULL (default) is silent and zero-overhead.</p></dd>
 <p></p><hr><a id="method-DataShield-bind_reviewer_factory"></a><div class="section">
 <h3 id="datashield-bind-reviewer-factory-"><code>DataShield$bind_reviewer_factory()</code><a class="anchor" aria-label="anchor" href="#datashield-bind-reviewer-factory-"></a></h3>
 <p>Bind codeagent's parent-provider reviewer Chat factory.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">bind_reviewer_factory</span><span class="op">(</span><span class="va">fn</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fn</code></dt>
 <dd><p>Function accepting optional model and returning a fresh Chat.</p></dd>
 
@@ -451,10 +505,10 @@ safety...". NULL (default) is silent and zero-overhead.</p></dd>
 <p></p><hr><a id="method-DataShield-audit"></a><div class="section">
 <h3 id="datashield-audit-"><code>DataShield$audit()</code><a class="anchor" aria-label="anchor" href="#datashield-audit-"></a></h3>
 <p>Return a copy of non-sensitive decision events.</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>limit</code></dt>
 <dd><p>Optional number of most recent events.</p></dd>
 
@@ -467,7 +521,7 @@ safety...". NULL (default) is silent and zero-overhead.</p></dd>
 <p></p><hr><a id="method-DataShield-clear_audit"></a><div class="section">
 <h3 id="datashield-clear-audit-"><code>DataShield$clear_audit()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-audit-"></a></h3>
 <p>Remove all in-memory audit events.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -476,7 +530,7 @@ safety...". NULL (default) is silent and zero-overhead.</p></dd>
 <p></p><hr><a id="method-DataShield-clear"></a><div class="section">
 <h3 id="datashield-clear-"><code>DataShield$clear()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-"></a></h3>
 <p>Remove one dataset, or all datasets when name is NULL.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span>name <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -485,7 +539,7 @@ safety...". NULL (default) is silent and zero-overhead.</p></dd>
 <p></p><hr><a id="method-DataShield-close"></a><div class="section">
 <h3 id="datashield-close-"><code>DataShield$close()</code><a class="anchor" aria-label="anchor" href="#datashield-close-"></a></h3>
 <p>Clear sensitive state and close the shield.</p><div class="section">
-<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
+<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -494,7 +548,7 @@ safety...". NULL (default) is silent and zero-overhead.</p></dd>
 <p></p><hr><a id="method-DataShield-coverage"></a><div class="section">
 <h3 id="datashield-coverage-"><code>DataShield$coverage()</code><a class="anchor" aria-label="anchor" href="#datashield-coverage-"></a></h3>
 <p>Summarise non-sensitive runtime coverage.</p><div class="section">
-<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
+<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">coverage</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 

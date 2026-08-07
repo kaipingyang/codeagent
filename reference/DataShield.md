@@ -40,6 +40,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$scan_prompt()`](#method-DataShield-scan_prompt)
 
+- [`DataShield$scan_response()`](#method-DataShield-scan_response)
+
 - [`DataShield$add_scanner()`](#method-DataShield-add_scanner)
 
 - [`DataShield$set_egress_ask()`](#method-DataShield-set_egress_ask)
@@ -367,7 +369,8 @@ Two detectors, both reusing existing machinery:
       text,
       on_fail = c("redact", "block", "ask"),
       on_progress = NULL,
-      context = list()
+      context = list(),
+      scanners = c("regex", "value_match")
     )
 
 #### Arguments
@@ -389,12 +392,69 @@ Two detectors, both reusing existing machinery:
 
 - `context`:
 
-  Optional non-sensitive context (e.g. `tool_call_id`).
+  Optional non-sensitive context (e.g. `tool_call_id`, `edge`).
+  `context$edge` labels audit events; defaults to `"prompt"` so the
+  reusable output-side wrapper (`scan_response`) can pass
+  `edge = "response"` to distinguish direction in the audit log.
+
+- `scanners`:
+
+  Character vector selecting which detectors run, a subset of
+  `c("regex", "value_match")`. Default runs both (secure-by-default); a
+  host may drop one via `settings$data_shield_input_scanners` /
+  `data_shield_output_scanners`.
 
 #### Returns
 
 List: `action` (`"pass"`/`"redact"`/`"block"`/`"ask"`), `text` (possibly
 redacted prompt), `matches` (count), `score`.
+
+------------------------------------------------------------------------
+
+### `DataShield$scan_response()`
+
+Scan the model's final reply BEFORE it reaches the user (edge 3, the
+output gate). Symmetric to `scan_prompt` (edge 1): the model may
+reproduce a protected value it inferred from tool output even when the
+user's input was clean, so the reply is scanned on the way out. A thin
+wrapper over `scan_prompt` – identical detectors (value_match + PII
+regex), differing only in the audit `edge` label (`"response"`).
+
+#### Usage
+
+    DataShield$scan_response(
+      text,
+      on_fail = c("redact", "block", "ask"),
+      scanners = c("regex", "value_match"),
+      on_progress = NULL,
+      context = list()
+    )
+
+#### Arguments
+
+- `text`:
+
+  Character scalar. The model's final reply.
+
+- `on_fail`:
+
+  `"redact"` (default), `"block"`, or `"ask"`.
+
+- `scanners`:
+
+  Subset of `c("regex", "value_match")`; default both.
+
+- `on_progress`:
+
+  Optional progress callback (see `scan_prompt`).
+
+- `context`:
+
+  Optional non-sensitive context; `edge` is forced to `"response"`.
+
+#### Returns
+
+Same shape as `scan_prompt`.
 
 ------------------------------------------------------------------------
 

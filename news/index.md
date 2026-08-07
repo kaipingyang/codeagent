@@ -2,6 +2,33 @@
 
 ## codeagent (development version)
 
+- **Output gate (edge 3): Data Shield now scans the model’s final reply
+  before it reaches the user.** Data Shield previously guarded the two
+  edges *into* the model (edge 1 input gate, edge 2 tool gate) but not
+  the reply *out* to the user – so a model that reproduced a protected
+  value it inferred from tool output (an aggregate edge 2 let through)
+  leaked it even when the user’s own input was clean. The output gate
+  (`R/output_gate.R`
+  [`.output_gate_scan()`](https://kaipingyang.github.io/codeagent/reference/dot-output_gate_scan.md) +
+  `DataShield$scan_response()`) closes this, reusing the same
+  value_match + PII detectors as the input gate (audited under
+  `edge = "response"`). CLI (`agent_loop`) is non-streaming and
+  **redacts the reply in place**; the Shiny app streams token-by-token
+  so it scans the finished reply and **appends a warning below** (the
+  text is already on screen). Configurable via
+  `settings$data_shield_response_on_fail` (`redact`/`block`/`ask`) and
+  `settings$data_shield_output_scanners`. This brings Data Shield to the
+  canonical three-edge coverage (input / tool / output), matching the
+  output rail of NeMo Guardrails / the Output Guard of Guardrails AI.
+
+- **Input and output gates take a configurable scanner list.**
+  `settings$data_shield_input_scanners` / `data_shield_output_scanners`
+  (default `c("value_match", "regex")` – secure-by-default) let a host
+  drop a detector, e.g. `c("value_match")` to keep registered-value
+  matching but skip PII regex. Backed by a new `scanners=` argument on
+  `DataShield$scan_prompt()` (default runs both, fully backward
+  compatible).
+
 - **Input gate (edge 1): Data Shield now scans all user input before it
   reaches the model.** Previously Data Shield only guarded tool traffic
   (edge 2: `scan_ingress`/`scan_egress`); the user’s own message went to
