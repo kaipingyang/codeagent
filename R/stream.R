@@ -82,6 +82,19 @@ codeagent_stream_async <- function(
   settings <- if (inherits(client, "CodeagentClient")) client$settings else list()
   if (is.null(cwd)) cwd <- settings$cwd %||% getwd()
 
+  # Data Shield input gate (edge 1): scan the user's text + attachments before
+  # the turn reaches the model. Mirrors agent_loop's 1a.6 for the Shiny/stream
+  # path so both entry points guard edge 1. No-op when no shield is active.
+  ig <- tryCatch(.input_gate_scan(input, settings, chat),
+                 error = function(e) list(action = "pass", input = input))
+  if (identical(ig$action, "block")) {
+    msg <- ig$text %||% "[Blocked by Data Shield input gate]"
+    if (!is.null(on_delta)) tryCatch(on_delta(msg), error = function(e) NULL)
+    return(promises::promise_resolve(
+      list(text = msg, usage = NULL, stop_reason = "shield_blocked")))
+  }
+  input <- ig$input %||% input   # may be redacted; rest preserved
+
   # Run turn setup OUTSIDE the coro::async body: coro cannot assign the result
   # of an `if` expression, and .turn_setup contains such branches.
   actual_input <- .turn_setup(client, input, iteration, cwd,

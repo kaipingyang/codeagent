@@ -1,17 +1,20 @@
 # codeagent (development version)
 
-* **Prompt gate (edge 1): Data Shield now scans the user prompt before it
+* **Input gate (edge 1): Data Shield now scans all user input before it
   reaches the model.** Previously Data Shield only guarded tool traffic (edge 2:
   `scan_ingress`/`scan_egress`); the user's own message went to the model
-  unscanned. `DataShield$scan_prompt()` adds edge-1 protection: it detects a
-  registered protected value pasted into the prompt (value_match, O(1) hash
-  lookup) and PII/token shapes (regex), and by default **redacts only the
-  matched spans while keeping the rest of the user's text** (`on_fail =
-  "redact"`/`"block"`/`"ask"`). A `on_progress` callback lets a UI show
-  "scanning data safety…". Wired via `R/prompt_gate.R` `.prompt_gate_scan()` at
-  the agent-loop UserPromptSubmit point. Two systems stay separate: the
-  UserPromptSubmit **hook** may block/append but never redacts (CC parity); the
-  Data Shield **prompt gate** may redact (its confidentiality job).
+  unscanned. The input gate (`R/input_gate.R` `.input_gate_scan()`) adds edge-1
+  protection over **all input**: typed text and text-bearing attachments are
+  scanned via `DataShield$scan_prompt()` (registered protected value pasted in
+  via value_match O(1) hash lookup + PII/token shapes via regex), and by default
+  it **redacts only the matched spans while keeping the rest of the user's text**
+  (`on_fail = "redact"`/`"block"`/`"ask"`). Image attachments are a blind spot by
+  default; an optional `data_shield_image_scanner` hook (default `NULL`) lets a
+  host inject an OCR/VLM scanner. A `on_progress` callback lets a UI show
+  "scanning data safety…". Wired at the UserPromptSubmit point of **both** entry
+  paths — the agent loop (CLI) and the Shiny stream. Two systems stay separate:
+  the UserPromptSubmit **hook** may block/append but never redacts (CC parity);
+  the Data Shield **input gate** may redact (its confidentiality job).
 
 * **`UserPromptSubmit` hook can now block or add context** (was notify-only).
   Renamed `UserMessage` -> `UserPromptSubmit` to align with Claude Code's public

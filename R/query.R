@@ -417,21 +417,21 @@ agent_loop <- function(user_input,
     ups_context <- ups$additional_context
   }
 
-  # 1a.6 Data Shield prompt gate (edge 1): the shield's own confidentiality
-  #   scan of the user prompt. SEPARATE system from the hook above -- unlike the
+  # 1a.6 Data Shield input gate (edge 1): the shield's own confidentiality
+  #   scan of the user input. SEPARATE system from the hook above -- unlike the
   #   hook it MAY redact (replace protected values / PII the user pasted in,
   #   keeping the rest of the text). block -> reject the turn; redact -> continue
-  #   with the sanitized text. This is the Data Shield half of the prompt gate
-  #   (hooks half is the UserPromptSubmit hook above); see R/prompt_gate.R.
-  pg <- .prompt_gate_scan(user_input, settings, chat)
-  if (identical(pg$action, "block")) {
+  #   with the sanitized text. This is the Data Shield half of the input gate
+  #   (hooks half is the UserPromptSubmit hook above); see R/input_gate.R.
+  ig <- .input_gate_scan(user_input, settings, chat)
+  if (identical(ig$action, "block")) {
     if (!is.null(session_id))
       tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)
-    return(list(response    = pg$text %||% "[Blocked by Data Shield prompt gate]",
+    return(list(response    = ig$text %||% "[Blocked by Data Shield input gate]",
                 session_id  = session_id,
                 stop_reason = "shield_blocked"))
   }
-  user_input <- pg$text %||% user_input   # may be redacted; rest preserved
+  user_input <- ig$input %||% user_input   # may be redacted; rest preserved
 
   # 1b. Inject system-reminder (dynamic context into user message, not system prompt)
   #     This mirrors Claude Code's <system-reminder> pattern: ephemeral metadata
