@@ -26,6 +26,12 @@
   \pkg{tesseract} is not installed the scanner degrades to `pass` (never blocks
   on a missing optional dep).
 
+* **The input gate now also runs on the Shiny app's real stream path**
+  (`server_chat.R` `stream_task`), not only the standalone
+  `codeagent_stream_async()`. Uploaded attachments and typed text in the app are
+  scanned at edge 1 before reaching the model; a block ends the turn with a chat
+  message, a redact continues with the sanitized input.
+
 * **`UserPromptSubmit` hook can now block or add context** (was notify-only).
   Renamed `UserMessage` -> `UserPromptSubmit` to align with Claude Code's public
   hook event name. A hook may return `action = "block"` (the prompt never

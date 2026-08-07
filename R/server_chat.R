@@ -90,6 +90,21 @@ server_chat <- function(input, output, session, chat, settings,
       user_contents  # "normal" or anything else -> send as-is (text or contents list)
     }
 
+    # Data Shield input gate (edge 1): scan typed text + attachments before the
+    # turn reaches the model. This is the Shiny app's real stream path (the
+    # standalone codeagent_stream_async() guards its own copy). No-op when no
+    # shield is active; image attachments use settings$data_shield_image_scanner
+    # (default NULL = blind spot). A block ends the turn with a chat message.
+    ig <- tryCatch(.input_gate_scan(actual_input, settings, chat),
+                   error = function(e) list(action = "pass", input = actual_input))
+    if (identical(ig$action, "block")) {
+      msg <- ig$text %||% "[Blocked by Data Shield input gate]"
+      tryCatch(shinychat::chat_append("chat", msg, session = session),
+               error = function(e) NULL)
+      return(promises::promise_resolve("blocked"))
+    }
+    actual_input <- ig$input %||% actual_input   # may be redacted; rest preserved
+
     # Compaction + resource management + system-reminder injection.
     # .turn_setup handles char/list input uniformly (list = text + attachments).
     # shiny::isolate needed because compaction_ctrl/resource_state live in
