@@ -75,7 +75,7 @@ codegraph sync   # 更新符号索引，让 kiro/AI 工具看到最新代码
 - 新增/修改函数 → 对应 `tests/testthat/test-*.R` 补测试
 - 修改公开 API（签名/行为）→ 对应 `inst/examples/demo_*.R` 或 `test_databricks.R` 更新
 - 新功能 → 加进 `inst/examples/test_databricks.R` 的 section
-- **新增任何导出函数，必须同时：① 确认是否需接入 `.register_all_tools()`/调用链；② 同步写 `test-*.R` 覆盖主路径和降级路径。**
+- **新增任何导出函数，必须同时：① 确认是否需接入 `.register_all_tools()`/调用链；② 同步写 `test-*.R` 覆盖主路径和降级路径；③ 加进 `_pkgdown.yml` 的 reference 索引（对应 section 补一行）——否则 pkgdown CI 报 `topic missing from index` 挂掉（血泪：`data_shield_ocr_scanner` 漏加致 pkgdown build 失败）。改完跑 `pkgdown::check_pkgdown()` 应 `No problems found`。**
 
 **工具函数用闭包工厂模式：**
 ```r
