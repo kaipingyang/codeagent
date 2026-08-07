@@ -103,7 +103,12 @@ commits 不更新已是教训：每次 commit 前检查 README 是否需要同�
 `inst/examples/test_databricks.R` 的 section -
 **新增任何导出函数，必须同时：① 确认是否需接入
 [`.register_all_tools()`](https://kaipingyang.github.io/codeagent/reference/dot-register_all_tools.md)/调用链；②
-同步写 `test-*.R` 覆盖主路径和降级路径。**
+同步写 `test-*.R` 覆盖主路径和降级路径；③ 加进 `_pkgdown.yml` 的
+reference 索引（对应 section 补一行）——否则 pkgdown CI 报
+`topic missing from index` 挂掉（血泪：`data_shield_ocr_scanner` 漏加致
+pkgdown build 失败）。改完跑
+[`pkgdown::check_pkgdown()`](https://pkgdown.r-lib.org/reference/check_pkgdown.html)
+应 `No problems found`。**
 
 **工具函数用闭包工厂模式：**
 
