@@ -7,7 +7,7 @@ parallel agents do not collide on task IDs.
 ## Usage
 
 ``` r
-register_task_tools(chat)
+register_task_tools(chat, hooks = NULL)
 ```
 
 ## Arguments
@@ -16,6 +16,13 @@ register_task_tools(chat)
 
   An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
   object.
+
+- hooks:
+
+  A
+  [HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md)
+  or NULL, forwarded to the task tools so they fire `TaskCreated` /
+  `TaskCompleted`.
 
 ## Value
 

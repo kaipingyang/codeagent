@@ -83,9 +83,33 @@ Return value ignored (informational only).
 
 - [`HookRegistry$run_subagent_stop()`](#method-HookRegistry-run_subagent_stop)
 
+- [`HookRegistry$run_session_end()`](#method-HookRegistry-run_session_end)
+
+- [`HookRegistry$run_post_compact()`](#method-HookRegistry-run_post_compact)
+
+- [`HookRegistry$run_stop_failure()`](#method-HookRegistry-run_stop_failure)
+
+- [`HookRegistry$run_notification()`](#method-HookRegistry-run_notification)
+
+- [`HookRegistry$run_task_created()`](#method-HookRegistry-run_task_created)
+
+- [`HookRegistry$run_task_completed()`](#method-HookRegistry-run_task_completed)
+
+- [`HookRegistry$run_worktree_create()`](#method-HookRegistry-run_worktree_create)
+
+- [`HookRegistry$run_worktree_remove()`](#method-HookRegistry-run_worktree_remove)
+
+- [`HookRegistry$run_instructions_loaded()`](#method-HookRegistry-run_instructions_loaded)
+
+- [`HookRegistry$run_file_changed()`](#method-HookRegistry-run_file_changed)
+
+- [`HookRegistry$run_config_change()`](#method-HookRegistry-run_config_change)
+
 - [`HookRegistry$clear()`](#method-HookRegistry-clear)
 
 - [`HookRegistry$count()`](#method-HookRegistry-count)
+
+- [`HookRegistry$has_hooks()`](#method-HookRegistry-has_hooks)
 
 ------------------------------------------------------------------------
 
@@ -280,6 +304,165 @@ Fire SubagentStop hooks when a sub-agent completes. Callback:
 
 ------------------------------------------------------------------------
 
+### `HookRegistry$run_session_end()`
+
+Fire SessionEnd hooks when the agent loop terminates. Callback:
+`function(reason, context)`. Return value ignored. `reason` mirrors CC's
+exit reasons where they map (e.g. "completed", "max_turns",
+"budget_exceeded", "error").
+
+#### Usage
+
+    HookRegistry$run_session_end(reason = "completed", context = list())
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_post_compact()`
+
+Fire PostCompact hooks after context compaction completes. Callback:
+`function(trigger, compact_summary, context)`. Return ignored.
+
+#### Usage
+
+    HookRegistry$run_post_compact(
+      trigger = "auto",
+      compact_summary = "",
+      context = list()
+    )
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_stop_failure()`
+
+Fire StopFailure hooks when the loop ends on an error. Callback:
+`function(error, context)`. Return value ignored.
+
+#### Usage
+
+    HookRegistry$run_stop_failure(error = "", context = list())
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_notification()`
+
+Fire Notification hooks for user-facing notifications. Callback:
+`function(message, notification_type, context)`. Return ignored.
+
+#### Usage
+
+    HookRegistry$run_notification(
+      message = "",
+      notification_type = "info",
+      context = list()
+    )
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_task_created()`
+
+Fire TaskCreated hooks when a task is created. Callback:
+`function(task_id, task_subject, context)`. Return ignored.
+
+#### Usage
+
+    HookRegistry$run_task_created(
+      task_id = "",
+      task_subject = "",
+      context = list()
+    )
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_task_completed()`
+
+Fire TaskCompleted hooks when a task becomes completed. Callback:
+`function(task_id, task_subject, context)`. Return ignored.
+
+#### Usage
+
+    HookRegistry$run_task_completed(
+      task_id = "",
+      task_subject = "",
+      context = list()
+    )
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_worktree_create()`
+
+Fire WorktreeCreate hooks when a sub-agent worktree is made. Callback:
+`function(name, context)`. Return value ignored.
+
+#### Usage
+
+    HookRegistry$run_worktree_create(name = "", context = list())
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_worktree_remove()`
+
+Fire WorktreeRemove hooks when a sub-agent worktree is removed.
+Callback: `function(worktree_path, context)`. Return value ignored.
+
+#### Usage
+
+    HookRegistry$run_worktree_remove(worktree_path = "", context = list())
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_instructions_loaded()`
+
+Fire InstructionsLoaded hooks when a CLAUDE.md file loads. Callback:
+`function(file_path, memory_type, load_reason, context)`. Return
+ignored. NOTE: `memory_type` is a best-effort approximation
+(User/Project by path prefix; no Managed concept) and `load_reason` is
+always "session_start" – codeagent has no nested/glob/include/compact
+load paths, so these fields are NOT field-for-field equal to CC.
+
+#### Usage
+
+    HookRegistry$run_instructions_loaded(
+      file_path = "",
+      memory_type = "Project",
+      load_reason = "session_start",
+      context = list()
+    )
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_file_changed()`
+
+Fire FileChanged hooks (Shiny-only; watcher-driven). Callback:
+`function(file_path, event, context)` where `event` is one of
+"change"/"add"/"unlink". Return value ignored. Not fired on the CLI –
+the synchronous CLI loop cannot pump the `later` queue watcher needs.
+
+#### Usage
+
+    HookRegistry$run_file_changed(
+      file_path = "",
+      event = "change",
+      context = list()
+    )
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_config_change()`
+
+Fire ConfigChange hooks (Shiny-only; watcher-driven). Callback:
+`function(source, file_path, context)`. Return value ignored. Not fired
+on the CLI (see run_file_changed note).
+
+#### Usage
+
+    HookRegistry$run_config_change(
+      source = "user_settings",
+      file_path = "",
+      context = list()
+    )
+
+------------------------------------------------------------------------
+
 ### `HookRegistry$clear()`
 
 Remove all registered hooks.
@@ -297,3 +480,21 @@ Count total registered hooks across all events.
 #### Usage
 
     HookRegistry$count()
+
+------------------------------------------------------------------------
+
+### `HookRegistry$has_hooks()`
+
+TRUE if at least one hook is registered for `event`.
+
+#### Usage
+
+    HookRegistry$has_hooks(event)
+
+#### Arguments
+
+- `event`:
+
+  Character. One of
+  [HookEvent](https://kaipingyang.github.io/codeagent/reference/HookEvent.md)
+  values.

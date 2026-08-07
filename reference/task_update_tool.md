@@ -5,7 +5,7 @@ Create the TaskUpdate tool
 ## Usage
 
 ``` r
-task_update_tool(store)
+task_update_tool(store, hooks = NULL)
 ```
 
 ## Arguments
@@ -13,6 +13,13 @@ task_update_tool(store)
 - store:
 
   Environment. Per-session task store from `.new_task_store()`.
+
+- hooks:
+
+  A
+  [HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md)
+  or NULL. Fires `TaskCompleted` on the pending/in_progress -\>
+  completed transition (once, not on repeat updates).
 
 ## Value
 

@@ -70,8 +70,26 @@
 <li><p><code>POST_TOOL_USE_FAILURE</code> – After a tool throws an error</p></li>
 <li><p><code>PERMISSION_DENIED</code>     – When a tool call is blocked by permissions</p></li>
 <li><p><code>PERMISSION_REQUEST</code>    – When permission mode is "ask" (bubble/default)</p></li>
-<li><p><code>USER_MESSAGE</code>          – When user sends a message to the agent</p></li>
-<li><p><code>ASSISTANT_MESSAGE</code>     – When the assistant produces a text response</p></li>
+<li><p><code>USER_MESSAGE</code>          – When user sends a message to the agent
+(codeagent's name for Claude Code's <code>UserPromptSubmit</code>)</p></li>
+<li><p><code>ASSISTANT_MESSAGE</code>     – When the assistant produces a text response
+(codeagent-only; Claude Code has no equivalent event)</p></li>
+<li><p><code>SESSION_END</code>           – When the agent loop terminates (any reason)</p></li>
+<li><p><code>POST_COMPACT</code>          – After context compaction completes</p></li>
+<li><p><code>STOP_FAILURE</code>          – When the loop terminates on an error</p></li>
+<li><p><code>NOTIFICATION</code>          – Generic user-facing notification</p></li>
+<li><p><code>TASK_CREATED</code>          – When a task is created (TaskCreate tool)</p></li>
+<li><p><code>TASK_COMPLETED</code>        – When a task transitions to completed</p></li>
+<li><p><code>WORKTREE_CREATE</code>       – When a sub-agent git worktree is created</p></li>
+<li><p><code>WORKTREE_REMOVE</code>       – When a sub-agent git worktree is removed</p></li>
+<li><p><code>INSTRUCTIONS_LOADED</code>   – When a CLAUDE.md instruction file is loaded</p></li>
+<li><p><code>FILE_CHANGED</code>          – Filesystem change under cwd (Shiny only)</p></li>
+<li><p><code>CONFIG_CHANGE</code>         – settings file change (Shiny only)</p></li>
+</ul><p>The following Claude Code events are defined for parity but have no live
+trigger in codeagent (they never fire); see the inline notes:</p><ul><li><p><code>ELICITATION</code> / <code>ELICITATION_RESULT</code> – need MCP elicitation (mcptools lacks it)</p></li>
+<li><p><code>TEAMMATE_IDLE</code>         – codeagent teams are one-shot mirai workers (no idle state)</p></li>
+<li><p><code>SETUP</code>                 – no init/maintenance lifecycle phase</p></li>
+<li><p><code>CWD_CHANGED</code>           – no run-time cwd-change behaviour</p></li>
 </ul></div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

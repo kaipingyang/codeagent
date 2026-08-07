@@ -259,8 +259,20 @@ registration order.</p><div class="section">
 <li><p><a href="#method-HookRegistry-run_pre_compact"><code>HookRegistry$run_pre_compact()</code></a></p></li>
 <li><p><a href="#method-HookRegistry-run_subagent_start"><code>HookRegistry$run_subagent_start()</code></a></p></li>
 <li><p><a href="#method-HookRegistry-run_subagent_stop"><code>HookRegistry$run_subagent_stop()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_session_end"><code>HookRegistry$run_session_end()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_post_compact"><code>HookRegistry$run_post_compact()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_stop_failure"><code>HookRegistry$run_stop_failure()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_notification"><code>HookRegistry$run_notification()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_task_created"><code>HookRegistry$run_task_created()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_task_completed"><code>HookRegistry$run_task_completed()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_worktree_create"><code>HookRegistry$run_worktree_create()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_worktree_remove"><code>HookRegistry$run_worktree_remove()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_instructions_loaded"><code>HookRegistry$run_instructions_loaded()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_file_changed"><code>HookRegistry$run_file_changed()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-run_config_change"><code>HookRegistry$run_config_change()</code></a></p></li>
 <li><p><a href="#method-HookRegistry-clear"><code>HookRegistry$clear()</code></a></p></li>
 <li><p><a href="#method-HookRegistry-count"><code>HookRegistry$count()</code></a></p></li>
+<li><p><a href="#method-HookRegistry-has_hooks"><code>HookRegistry$has_hooks()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-HookRegistry-initialize"></a><div class="section">
 <h3 id="hookregistry-new-"><code>HookRegistry$new()</code><a class="anchor" aria-label="anchor" href="#hookregistry-new-"></a></h3>
 <p>Create a new registry.</p><div class="section">
@@ -432,10 +444,158 @@ Callback: <code>function(description, result, context)</code>. Return ignored.</
 
 </div>
 
+<p></p><hr><a id="method-HookRegistry-run_session_end"></a><div class="section">
+<h3 id="hookregistry-run-session-end-"><code>HookRegistry$run_session_end()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-session-end-"></a></h3>
+<p>Fire SessionEnd hooks when the agent loop terminates.
+Callback: <code>function(reason, context)</code>. Return value ignored.
+<code>reason</code> mirrors CC's exit reasons where they map (e.g. "completed",
+"max_turns", "budget_exceeded", "error").</p><div class="section">
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_session_end</span><span class="op">(</span>reason <span class="op">=</span> <span class="st">"completed"</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_post_compact"></a><div class="section">
+<h3 id="hookregistry-run-post-compact-"><code>HookRegistry$run_post_compact()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-post-compact-"></a></h3>
+<p>Fire PostCompact hooks after context compaction completes.
+Callback: <code>function(trigger, compact_summary, context)</code>. Return ignored.</p><div class="section">
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_post_compact</span><span class="op">(</span></span>
+<span>  trigger <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  compact_summary <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_stop_failure"></a><div class="section">
+<h3 id="hookregistry-run-stop-failure-"><code>HookRegistry$run_stop_failure()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-stop-failure-"></a></h3>
+<p>Fire StopFailure hooks when the loop ends on an error.
+Callback: <code>function(error, context)</code>. Return value ignored.</p><div class="section">
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_stop_failure</span><span class="op">(</span>error <span class="op">=</span> <span class="st">""</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_notification"></a><div class="section">
+<h3 id="hookregistry-run-notification-"><code>HookRegistry$run_notification()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-notification-"></a></h3>
+<p>Fire Notification hooks for user-facing notifications.
+Callback: <code>function(message, notification_type, context)</code>. Return ignored.</p><div class="section">
+<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_notification</span><span class="op">(</span></span>
+<span>  message <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  notification_type <span class="op">=</span> <span class="st">"info"</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_task_created"></a><div class="section">
+<h3 id="hookregistry-run-task-created-"><code>HookRegistry$run_task_created()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-task-created-"></a></h3>
+<p>Fire TaskCreated hooks when a task is created.
+Callback: <code>function(task_id, task_subject, context)</code>. Return ignored.</p><div class="section">
+<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_task_created</span><span class="op">(</span></span>
+<span>  task_id <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  task_subject <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_task_completed"></a><div class="section">
+<h3 id="hookregistry-run-task-completed-"><code>HookRegistry$run_task_completed()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-task-completed-"></a></h3>
+<p>Fire TaskCompleted hooks when a task becomes completed.
+Callback: <code>function(task_id, task_subject, context)</code>. Return ignored.</p><div class="section">
+<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_task_completed</span><span class="op">(</span></span>
+<span>  task_id <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  task_subject <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_worktree_create"></a><div class="section">
+<h3 id="hookregistry-run-worktree-create-"><code>HookRegistry$run_worktree_create()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-worktree-create-"></a></h3>
+<p>Fire WorktreeCreate hooks when a sub-agent worktree is made.
+Callback: <code>function(name, context)</code>. Return value ignored.</p><div class="section">
+<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_worktree_create</span><span class="op">(</span>name <span class="op">=</span> <span class="st">""</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_worktree_remove"></a><div class="section">
+<h3 id="hookregistry-run-worktree-remove-"><code>HookRegistry$run_worktree_remove()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-worktree-remove-"></a></h3>
+<p>Fire WorktreeRemove hooks when a sub-agent worktree is removed.
+Callback: <code>function(worktree_path, context)</code>. Return value ignored.</p><div class="section">
+<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_worktree_remove</span><span class="op">(</span>worktree_path <span class="op">=</span> <span class="st">""</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_instructions_loaded"></a><div class="section">
+<h3 id="hookregistry-run-instructions-loaded-"><code>HookRegistry$run_instructions_loaded()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-instructions-loaded-"></a></h3>
+<p>Fire InstructionsLoaded hooks when a CLAUDE.md file loads.
+Callback: <code>function(file_path, memory_type, load_reason, context)</code>.
+Return ignored. NOTE: <code>memory_type</code> is a best-effort approximation
+(User/Project by path prefix; no Managed concept) and <code>load_reason</code> is
+always "session_start" – codeagent has no nested/glob/include/compact
+load paths, so these fields are NOT field-for-field equal to CC.</p><div class="section">
+<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_instructions_loaded</span><span class="op">(</span></span>
+<span>  file_path <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  memory_type <span class="op">=</span> <span class="st">"Project"</span>,</span>
+<span>  load_reason <span class="op">=</span> <span class="st">"session_start"</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_file_changed"></a><div class="section">
+<h3 id="hookregistry-run-file-changed-"><code>HookRegistry$run_file_changed()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-file-changed-"></a></h3>
+<p>Fire FileChanged hooks (Shiny-only; watcher-driven).
+Callback: <code>function(file_path, event, context)</code> where <code>event</code> is one of
+"change"/"add"/"unlink". Return value ignored. Not fired on the CLI –
+the synchronous CLI loop cannot pump the <code>later</code> queue watcher needs.</p><div class="section">
+<h4 id="usage-25">Usage<a class="anchor" aria-label="anchor" href="#usage-25"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_file_changed</span><span class="op">(</span></span>
+<span>  file_path <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  event <span class="op">=</span> <span class="st">"change"</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-run_config_change"></a><div class="section">
+<h3 id="hookregistry-run-config-change-"><code>HookRegistry$run_config_change()</code><a class="anchor" aria-label="anchor" href="#hookregistry-run-config-change-"></a></h3>
+<p>Fire ConfigChange hooks (Shiny-only; watcher-driven).
+Callback: <code>function(source, file_path, context)</code>. Return value ignored.
+Not fired on the CLI (see run_file_changed note).</p><div class="section">
+<h4 id="usage-26">Usage<a class="anchor" aria-label="anchor" href="#usage-26"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_config_change</span><span class="op">(</span></span>
+<span>  source <span class="op">=</span> <span class="st">"user_settings"</span>,</span>
+<span>  file_path <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-HookRegistry-clear"></a><div class="section">
 <h3 id="hookregistry-clear-"><code>HookRegistry$clear()</code><a class="anchor" aria-label="anchor" href="#hookregistry-clear-"></a></h3>
 <p>Remove all registered hooks.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-27">Usage<a class="anchor" aria-label="anchor" href="#usage-27"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -444,8 +604,24 @@ Callback: <code>function(description, result, context)</code>. Return ignored.</
 <p></p><hr><a id="method-HookRegistry-count"></a><div class="section">
 <h3 id="hookregistry-count-"><code>HookRegistry$count()</code><a class="anchor" aria-label="anchor" href="#hookregistry-count-"></a></h3>
 <p>Count total registered hooks across all events.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-28">Usage<a class="anchor" aria-label="anchor" href="#usage-28"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">count</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-HookRegistry-has_hooks"></a><div class="section">
+<h3 id="hookregistry-has-hooks-"><code>HookRegistry$has_hooks()</code><a class="anchor" aria-label="anchor" href="#hookregistry-has-hooks-"></a></h3>
+<p>TRUE if at least one hook is registered for <code>event</code>.</p><div class="section">
+<h4 id="usage-29">Usage<a class="anchor" aria-label="anchor" href="#usage-29"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">has_hooks</span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>event</code></dt>
+<dd><p>Character. One of <a href="HookEvent.html">HookEvent</a> values.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>

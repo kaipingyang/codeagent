@@ -59,7 +59,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">task_create_tool</span><span class="op">(</span><span class="va">store</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">task_create_tool</span><span class="op">(</span><span class="va">store</span>, hooks <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -68,6 +68,10 @@
 
 <dl><dt id="arg-store">store<a class="anchor" aria-label="anchor" href="#arg-store"></a></dt>
 <dd><p>Environment. Per-session task store from <code>.new_task_store()</code>.</p></dd>
+
+
+<dt id="arg-hooks">hooks<a class="anchor" aria-label="anchor" href="#arg-hooks"></a></dt>
+<dd><p>A <a href="HookRegistry.html">HookRegistry</a> or NULL. Fires <code>TaskCreated</code> on create.</p></dd>
 
 </dl></div>
     <div class="section level2">
