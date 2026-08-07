@@ -45,15 +45,18 @@ NULL
 # un-scanned text to the model on an unresolved ask.
 #' @keywords internal
 .input_gate_scan_text <- function(shield, text, on_fail = "redact",
-                                  on_progress = NULL) {
+                                  on_progress = NULL,
+                                  scanners = c("regex", "value_match")) {
   if (!is.character(text) || length(text) != 1L || !nzchar(text))
     return(list(action = "pass", text = text))
   res <- tryCatch(
-    shield$scan_prompt(text, on_fail = on_fail, on_progress = on_progress),
+    shield$scan_prompt(text, on_fail = on_fail, on_progress = on_progress,
+                       scanners = scanners),
     error = function(e) list(action = "pass", text = text, matches = 0L))
   if (identical(res$action, "ask")) {
     redacted <- tryCatch(
-      shield$scan_prompt(text, on_fail = "redact", on_progress = NULL),
+      shield$scan_prompt(text, on_fail = "redact", on_progress = NULL,
+                         scanners = scanners),
       error = function(e) list(action = "pass", text = text))
     return(list(action = "redact", text = redacted$text %||% text))
   }
@@ -94,11 +97,12 @@ NULL
   if (is.null(shield)) return(list(action = "pass", input = input))
   on_fail       <- settings$data_shield_prompt_on_fail %||% "redact"
   image_scanner <- image_scanner %||% settings$data_shield_image_scanner
+  scanners      <- settings$data_shield_input_scanners %||% c("value_match", "regex")
 
   # --- bare character scalar (CLI / ink) ---------------------------------
   if (is.character(input) && length(input) == 1L) {
     if (!nzchar(input)) return(list(action = "pass", input = input))
-    r <- .input_gate_scan_text(shield, input, on_fail, on_progress)
+    r <- .input_gate_scan_text(shield, input, on_fail, on_progress, scanners)
     if (identical(r$action, "block"))
       return(list(action = "block", input = input, text = r$text))
     return(list(action = r$action, input = r$text %||% input))
@@ -114,7 +118,7 @@ NULL
                            error = function(e) FALSE)
       if (is.character(el) && length(el) == 1L && nzchar(el)) {
         # Typed text element: full scan, may redact in place.
-        r <- .input_gate_scan_text(shield, el, on_fail, on_progress)
+        r <- .input_gate_scan_text(shield, el, on_fail, on_progress, scanners)
         if (identical(r$action, "block"))
           return(list(action = "block", input = input, text = r$text))
         if (!identical(r$action, "pass")) { out[[i]] <- r$text; agg <- "redact" }
@@ -135,7 +139,7 @@ NULL
         # hit fails safe to block rather than sending unredacted content.
         txt <- .input_gate_content_text(el)
         if (nzchar(txt)) {
-          r <- .input_gate_scan_text(shield, txt, "block", on_progress)
+          r <- .input_gate_scan_text(shield, txt, "block", on_progress, scanners)
           if (identical(r$action, "block"))
             return(list(action = "block", input = input,
                         text = "[data_shield] attachment blocked: contains protected content."))

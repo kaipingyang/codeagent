@@ -152,6 +152,26 @@ server_chat <- function(input, output, session, chat, settings,
         }
       )
 
+      # Data Shield output gate (edge 3): the reply already streamed to the
+      # browser (can't redact in place), so scan the finalized text and APPEND a
+      # warning below when a protected value slipped through. No-op w/o a shield.
+      tryCatch({
+        lt  <- tryCatch(chat$last_turn(role = "assistant"), error = function(e) NULL)
+        txt <- tryCatch(lt@text, error = function(e) NULL)
+        if (is.character(txt) && length(txt) == 1L && nzchar(txt)) {
+          og <- .output_gate_scan(txt, settings, chat)
+          if (!identical(og$action, "pass") && (og$matches %||% 0L) > 0L) {
+            shinychat::chat_append(
+              "chat",
+              sprintf(paste0("⚠️ **Data Shield:** the reply above ",
+                             "contained %d protected data value(s); the event ",
+                             "is recorded in the audit log."),
+                      og$matches),
+              session = session)
+          }
+        }
+      }, error = function(e) NULL)
+
       n_tokens    <- token_count_with_estimation(chat)
       model_limit <- settings$model_limit %||% 200000L
       # Context-left indicator: computed in a plain helper because coro::async

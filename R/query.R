@@ -518,6 +518,14 @@ agent_loop <- function(user_input,
     }
   }
 
+  # 7c. Data Shield output gate (edge 3): scan the model's finalized reply
+  #   before returning it. The model may reproduce a protected value it inferred
+  #   from tool output even when the user's input was clean. CLI is non-streaming
+  #   so we hold the full string and can redact in place. No-op without a shield.
+  og <- tryCatch(.output_gate_scan(response, settings, chat),
+                 error = function(e) list(action = "pass", text = response))
+  if (!identical(og$action, "pass")) response <- og$text %||% response
+
   # 8. Save session
   if (!is.null(session_id))
     tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)

@@ -45,6 +45,7 @@ shield$coverage()
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
+    \item \href{#method-DataShield-scan_response}{\code{DataShield$scan_response()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
     \item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
     \item \href{#method-DataShield-bind_reviewer_factory}{\code{DataShield$bind_reviewer_factory()}}
@@ -321,7 +322,8 @@ Two detectors, both reusing existing machinery:
   text,
   on_fail = c("redact", "block", "ask"),
   on_progress = NULL,
-  context = list()
+  context = list(),
+  scanners = c("regex", "value_match")
 )}
     \if{html}{\out{</div>}}
   }
@@ -333,13 +335,58 @@ Two detectors, both reusing existing machinery:
 \code{"block"} (reject the whole turn), or \code{"ask"} (defer to approval).}
       \item{\code{on_progress}}{Optional \verb{function(list(stage, status, matched, elapsed_ms))} progress callback so a UI can show "scanning data
 safety...". NULL (default) is silent and zero-overhead.}
-      \item{\code{context}}{Optional non-sensitive context (e.g. \code{tool_call_id}).}
+      \item{\code{context}}{Optional non-sensitive context (e.g. \code{tool_call_id},
+\code{edge}). \code{context$edge} labels audit events; defaults to \code{"prompt"} so
+the reusable output-side wrapper (\code{scan_response}) can pass
+\code{edge = "response"} to distinguish direction in the audit log.}
+      \item{\code{scanners}}{Character vector selecting which detectors run, a subset
+of \code{c("regex", "value_match")}. Default runs both (secure-by-default);
+a host may drop one via \code{settings$data_shield_input_scanners} /
+\code{data_shield_output_scanners}.}
     }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
     List: \code{action} (\code{"pass"}/\code{"redact"}/\code{"block"}/\code{"ask"}),
 \code{text} (possibly redacted prompt), \code{matches} (count), \code{score}.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-scan_response"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-scan_response}{}}}
+\subsection{\code{DataShield$scan_response()}}{
+  Scan the model's final reply BEFORE it reaches the user
+(edge 3, the output gate). Symmetric to \code{scan_prompt} (edge 1): the
+model may reproduce a protected value it inferred from tool output even
+when the user's input was clean, so the reply is scanned on the way out.
+A thin wrapper over \code{scan_prompt} -- identical detectors (value_match +
+PII regex), differing only in the audit \code{edge} label (\code{"response"}).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$scan_response(
+  text,
+  on_fail = c("redact", "block", "ask"),
+  scanners = c("regex", "value_match"),
+  on_progress = NULL,
+  context = list()
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{text}}{Character scalar. The model's final reply.}
+      \item{\code{on_fail}}{\code{"redact"} (default), \code{"block"}, or \code{"ask"}.}
+      \item{\code{scanners}}{Subset of \code{c("regex", "value_match")}; default both.}
+      \item{\code{on_progress}}{Optional progress callback (see \code{scan_prompt}).}
+      \item{\code{context}}{Optional non-sensitive context; \code{edge} is forced to
+\code{"response"}.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Same shape as \code{scan_prompt}.
   }
 }
 

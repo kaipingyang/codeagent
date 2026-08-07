@@ -136,6 +136,28 @@ test_that(".input_gate_scan skips images when no scanner is set (blind spot)", {
   expect_identical(res$action, "pass")
 })
 
+test_that(".input_gate_scan input_scanners switch: value_match only skips PII", {
+  sh <- make_shield()
+  res <- codeagent:::.input_gate_scan(
+    "SUBJECT010 and foo@bar.com",
+    settings = list(data_shield_engine = sh,
+                    data_shield_input_scanners = c("value_match")))
+  expect_identical(res$action, "redact")
+  expect_false(grepl("SUBJECT010", res$input, fixed = TRUE))   # registered value gone
+  expect_true(grepl("foo@bar.com", res$input, fixed = TRUE))   # PII kept (regex off)
+})
+
+test_that(".input_gate_scan input_scanners switch: regex only skips value_match", {
+  sh <- make_shield()
+  res <- codeagent:::.input_gate_scan(
+    "SUBJECT011 and foo@bar.com",
+    settings = list(data_shield_engine = sh,
+                    data_shield_input_scanners = c("regex")))
+  expect_identical(res$action, "redact")
+  expect_true(grepl("SUBJECT011", res$input, fixed = TRUE))    # value_match off
+  expect_false(grepl("foo@bar.com", res$input, fixed = TRUE))  # PII redacted
+})
+
 test_that("data_shield_ocr_scanner degrades to pass when tesseract absent", {
   # Guard is requireNamespace: with the pkg missing the scanner must never block.
   skip_if(requireNamespace("tesseract", quietly = TRUE),

@@ -940,13 +940,22 @@ DataShield <- R6::R6Class(
     #' @param on_progress Optional `function(list(stage, status, matched,
     #'   elapsed_ms))` progress callback so a UI can show "scanning data
     #'   safety...". NULL (default) is silent and zero-overhead.
-    #' @param context Optional non-sensitive context (e.g. `tool_call_id`).
+    #' @param context Optional non-sensitive context (e.g. `tool_call_id`,
+    #'   `edge`). `context$edge` labels audit events; defaults to `"prompt"` so
+    #'   the reusable output-side wrapper (`scan_response`) can pass
+    #'   `edge = "response"` to distinguish direction in the audit log.
+    #' @param scanners Character vector selecting which detectors run, a subset
+    #'   of `c("regex", "value_match")`. Default runs both (secure-by-default);
+    #'   a host may drop one via `settings$data_shield_input_scanners` /
+    #'   `data_shield_output_scanners`.
     #' @return List: `action` (`"pass"`/`"redact"`/`"block"`/`"ask"`),
     #'   `text` (possibly redacted prompt), `matches` (count), `score`.
     scan_prompt = function(text, on_fail = c("redact", "block", "ask"),
-                           on_progress = NULL, context = list()) {
+                           on_progress = NULL, context = list(),
+                           scanners = c("regex", "value_match")) {
       private$assert_open()
       on_fail <- match.arg(on_fail)
+      edge <- context$edge %||% "prompt"
       if (!is.character(text) || length(text) != 1L || !nzchar(text))
         return(list(action = "pass", text = text, matches = 0L, score = 0))
 
@@ -961,6 +970,7 @@ DataShield <- R6::R6Class(
       current <- text
 
       # --- B: regex / PII (cheap, always run) -------------------------------
+      if ("regex" %in% scanners) {
       t0 <- proc.time()[["elapsed"]]
       emit("regex", "scanning")
       regex_fn <- .data_shield_regex_scanner(
@@ -975,7 +985,7 @@ DataShield <- R6::R6Class(
       if (rx_hits > 0L) {
         total_matches <- total_matches + rx_hits
         if (identical(on_fail, "block")) {
-          private$record_event(edge = "prompt", tool_name = context$tool_name %||% NA_character_,
+          private$record_event(edge = edge, tool_name = context$tool_name %||% NA_character_,
             tool_call_id = context$tool_call_id, strategy = "regex", action = "block",
             reason = "PII/token shape in prompt", match_count = rx_hits, score = 1)
           emit("regex", "done", rx_hits, t0)
@@ -986,9 +996,10 @@ DataShield <- R6::R6Class(
         current <- rx$sanitized   # redact spans, keep rest
       }
       emit("regex", "done", rx_hits, t0)
+      }
 
       # --- A: value_match against the registered protected-value index ------
-      if (is.environment(private$index)) {
+      if ("value_match" %in% scanners && is.environment(private$index)) {
         t1 <- proc.time()[["elapsed"]]
         emit("value_match", "scanning")
         vm <- tryCatch(.data_shield_value_scan(current, private$index),
@@ -996,7 +1007,7 @@ DataShield <- R6::R6Class(
         if (isTRUE(vm$hit)) {
           total_matches <- total_matches + vm$n
           if (identical(on_fail, "block")) {
-            private$record_event(edge = "prompt", tool_name = context$tool_name %||% NA_character_,
+            private$record_event(edge = edge, tool_name = context$tool_name %||% NA_character_,
               tool_call_id = context$tool_call_id, strategy = "value_match", action = "block",
               reason = "protected value pasted into prompt", match_count = vm$n,
               score = min(1, vm$n / 5))
@@ -1006,7 +1017,7 @@ DataShield <- R6::R6Class(
                         matches = total_matches, score = min(1, vm$n / 5)))
           }
           if (identical(on_fail, "ask")) {
-            private$record_event(edge = "prompt", tool_name = context$tool_name %||% NA_character_,
+            private$record_event(edge = edge, tool_name = context$tool_name %||% NA_character_,
               tool_call_id = context$tool_call_id, strategy = "value_match", action = "ask",
               reason = "protected value pasted into prompt", match_count = vm$n,
               score = min(1, vm$n / 5))
@@ -1016,7 +1027,7 @@ DataShield <- R6::R6Class(
           }
           # redact: replace each matched raw token with [REDACTED], keep rest.
           current <- .data_shield_redact_values(current, vm$values, private$index)
-          private$record_event(edge = "prompt", tool_name = context$tool_name %||% NA_character_,
+          private$record_event(edge = edge, tool_name = context$tool_name %||% NA_character_,
             tool_call_id = context$tool_call_id, strategy = "value_match", action = "redact",
             reason = "protected value redacted from prompt", match_count = vm$n,
             score = min(1, vm$n / 5))
@@ -1027,6 +1038,27 @@ DataShield <- R6::R6Class(
       list(action = if (total_matches > 0L) "redact" else "pass",
            text = current, matches = total_matches,
            score = if (total_matches > 0L) min(1, total_matches / 5) else 0)
+    },
+
+    #' @description Scan the model's final reply BEFORE it reaches the user
+    #'   (edge 3, the output gate). Symmetric to `scan_prompt` (edge 1): the
+    #'   model may reproduce a protected value it inferred from tool output even
+    #'   when the user's input was clean, so the reply is scanned on the way out.
+    #'   A thin wrapper over `scan_prompt` -- identical detectors (value_match +
+    #'   PII regex), differing only in the audit `edge` label (`"response"`).
+    #' @param text Character scalar. The model's final reply.
+    #' @param on_fail `"redact"` (default), `"block"`, or `"ask"`.
+    #' @param scanners Subset of `c("regex", "value_match")`; default both.
+    #' @param on_progress Optional progress callback (see `scan_prompt`).
+    #' @param context Optional non-sensitive context; `edge` is forced to
+    #'   `"response"`.
+    #' @return Same shape as `scan_prompt`.
+    scan_response = function(text, on_fail = c("redact", "block", "ask"),
+                             scanners = c("regex", "value_match"),
+                             on_progress = NULL, context = list()) {
+      context$edge <- "response"
+      self$scan_prompt(text, on_fail = on_fail, on_progress = on_progress,
+                       context = context, scanners = scanners)
     },
 
     #' @description Add a custom scanner function to the end of the egress pipeline.

@@ -141,7 +141,7 @@ registered high-entropy values are withheld before reaching the LLM. Foreground
 `Agent` sub-chats inherit the same shield; cross-process `BackgroundAgent`/`/bg`
 fail closed while a shield is active.
 
-Data Shield guards **both edges into the model**. Edge 2 (tool traffic) is the
+Data Shield guards **three edges at the model boundary**. Edge 2 (tool traffic) is the
 `scan_ingress`/`scan_egress` layer below. Edge 1 (everything the user sends) is
 the **input gate**: `scan_prompt()` detects a registered protected value pasted
 into the message (value_match) or PII/token shapes (regex) and by default
@@ -157,6 +157,18 @@ the UserPromptSubmit point of both entry paths — the agent loop (CLI) and the
 Shiny stream — when a shield is active. It is kept separate from the
 `UserPromptSubmit` hook, which may block or append context but — matching Claude
 Code — never rewrites the user's input; only the shield redacts.
+
+Edge 3 (the model's reply back to the user) is the **output gate**:
+`.output_gate_scan()` / `DataShield$scan_response()` scan the finalized reply
+with the same detectors, catching a protected value the model reproduced (e.g.
+inferred from tool output) even when the user's input was clean. The CLI redacts
+the reply in place; the Shiny app streams token-by-token so it appends a warning
+below the reply instead (the text is already on screen). Configure via
+`data_shield_response_on_fail` and `data_shield_output_scanners`. Both gates take
+a **configurable scanner list** (`data_shield_input_scanners` /
+`data_shield_output_scanners`, default `c("value_match", "regex")`,
+secure-by-default): a host may drop a detector, e.g. `c("value_match")` keeps
+registered-value matching but skips PII regex.
 
 `shield_egress(max_rows = 0)` retains **no raw tabular line** when bulk output is
 detected; scalar/status/model-summary output still passes. `shield_regex()`
