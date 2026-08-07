@@ -70,10 +70,14 @@
 <li><p><code>POST_TOOL_USE_FAILURE</code> – After a tool throws an error</p></li>
 <li><p><code>PERMISSION_DENIED</code>     – When a tool call is blocked by permissions</p></li>
 <li><p><code>PERMISSION_REQUEST</code>    – When permission mode is "ask" (bubble/default)</p></li>
-<li><p><code>USER_MESSAGE</code>          – When user sends a message to the agent
+<li><p><code>USER_PROMPT_SUBMIT</code>    – When user submits a prompt, before it reaches the
+model (aligns with Claude Code's public <code>UserPromptSubmit</code> hook event)
 (codeagent's name for Claude Code's <code>UserPromptSubmit</code>)</p></li>
-<li><p><code>ASSISTANT_MESSAGE</code>     – When the assistant produces a text response
-(codeagent-only; Claude Code has no equivalent event)</p></li>
+<li><p><code>ASSISTANT_MESSAGE</code>     – When the assistant produces a text response.
+NOTE: name collides with Claude Agent SDK's <code>AssistantMessage</code> <em>message
+type</em> but is used here as a <em>hook event</em>; Claude Code has no such event
+(it uses <code>Stop</code> + <code>last_assistant_message</code>). Kept for its downstream
+consumer (ui_customizations.R); TODO: evaluate merging into <code>Stop</code>.</p></li>
 <li><p><code>SESSION_END</code>           – When the agent loop terminates (any reason)</p></li>
 <li><p><code>POST_COMPACT</code>          – After context compaction completes</p></li>
 <li><p><code>STOP_FAILURE</code>          – When the loop terminates on an error</p></li>

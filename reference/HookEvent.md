@@ -20,11 +20,16 @@ HookEvent
 
 - `PERMISSION_REQUEST` – When permission mode is "ask" (bubble/default)
 
-- `USER_MESSAGE` – When user sends a message to the agent (codeagent's
-  name for Claude Code's `UserPromptSubmit`)
+- `USER_PROMPT_SUBMIT` – When user submits a prompt, before it reaches
+  the model (aligns with Claude Code's public `UserPromptSubmit` hook
+  event) (codeagent's name for Claude Code's `UserPromptSubmit`)
 
-- `ASSISTANT_MESSAGE` – When the assistant produces a text response
-  (codeagent-only; Claude Code has no equivalent event)
+- `ASSISTANT_MESSAGE` – When the assistant produces a text response.
+  NOTE: name collides with Claude Agent SDK's `AssistantMessage`
+  *message type* but is used here as a *hook event*; Claude Code has no
+  such event (it uses `Stop` + `last_assistant_message`). Kept for its
+  downstream consumer (ui_customizations.R); TODO: evaluate merging into
+  `Stop`.
 
 - `SESSION_END` – When the agent loop terminates (any reason)
 

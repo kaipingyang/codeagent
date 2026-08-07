@@ -111,6 +111,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-new_client.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-parse_client_spec.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-preprocess_input.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-prompt_gate_scan.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-read_codeagent_config.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-read_session_state.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-register_all_tools.html</loc></url>
@@ -169,6 +170,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/notebook_read_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/permissions.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/persist_large_result.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/prompt_gate.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/prompts.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/ptl_fallback.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/query.html</loc></url>

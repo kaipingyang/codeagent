@@ -39,9 +39,20 @@ Returns list with `action`:
 
 - NULL / `"ask"` – fall through to default ask_fn
 
-### UserMessage callback: `function(message)`
+### UserPromptSubmit callback: `function(message)`
 
-Return value ignored (informational only).
+Aligns with Claude Code's `UserPromptSubmit` contract. Returns a list
+with `action`:
+
+- `"allow"` (or NULL) – proceed unchanged
+
+- `"block"` – reject this turn; the user prompt never reaches the model
+  (optional `message` becomes the response shown instead)
+
+- `"add_context"` – proceed, but APPEND `additional_context` to what is
+  sent to the model (never rewrites the user's original text – matching
+  CC, which only supports block + additionalContext, not redaction of
+  user input)
 
 ### AssistantMessage callback: `function(message)`
 
@@ -69,7 +80,7 @@ Return value ignored (informational only).
 
 - [`HookRegistry$run_permission_request()`](#method-HookRegistry-run_permission_request)
 
-- [`HookRegistry$run_user_message()`](#method-HookRegistry-run_user_message)
+- [`HookRegistry$run_user_prompt_submit()`](#method-HookRegistry-run_user_prompt_submit)
 
 - [`HookRegistry$run_assistant_message()`](#method-HookRegistry-run_assistant_message)
 
@@ -225,13 +236,18 @@ through to ask_fn).
 
 ------------------------------------------------------------------------
 
-### `HookRegistry$run_user_message()`
+### `HookRegistry$run_user_prompt_submit()`
 
-Fire UserMessage hooks (informational).
+Fire UserPromptSubmit hooks (before the prompt reaches the model).
+Aligns with Claude Code's `UserPromptSubmit`: a hook may `block` the
+turn or append `additional_context`, but NEVER rewrites the user's
+original text. Returns a list: `list(action = "block", message = ...)`
+if any hook blocked, else
+`list(action = "allow", additional_context = <appended text or NULL>)`.
 
 #### Usage
 
-    HookRegistry$run_user_message(message)
+    HookRegistry$run_user_prompt_submit(message)
 
 ------------------------------------------------------------------------
 

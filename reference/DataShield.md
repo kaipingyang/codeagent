@@ -38,6 +38,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$scan_ingress()`](#method-DataShield-scan_ingress)
 
+- [`DataShield$scan_prompt()`](#method-DataShield-scan_prompt)
+
 - [`DataShield$add_scanner()`](#method-DataShield-add_scanner)
 
 - [`DataShield$set_egress_ask()`](#method-DataShield-set_egress_ask)
@@ -340,6 +342,59 @@ Scan one tool request before execution.
 #### Returns
 
 List with action (`pass`, `block`, or `ask`), reason, matches and score.
+
+------------------------------------------------------------------------
+
+### `DataShield$scan_prompt()`
+
+Scan a user prompt BEFORE it reaches the model (edge 1). This is the
+Data Shield half of the prompt gate: it detects protected data the user
+may have pasted into their message. Unlike egress (which withholds a
+whole unsafe tool result), prompt redaction replaces ONLY the matched
+values / PII spans and keeps the rest of the user's text – the user's
+original wording is otherwise preserved.
+
+Two detectors, both reusing existing machinery:
+
+- value_match: does the prompt contain a REGISTERED protected value
+  (e.g. a real USUBJID)? O(1) hash lookup via the value index.
+
+- regex/PII: email / phone / token / id shapes.
+
+#### Usage
+
+    DataShield$scan_prompt(
+      text,
+      on_fail = c("redact", "block", "ask"),
+      on_progress = NULL,
+      context = list()
+    )
+
+#### Arguments
+
+- `text`:
+
+  Character scalar. The raw user prompt.
+
+- `on_fail`:
+
+  `"redact"` (default, replace matches, keep rest), `"block"` (reject
+  the whole turn), or `"ask"` (defer to approval).
+
+- `on_progress`:
+
+  Optional `function(list(stage, status, matched, elapsed_ms))` progress
+  callback so a UI can show "scanning data safety...". NULL (default) is
+  silent and zero-overhead.
+
+- `context`:
+
+  Optional non-sensitive context (e.g. `tool_call_id`).
+
+#### Returns
+
+List: `action` (`"pass"`/`"redact"`/`"block"`/`"ask"`), `text` (possibly
+redacted prompt), `matches` (count), `score`.
 
 ------------------------------------------------------------------------
 
