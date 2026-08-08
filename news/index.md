@@ -2,6 +2,27 @@
 
 ## codeagent (development version)
 
+- **Data Shield now injects protected-dataset schemas into the system
+  prompt** (querychat-style ambient visibility). When a shield is
+  active, every registered dataset’s *filtered* schema (the same output
+  `DescribeData` produces – identifier values suppressed, rare
+  categories hidden) is placed in a `<protected-data>` block in the
+  system prompt, so the model knows what protected data exists and its
+  column structure without having to call `DescribeData` first
+  (previously it would fabricate column names/dims when it didn’t call
+  the tool). The `DescribeData` tool is retained as the live, on-demand
+  fallback. **Behavior change**: existing shielded clients now get a
+  longer system prompt. Data registered *before* the client is built is
+  in the initial prompt automatically; for data registered/uploaded at
+  runtime, call the new exported `refresh_data_shield_context(client)`
+  after `register_data()` (e.g. in a Shiny upload handler) to rebuild
+  the system prompt with the new dataset – this preserves conversation
+  history and only costs a one-time prompt-cache miss. `register_data()`
+  deliberately does **not** auto-refresh, keeping the shield decoupled
+  from the Chat. Scope note: this is edge-1 *visibility* only; switching
+  a dataset’s security mode mid-conversation is a non-goal (the context
+  window is immutable – the correct reset is a fresh conversation).
+
 - **Output gate (edge 3): Data Shield now scans the model’s final reply
   before it reaches the user.** Data Shield previously guarded the two
   edges *into* the model (edge 1 input gate, edge 2 tool gate) but not

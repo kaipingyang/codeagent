@@ -34,6 +34,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$describe()`](#method-DataShield-describe)
 
+- [`DataShield$schema_block()`](#method-DataShield-schema_block)
+
 - [`DataShield$scan_egress()`](#method-DataShield-scan_egress)
 
 - [`DataShield$scan_ingress()`](#method-DataShield-scan_ingress)
@@ -287,6 +289,22 @@ Return strict safe metadata for a registered dataset.
 #### Usage
 
     DataShield$describe(name = NULL)
+
+------------------------------------------------------------------------
+
+### `DataShield$schema_block()`
+
+Build a system-prompt block listing every registered protected dataset
+with its filtered schema (the same per-dataset output `DescribeData`
+produces). Reused by the system-prompt builder so the model knows what
+protected data exists without calling the tool first. Reads live engine
+state, so it reflects the current dataset set (grows as `register_data`
+is called). Returns `""` when no dataset is registered or `DescribeData`
+is disabled.
+
+#### Usage
+
+    DataShield$schema_block()
 
 ------------------------------------------------------------------------
 

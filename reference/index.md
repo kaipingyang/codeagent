@@ -286,6 +286,8 @@ Tool factories and registration.
   : Configure a small-model semantic code reviewer
 - [`data_shield_ocr_scanner()`](https://kaipingyang.github.io/codeagent/reference/data_shield_ocr_scanner.md)
   : Build an OCR-backed image scanner for the Data Shield input gate.
+- [`refresh_data_shield_context()`](https://kaipingyang.github.io/codeagent/reference/refresh_data_shield_context.md)
+  : Refresh the Data Shield schema block in a client's system prompt
 
 ## Data exploration (WEAR)
 

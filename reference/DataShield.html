@@ -96,6 +96,7 @@ object for an independent user/thread boundary.</p>
 <li><p><a href="#method-DataShield-trusted_result"><code>DataShield$trusted_result()</code></a></p></li>
 <li><p><a href="#method-DataShield-install"><code>DataShield$install()</code></a></p></li>
 <li><p><a href="#method-DataShield-describe"><code>DataShield$describe()</code></a></p></li>
+<li><p><a href="#method-DataShield-schema_block"><code>DataShield$schema_block()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_egress"><code>DataShield$scan_egress()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_ingress"><code>DataShield$scan_ingress()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_prompt"><code>DataShield$scan_prompt()</code></a></p></li>
@@ -310,10 +311,25 @@ layers. <code>NULL</code>/<code>Inf</code> disables the cap.</p></dd>
 
 </div>
 
+<p></p><hr><a id="method-DataShield-schema_block"></a><div class="section">
+<h3 id="datashield-schema-block-"><code>DataShield$schema_block()</code><a class="anchor" aria-label="anchor" href="#datashield-schema-block-"></a></h3>
+<p>Build a system-prompt block listing every registered
+protected dataset with its filtered schema (the same per-dataset output
+<code>DescribeData</code> produces). Reused by the system-prompt builder so the
+model knows what protected data exists without calling the tool first.
+Reads live engine state, so it reflects the current dataset set (grows
+as <code>register_data</code> is called). Returns <code>""</code> when no dataset is
+registered or <code>DescribeData</code> is disabled.</p><div class="section">
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">schema_block</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-DataShield-scan_egress"></a><div class="section">
 <h3 id="datashield-scan-egress-"><code>DataShield$scan_egress()</code><a class="anchor" aria-label="anchor" href="#datashield-scan-egress-"></a></h3>
 <p>Apply the ordered egress strategy pipeline to a tool result.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_egress</span><span class="op">(</span><span class="va">result</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
@@ -332,7 +348,7 @@ layers. <code>NULL</code>/<code>Inf</code> disables the cap.</p></dd>
 <p></p><hr><a id="method-DataShield-scan_ingress"></a><div class="section">
 <h3 id="datashield-scan-ingress-"><code>DataShield$scan_ingress()</code><a class="anchor" aria-label="anchor" href="#datashield-scan-ingress-"></a></h3>
 <p>Scan one tool request before execution.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_ingress</span><span class="op">(</span></span>
 <span>  <span class="va">tool_name</span>,</span>
 <span>  <span class="va">input</span>,</span>
@@ -374,7 +390,7 @@ the user's original wording is otherwise preserved.</p>
 (e.g. a real USUBJID)? O(1) hash lookup via the value index.</p></li>
 <li><p>regex/PII: email / phone / token / id shapes.</p></li>
 </ul><p></p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_prompt</span><span class="op">(</span></span>
 <span>  <span class="va">text</span>,</span>
 <span>  on_fail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"redact"</span>, <span class="st">"block"</span>, <span class="st">"ask"</span><span class="op">)</span>,</span>
@@ -425,7 +441,7 @@ model may reproduce a protected value it inferred from tool output even
 when the user's input was clean, so the reply is scanned on the way out.
 A thin wrapper over <code>scan_prompt</code> – identical detectors (value_match +
 PII regex), differing only in the audit <code>edge</code> label (<code>"response"</code>).</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">scan_response</span><span class="op">(</span></span>
 <span>  <span class="va">text</span>,</span>
 <span>  on_fail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"redact"</span>, <span class="st">"block"</span>, <span class="st">"ask"</span><span class="op">)</span>,</span>
@@ -463,7 +479,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-add_scanner"></a><div class="section">
 <h3 id="datashield-add-scanner-"><code>DataShield$add_scanner()</code><a class="anchor" aria-label="anchor" href="#datashield-add-scanner-"></a></h3>
 <p>Add a custom scanner function to the end of the egress pipeline.</p><div class="section">
-<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">add_scanner</span><span class="op">(</span><span class="va">name</span>, <span class="va">fn</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -472,7 +488,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-set_egress_ask"></a><div class="section">
 <h3 id="datashield-set-egress-ask-"><code>DataShield$set_egress_ask()</code><a class="anchor" aria-label="anchor" href="#datashield-set-egress-ask-"></a></h3>
 <p>Set the sync/promise egress approval callback.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">set_egress_ask</span><span class="op">(</span>fn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
@@ -489,7 +505,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-bind_reviewer_factory"></a><div class="section">
 <h3 id="datashield-bind-reviewer-factory-"><code>DataShield$bind_reviewer_factory()</code><a class="anchor" aria-label="anchor" href="#datashield-bind-reviewer-factory-"></a></h3>
 <p>Bind codeagent's parent-provider reviewer Chat factory.</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">bind_reviewer_factory</span><span class="op">(</span><span class="va">fn</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
@@ -505,7 +521,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-audit"></a><div class="section">
 <h3 id="datashield-audit-"><code>DataShield$audit()</code><a class="anchor" aria-label="anchor" href="#datashield-audit-"></a></h3>
 <p>Return a copy of non-sensitive decision events.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
@@ -521,7 +537,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-clear_audit"></a><div class="section">
 <h3 id="datashield-clear-audit-"><code>DataShield$clear_audit()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-audit-"></a></h3>
 <p>Remove all in-memory audit events.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -530,7 +546,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-clear"></a><div class="section">
 <h3 id="datashield-clear-"><code>DataShield$clear()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-"></a></h3>
 <p>Remove one dataset, or all datasets when name is NULL.</p><div class="section">
-<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
+<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span>name <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -539,7 +555,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-close"></a><div class="section">
 <h3 id="datashield-close-"><code>DataShield$close()</code><a class="anchor" aria-label="anchor" href="#datashield-close-"></a></h3>
 <p>Clear sensitive state and close the shield.</p><div class="section">
-<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
+<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -548,7 +564,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-coverage"></a><div class="section">
 <h3 id="datashield-coverage-"><code>DataShield$coverage()</code><a class="anchor" aria-label="anchor" href="#datashield-coverage-"></a></h3>
 <p>Summarise non-sensitive runtime coverage.</p><div class="section">
-<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
+<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">coverage</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
