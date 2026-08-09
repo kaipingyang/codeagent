@@ -671,6 +671,10 @@ agent_loop <- function(user_input,
   gate_ask_fn <- settings$shiny_ask_fn %||% ask_fn
   gate_hooks  <- settings$hooks_registry %||%
                  tryCatch(.hooks_from_settings(settings), error = function(e) NULL)
+  # PreToolUse updatedInput: wrap tools so a hook can rewrite arguments before
+  # execution. Installed BEFORE the gate so the gate still sees original args
+  # (a rewrite cannot bypass permission checks). No-op when no hooks.
+  tryCatch(.install_tool_input_hooks(chat, gate_hooks), error = function(e) NULL)
   tryCatch(.install_permission_gate(chat, settings, mode_env, rules,
                                     ask_fn = gate_ask_fn, hooks = gate_hooks),
            error = function(e) NULL)

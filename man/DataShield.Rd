@@ -45,6 +45,7 @@ shield$coverage()
     \item \href{#method-DataShield-schema_block}{\code{DataShield$schema_block()}}
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
+    \item \href{#method-DataShield-scan_tool_args}{\code{DataShield$scan_tool_args()}}
     \item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
     \item \href{#method-DataShield-scan_response}{\code{DataShield$scan_response()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
@@ -315,6 +316,35 @@ registered or \code{DescribeData} is disabled.
   }
   \subsection{Returns}{
     List with action (\code{pass}, \code{block}, or \code{ask}), reason, matches and score.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-scan_tool_args"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-scan_tool_args}{}}}
+\subsection{\code{DataShield$scan_tool_args()}}{
+  Redact protected values inside a tool's arguments before the
+tool executes (ingress rewrite). Complements \code{scan_ingress} (which
+decides pass/block/ask): this scrubs each string argument value in place
+using the same detectors as \code{scan_prompt} (value_match + PII regex), so
+a registered value pasted into a tool argument is redacted rather than
+the whole call being blocked. Runs in the tool wrapper, after the
+permission gate. Non-string arguments are left untouched.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$scan_tool_args(args, scanners = c("regex", "value_match"))}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{args}}{Named list of tool arguments.}
+      \item{\code{scanners}}{Detector subset (default both).}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    List: \code{action} (\code{"pass"}/\code{"redact"}), \code{args} (possibly-redacted).
   }
 }
 

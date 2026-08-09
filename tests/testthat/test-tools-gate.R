@@ -42,11 +42,13 @@ test_that(".install_permission_gate registers on the chat without error", {
     .install_permission_gate(chat, list(), me, list(), ask_fn = NULL))
 })
 
-test_that(".tool_gate_fn fires PreToolUse + PermissionDenied and enforces deny", {
+test_that(".tool_gate_fn enforces deny and fires PermissionDenied", {
+  # NOTE: PreToolUse (run_pre) is no longer fired at the gate -- it moved to the
+  # tool-input-hook wrapper layer (.wrap_tool_pre_hook) so a hook can rewrite
+  # args, which the rejectable gate callback cannot do. The gate still enforces
+  # permission policy and fires PermissionDenied.
   reg <- HookRegistry$new()
   ev  <- new.env(); ev$log <- character()
-  reg$register_pre(function(tool_name, tool_input)
-    ev$log <- c(ev$log, paste0("PRE:", tool_name)))
   reg$register(HookEvent$PERMISSION_DENIED, function(tool_name, tool_input, mode)
     ev$log <- c(ev$log, paste0("DENIED:", tool_name)))
 
@@ -56,11 +58,10 @@ test_that(".tool_gate_fn fires PreToolUse + PermissionDenied and enforces deny",
             arguments = list(file_path = "x", content = "y"))
 
   expect_error(gate(req), class = "ellmer_tool_reject")   # deny enforced
-  expect_true(any(grepl("^PRE:Write", ev$log)))           # PreToolUse fired
   expect_true(any(grepl("^DENIED:Write", ev$log)))        # PermissionDenied fired
 })
 
-test_that(".tool_gate_fn allows read-only tools but still fires PreToolUse", {
+test_that(".tool_gate_fn allows read-only tools (no PreToolUse at gate)", {
   reg <- HookRegistry$new(); ev <- new.env(); ev$log <- character()
   reg$register_pre(function(tool_name, tool_input) ev$log <- c(ev$log, tool_name))
   gate <- .tool_gate_fn(list(overrides = list(), capabilities = list()),
@@ -68,7 +69,7 @@ test_that(".tool_gate_fn allows read-only tools but still fires PreToolUse", {
   req <- ellmer::ContentToolRequest(id = "2", name = "Read",
            arguments = list(file_path = "x"))
   expect_invisible(gate(req))
-  expect_true("Read" %in% ev$log)
+  expect_false("Read" %in% ev$log)   # PreToolUse fires in the wrapper, not the gate
 })
 
 test_that(".tool_gate_fn allows write tools in bypass mode", {

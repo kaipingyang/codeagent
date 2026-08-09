@@ -1,5 +1,23 @@
 # codeagent (development version)
 
+* **PreToolUse hooks can now rewrite a tool's arguments before it runs**
+  (aligns with the Claude Agent SDK's `updatedInput`). A `PreToolUse` hook that
+  returns `list(action = "updated_input", input = <new args>)` changes what the
+  tool executes with; `list(action = "deny", ...)` rejects the call. Because
+  ellmer's `on_tool_request` is rejectable-only (a callback cannot rewrite the
+  request), the rewrite happens one layer in: each tool is wrapped
+  (`.wrap_tool_pre_hook`) so the hook runs inside the tool function, after the
+  permission gate. Ordering is `gate -> wrapper -> original`, so a rewrite can
+  never bypass permission checks (the gate always sees the original args), and
+  the tool's JSON schema is unaffected (ellmer derives it from the `@arguments`
+  slot, not the wrapped function's formals). Zero ellmer patching.
+* **Data Shield redacts protected values inside tool arguments** (ingress
+  rewrite, symmetric to the existing egress scan). `DataShield$scan_tool_args()`
+  scrubs registered values / PII from each string argument using the same
+  detectors as `scan_prompt`; a value pasted into a tool argument is redacted
+  rather than the whole call being blocked. Runs in `.data_shield_wrap_tool`
+  after the permission gate.
+
 * **Data Shield now injects protected-dataset schemas into the system prompt**
   (querychat-style ambient visibility). When a shield is active, every
   registered dataset's *filtered* schema (the same output `DescribeData`

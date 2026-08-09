@@ -950,6 +950,34 @@ DataShield <- R6::R6Class(
       private$run_reviewers(1L,text,context,capability)
     },
 
+    #' @description Redact protected values inside a tool's arguments before the
+    #'   tool executes (ingress rewrite). Complements `scan_ingress` (which
+    #'   decides pass/block/ask): this scrubs each string argument value in place
+    #'   using the same detectors as `scan_prompt` (value_match + PII regex), so
+    #'   a registered value pasted into a tool argument is redacted rather than
+    #'   the whole call being blocked. Runs in the tool wrapper, after the
+    #'   permission gate. Non-string arguments are left untouched.
+    #' @param args Named list of tool arguments.
+    #' @param scanners Detector subset (default both).
+    #' @return List: `action` (`"pass"`/`"redact"`), `args` (possibly-redacted).
+    scan_tool_args = function(args, scanners = c("regex", "value_match")) {
+      private$assert_open()
+      if (!is.list(args) || !length(args)) return(list(action = "pass", args = args))
+      changed <- FALSE
+      out <- args
+      for (nm in names(args)) {
+        v <- args[[nm]]
+        if (!is.character(v) || length(v) != 1L || !nzchar(v)) next
+        r <- tryCatch(self$scan_prompt(v, on_fail = "redact", scanners = scanners,
+                                       context = list(edge = "tool_args")),
+                      error = function(e) list(action = "pass", text = v))
+        if (!identical(r$action, "pass") && !identical(r$text, v)) {
+          out[[nm]] <- r$text; changed <- TRUE
+        }
+      }
+      list(action = if (changed) "redact" else "pass", args = out)
+    },
+
     #' @description Scan a user prompt BEFORE it reaches the model (edge 1).
     #'   This is the Data Shield half of the prompt gate: it detects protected
     #'   data the user may have pasted into their message. Unlike egress (which
@@ -1736,8 +1764,16 @@ refresh_data_shield_context <- function(client) {
   if (identical(attr(current, "data_shield_state"), shield)) return(tool)
   original <- attr(current, "data_shield_original") %||% current
   tool_name <- tryCatch(S7::prop(tool, "name"), error=function(e) NA_character_)
-  wrapped <- function(...) shield$scan_egress(
-    original(...), context=list(tool_name=tool_name))
+  wrapped <- function(...) {
+    args <- list(...)
+    # Ingress rewrite: redact protected values inside string arguments before
+    # the tool runs (symmetric to the egress scan on the result). Runs after the
+    # permission gate, so a rewrite cannot bypass permission checks.
+    ing <- tryCatch(shield$scan_tool_args(args), error = function(e) NULL)
+    if (!is.null(ing) && identical(ing$action, "redact") && is.list(ing$args))
+      args <- ing$args
+    shield$scan_egress(do.call(original, args), context=list(tool_name=tool_name))
+  }
   attr(wrapped, "data_shield_wrapped") <- TRUE
   attr(wrapped, "data_shield_original") <- original
   attr(wrapped, "data_shield_state") <- shield

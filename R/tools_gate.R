@@ -183,8 +183,10 @@ register_tool_meta <- function(name,
     tool  <- tryCatch(request@tool, error = function(e) NULL)
     cap   <- .tool_capability(name, tool)
 
-    if (!is.null(ctx$hooks))
-      tryCatch(ctx$hooks$run_pre(name, input), error = function(e) NULL)  # PreToolUse
+    # PreToolUse hooks (deny + updatedInput) run in the tool-input-hook wrapper
+    # layer (.wrap_tool_pre_hook), which executes AFTER this gate but can still
+    # reject or rewrite. Firing run_pre here too would double-run hook side
+    # effects, so it is intentionally NOT called at the gate.
 
     # Data Shield ingress runs for EVERY tool before capability/read fast-paths.
     shield <- ctx$data_shield %||%
