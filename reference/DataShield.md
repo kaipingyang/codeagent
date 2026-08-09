@@ -40,6 +40,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$scan_ingress()`](#method-DataShield-scan_ingress)
 
+- [`DataShield$scan_tool_args()`](#method-DataShield-scan_tool_args)
+
 - [`DataShield$scan_prompt()`](#method-DataShield-scan_prompt)
 
 - [`DataShield$scan_response()`](#method-DataShield-scan_response)
@@ -362,6 +364,36 @@ Scan one tool request before execution.
 #### Returns
 
 List with action (`pass`, `block`, or `ask`), reason, matches and score.
+
+------------------------------------------------------------------------
+
+### `DataShield$scan_tool_args()`
+
+Redact protected values inside a tool's arguments before the tool
+executes (ingress rewrite). Complements `scan_ingress` (which decides
+pass/block/ask): this scrubs each string argument value in place using
+the same detectors as `scan_prompt` (value_match + PII regex), so a
+registered value pasted into a tool argument is redacted rather than the
+whole call being blocked. Runs in the tool wrapper, after the permission
+gate. Non-string arguments are left untouched.
+
+#### Usage
+
+    DataShield$scan_tool_args(args, scanners = c("regex", "value_match"))
+
+#### Arguments
+
+- `args`:
+
+  Named list of tool arguments.
+
+- `scanners`:
+
+  Detector subset (default both).
+
+#### Returns
+
+List: `action` (`"pass"`/`"redact"`), `args` (possibly-redacted).
 
 ------------------------------------------------------------------------
 
