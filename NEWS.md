@@ -1,5 +1,16 @@
 # codeagent (development version)
 
+* **Bash sandbox gains OS-level no-network isolation via unprivileged
+  namespaces.** When the Bash sandbox runs with `allow_network = FALSE` and
+  `unshare` is available, commands are wrapped in `unshare -Urn` (a user+network
+  namespace with no interface), so any `connect()`/`socket()` fails at the
+  kernel level regardless of how the command is written — a bounded syscall
+  boundary, not a bypassable command blacklist (e.g. `/dev/tcp/...`, which the
+  `curl`/`wget` blacklist never catches, is now blocked). The blacklist is kept
+  as a cheap first line; when `unshare` is unavailable the sandbox degrades to
+  it. Network-allowed sandboxes and RunR are unchanged (RunR keeps callr +
+  blacklist for now — wrapping callr's internal fork in `unshare` is deferred).
+
 * **PreToolUse hooks can now rewrite a tool's arguments before it runs**
   (aligns with the Claude Agent SDK's `updatedInput`). A `PreToolUse` hook that
   returns `list(action = "updated_input", input = <new args>)` changes what the

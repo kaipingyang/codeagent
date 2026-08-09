@@ -26,6 +26,55 @@ NULL
   "brew install", "wget", "aria2c"
 )
 
+# ---------------------------------------------------------------------------
+# OS-level no-network isolation via unprivileged user+net namespace (unshare).
+#
+# Unlike the .SANDBOX_NETWORK_CMDS / .SANDBOX_R_NETWORK_FNS blacklists (which
+# match code text and can be bypassed by obfuscation, e.g.
+# get(paste0("down","load.file"))), wrapping a command in `unshare -Urn` puts it
+# in a network namespace with NO network interface. Any connect()/socket()
+# syscall then fails at the kernel level regardless of how the code is written.
+# This is bounded (a finite kernel boundary), not an endless blacklist.
+#
+# Requires unprivileged user namespaces to be enabled (default on many kernels;
+# some hardened deployments set kernel.unprivileged_userns_clone=0). Probed at
+# runtime and cached; when unavailable we fall back to the blacklist.
+# ---------------------------------------------------------------------------
+
+.sandbox_unshare_cache <- new.env(parent = emptyenv())
+
+#' Probe whether `unshare -Urn` (unprivileged user+net namespace) works here.
+#'
+#' Runs `unshare -Urn true` once and caches the result. Returns FALSE when
+#' `unshare` is missing, unprivileged userns is disabled, or the probe errors.
+#' @keywords internal
+.sandbox_unshare_available <- function() {
+  if (!is.null(.sandbox_unshare_cache$ok)) return(.sandbox_unshare_cache$ok)
+  ok <- tryCatch({
+    if (nzchar(Sys.which("unshare")) == FALSE) FALSE
+    else {
+      status <- suppressWarnings(system2(
+        "unshare", c("-Urn", "true"),
+        stdout = FALSE, stderr = FALSE))
+      identical(as.integer(status), 0L)
+    }
+  }, error = function(e) FALSE)
+  .sandbox_unshare_cache$ok <- isTRUE(ok)
+  .sandbox_unshare_cache$ok
+}
+
+#' Wrap an argv vector to run inside a no-network user+net namespace.
+#'
+#' @param argv Character vector: the command + args to run (e.g.
+#'   `c("Rscript", "-e", "...")`).
+#' @return A character vector prefixed with `unshare -Urn` when available and
+#'   requested; otherwise `argv` unchanged.
+#' @keywords internal
+.sandbox_unshare_wrap <- function(argv, no_network = TRUE) {
+  if (!isTRUE(no_network) || !.sandbox_unshare_available()) return(argv)
+  c("unshare", "-Urn", "--", argv)
+}
+
 #' Build a sandbox profile from settings
 #'
 #' @param settings List or NULL. Reads `settings$sandbox` (a list with optional

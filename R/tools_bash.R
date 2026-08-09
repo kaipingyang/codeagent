@@ -44,7 +44,10 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
       if (isTRUE(run_in_background)) {
         tmp <- tempfile(fileext = ".sh")
         writeLines(command, tmp)
-        system2("bash", tmp, wait = FALSE, stdout = FALSE, stderr = FALSE,
+        no_net_bg <- isTRUE(sb_prof$enabled) && !isTRUE(sb_prof$allow_network)
+        argv_bg <- .sandbox_unshare_wrap(c("bash", tmp), no_network = no_net_bg)
+        system2(argv_bg[[1L]], argv_bg[-1L], wait = FALSE,
+                stdout = FALSE, stderr = FALSE,
                 env = sb_env %||% character())
         return(.tool_result2(paste0("[Background: command started]\nCommand: ", command),
                              kind = "text", icon = "terminal",
@@ -57,8 +60,16 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
         tmp <- tempfile(fileext = ".sh")
         on.exit(unlink(tmp), add = TRUE)
         writeLines(command, tmp)
+        # No-network sandbox: wrap in `unshare -Urn` (user+net namespace with no
+        # interface) so any connect()/socket() fails at the kernel level -- a
+        # bounded syscall boundary, not a bypassable blacklist. Only when the
+        # sandbox is enabled AND network is disabled AND unshare is available;
+        # otherwise run bash directly (the .sandbox_block_reason blacklist above
+        # is the fallback first line).
+        no_net <- isTRUE(sb_prof$enabled) && !isTRUE(sb_prof$allow_network)
+        argv <- .sandbox_unshare_wrap(c("bash", tmp), no_network = no_net)
         out <- system2(
-          "bash", tmp,
+          argv[[1L]], argv[-1L],
           stdout = TRUE, stderr = TRUE,
           timeout = as.numeric(timeout),
           env = sb_env %||% character()
