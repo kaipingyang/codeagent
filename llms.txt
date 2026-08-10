@@ -645,6 +645,8 @@ Tool factories and registration.
   : Install codeagent's central permission gate on an existing Chat
 - [`DataShield`](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
   : Stateful protected-data policy engine
+- [`refresh_data_shield_context()`](https://kaipingyang.github.io/codeagent/reference/refresh_data_shield_context.md)
+  : Refresh the Data Shield schema block in a client's system prompt
 - [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)
   : Configure strict protected-data metadata
 - [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md)
@@ -661,8 +663,6 @@ Tool factories and registration.
   : Configure a small-model semantic code reviewer
 - [`data_shield_ocr_scanner()`](https://kaipingyang.github.io/codeagent/reference/data_shield_ocr_scanner.md)
   : Build an OCR-backed image scanner for the Data Shield input gate.
-- [`refresh_data_shield_context()`](https://kaipingyang.github.io/codeagent/reference/refresh_data_shield_context.md)
-  : Refresh the Data Shield schema block in a client's system prompt
 - [`audit_code_tool()`](https://kaipingyang.github.io/codeagent/reference/audit_code_tool.md)
   : Build the AuditCode tool (pluggable static code-safety auditor)
 
