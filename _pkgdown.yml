@@ -161,7 +161,10 @@ reference:
       - register_tool_meta
       - tool_result
       - install_permission_gate
+      # --- Data Shield: engine + lifecycle ---
       - DataShield
+      - refresh_data_shield_context
+      # --- Data Shield: strategies (compose via codeagent_client(data_shield=)) ---
       - shield_describe
       - shield_egress
       - shield_regex
@@ -169,8 +172,8 @@ reference:
       - shield_tool_policy
       - shield_sandbox
       - shield_reviewer
+      # --- Data Shield: optional scanners / code-safety auditors ---
       - data_shield_ocr_scanner
-      - refresh_data_shield_context
       - audit_code_tool
 
   - title: "Data exploration (WEAR)"
