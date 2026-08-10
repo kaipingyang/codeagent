@@ -122,6 +122,14 @@ server_chat <- function(input, output, session, chat, settings,
     # do.call() treats it as a single positional arg.
     stream_contents <- if (is.list(actual_input)) actual_input else list(actual_input)
 
+    # Output-gate buffering (edge 3, kiro round-2 #2, user decision: buffer-then-
+    # show). When a shield is active, streaming tokens straight to the browser
+    # leaves no interception point -- the plaintext is already on screen. So we
+    # BUFFER: consume the full stream server-side (no live chat_append), run
+    # .output_gate_scan, then chat_append the (possibly redacted) reply once.
+    # No shield => stream live as before (zero cost, keeps the typewriter effect).
+    .shield_active <- !is.null(.input_gate_shield(settings, chat))
+
     coro::async(function() {
       # stream_controller resets automatically when passed to a new stream call
       # (ellmer 0.4.1 docs confirmed), so explicit reset() is not needed.
@@ -135,7 +143,20 @@ server_chat <- function(input, output, session, chat, settings,
             chat$stream_async,
             c(stream_contents, list(stream = "content", controller = stream_ctrl))
           )
-          await(shinychat::chat_append("chat", stream, session = session))
+          if (isTRUE(.shield_active)) {
+            # Buffer: drain the stream WITHOUT rendering, so nothing reaches the
+            # browser until the output gate has scanned it.
+            for (chunk in await_each(stream)) { NULL }
+            lt   <- tryCatch(chat$last_turn(role = "assistant"), error = function(e) NULL)
+            txt  <- tryCatch(lt@text, error = function(e) "")
+            og   <- tryCatch(.output_gate_scan(txt, settings, chat),
+                             error = function(e) list(action = "pass", text = txt))
+            shown <- og$text %||% txt
+            if (nzchar(shown %||% ""))
+              await(shinychat::chat_append("chat", shown, session = session))
+          } else {
+            await(shinychat::chat_append("chat", stream, session = session))
+          }
         },
         error = function(e) {
           tryCatch(
@@ -151,26 +172,6 @@ server_chat <- function(input, output, session, chat, settings,
           )
         }
       )
-
-      # Data Shield output gate (edge 3): the reply already streamed to the
-      # browser (can't redact in place), so scan the finalized text and APPEND a
-      # warning below when a protected value slipped through. No-op w/o a shield.
-      tryCatch({
-        lt  <- tryCatch(chat$last_turn(role = "assistant"), error = function(e) NULL)
-        txt <- tryCatch(lt@text, error = function(e) NULL)
-        if (is.character(txt) && length(txt) == 1L && nzchar(txt)) {
-          og <- .output_gate_scan(txt, settings, chat)
-          if (!identical(og$action, "pass") && (og$matches %||% 0L) > 0L) {
-            shinychat::chat_append(
-              "chat",
-              sprintf(paste0("⚠️ **Data Shield:** the reply above ",
-                             "contained %d protected data value(s); the event ",
-                             "is recorded in the audit log."),
-                      og$matches),
-              session = session)
-          }
-        }
-      }, error = function(e) NULL)
 
       n_tokens    <- token_count_with_estimation(chat)
       model_limit <- settings$model_limit %||% 200000L

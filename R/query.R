@@ -340,6 +340,16 @@ codeagent <- function(client_or_prompt,
     prompt <- actual_prompt
   }
 
+  # Input gate (edge 1) + output gate (edge 3) also guard the one-shot path
+  # (kiro round-2 #2): codeagent() used to call chat$chat(prompt) directly, so a
+  # protected value pasted into the prompt, or reproduced in the reply, bypassed
+  # both edges. Reuse the same gates as agent_loop / the Shiny stream.
+  ig <- tryCatch(.input_gate_scan(prompt, settings, chat),
+                 error = function(e) list(action = "pass", input = prompt))
+  if (identical(ig$action, "block"))
+    return(ig$text %||% "[Blocked by Data Shield input gate]")
+  prompt <- ig$input %||% prompt
+
   response <- tryCatch(
     .with_codeagent_span(
       "codeagent.query",
@@ -350,7 +360,12 @@ codeagent <- function(client_or_prompt,
     ),
     error = function(e) paste0("[Error] ", conditionMessage(e))
   )
-  if (is.character(response)) response else "[No response]"
+  if (!is.character(response)) return("[No response]")
+  # Output gate: scan the finalized reply before returning it (non-streaming
+  # path, so it can redact in place).
+  og <- tryCatch(.output_gate_scan(response, settings, chat),
+                 error = function(e) list(action = "pass", text = response))
+  og$text %||% response
 }
 
 # ---------------------------------------------------------------------------
@@ -398,6 +413,11 @@ agent_loop <- function(user_input,
       settings <- load_settings(cwd %||% getwd())
   }
   if (is.null(cwd)) cwd <- settings$cwd %||% getwd()
+  # Hooks fallback (kiro round-2 #2): a bare `agent_loop(user_input, client)`
+  # call passes hooks=NULL, so UserPromptSubmit / lifecycle hooks silently never
+  # fired even when the client's settings carry a registry. Recover it here so
+  # every entry point sees the same hooks without the caller threading it.
+  if (is.null(hooks)) hooks <- settings$hooks_registry
 
   # 1. Max turns check
   max_turns <- as.integer(settings$max_turns %||% 100L)

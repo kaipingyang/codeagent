@@ -637,6 +637,7 @@ DataShield <- R6::R6Class(
       private$datasets <- list()
       private$assets <- list()
       private$index <- new.env(parent = emptyenv())
+      private$deny_index <- new.env(parent = emptyenv())
       private$strategies <- list()
       private$egress_pipeline <- list()
       private$ingress_pipeline <- list()
@@ -707,6 +708,13 @@ DataShield <- R6::R6Class(
       col_access <- .data_shield_resolve_column_access(df, column_access)
       raw_egress_cols <- names(col_access)[vapply(
         col_access, function(a) identical(a$egress, "raw"), logical(1L))]
+      # Columns whose egress tier is "none" must NEVER appear in tool output
+      # (kiro round-2 #8: previously none/schema/scan were identical on egress,
+      # so egress="none" silently passed = fail-open). Build a per-dataset DENY
+      # index of their values; scan_egress blocks (denies) the whole result when
+      # any of these values appears, rather than merely redacting.
+      none_egress_cols <- names(col_access)[vapply(
+        col_access, function(a) identical(a$egress, "none"), logical(1L))]
       index_cols <- cols %||%
         names(sensitivity)[sensitivity %in% c("identifier", "quasi")]
       index_cols <- setdiff(index_cols, raw_egress_cols)
@@ -721,10 +729,16 @@ DataShield <- R6::R6Class(
              "data in smaller pieces, or set max_index_values = Inf. ",
              "(Refusing to register a partially-indexed dataset. kiro finding 3.)",
              call. = FALSE)
+      deny_idx <- if (length(none_egress_cols))
+        .data_shield_build_value_index(
+          df, cols = none_egress_cols, min_len = min_len, min_card = min_card,
+          max_values = max_index_values)
+        else NULL
       private$datasets[[name]] <- list(
         name = name, data = df, sensitivity = sensitivity,
         column_access = col_access,
-        index = idx, index_columns = index_cols)
+        index = idx, index_columns = index_cols,
+        deny_index = deny_idx, deny_columns = none_egress_cols)
       private$rebuild_index()
       invisible(length(ls(idx, all.names = TRUE)))
     },
@@ -906,6 +920,29 @@ DataShield <- R6::R6Class(
           edge=context$edge %||% "egress", tool_name=context$tool_name,
           tool_call_id=context$tool_call_id, strategy=strategy, action=action,
           reason=reason, match_count=match_count, score=score)
+      }
+      # egress="none" DENY check (kiro round-2 #8): if the result reproduces any
+      # value from a column whose egress tier is "none", deny the whole result --
+      # these values must never reach the model. Runs before the redact pipeline;
+      # a match blocks rather than redacts. No-op when no none-tier column exists.
+      if (!is.null(private$deny_index) &&
+          length(ls(private$deny_index, all.names = TRUE))) {
+        deny_text <- tryCatch(
+          if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
+                              error = function(e) FALSE)))
+            as.character(result@value)
+          else if (is.data.frame(result) || is.matrix(result))
+            paste(utils::capture.output(print(result)), collapse = "\n")
+          else if (is.character(result)) paste(result, collapse = "\n")
+          else paste(utils::capture.output(print(result)), collapse = "\n"),
+          error = function(e) "")
+        dv <- tryCatch(.data_shield_value_scan(deny_text, private$deny_index),
+                       error = function(e) list(hit = FALSE, n = 0L))
+        if (isTRUE(dv$hit)) {
+          audit_fn("column_egress", "deny",
+                   "egress=none column value in tool output", dv$n %||% 0L, 1)
+          return("[data_shield] tool output denied: contains a value from a column marked egress=none.")
+        }
       }
       output <- result
       raw_result <- result
@@ -1306,6 +1343,7 @@ DataShield <- R6::R6Class(
     datasets = NULL,
     assets = NULL,
     index = NULL,
+    deny_index = NULL,
     strategies = NULL,
     egress_pipeline = NULL,
     ingress_pipeline = NULL,
@@ -1507,9 +1545,14 @@ DataShield <- R6::R6Class(
     },
     rebuild_index = function() {
       rm(list = ls(private$index, all.names = TRUE), envir = private$index)
+      rm(list = ls(private$deny_index, all.names = TRUE), envir = private$deny_index)
       for (dataset in private$datasets) {
         keys <- ls(dataset$index, all.names = TRUE)
         for (key in keys) assign(key, TRUE, envir = private$index)
+        if (!is.null(dataset$deny_index)) {
+          dkeys <- ls(dataset$deny_index, all.names = TRUE)
+          for (key in dkeys) assign(key, TRUE, envir = private$deny_index)
+        }
       }
       invisible(length(ls(private$index, all.names = TRUE)))
     }

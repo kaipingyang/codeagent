@@ -81,39 +81,64 @@ NULL
   #     indirect call site can't be tied to a literal path statically.
   if (length(intersect(sym_names, .AUDIT_SOURCE_FNS))) dynamic <- TRUE
 
-  # (3) For each source-family CALL, find its literal string argument(s). In
-  #     getParseData the SYMBOL_FUNCTION_CALL's parent is an `expr` that is a
-  #     sibling of the argument `expr`s under a common enclosing `expr` (the whole
-  #     call). So walk UP one level from the call symbol to the enclosing call
-  #     expr, then collect STR_CONST descendants of that enclosing expr.
+  # (3) For each source-family CALL, resolve ONLY its FIRST (path) argument, and
+  #     treat it as a static path ONLY when that argument is a single string
+  #     LITERAL. Anything else in the path position -- a variable, a nested call
+  #     (file.path/paste0), a concatenation, a conditional -- is
+  #     statically unresolvable => dynamic=TRUE, no path extracted. String
+  #     literals in OTHER argument positions (encoding=, local=, ...) are ignored
+  #     (kiro round-2 #6: the old pass collected every STR_CONST under the call,
+  #     so source(file.path(b,"x.R")) mis-reported "x.R" as static and
+  #     source("ok.R", encoding="UTF-8") mis-reported "UTF-8" as a path).
   static_paths <- character()
   if (length(source_calls)) {
     fn_rows <- which(pd$token == "SYMBOL_FUNCTION_CALL" &
                        pd$text %in% .AUDIT_SOURCE_FNS)
-    children <- split(pd$id, pd$parent)          # parent id -> child ids
-    row_by_id <- stats::setNames(seq_len(nrow(pd)), pd$id)
-    collect_str <- function(root_id) {
-      out <- character(); stack <- as.character(root_id); seen <- character()
-      while (length(stack)) {
-        cur <- stack[[1L]]; stack <- stack[-1L]
-        if (cur %in% seen) next
-        seen <- c(seen, cur)
-        ri <- row_by_id[[cur]]
-        if (!is.null(ri) && identical(pd$token[[ri]], "STR_CONST"))
-          out <- c(out, strip_quotes(pd$text[[ri]]))
-        kids <- children[[cur]]
-        if (!is.null(kids)) stack <- c(stack, as.character(kids))
-      }
-      out
-    }
+    children <- split(seq_len(nrow(pd)), pd$parent)   # parent id -> child ROW indices
+    id_to_row <- stats::setNames(seq_len(nrow(pd)), pd$id)
     for (r in fn_rows) {
-      sym_parent <- pd$parent[r]                 # `expr` directly wrapping the symbol
-      # enclosing call expr = parent of that expr (grandparent of the symbol)
-      gp_row <- row_by_id[[as.character(sym_parent)]]
-      call_expr <- if (!is.null(gp_row)) pd$parent[gp_row] else sym_parent
-      strs <- collect_str(call_expr)
-      if (length(strs)) static_paths <- c(static_paths, strs)
-      else dynamic <- TRUE                       # source-family call w/ no literal path
+      sym_id      <- pd$id[r]
+      sym_par_id  <- pd$parent[r]                      # `expr` wrapping the symbol
+      spr         <- id_to_row[[as.character(sym_par_id)]]
+      call_id     <- if (!is.null(spr)) pd$parent[spr] else sym_par_id  # enclosing call expr
+      kid_rows    <- children[[as.character(call_id)]]
+      if (is.null(kid_rows)) { dynamic <- TRUE; next }
+      # Direct children of the call expr, in source order. Structure is:
+      #   expr(fn-name)  '('  <arg1>  ','  <arg2> ... ')'
+      # Find the FIRST argument node = the first child after '(' that is not the
+      # function-name expr and not punctuation.
+      kid_rows <- kid_rows[order(pd$id[kid_rows])]
+      toks     <- pd$token[kid_rows]
+      # First argument node = first child that is NOT the function-name expr
+      # (id == sym_par_id, the expr wrapping our SYMBOL_FUNCTION_CALL) and not
+      # punctuation / named-arg tags. Structure: expr(fn) '(' <arg1> ',' ...
+      arg1_row <- NA_integer_
+      for (k in seq_along(kid_rows)) {
+        row_k <- kid_rows[[k]]
+        if (identical(pd$id[[row_k]], sym_par_id)) next          # the fn-name expr
+        tk <- toks[[k]]
+        if (tk %in% c("'('", "','", "')'", "SYMBOL_SUB", "EQ_SUB")) next
+        arg1_row <- row_k; break
+      }
+      if (is.na(arg1_row)) { dynamic <- TRUE; next }
+      # arg1 is a single string literal iff it is itself STR_CONST, OR it is an
+      # `expr` whose ONLY meaningful child is a STR_CONST (the parser wraps a bare
+      # literal argument in an expr node). A nested call puts a
+      # SYMBOL_FUNCTION_CALL under that expr -> not a literal -> dynamic.
+      if (identical(pd$token[[arg1_row]], "STR_CONST")) {
+        static_paths <- c(static_paths, strip_quotes(pd$text[[arg1_row]]))
+      } else if (identical(pd$token[[arg1_row]], "expr")) {
+        sub_rows <- children[[as.character(pd$id[[arg1_row]])]]
+        sub_tok  <- if (!is.null(sub_rows)) pd$token[sub_rows] else character()
+        str_kids <- sub_rows[sub_tok == "STR_CONST"]
+        has_call <- any(sub_tok %in% c("SYMBOL_FUNCTION_CALL", "SYMBOL"))
+        if (length(str_kids) == 1L && !has_call)
+          static_paths <- c(static_paths, strip_quotes(pd$text[[str_kids[[1]]]]))
+        else
+          dynamic <- TRUE                              # nested call / symbol / concat
+      } else {
+        dynamic <- TRUE                                # SYMBOL variable etc.
+      }
     }
   }
 
@@ -121,10 +146,13 @@ NULL
        source_calls = unique(source_calls), parse_error = FALSE)
 }
 
-# Source-file extensions the audit is allowed to read. A referenced path with
-# any other extension is out of scope (data blobs, binaries) -> not read.
-.AUDIT_READ_EXTS <- c("R", "r", "Rmd", "rmd", "qmd", "cpp", "c", "h", "hpp",
-                      "rds", "Rds", "RData", "Rdata", "rda")
+# Source-file extensions the audit is allowed to read AS TEXT. Binary R data
+# blobs (rds/RData/rda) are intentionally EXCLUDED (kiro round-2 #13): they are
+# not text, readLines() on them is unpredictable, and load()/readRDS() of an
+# untrusted blob is itself the RCE risk -- auditing their bytes as text gives no
+# safety signal. A referenced .rds path is reported blocked ("binary, not
+# text-audited") rather than read.
+.AUDIT_READ_EXTS <- c("R", "r", "Rmd", "rmd", "qmd", "cpp", "c", "h", "hpp")
 
 # Decide whether a referenced path is safe to read: it must resolve to a real
 # location UNDER project_root (symlink-escape resolved by
@@ -183,10 +211,20 @@ NULL
     if (inherits(shield, "DataShield")) {
       content <- tryCatch({
         con <- file(dec$resolved, "r"); on.exit(close(con), add = TRUE)
-        paste(readLines(con, warn = FALSE, n = -1L), collapse = "\n")
+        # TOCTOU guard (kiro round-2 #13): .audit_path_allowed validated the path
+        # BEFORE we opened it; a symlink could be swapped in between. Re-resolve
+        # the opened path and confirm it still points under the project root and
+        # matches the vetted target before reading a byte.
+        recheck <- tryCatch(normalizePath(dec$resolved, winslash = "/", mustWork = TRUE),
+                            error = function(e) NA_character_)
+        if (is.na(recheck) || !identical(recheck, dec$resolved) ||
+            !.data_shield_path_under(recheck, normalizePath(project_root, winslash = "/", mustWork = FALSE)))
+          stop("path changed after validation (TOCTOU)")
+        # Bounded read: cap bytes at read time instead of readLines(n=-1) then
+        # substr (which pulls the whole file into memory first).
+        readChar(con, nchars = max_bytes, useBytes = TRUE)
       }, error = function(e) NULL)
       if (is.character(content) && nzchar(content)) {
-        content <- substr(content, 1L, max_bytes)
         v <- tryCatch(
           shield$review_code_public(content,
                              context = list(tool_name = paste0("audit:", basename(dec$resolved)),

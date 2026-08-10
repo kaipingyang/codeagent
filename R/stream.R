@@ -95,6 +95,16 @@ codeagent_stream_async <- function(
   }
   input <- ig$input %||% input   # may be redacted; rest preserved
 
+  # Output-gate buffering (edge 3, kiro round-2 #2, user decision: buffer-then-
+  # show). When a shield is active we must scan the FINAL reply before the user
+  # sees it -- but streaming on_delta paints tokens straight to the screen, with
+  # no interception point. So when a shield is present we BUFFER: suppress live
+  # on_delta, accumulate the full reply, run .output_gate_scan, then emit the
+  # (possibly redacted) text once at the end. No shield => stream live as before
+  # (zero cost). Sacrifices the typewriter effect for real edge-3 enforcement.
+  .shield_active <- !is.null(.input_gate_shield(settings, chat))
+  .buffer_output <- isTRUE(.shield_active)
+
   # Run turn setup OUTSIDE the coro::async body: coro cannot assign the result
   # of an `if` expression, and .turn_setup contains such branches.
   actual_input <- .turn_setup(client, input, iteration, cwd,
@@ -160,13 +170,23 @@ codeagent_stream_async <- function(
           }
 
         } else {
-          # Text chunk: accumulate and notify.
+          # Text chunk: accumulate and notify. In buffer mode (shield active) we
+          # withhold live deltas -- the reply is emitted once, post-scan, below.
           txt <- .chunk_text(chunk)
           if (nzchar(txt)) {
             acc <- paste0(acc, txt)
-            if (!is.null(on_delta)) on_delta(txt)
+            if (!is.null(on_delta) && !isTRUE(.buffer_output)) on_delta(txt)
           }
         }
+      }
+
+      # Output gate (edge 3): in buffer mode, scan the finalized reply and emit
+      # the (possibly redacted) text in one shot before teardown.
+      if (isTRUE(.buffer_output)) {
+        og <- tryCatch(.output_gate_scan(acc, settings, chat),
+                       error = function(e) list(action = "pass", text = acc))
+        acc <- og$text %||% acc
+        if (!is.null(on_delta) && nzchar(acc)) tryCatch(on_delta(acc), error = function(e) NULL)
       }
 
       usage <- .turn_teardown(client, cwd, session_id)
