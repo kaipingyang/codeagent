@@ -210,3 +210,75 @@ test_that("#2 agent_loop hooks fall back to settings$hooks_registry", {
   expect_true(is.function(reg$run_user_prompt_submit) ||
               inherits(reg, "HookRegistry"))
 })
+
+# ============================================================================
+# Batch 3 (P2 lifecycle / isolation): findings #9, #10, #12.
+# ============================================================================
+
+# --- Finding #10: close() clears strategies, pipelines, deny_index -----------
+
+test_that("#10 close() clears strategies and both pipelines (no lingering closures)", {
+  captured <- new.env(); captured$ran <- FALSE
+  sh <- DataShield$new(strategies = list(
+    shield_egress(max_rows = 0L),
+    shield_regex()))
+  sh$add_scanner("custom", function(text, context) {
+    captured$ran <- TRUE
+    list(sanitized = text, valid = TRUE, spans = data.frame(), action = "pass")
+  })
+  cov0 <- sh$coverage()
+  expect_true(length(cov0$egress_pipeline) > 0L)
+  sh$close()
+  cov1 <- sh$coverage()
+  expect_length(cov1$egress_pipeline, 0L)
+  expect_length(cov1$ingress_pipeline, 0L)
+})
+
+test_that("#10 DataShield has an R6 finalizer as a GC backstop", {
+  gen <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
+  # the class exposes a finalize method (idempotent close)
+  expect_true(is.function(gen$finalize))
+  expect_error(gen$finalize(), NA)   # calling it does not error
+})
+
+# --- Finding #9: reviewer isolation is verified, not best-effort -------------
+
+test_that("#9 reviewer chat is refused when isolation cannot be applied", {
+  # A fake factory returning a Chat whose set_turns throws -> isolation fails ->
+  # .data_shield_reviewer_chat must refuse (stop), not return the dirty chat.
+  bad_chat <- structure(list(
+    set_turns = function(...) stop("cannot clear"),
+    set_tools = function(...) invisible(NULL),
+    set_system_prompt = function(...) invisible(NULL),
+    get_turns = function() list("dirty"),
+    get_model = function() "m"), class = "Chat")
+  cfg <- list(backend = "remote_sanitized", model = "m",
+              client_factory = function(model = NULL) bad_chat)
+  expect_error(codeagent:::.data_shield_reviewer_chat(cfg, NULL),
+               "isolation")
+})
+
+test_that("#9 reviewer chat is accepted when isolation verifiably succeeds", {
+  clean_chat <- structure(list(
+    set_turns = function(...) invisible(NULL),
+    set_tools = function(...) invisible(NULL),
+    set_system_prompt = function(...) invisible(NULL),
+    get_turns = function() list(),
+    get_model = function() "m"), class = "Chat")
+  cfg <- list(backend = "remote_sanitized", model = "m",
+              client_factory = function(model = NULL) clean_chat)
+  expect_error(codeagent:::.data_shield_reviewer_chat(cfg, NULL), NA)
+})
+
+# --- Finding #12: no-network fallback is marked, not silent ------------------
+
+test_that("#12 unshare_wrap marks isolation state on the returned argv", {
+  argv <- c("bash", "/tmp/x.sh")
+  out <- suppressWarnings(codeagent:::.sandbox_unshare_wrap(argv, no_network = TRUE))
+  iso <- attr(out, "network_isolation")
+  # either kernel (unshare available) or unavailable (degraded) -- never absent
+  expect_true(iso %in% c("kernel", "unavailable"))
+  # allow_network TRUE path is a no-op, no marker needed
+  out2 <- codeagent:::.sandbox_unshare_wrap(argv, no_network = FALSE)
+  expect_identical(out2, argv)
+})

@@ -67,12 +67,34 @@ NULL
 #'
 #' @param argv Character vector: the command + args to run (e.g.
 #'   `c("Rscript", "-e", "...")`).
+#' @param no_network Logical. Request kernel-level network isolation.
 #' @return A character vector prefixed with `unshare -Urn` when available and
-#'   requested; otherwise `argv` unchanged.
+#'   requested; otherwise `argv` unchanged. When no-network was requested but
+#'   `unshare` is unavailable, the returned vector carries
+#'   `attr(x, "network_isolation") = "unavailable"` and a one-time session
+#'   warning is emitted -- the OS-level boundary has silently degraded to the
+#'   command-name blacklist, which is bypassable (kiro round-2 #12). Callers
+#'   should surface this in audit/UI rather than treat `allow_network=FALSE` as a
+#'   hard guarantee.
 #' @keywords internal
 .sandbox_unshare_wrap <- function(argv, no_network = TRUE) {
-  if (!isTRUE(no_network) || !.sandbox_unshare_available()) return(argv)
-  c("unshare", "-Urn", "--", argv)
+  if (!isTRUE(no_network)) return(argv)
+  if (.sandbox_unshare_available()) {
+    out <- c("unshare", "-Urn", "--", argv)
+    attr(out, "network_isolation") <- "kernel"
+    return(out)
+  }
+  # Degraded: no OS network namespace. Mark it and warn ONCE per session so a
+  # caller cannot mistake allow_network=FALSE for a hard isolation guarantee.
+  if (!isTRUE(.sandbox_unshare_cache$fallback_warned)) {
+    warning("Data Shield sandbox: OS network isolation unavailable (`unshare ",
+            "-Urn` failed); allow_network=FALSE has degraded to a bypassable ",
+            "command-name blacklist. Enable unprivileged user namespaces, or ",
+            "treat this environment as network-capable.", call. = FALSE)
+    .sandbox_unshare_cache$fallback_warned <- TRUE
+  }
+  attr(argv, "network_isolation") <- "unavailable"
+  argv
 }
 
 #' Build a sandbox profile from settings

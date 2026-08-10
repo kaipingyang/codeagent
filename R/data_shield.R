@@ -211,9 +211,26 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
   fmls <- names(formals(factory))
   chat <- if("model" %in% fmls || "..." %in% fmls) factory(model=model) else factory()
   if(!inherits(chat,"Chat")) stop("Reviewer factory must return an ellmer Chat.",call.=FALSE)
-  tryCatch(chat$set_turns(list()),error=function(e)NULL)
-  tryCatch(chat$set_tools(list()),error=function(e)NULL)
-  tryCatch(chat$set_system_prompt(.data_shield_reviewer_system_prompt()),error=function(e)NULL)
+  # Isolation must be VERIFIED, not best-effort (kiro round-2 #9): if clearing
+  # history/tools or setting the reviewer system prompt fails, the reviewer could
+  # inherit the main session's turns, tools, or prompt. Refuse to enable it
+  # rather than return a chat we cannot prove is clean.
+  isolate_ok <- tryCatch({
+    chat$set_turns(list())
+    chat$set_tools(list())
+    chat$set_system_prompt(.data_shield_reviewer_system_prompt())
+    TRUE
+  }, error = function(e) FALSE)
+  if (!isTRUE(isolate_ok))
+    stop("Reviewer isolation failed (could not clear turns/tools or set the ",
+         "reviewer system prompt); refusing to enable an unisolated reviewer.",
+         call. = FALSE)
+  # Confirm the isolation actually took effect where observable.
+  turns_clear <- tryCatch(length(chat$get_turns()) == 0L, error = function(e) NA)
+  if (isFALSE(turns_clear))
+    stop("Reviewer isolation could not be confirmed (conversation history not ",
+         "empty after set_turns(list())); refusing to enable the reviewer.",
+         call. = FALSE)
   chat
 }
 
@@ -1307,6 +1324,8 @@ DataShield <- R6::R6Class(
         private$assets <- list()
         private$audit_log <- list()
         rm(list = ls(private$index, all.names = TRUE), envir = private$index)
+        if (!is.null(private$deny_index))
+          rm(list = ls(private$deny_index, all.names = TRUE), envir = private$deny_index)
         # Also release reviewer/factory/approval closures -- an explicit
         # client_factory or ask_fn may capture host credentials/connections, so
         # "clear sensitive state and close" must drop them too. (kiro finding 7.)
@@ -1314,9 +1333,25 @@ DataShield <- R6::R6Class(
         private$reviewer_factory <- NULL
         private$egress_ask_fn <- NULL
         private$sandbox <- NULL
+        # kiro round-2 #10: also drop the strategy list and both pipelines. The
+        # egress/ingress pipelines hold CUSTOM SCANNER CLOSURES (stage$fn) that
+        # can capture host state; leaving them attached kept large objects and
+        # credential-bearing closures alive after close().
+        private$strategies <- list()
+        private$egress_pipeline <- list()
+        private$ingress_pipeline <- list()
+        private$tool_policy_config <- list(default = "scan", rules = list())
         private$closed <- TRUE
       }
       invisible(NULL)
+    },
+
+    #' @description R6 finalizer -- best-effort backstop so a shield that is
+    #'   garbage-collected without an explicit close() still releases its
+    #'   sensitive closures/state (kiro round-2 #10). Idempotent (close() guards
+    #'   on private$closed).
+    finalize = function() {
+      tryCatch(self$close(), error = function(e) NULL)
     },
 
     #' @description Summarise non-sensitive runtime coverage.

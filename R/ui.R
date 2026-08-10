@@ -326,6 +326,12 @@ codeagent_app <- function(
         if (!is.null(sess_hooks))
           tryCatch(sess_hooks$run_session_end("other", list()),
                    error = function(e) NULL)
+        # Release the Data Shield's sensitive closures/state at session teardown
+        # (kiro round-2 #10): a per-session shield holds datasets, a value index,
+        # reviewer/ask closures and (custom) scanner closures. close() is
+        # idempotent and the R6 finalizer is only a GC backstop, so close here.
+        sh <- tryCatch(settings$data_shield_engine, error = function(e) NULL)
+        if (inherits(sh, "DataShield")) tryCatch(sh$close(), error = function(e) NULL)
       })
     })
 

@@ -240,9 +240,18 @@ codeagent_client <- function(
       if (isTRUE(user_supplied_chat) && inherits(parent_chat, "Chat")) {
         rc <- tryCatch({
           c2 <- parent_chat$clone()
-          tryCatch(c2$set_model(model), error = function(e) NULL)
-          tryCatch(c2$set_turns(list()), error = function(e) NULL)
-          tryCatch(c2$set_tools(list()), error = function(e) NULL)
+          # Isolation must VERIFIABLY take effect (kiro round-2 #9): a swallowed
+          # set_model/set_turns/set_tools error previously left the reviewer on
+          # the main model with the main history. Verify each step and the final
+          # model identity; drop the clone (fall back to .make_chat) if anything
+          # cannot be confirmed rather than reuse an unproven chat.
+          c2$set_model(model)
+          c2$set_turns(list())
+          c2$set_tools(list())
+          got <- tryCatch(c2$get_model(), error = function(e) NA_character_)
+          if (!identical(got, model)) stop("reviewer model identity mismatch")
+          if (length(tryCatch(c2$get_turns(), error = function(e) list())) != 0L)
+            stop("reviewer history not cleared")
           c2
         }, error = function(e) NULL)
         if (inherits(rc, "Chat")) return(rc)

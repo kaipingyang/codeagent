@@ -50,16 +50,26 @@ test_that("finding 4: local_only with no client_factory refuses (no remote fallb
 })
 
 test_that("finding 4: local_only WITH explicit client_factory is honoured", {
-  fake <- structure(list(), class = "Chat")
+  # Reviewer isolation is now VERIFIED (round-2 #9), so the stub Chat must
+  # support the isolation calls and report a clean, model-matching state.
+  fake <- structure(list(
+    set_turns = function(...) invisible(NULL),
+    set_tools = function(...) invisible(NULL),
+    set_system_prompt = function(...) invisible(NULL),
+    get_turns = function() list(),
+    get_model = function() "m"), class = "Chat")
   cfg <- list(backend = "local_only", model = "m",
               client_factory = function(model = NULL) fake)
-  # set_turns/set_tools/set_system_prompt are best-effort tryCatch, so a bare
-  # stub Chat is fine -- we only assert it does not error out on the guard.
   expect_error(codeagent:::.data_shield_reviewer_chat(cfg, NULL), NA)
 })
 
 test_that("finding 4: remote_sanitized (default) is unaffected", {
-  fake <- structure(list(), class = "Chat")
+  fake <- structure(list(
+    set_turns = function(...) invisible(NULL),
+    set_tools = function(...) invisible(NULL),
+    set_system_prompt = function(...) invisible(NULL),
+    get_turns = function() list(),
+    get_model = function() "m"), class = "Chat")
   cfg <- list(backend = "remote_sanitized", model = "m",
               client_factory = function(model = NULL) fake)
   expect_error(codeagent:::.data_shield_reviewer_chat(cfg, NULL), NA)
