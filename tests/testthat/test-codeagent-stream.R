@@ -201,3 +201,24 @@ test_that("codeagent_stream usage contains cost_last field", {
   expect_true(!is.null(result$usage))
   expect_true("cost_last" %in% names(result$usage))
 })
+
+
+test_that("codeagent_stream_async expands multimodal input into ellmer content dots", {
+  skip_if_not_installed("coro"); skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+
+  seen <- NULL
+  chat <- .mk_fake_chat(list(ContentText("ok")))
+  chat$stream_async <- function(...) {
+    seen <<- list(...)
+    .mk_fake_gen(list(ContentText("ok")))()
+  }
+  image <- content_image_url("data:image/png;base64,AA==")
+
+  result <- .pump(codeagent_stream_async(chat, list("describe this", image)))
+
+  expect_equal(result$stop_reason, "completed")
+  expect_match(seen[[1L]], "^describe this")
+  expect_true(S7::S7_inherits(seen[[2L]], ellmer::ContentImage))
+  expect_identical(seen$stream, "content")
+})

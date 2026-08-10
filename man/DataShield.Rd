@@ -48,6 +48,7 @@ shield$coverage()
     \item \href{#method-DataShield-scan_tool_args}{\code{DataShield$scan_tool_args()}}
     \item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
     \item \href{#method-DataShield-scan_response}{\code{DataShield$scan_response()}}
+    \item \href{#method-DataShield-review_code_public}{\code{DataShield$review_code_public()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
     \item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
     \item \href{#method-DataShield-bind_reviewer_factory}{\code{DataShield$bind_reviewer_factory()}}
@@ -55,6 +56,7 @@ shield$coverage()
     \item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
     \item \href{#method-DataShield-close}{\code{DataShield$close()}}
+    \item \href{#method-DataShield-finalize}{\code{DataShield$finalize()}}
     \item \href{#method-DataShield-coverage}{\code{DataShield$coverage()}}
   }
 }
@@ -441,6 +443,35 @@ PII regex), differing only in the audit \code{edge} label (\code{"response"}).
 }
 
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-review_code_public"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-review_code_public}{}}}
+\subsection{\code{DataShield$review_code_public()}}{
+  Public bridge to the internal code reviewer rail (kiro
+round-2 #7). The reviewer logic lives in \code{private$review_code}, so an
+external caller (the AuditCode pipeline, \code{.audit_code_impl}) could not
+reach it -- \code{shield$review_code} resolved to NULL and every audit fell
+back to "reviewer unavailable". This public method exposes the rail so
+the deterministic audit can feed vetted, whitelisted file contents to
+the configured reviewer. Returns the reviewer verdict (list with
+\code{risk}/\code{error}) or a promise thereof; \code{list(error=TRUE, reason=...)}
+when no reviewer is configured.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$review_code_public(text, context = list())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{text}}{Character. Already-vetted code/content to review (the caller
+is responsible for deciding what to read; the reviewer gets no tools).}
+      \item{\code{context}}{Optional non-sensitive context (tool_name, capability).}
+    }
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-add_scanner"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-add_scanner}{}}}
 \subsection{\code{DataShield$add_scanner()}}{
@@ -542,6 +573,21 @@ PII regex), differing only in the audit \code{edge} label (\code{"response"}).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$close()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-finalize"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-finalize}{}}}
+\subsection{\code{DataShield$finalize()}}{
+  R6 finalizer -- best-effort backstop so a shield that is
+garbage-collected without an explicit close() still releases its
+sensitive closures/state (kiro round-2 #10). Idempotent (close() guards
+on private$closed).
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$finalize()}
     \if{html}{\out{</div>}}
   }
 }

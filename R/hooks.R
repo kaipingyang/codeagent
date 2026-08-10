@@ -54,6 +54,12 @@ HookEvent <- list(
   PERMISSION_DENIED     = "PermissionDenied",
   PERMISSION_REQUEST    = "PermissionRequest",
   USER_PROMPT_SUBMIT    = "UserPromptSubmit",
+  # Deprecated alias (kiro round-2 #14): early versions used USER_MESSAGE for the
+  # same event before it was aligned to Claude Code's public `UserPromptSubmit`.
+  # Kept (pointing at the same event string) for one release cycle so code using
+  # the old key still resolves instead of silently getting NULL. Prefer
+  # USER_PROMPT_SUBMIT.
+  USER_MESSAGE          = "UserPromptSubmit",
   ASSISTANT_MESSAGE     = "AssistantMessage",
   # Lifecycle events (M5)
   SESSION_START         = "SessionStart",
@@ -272,6 +278,16 @@ HookRegistry <- R6::R6Class(
            additional_context = if (length(ctx)) paste(ctx, collapse = "\n") else NULL)
     },
 
+    #' @description Deprecated alias for `run_user_prompt_submit()` (kiro round-2
+    #'   #14). The event was renamed to align with Claude Code's public
+    #'   `UserPromptSubmit`; this shim forwards to the new method for one release
+    #'   cycle so existing callers do not break. Prefer `run_user_prompt_submit()`.
+    run_user_message = function(message) {
+      .Deprecated("run_user_prompt_submit",
+                  msg = "run_user_message() is deprecated; use run_user_prompt_submit().")
+      self$run_user_prompt_submit(message)
+    },
+
     #' @description Fire AssistantMessage hooks (informational).
     run_assistant_message = function(message) {
       for (hook in private$hooks[[HookEvent$ASSISTANT_MESSAGE]])
@@ -411,7 +427,7 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire ConfigChange hooks (Shiny-only; watcher-driven).
     #'   Callback: `function(source, file_path, context)`. Return value ignored.
-    #'   Not fired on the CLI (see [run_file_changed] note).
+    #'   Not fired on the CLI (see the `run_file_changed()` method note).
     run_config_change = function(source = "user_settings", file_path = "", context = list()) {
       for (hook in private$hooks[[HookEvent$CONFIG_CHANGE]])
         .run_hook_timed(hook$fn, hook$timeout_ms, source, file_path, context)

@@ -67,7 +67,9 @@ Suggests:
     vitals,
     keyring,
     webfakes,
-    tesseract
+    tesseract,
+    pharmaverseadam,
+    pkgload
 Config/testthat/edition: 3
 Remotes:
     tidyverse/ellmer,

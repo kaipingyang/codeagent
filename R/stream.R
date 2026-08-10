@@ -109,7 +109,10 @@ codeagent_stream_async <- function(
   # of an `if` expression, and .turn_setup contains such branches.
   actual_input <- .turn_setup(client, input, iteration, cwd,
                                compaction_ctrl, resource_state)
-  stream_contents <- list(actual_input)
+  # ellmer's `...` contract expects each text/content part as its own argument.
+  # Preserve scalar input as one argument, but expand Shiny's multimodal list
+  # (text followed by Content attachments) across the dots.
+  stream_contents <- if (is.list(actual_input)) actual_input else list(actual_input)
 
   # Mark this as an async turn so promise-returning tools (e.g. concurrent
   # sub-agents) are permitted; cleared when the turn's promise settles.

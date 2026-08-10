@@ -1,5 +1,39 @@
 # codeagent (development version)
 
+* **Data Shield security hardening (second-round audit): 16 boundary fixes,
+  all fail-closed.** A follow-up security review found several paths where the
+  shield could silently fail *open*; every one is now closed:
+  - **Input/output gates fail closed.** A scan exception, an unknown (typo'd)
+    scanner name, an already-closed shield, or an unextractable attachment no
+    longer passes the raw text through — the gates now block/redact, matching the
+    tool-side ingress (which was already fail-closed).
+  - **Full turn-boundary coverage.** The one-shot `codeagent()` and the
+    non-streaming REPL path now run both the input and output gates; `agent_loop`
+    falls back to the settings hook registry when none is passed.
+  - **Streaming output gate really redacts.** When a shield is active, the Shiny
+    and CLI streaming paths **buffer** the reply, scan it, then show the
+    (possibly redacted) text once — instead of streaming plaintext to the screen
+    and appending a warning after the fact. Without a shield, streaming is
+    unchanged.
+  - **Tool boundary sees nested args and async results.** `scan_tool_args`
+    recurses into nested list string leaves; the egress wrapper awaits a
+    promise-returning tool and scans the *resolved* value.
+  - **`egress = "none"` is a real deny**, not a silent pass; the reviewer rail is
+    reachable (`review_code_public()`); `refresh_data_shield_context()` works for
+    a bare `Chat`; tool re-registration re-installs the shield wrapper; a
+    rewritten PreToolUse input is re-checked against the gate authority.
+  - **Code audit precision + read safety.** The static source-reference audit
+    only treats a *literal* path argument as static (nested `file.path()` /
+    `paste0()` / a variable are flagged dynamic); binary R-data blobs are not
+    text-audited; files are read with a byte cap and a TOCTOU re-check.
+  - **Lifecycle & isolation.** Reviewer isolation is verified (not best-effort);
+    `close()` clears strategies, both pipelines, and custom-scanner closures, with
+    an R6 finalizer backstop and a Shiny session-end close; the no-network
+    sandbox marks (and warns once) when OS isolation is unavailable.
+  - **Compatibility shims.** `HookEvent$USER_MESSAGE` and `run_user_message()` are
+    restored as deprecated aliases; `register_data()` errors clearly if
+    `column_access` is passed in an old positional slot.
+
 * **Bash sandbox gains OS-level no-network isolation via unprivileged
   namespaces.** When the Bash sandbox runs with `allow_network = FALSE` and
   `unshare` is available, commands are wrapped in `unshare -Urn` (a user+network
@@ -140,8 +174,9 @@
   into `prompt`/`egress`. `prompt="raw"` makes `DescribeData` enumerate the real
   values (no k-anonymity suppression); `egress="raw"` drops the column from the
   value-match index. A raw edge requires a non-empty `reason`; an override
-  missing it is dropped with a warning and the column falls back to its
-  sensitivity tier (fails safe). `coverage()$raw_access_columns` counts overrides.
+  missing it now **errors** (registration is refused) rather than being silently
+  dropped, so a mis-typed raw grant cannot pass unnoticed.
+  `coverage()$raw_access_columns` counts overrides.
 
 * **Extensible ingress blacklist**: built-in `shield_ingress()` rules moved to a
   grouped `.DATA_SHIELD_INGRESS_RULES` constant and expanded (pandas `to_*`, more

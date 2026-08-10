@@ -77,6 +77,7 @@ Return value ignored (informational only).
     \item \href{#method-HookRegistry-run_permission_denied}{\code{HookRegistry$run_permission_denied()}}
     \item \href{#method-HookRegistry-run_permission_request}{\code{HookRegistry$run_permission_request()}}
     \item \href{#method-HookRegistry-run_user_prompt_submit}{\code{HookRegistry$run_user_prompt_submit()}}
+    \item \href{#method-HookRegistry-run_user_message}{\code{HookRegistry$run_user_message()}}
     \item \href{#method-HookRegistry-run_assistant_message}{\code{HookRegistry$run_assistant_message()}}
     \item \href{#method-HookRegistry-run_session_start}{\code{HookRegistry$run_session_start()}}
     \item \href{#method-HookRegistry-run_stop}{\code{HookRegistry$run_stop()}}
@@ -231,6 +232,21 @@ if any hook blocked, else \verb{list(action = "allow", additional_context = <app
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_user_prompt_submit(message)}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-HookRegistry-run_user_message"></a>}}
+\if{latex}{\out{\hypertarget{method-HookRegistry-run_user_message}{}}}
+\subsection{\code{HookRegistry$run_user_message()}}{
+  Deprecated alias for \code{run_user_prompt_submit()} (kiro round-2
+#14). The event was renamed to align with Claude Code's public
+\code{UserPromptSubmit}; this shim forwards to the new method for one release
+cycle so existing callers do not break. Prefer \code{run_user_prompt_submit()}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{HookRegistry$run_user_message(message)}
     \if{html}{\out{</div>}}
   }
 }
@@ -485,7 +501,7 @@ the synchronous CLI loop cannot pump the \code{later} queue watcher needs.
 \subsection{\code{HookRegistry$run_config_change()}}{
   Fire ConfigChange hooks (Shiny-only; watcher-driven).
 Callback: \verb{function(source, file_path, context)}. Return value ignored.
-Not fired on the CLI (see \link{run_file_changed} note).
+Not fired on the CLI (see the \code{run_file_changed()} method note).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_config_change(

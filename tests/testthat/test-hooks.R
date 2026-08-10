@@ -22,9 +22,12 @@ test_that("HookEvent covers all 27 Claude Code events + AssistantMessage", {
     "Elicitation", "ElicitationResult", "ConfigChange", "WorktreeCreate",
     "WorktreeRemove", "InstructionsLoaded", "CwdChanged", "FileChanged")
   expect_true(all(cc_events %in% unlist(HookEvent)))
-  # AssistantMessage is codeagent-only (CC has no such event) -> 27 + 1 = 28.
-  expect_length(HookEvent, 28L)
+  # AssistantMessage is codeagent-only (CC has no such event) -> 27 + 1 = 28,
+  # plus the USER_MESSAGE deprecation alias (-> UserPromptSubmit) = 29.
+  expect_length(HookEvent, 29L)
   expect_true("AssistantMessage" %in% unlist(HookEvent))
+  # Deprecated alias present and pointing at the aligned CC event name.
+  expect_identical(HookEvent$USER_MESSAGE, "UserPromptSubmit")
 })
 
 test_that("A-group events fire with their payloads", {

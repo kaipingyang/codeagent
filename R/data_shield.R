@@ -708,6 +708,16 @@ DataShield <- R6::R6Class(
       if (is.null(name)) name <- paste0("dataset_", length(private$datasets) + 1L)
       if (!is.character(name) || length(name) != 1L || !nzchar(name))
         stop("`name` must be a non-empty character(1).", call. = FALSE)
+      # Positional-misbinding guard (kiro round-2 #14): an earlier baseline put
+      # `column_access` in the 5th position (now `min_len`). Old positional calls
+      # that pass a column_access list there would silently misbind it to
+      # min_len/min_card. Detect the type mismatch and fail with a clear message
+      # steering the caller to named arguments rather than corrupt the index.
+      if (is.list(min_len) || is.list(min_card))
+        stop("`min_len`/`min_card` must be numeric, got a list. If you are ",
+             "passing `column_access` positionally (its position changed), use ",
+             "the named argument: register_data(..., column_access = list(...)).",
+             call. = FALSE)
       # Strict validation: max_index_values must be a single non-negative finite
       # integer, or an explicit unbounded marker (NULL / Inf). NA / negative /
       # non-scalar are rejected -- a silent NA->Inf would cancel the memory cap

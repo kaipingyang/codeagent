@@ -282,3 +282,53 @@ test_that("#12 unshare_wrap marks isolation state on the returned argv", {
   out2 <- codeagent:::.sandbox_unshare_wrap(argv, no_network = FALSE)
   expect_identical(out2, argv)
 })
+
+# ============================================================================
+# Batch 4 (P3 compatibility / docs): findings #14, #15.
+# ============================================================================
+
+# --- Finding #14: API compatibility shims ------------------------------------
+
+test_that("#14 HookEvent$USER_MESSAGE aliases UserPromptSubmit", {
+  expect_identical(HookEvent$USER_MESSAGE, "UserPromptSubmit")
+  expect_identical(HookEvent$USER_MESSAGE, HookEvent$USER_PROMPT_SUBMIT)
+})
+
+test_that("#14 run_user_message is a deprecated shim to run_user_prompt_submit", {
+  reg <- HookRegistry$new()
+  expect_warning(reg$run_user_message("hello"), "deprecated")
+})
+
+test_that("#14 register_data rejects column_access misbound to a positional arg", {
+  sh <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
+  df <- data.frame(id = sprintf("X%03d", 1:20), stringsAsFactors = FALSE)
+  # old positional order put column_access in the 5th slot (now min_len); passing
+  # a list there must error clearly, not silently corrupt indexing.
+  expect_error(
+    sh$register_data(df, "d", c(id = "identifier"), NULL,
+                     list(id = list(prompt = "raw", reason = "x"))),
+    "min_len")
+})
+
+test_that("#14 legacy 6-positional register_data still works", {
+  sh <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
+  df <- data.frame(id = sprintf("SUBJ%03d", 1:20), stringsAsFactors = FALSE)
+  # register_data(df, name, sensitivity, cols, min_len, min_card) -- 4L/8L bind
+  # to min_len/min_card (numeric), not column_access.
+  expect_error(sh$register_data(df, "d", c(id = "identifier"), NULL, 4L, 8L), NA)
+})
+
+# --- Finding #15: no non-ASCII literals in R sources -------------------------
+
+test_that("#15 server_chat.R has no literal non-ASCII characters", {
+  path <- system.file("R", package = "codeagent")
+  # When testing from source (load_all), read the source file directly.
+  src <- tryCatch(readLines("../../R/server_chat.R", warn = FALSE),
+                  error = function(e) character())
+  if (length(src)) {
+    non_ascii <- grepl("[^\x01-\x7F]", src, useBytes = TRUE)
+    expect_false(any(non_ascii))
+  } else {
+    succeed("source not available in this test context")
+  }
+})

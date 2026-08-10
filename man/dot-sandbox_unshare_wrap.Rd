@@ -9,10 +9,18 @@
 \arguments{
 \item{argv}{Character vector: the command + args to run (e.g.
 \code{c("Rscript", "-e", "...")}).}
+
+\item{no_network}{Logical. Request kernel-level network isolation.}
 }
 \value{
 A character vector prefixed with \code{unshare -Urn} when available and
-requested; otherwise \code{argv} unchanged.
+requested; otherwise \code{argv} unchanged. When no-network was requested but
+\code{unshare} is unavailable, the returned vector carries
+\code{attr(x, "network_isolation") = "unavailable"} and a one-time session
+warning is emitted -- the OS-level boundary has silently degraded to the
+command-name blacklist, which is bypassable (kiro round-2 #12). Callers
+should surface this in audit/UI rather than treat \code{allow_network=FALSE} as a
+hard guarantee.
 }
 \description{
 Wrap an argv vector to run inside a no-network user+net namespace.
