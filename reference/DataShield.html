@@ -149,9 +149,10 @@ categorical treatment.</p></dd>
 
       <dt><code>strategies</code></dt>
 <dd><p>Optional ordered list from <code><a href="shield_describe.html">shield_describe()</a></code>,
-<code><a href="shield_egress.html">shield_egress()</a></code>, <code><a href="shield_regex.html">shield_regex()</a></code>, <code><a href="shield_ingress.html">shield_ingress()</a></code>, and
-<code><a href="shield_tool_policy.html">shield_tool_policy()</a></code>. If supplied, only listed
-strategies are enabled and list order controls egress execution order.</p></dd>
+<code><a href="shield_egress.html">shield_egress()</a></code>, <code><a href="shield_regex.html">shield_regex()</a></code>, <code><a href="shield_ingress.html">shield_ingress()</a></code>,
+<code><a href="shield_tool_policy.html">shield_tool_policy()</a></code>, <code><a href="shield_sandbox.html">shield_sandbox()</a></code>, and <code><a href="shield_reviewer.html">shield_reviewer()</a></code>.
+If supplied, only listed strategies are enabled and list order controls
+egress execution order.</p></dd>
 
 
 </dl><p></p></div>
@@ -168,10 +169,10 @@ strategies are enabled and list order controls egress execution order.</p></dd>
 <span>  name <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sensitivity <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cols <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  column_access <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  min_len <span class="op">=</span> <span class="fl">3L</span>,</span>
 <span>  min_card <span class="op">=</span> <span class="fl">8L</span>,</span>
-<span>  max_index_values <span class="op">=</span> <span class="fl">500000L</span></span>
+<span>  max_index_values <span class="op">=</span> <span class="fl">500000L</span>,</span>
+<span>  column_access <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
@@ -190,15 +191,6 @@ strategies are enabled and list order controls egress execution order.</p></dd>
 <dd><p>Optional explicit value-match columns. Default: columns
 classified <code>identifier</code>/<code>quasi</code>.</p></dd>
 
-      <dt><code>column_access</code></dt>
-<dd><p>Optional named list of per-column raw-access
-overrides, each <code>list(prompt=, egress=, reason=, scan_secrets=)</code> using
-<code>none</code>/<code>schema</code>/<code>scan</code>/<code>raw</code>. A raw edge requires a non-empty <code>reason</code>;
-overrides missing it are dropped (with a warning) so the column falls
-back to its sensitivity tier. <code>egress="raw"</code> removes the column from the
-value-match index; <code>prompt="raw"</code> lets <code>DescribeData</code> enumerate its real
-values.</p></dd>
-
       <dt><code>min_len, min_card</code></dt>
 <dd><p>Minimum value length and column cardinality for
 deterministic value indexing (reduces low-entropy false positives).</p></dd>
@@ -208,6 +200,15 @@ deterministic value indexing (reduces low-entropy false positives).</p></dd>
 keys). On overflow, indexing stops and a warning is emitted; unindexed
 values are not caught by value_match and rely on the other egress
 layers. <code>NULL</code>/<code>Inf</code> disables the cap.</p></dd>
+
+      <dt><code>column_access</code></dt>
+<dd><p>Optional named list of per-column raw-access
+overrides, each <code>list(prompt=, egress=, reason=, scan_secrets=)</code> using
+<code>none</code>/<code>schema</code>/<code>scan</code>/<code>raw</code>. A raw edge requires a non-empty <code>reason</code>;
+overrides missing it are dropped (with a warning) so the column falls
+back to its sensitivity tier. <code>egress="raw"</code> removes the column from the
+value-match index; <code>prompt="raw"</code> lets <code>DescribeData</code> enumerate its real
+values.</p></dd>
 
 
 </dl><p></p></div>

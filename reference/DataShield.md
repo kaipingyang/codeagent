@@ -116,8 +116,10 @@ Create a Data Shield.
   [`shield_egress()`](https://kaipingyang.github.io/codeagent/reference/shield_egress.md),
   [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md),
   [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md),
+  [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md),
+  [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md),
   and
-  [`shield_tool_policy()`](https://kaipingyang.github.io/codeagent/reference/shield_tool_policy.md).
+  [`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md).
   If supplied, only listed strategies are enabled and list order
   controls egress execution order.
 
@@ -134,10 +136,10 @@ Register one protected data.frame.
       name = NULL,
       sensitivity = NULL,
       cols = NULL,
-      column_access = NULL,
       min_len = 3L,
       min_card = 8L,
-      max_index_values = 500000L
+      max_index_values = 500000L,
+      column_access = NULL
     )
 
 #### Arguments
@@ -161,16 +163,6 @@ Register one protected data.frame.
   Optional explicit value-match columns. Default: columns classified
   `identifier`/`quasi`.
 
-- `column_access`:
-
-  Optional named list of per-column raw-access overrides, each
-  `list(prompt=, egress=, reason=, scan_secrets=)` using
-  `none`/`schema`/`scan`/`raw`. A raw edge requires a non-empty
-  `reason`; overrides missing it are dropped (with a warning) so the
-  column falls back to its sensitivity tier. `egress="raw"` removes the
-  column from the value-match index; `prompt="raw"` lets `DescribeData`
-  enumerate its real values.
-
 - `min_len, min_card`:
 
   Minimum value length and column cardinality for deterministic value
@@ -182,6 +174,16 @@ Register one protected data.frame.
   indexing stops and a warning is emitted; unindexed values are not
   caught by value_match and rely on the other egress layers.
   `NULL`/`Inf` disables the cap.
+
+- `column_access`:
+
+  Optional named list of per-column raw-access overrides, each
+  `list(prompt=, egress=, reason=, scan_secrets=)` using
+  `none`/`schema`/`scan`/`raw`. A raw edge requires a non-empty
+  `reason`; overrides missing it are dropped (with a warning) so the
+  column falls back to its sensitivity tier. `egress="raw"` removes the
+  column from the value-match index; `prompt="raw"` lets `DescribeData`
+  enumerate its real values.
 
 ------------------------------------------------------------------------
 
