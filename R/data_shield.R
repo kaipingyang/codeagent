@@ -597,9 +597,10 @@ DataShield <- R6::R6Class(
     #'   categorical treatment.
     #' @param audit_max Maximum in-memory non-sensitive decision events retained.
     #' @param strategies Optional ordered list from [shield_describe()],
-    #'   [shield_egress()], [shield_regex()], [shield_ingress()], and
-    #'   [shield_tool_policy()]. If supplied, only listed
-    #'   strategies are enabled and list order controls egress execution order.
+    #'   [shield_egress()], [shield_regex()], [shield_ingress()],
+    #'   [shield_tool_policy()], [shield_sandbox()], and [shield_reviewer()].
+    #'   If supplied, only listed strategies are enabled and list order controls
+    #'   egress execution order.
     initialize = function(max_rows = 0L, distributions = "off", k_anon = 5L,
                           category_max = 20L, category_ratio = 0.2,
                           audit_max = 1000L, strategies = NULL) {
@@ -660,8 +661,8 @@ DataShield <- R6::R6Class(
     #'   values are not caught by value_match and rely on the other egress
     #'   layers. `NULL`/`Inf` disables the cap.
     register_data = function(df, name = NULL, sensitivity = NULL, cols = NULL,
-                             column_access = NULL, min_len = 3L, min_card = 8L,
-                             max_index_values = 500000L) {
+                             min_len = 3L, min_card = 8L,
+                             max_index_values = 500000L, column_access = NULL) {
       private$assert_open()
       if (!is.data.frame(df)) stop("`df` must be a data.frame.", call. = FALSE)
       if (is.null(name)) name <- paste0("dataset_", length(private$datasets) + 1L)
@@ -975,7 +976,10 @@ DataShield <- R6::R6Class(
           return(decision)
         }
       }
-      private$run_reviewers(1L,text,context,capability)
+      # Reviewers see ONLY code-field values + metadata for other args, never
+      # the raw flattened argument values used by the scanners above. (finding 1)
+      reviewer_text <- .data_shield_reviewer_input(tool_name, input)
+      private$run_reviewers(1L,reviewer_text,context,capability)
     },
 
     #' @description Redact protected values inside a tool's arguments before the
@@ -1216,6 +1220,13 @@ DataShield <- R6::R6Class(
         private$assets <- list()
         private$audit_log <- list()
         rm(list = ls(private$index, all.names = TRUE), envir = private$index)
+        # Also release reviewer/factory/approval closures -- an explicit
+        # client_factory or ask_fn may capture host credentials/connections, so
+        # "clear sensitive state and close" must drop them too. (kiro finding 7.)
+        private$reviewers <- list()
+        private$reviewer_factory <- NULL
+        private$egress_ask_fn <- NULL
+        private$sandbox <- NULL
         private$closed <- TRUE
       }
       invisible(NULL)
@@ -1373,11 +1384,14 @@ DataShield <- R6::R6Class(
         } else {
           return(private$run_reviewers(i+1L,text,context,capability))
         }
+        # Audit reason stores ONLY the local enumerated risk class, never the
+        # reviewer's free-text reason -- the model could echo protected input
+        # into `reason`, which would then land in the audit log. (finding 1.)
         private$record_event(
           edge="ingress",tool_name=context$tool_name,tool_call_id=context$tool_call_id,
           strategy="reviewer",action=action,
-          reason=paste0(risk,": ",reason),match_count=1L,score=confidence)
-        list(action=action,reason=paste0("Data Shield reviewer: ",risk," (",reason,")"),
+          reason=paste0("reviewer risk: ",risk),match_count=1L,score=confidence)
+        list(action=action,reason=paste0("Data Shield reviewer: ",risk),
              matches=risk,score=confidence)
       }
       if(inherits(reviewed,"promise")) return(promises::then(reviewed,handle))
@@ -1649,6 +1663,50 @@ refresh_data_shield_context <- function(client) {
     paste0(path, if(nzchar(path)) "=" else "", value)
   }
   paste(c(paste0("tool=", tool_name), walk(input)), collapse="\n")
+}
+
+# Per-tool map of which argument is actual CODE eligible for semantic review.
+# Only these fields' values are shown to the reviewer; every other field is
+# reduced to name/type/length metadata so free-text business values (e.g.
+# Write(content=...)) never reach a (possibly remote) reviewer. (kiro finding 1.)
+.DATA_SHIELD_CODE_FIELDS <- list(
+  RunR  = "code",
+  Bash  = "command",
+  run_r = "code",
+  bash  = "command"
+)
+
+# Build the text shown to the semantic reviewer: the code field's value (if the
+# tool has one) plus name/type/length metadata for all other args. Non-code
+# tools yield metadata only -- no argument VALUES leak to the reviewer.
+#' @keywords internal
+.data_shield_reviewer_input <- function(tool_name, input) {
+  code_field <- .DATA_SHIELD_CODE_FIELDS[[tool_name]]
+  meta_line <- function(name, value) {
+    len <- tryCatch({
+      if (is.character(value)) sum(nchar(value)) else length(value)
+    }, error = function(e) NA_integer_)
+    sprintf("  %s: type=%s length=%s (value withheld)",
+            name, paste(class(value), collapse = "/"),
+            if (is.na(len)) "?" else as.character(len))
+  }
+  lines <- character()
+  code_txt <- ""
+  nms <- names(input) %||% rep("", length(input))
+  for (i in seq_along(input)) {
+    nm <- nms[[i]]; val <- input[[i]]
+    if (nzchar(nm) && !is.null(code_field) && identical(nm, code_field) &&
+        is.character(val) && length(val) == 1L) {
+      code_txt <- val                 # the one field the reviewer may read
+    } else if (nzchar(nm)) {
+      lines <- c(lines, meta_line(nm, val))
+    }
+  }
+  out <- paste0("tool=", tool_name)
+  if (length(lines)) out <- paste0(out, "\n", paste(lines, collapse = "\n"))
+  if (nzchar(code_txt))
+    out <- paste0(out, "\n--- code (", code_field, ") ---\n", code_txt)
+  out
 }
 
 .data_shield_ingress_scanner <- function(patterns, on_fail, ignore_case) {
@@ -1972,28 +2030,32 @@ refresh_data_shield_context <- function(client) {
   if (any(!names(column_access) %in% names(df)))
     stop("`column_access` names must be columns in `df`.", call. = FALSE)
   access_levels <- c("none", "schema", "scan", "raw")
+  known_keys <- c("prompt", "egress", "reason", "scan_secrets")
   out <- list()
   for (cn in names(column_access)) {
     spec <- column_access[[cn]]
-    if (!is.list(spec)) {
-      warning("column_access[['", cn, "']] ignored: must be a list.", call. = FALSE)
-      next
-    }
-    prompt <- spec$prompt %||% "raw"
+    if (!is.list(spec))
+      stop("column_access[['", cn, "']] must be a list.", call. = FALSE)
+    # Reject unknown/misspelled keys rather than silently ignoring them, so a
+    # typo cannot quietly widen access. (kiro finding 2.)
+    bad_keys <- setdiff(names(spec) %||% character(), known_keys)
+    if (length(bad_keys))
+      stop("column_access[['", cn, "']] has unknown field(s): ",
+           paste(bad_keys, collapse = ", "),
+           ". Allowed: ", paste(known_keys, collapse = ", "), ".", call. = FALSE)
+    # Default prompt is the MOST restrictive ("none"); raw must be requested
+    # explicitly per edge, never granted by omission. (finding 2.)
+    prompt <- spec$prompt %||% "none"
     egress <- spec$egress %||% "scan"
-    if (!prompt %in% access_levels || !egress %in% access_levels) {
-      warning("column_access[['", cn, "']] ignored: access must be none/schema/scan/raw.",
-              call. = FALSE)
-      next
-    }
+    if (!prompt %in% access_levels || !egress %in% access_levels)
+      stop("column_access[['", cn, "']] access must be one of ",
+           paste(access_levels, collapse = "/"), ".", call. = FALSE)
     is_raw <- identical(prompt, "raw") || identical(egress, "raw")
     reason <- if (is.character(spec$reason) && length(spec$reason) == 1L &&
                   nzchar(spec$reason)) spec$reason else NULL
-    if (is_raw && is.null(reason)) {
-      warning("column_access[['", cn, "']] ignored: raw access requires a non-empty `reason`.",
-              call. = FALSE)
-      next
-    }
+    if (is_raw && is.null(reason))
+      stop("column_access[['", cn, "']]: raw access requires a non-empty `reason`.",
+           call. = FALSE)
     out[[cn]] <- list(
       prompt = prompt, egress = egress, reason = reason,
       scan_secrets = isTRUE(spec$scan_secrets %||% TRUE))
@@ -2035,13 +2097,40 @@ refresh_data_shield_context <- function(client) {
     sens <- sensitivity[[cn]] %||% "identifier"
     typ <- .data_shield_type(x)
     access <- column_access[[cn]]
-    if (!is.null(access) && identical(access$prompt, "raw")) {
+    prompt_access <- access$prompt %||% NA_character_
+    # Per-column prompt-access tiers (kiro finding 2). Default (no override) =
+    # the sensitivity-based behaviour below (equivalent to "scan"):
+    #   none   -> column omitted entirely (not even schema)
+    #   schema -> type + missing only; no range/labels/values
+    #   scan   -> sensitivity-based safe summary (default path below)
+    #   raw    -> enumerate real values (reason-guarded in resolve_column_access)
+    if (identical(prompt_access, "none")) next
+    if (identical(prompt_access, "schema")) {
+      lines <- c(lines, sprintf(
+        "- %s: type=%s; sensitivity=%s; missing=%s; access=schema",
+        cn, typ, sens, if (anyNA(x)) "yes" else "no"))
+      next
+    }
+    if (identical(prompt_access, "raw")) {
       # Explicit per-column raw prompt access: enumerate real values, no
       # k-anonymity suppression. Guarded by resolve_column_access (reason set).
       vals <- unique(as.character(x[!is.na(x)]))
-      lines <- c(lines, sprintf(
-        "- %s: type=%s; sensitivity=%s; access=raw; values=[%s]",
-        cn, typ, sens, paste(vals, collapse = ", ")))
+      # Even under raw, keep the baseline secret/PII scan when requested.
+      if (isTRUE(access$scan_secrets)) {
+        joined <- paste(vals, collapse = ", ")
+        scanned <- tryCatch(
+          .data_shield_regex_scanner(
+            .data_shield_default_regex_patterns(), replacement = "[REDACTED]",
+            on_fail = "redact", ignore_case = TRUE)(joined, list(edge = "prompt"))$sanitized,
+          error = function(e) joined)
+        lines <- c(lines, sprintf(
+          "- %s: type=%s; sensitivity=%s; access=raw; values=[%s]",
+          cn, typ, sens, scanned))
+      } else {
+        lines <- c(lines, sprintf(
+          "- %s: type=%s; sensitivity=%s; access=raw; values=[%s]",
+          cn, typ, sens, paste(vals, collapse = ", ")))
+      }
       next
     }
     fields <- c(sprintf("type=%s", typ), sprintf("sensitivity=%s", sens),

@@ -229,7 +229,24 @@ codeagent_client <- function(
   if (inherits(shield_state,"DataShield") && shield_state$coverage()$reviewers > 0L &&
       !isTRUE(shield_state$coverage()$reviewer_factory_bound)) {
     reviewer_settings <- settings
+    user_supplied_chat <- !is.null(chat)
+    parent_chat <- chat
     shield_state$bind_reviewer_factory(function(model) {
+      # When the caller supplied their own Chat, derive the reviewer from THAT
+      # provider (clone + swap model), not from global settings -- otherwise the
+      # reviewer could use a different provider/endpoint/credentials than the
+      # injected Chat. (kiro finding 6.) Fall back to settings only for the
+      # internally-built chat path (where provider already matches settings).
+      if (isTRUE(user_supplied_chat) && inherits(parent_chat, "Chat")) {
+        rc <- tryCatch({
+          c2 <- parent_chat$clone()
+          tryCatch(c2$set_model(model), error = function(e) NULL)
+          tryCatch(c2$set_turns(list()), error = function(e) NULL)
+          tryCatch(c2$set_tools(list()), error = function(e) NULL)
+          c2
+        }, error = function(e) NULL)
+        if (inherits(rc, "Chat")) return(rc)
+      }
       cfg <- reviewer_settings; cfg$model <- model
       .make_chat(cfg,cwd)
     })

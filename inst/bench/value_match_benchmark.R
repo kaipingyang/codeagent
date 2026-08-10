@@ -50,7 +50,7 @@ scale_df <- function(n_ids) {
 for (n in c(1e3, 1e4, 1e5, 5e5, 1e6)) {
   df <- scale_df(n)
   t0 <- proc.time()[["elapsed"]]
-  idx <- build(df, cols = "USUBJID")
+  idx <- build(df, cols = "USUBJID", max_values = Inf)  # unbounded: reproduce the 1M-value scale claim, not the 500k default cap
   dt <- proc.time()[["elapsed"]] - t0
   cat(sprintf("  n=%8d indexed=%8d build=%6.2fs keys~%6.1fMB\n",
       n, attr(idx, "n"), dt, env_bytes(idx) / 1024^2))

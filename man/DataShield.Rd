@@ -90,9 +90,10 @@ implemented; \code{"on"}/\code{"dp"} fail explicitly.}
 categorical treatment.}
       \item{\code{audit_max}}{Maximum in-memory non-sensitive decision events retained.}
       \item{\code{strategies}}{Optional ordered list from \code{\link[=shield_describe]{shield_describe()}},
-\code{\link[=shield_egress]{shield_egress()}}, \code{\link[=shield_regex]{shield_regex()}}, \code{\link[=shield_ingress]{shield_ingress()}}, and
-\code{\link[=shield_tool_policy]{shield_tool_policy()}}. If supplied, only listed
-strategies are enabled and list order controls egress execution order.}
+\code{\link[=shield_egress]{shield_egress()}}, \code{\link[=shield_regex]{shield_regex()}}, \code{\link[=shield_ingress]{shield_ingress()}},
+\code{\link[=shield_tool_policy]{shield_tool_policy()}}, \code{\link[=shield_sandbox]{shield_sandbox()}}, and \code{\link[=shield_reviewer]{shield_reviewer()}}.
+If supplied, only listed strategies are enabled and list order controls
+egress execution order.}
     }
     \if{html}{\out{</div>}}
   }
@@ -110,10 +111,10 @@ strategies are enabled and list order controls egress execution order.}
   name = NULL,
   sensitivity = NULL,
   cols = NULL,
-  column_access = NULL,
   min_len = 3L,
   min_card = 8L,
-  max_index_values = 500000L
+  max_index_values = 500000L,
+  column_access = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -127,6 +128,12 @@ strategies are enabled and list order controls egress execution order.}
 \code{measure}, or \code{open}. Local heuristics classify unspecified columns.}
       \item{\code{cols}}{Optional explicit value-match columns. Default: columns
 classified \code{identifier}/\code{quasi}.}
+      \item{\code{min_len, min_card}}{Minimum value length and column cardinality for
+deterministic value indexing (reduces low-entropy false positives).}
+      \item{\code{max_index_values}}{Cap on indexed values (default 500000, ~65MB of
+keys). On overflow, indexing stops and a warning is emitted; unindexed
+values are not caught by value_match and rely on the other egress
+layers. \code{NULL}/\code{Inf} disables the cap.}
       \item{\code{column_access}}{Optional named list of per-column raw-access
 overrides, each \code{list(prompt=, egress=, reason=, scan_secrets=)} using
 \code{none}/\code{schema}/\code{scan}/\code{raw}. A raw edge requires a non-empty \code{reason};
@@ -134,12 +141,6 @@ overrides missing it are dropped (with a warning) so the column falls
 back to its sensitivity tier. \code{egress="raw"} removes the column from the
 value-match index; \code{prompt="raw"} lets \code{DescribeData} enumerate its real
 values.}
-      \item{\code{min_len, min_card}}{Minimum value length and column cardinality for
-deterministic value indexing (reduces low-entropy false positives).}
-      \item{\code{max_index_values}}{Cap on indexed values (default 500000, ~65MB of
-keys). On overflow, indexing stops and a warning is emitted; unindexed
-values are not caught by value_match and rely on the other egress
-layers. \code{NULL}/\code{Inf} disables the cap.}
     }
     \if{html}{\out{</div>}}
   }
