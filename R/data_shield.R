@@ -170,6 +170,17 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
 }
 
 .data_shield_reviewer_chat <- function(config, default_factory) {
+  # backend="local_only" promises the reviewer never sends data to a remote
+  # provider. We cannot reliably prove an arbitrary ellmer Chat is local, so
+  # honour the promise fail-closed: local_only requires an EXPLICIT
+  # client_factory (the host vouches for a local/self-hosted model). Without
+  # one, refuse rather than silently fall back to the (remote) parent provider.
+  # (kiro finding 4.)
+  if (identical(config$backend, "local_only") && !is.function(config$client_factory))
+    stop("backend='local_only' requires an explicit local `client_factory`; ",
+         "refusing to route the reviewer through the (possibly remote) parent ",
+         "provider. Pass shield_reviewer(client_factory = <local Chat factory>) ",
+         "or use backend='remote_sanitized'.", call. = FALSE)
   model <- config$model %||% ""
   if (!nzchar(model)) model <- Sys.getenv("CODEAGENT_FAST_MODEL", "")
   if(!nzchar(model)) stop("CODEAGENT_FAST_MODEL/reviewer model is not configured.",call.=FALSE)
@@ -656,6 +667,19 @@ DataShield <- R6::R6Class(
       if (is.null(name)) name <- paste0("dataset_", length(private$datasets) + 1L)
       if (!is.character(name) || length(name) != 1L || !nzchar(name))
         stop("`name` must be a non-empty character(1).", call. = FALSE)
+      # Strict validation: max_index_values must be a single non-negative finite
+      # integer, or an explicit unbounded marker (NULL / Inf). NA / negative /
+      # non-scalar are rejected -- a silent NA->Inf would cancel the memory cap
+      # (fail-open). (kiro finding 3.)
+      if (is.null(max_index_values) || identical(max_index_values, Inf)) {
+        max_index_values <- Inf
+      } else {
+        if (length(max_index_values) != 1L || is.na(max_index_values) ||
+            !is.numeric(max_index_values) || max_index_values < 0 ||
+            (is.finite(max_index_values) && max_index_values != as.integer(max_index_values)))
+          stop("`max_index_values` must be a single non-negative integer, or ",
+               "NULL/Inf for unbounded.", call. = FALSE)
+      }
       sensitivity <- .data_shield_classify_columns(df, sensitivity)
       col_access <- .data_shield_resolve_column_access(df, column_access)
       raw_egress_cols <- names(col_access)[vapply(
@@ -667,9 +691,13 @@ DataShield <- R6::R6Class(
         df, cols = index_cols, min_len = min_len, min_card = min_card,
         max_values = max_index_values)
       if (isTRUE(attr(idx, "truncated")))
-        warning("value-match index hit max_index_values (", max_index_values,
-                ") for dataset '", name, "'; some values are unindexed and rely ",
-                "on the other egress layers.", call. = FALSE)
+        stop("value-match index hit max_index_values (", max_index_values,
+             ") for dataset '", name, "': the tail values would be unindexed ",
+             "and could pass egress unprotected (fail-open). Raise ",
+             "max_index_values to cover all high-entropy values, register the ",
+             "data in smaller pieces, or set max_index_values = Inf. ",
+             "(Refusing to register a partially-indexed dataset. kiro finding 3.)",
+             call. = FALSE)
       private$datasets[[name]] <- list(
         name = name, data = df, sensitivity = sensitivity,
         column_access = col_access,
@@ -1830,7 +1858,9 @@ refresh_data_shield_context <- function(client) {
   set <- new.env(parent = emptyenv())
   n <- 0L
   truncated <- FALSE
-  max_values <- if (is.null(max_values) || is.na(max_values)) Inf else max_values
+  # NULL/Inf = unbounded. NA is NOT silently treated as unbounded here (the
+  # register_data entry point rejects NA up front; kiro finding 3).
+  max_values <- if (is.null(max_values)) Inf else max_values
   for (cn in intersect(cols, names(df))) {
     if (n >= max_values) { truncated <- TRUE; break }
     v <- df[[cn]]
