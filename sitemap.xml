@@ -44,6 +44,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/agent_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/ask_user_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/async_agent.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/audit_code_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/bash_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/board_add_task.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/board_claim.html</loc></url>
@@ -62,6 +63,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/check_permission.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/cli_dispatch.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/client_config.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/code_audit.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_addin.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_addin_selection.html</loc></url>
@@ -85,6 +87,8 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_memory.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_session.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-audit_code_impl.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-audit_r_code_refs.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-auto_compact_threshold.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-bg_poll.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-bg_spawn.html</loc></url>
