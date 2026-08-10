@@ -120,3 +120,158 @@ NULL
   list(static_paths = unique(static_paths), dynamic = isTRUE(dynamic),
        source_calls = unique(source_calls), parse_error = FALSE)
 }
+
+# Source-file extensions the audit is allowed to read. A referenced path with
+# any other extension is out of scope (data blobs, binaries) -> not read.
+.AUDIT_READ_EXTS <- c("R", "r", "Rmd", "rmd", "qmd", "cpp", "c", "h", "hpp",
+                      "rds", "Rds", "RData", "Rdata", "rda")
+
+# Decide whether a referenced path is safe to read: it must resolve to a real
+# location UNDER project_root (symlink-escape resolved by
+# .data_shield_resolve_path -> normalizePath) AND carry a source-file
+# extension. Returns list(ok, resolved, reason). The whitelist is enforced in
+# CODE here, never delegated to the LLM/prompt (31w B2, colleague review).
+#' @keywords internal
+.audit_path_allowed <- function(path, project_root) {
+  root <- tryCatch(normalizePath(project_root, winslash = "/", mustWork = FALSE),
+                   error = function(e) project_root)
+  resolved <- tryCatch(.data_shield_resolve_path(path, root),
+                       error = function(e) NULL)
+  if (is.null(resolved))
+    return(list(ok = FALSE, resolved = NA_character_, reason = "unresolvable path"))
+  if (!.data_shield_path_under(resolved, root))
+    return(list(ok = FALSE, resolved = resolved,
+                reason = "path outside project root"))
+  ext <- tolower(tools::file_ext(resolved))
+  if (!nzchar(ext) || !(ext %in% tolower(.AUDIT_READ_EXTS)))
+    return(list(ok = FALSE, resolved = resolved,
+                reason = sprintf("non-source extension '%s'", ext)))
+  if (!file.exists(resolved))
+    return(list(ok = FALSE, resolved = resolved, reason = "file does not exist"))
+  list(ok = TRUE, resolved = resolved, reason = NA_character_)
+}
+
+#' Audit R code for risky external references (deterministic pipeline).
+#'
+#' Runs the full first-pass audit: AST extraction -> tool-layer path whitelist
+#' -> deterministic read of whitelisted source files -> (optionally) feed the
+#' read text to the Data Shield reviewer. The reviewer NEVER gets a
+#' read/write/shell tool: this function decides what to read (code, not LLM),
+#' bounds it to whitelisted in-project source files, and only hands the reviewer
+#' vetted text.
+#'
+#' @param code Character. The R code to audit (untrusted; parsed, not run).
+#' @param shield Optional `DataShield` whose reviewer reviews the referenced
+#'   file contents. `NULL` -> report references only (no content review).
+#' @param project_root Directory the whitelist confines reads to.
+#' @param max_bytes Per-file read cap (avoid feeding huge files to the reviewer).
+#' @return A list: `static_paths`, `dynamic`, `allowed` (paths read),
+#'   `blocked` (list of path+reason not read), `reviews` (per-file reviewer
+#'   verdicts when a shield is given), `risk` (overall: "none"/"review"/"block").
+#' @keywords internal
+.audit_code_impl <- function(code, shield = NULL, project_root = getwd(),
+                             max_bytes = 100000L) {
+  refs <- .audit_r_code_refs(code)
+  allowed <- character(); blocked <- list(); reviews <- list()
+  for (p in refs$static_paths) {
+    dec <- .audit_path_allowed(p, project_root)
+    if (!isTRUE(dec$ok)) {
+      blocked[[length(blocked) + 1L]] <- list(path = p, reason = dec$reason)
+      next
+    }
+    allowed <- c(allowed, dec$resolved)
+    if (inherits(shield, "DataShield")) {
+      content <- tryCatch({
+        con <- file(dec$resolved, "r"); on.exit(close(con), add = TRUE)
+        paste(readLines(con, warn = FALSE, n = -1L), collapse = "\n")
+      }, error = function(e) NULL)
+      if (is.character(content) && nzchar(content)) {
+        content <- substr(content, 1L, max_bytes)
+        v <- tryCatch(
+          shield$review_code(content,
+                             context = list(tool_name = paste0("audit:", basename(dec$resolved)),
+                                            capability = "read")),
+          error = function(e) list(error = TRUE, reason = "reviewer unavailable"))
+        reviews[[length(reviews) + 1L]] <- c(list(path = dec$resolved), v)
+      }
+    }
+  }
+  # Overall risk: any blocked path or any reviewer-flagged file -> escalate;
+  # dynamic code that can't be resolved -> at least "review".
+  flagged <- any(vapply(reviews, function(v)
+    is.list(v) && !isTRUE(v$error) && !identical(v$risk %||% "none", "none"),
+    logical(1)))
+  risk <- if (length(blocked) || flagged) "block"
+          else if (isTRUE(refs$dynamic) || length(reviews)) "review"
+          else "none"
+  list(static_paths = refs$static_paths, dynamic = refs$dynamic,
+       allowed = allowed, blocked = blocked, reviews = reviews, risk = risk)
+}
+
+#' Build the AuditCode tool (pluggable static code-safety auditor)
+#'
+#' Wraps the deterministic audit pipeline ([.audit_code_impl()]) as an
+#' `ellmer::tool()` the main-loop model can call to check whether a block of R
+#' code safely references external scripts/data before running it. The tool
+#' NEVER gives the model (or the reviewer) a read/write/shell capability: it
+#' deterministically extracts referenced paths (AST), enforces an in-project
+#' source-file whitelist in code, reads only whitelisted files, and (with a
+#' shield) hands the vetted text to the reviewer.
+#'
+#' Opt-in: not registered by default. Host wires it in (e.g. when running with
+#' the sandbox disabled) so the model can self-audit external references.
+#'
+#' @param shield Optional `DataShield` whose reviewer reviews referenced file
+#'   contents (`NULL` = report references only).
+#' @param project_root Directory the read whitelist is confined to.
+#' @return An `ellmer::tool()`.
+#' @export
+audit_code_tool <- function(shield = NULL, project_root = getwd()) {
+  force(shield); force(project_root)
+  ellmer::tool(
+    name = "AuditCode",
+    fun = function(code, `_intent` = NULL) {
+      res <- tryCatch(
+        .audit_code_impl(code, shield = shield, project_root = project_root),
+        error = function(e) list(risk = "review", dynamic = TRUE,
+                                 static_paths = character(), allowed = character(),
+                                 blocked = list(), reviews = list(),
+                                 error = conditionMessage(e)))
+      # Human/LLM-facing summary. No file contents are echoed back -- only
+      # metadata (which refs, which blocked + why, overall risk).
+      blocked_txt <- if (length(res$blocked))
+        paste(vapply(res$blocked, function(b)
+          sprintf("  - %s (%s)", b$path, b$reason), character(1)), collapse = "\n")
+        else "  (none)"
+      review_txt <- if (length(res$reviews))
+        paste(vapply(res$reviews, function(v)
+          sprintf("  - %s: risk=%s", basename(v$path %||% "?"),
+                  v$risk %||% (if (isTRUE(v$error)) "reviewer_error" else "?")),
+          character(1)), collapse = "\n")
+        else "  (none reviewed)"
+      summary <- paste0(
+        "AuditCode risk: ", res$risk,
+        "\ndynamic (static-unresolvable) primitives: ", isTRUE(res$dynamic),
+        "\nstatic external refs: ",
+        if (length(res$static_paths)) paste(res$static_paths, collapse = ", ") else "(none)",
+        "\nblocked (outside project / non-source / missing):\n", blocked_txt,
+        "\nreviewer verdicts:\n", review_txt)
+      .tool_result2(summary, kind = "text", icon = "shield-check",
+                    title = sprintf("AuditCode -- risk: %s", res$risk),
+                    payload = list(text = summary, lang = "text"))
+    },
+    description = paste0(
+      "Statically audit R code for risky external references before running it. ",
+      "Reports which external scripts/data it source()/load()s by literal path, ",
+      "flags dynamic primitives (eval/parse/get/do.call) a static pass can't ",
+      "resolve, and -- when a data shield is active -- reviews the contents of ",
+      "whitelisted in-project source files. Reads no files outside the project ",
+      "and never executes the code."),
+    arguments = list(
+      code = ellmer::type_string("The R code to audit (not executed)."),
+      `_intent` = ellmer::type_string(
+        "Why this code is being audited.", required = FALSE)),
+    annotations = ellmer::tool_annotations(
+      title = "Audit code", read_only_hint = TRUE, destructive_hint = FALSE)
+  )
+}

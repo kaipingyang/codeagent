@@ -1355,6 +1355,29 @@ DataShield <- R6::R6Class(
       if(inherits(reviewed,"promise")) return(promises::then(reviewed,handle))
       handle(reviewed)
     },
+
+    #' @description Review a block of code/text with the configured reviewer
+    #'   and return its structured risk verdict. Used by the code-audit pipeline
+    #'   (`.audit_code_impl`) to review external-file contents that deterministic
+    #'   code has already extracted and whitelisted -- the reviewer never reads
+    #'   files itself. Sanitizes the text (strip protected values) before it
+    #'   reaches the reviewer, same as `run_reviewers`. Returns
+    #'   `list(error, risk, confidence, reason)`; when no reviewer is configured,
+    #'   `list(error = TRUE, reason = "no reviewer configured")`.
+    #' @param text Character. The code/text to review (untrusted).
+    #' @param context Optional non-sensitive context (`tool_name`, `capability`).
+    review_code = function(text, context = list()) {
+      private$assert_open()
+      if (!length(private$reviewers))
+        return(list(error = TRUE, reason = "no reviewer configured"))
+      config <- private$reviewers[[1L]]
+      sanitized <- .data_shield_sanitize_reviewer_text(text, private$index)
+      reviewed <- .data_shield_invoke_reviewer(
+        config, sanitized, context, private$reviewer_factory)
+      if (inherits(reviewed, "promise"))
+        return(promises::then(reviewed, function(r) r))
+      reviewed
+    },
     apply_strategy = function(strategy) {
       if (!inherits(strategy, "shield_strategy"))
         stop("Every strategy must come from a shield_*() constructor.", call. = FALSE)

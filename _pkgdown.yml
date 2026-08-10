@@ -171,6 +171,7 @@ reference:
       - shield_reviewer
       - data_shield_ocr_scanner
       - refresh_data_shield_context
+      - audit_code_tool
 
   - title: "Data exploration (WEAR)"
     desc: "Interactive data exploration and reporting."
