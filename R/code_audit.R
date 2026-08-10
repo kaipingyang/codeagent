@@ -188,7 +188,7 @@ NULL
       if (is.character(content) && nzchar(content)) {
         content <- substr(content, 1L, max_bytes)
         v <- tryCatch(
-          shield$review_code(content,
+          shield$review_code_public(content,
                              context = list(tool_name = paste0("audit:", basename(dec$resolved)),
                                             capability = "read")),
           error = function(e) list(error = TRUE, reason = "reviewer unavailable"))

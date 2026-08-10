@@ -116,9 +116,10 @@ test_that("value index caps at max_index_values and warns on overflow", {
   full <- codeagent:::.data_shield_build_value_index(df, cols = "id", min_card = 8L)
   expect_false(attr(full, "truncated"))
   expect_identical(attr(full, "n"), 20L)
-  # register_data surfaces the cap as a warning
+  # register_data now REFUSES a cap overflow (fail-closed, kiro round-1 #3):
+  # a partial index that silently drops values is worse than a hard error.
   shield <- DataShield$new(max_rows = 0L)
-  expect_warning(
+  expect_error(
     shield$register_data(df, name = "big",
                          sensitivity = c(id = "identifier"),
                          max_index_values = 5L),
@@ -173,19 +174,21 @@ test_that("column_access raw enumerates real values in describe and skips value_
   expect_identical(shield$coverage()$raw_access_columns, 1L)
 })
 
-test_that("column_access without reason is dropped with a warning (fails safe)", {
+test_that("column_access raw without reason is REFUSED (fail-closed)", {
   shield <- DataShield$new(max_rows = 0L)
   df <- data.frame(TESTCD = rep(c("A", "B"), 10), stringsAsFactors = FALSE)
-  expect_warning(
+  # raw access without a reason now hard-errors (kiro round-1): a silent
+  # drop-to-fallback could mask a misconfigured raw grant. Registration is
+  # refused so the caller must supply an explicit reason.
+  expect_error(
     shield$register_data(
       df, name = "vs2",
       sensitivity = c(TESTCD = "identifier"),
       column_access = list(TESTCD = list(prompt = "raw", egress = "raw"))),
     "requires a non-empty `reason`")
-  # override dropped -> column falls back to identifier tier, no raw values
-  desc <- shield$describe("vs2")
-  expect_match(desc, "TESTCD:.*values=suppressed")
-  expect_false(grepl("access=raw", desc))
+  # registration was refused -> dataset not present at all
+  expect_false("vs2" %in% names(tryCatch(shield$coverage()$datasets,
+                                         error = function(e) character())))
   expect_identical(shield$coverage()$raw_access_columns, 0L)
 })
 

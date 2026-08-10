@@ -1,5 +1,27 @@
 # Data Shield --- pluggable strict data-safety valve (P0 core)
 # Data Shield strategy specification (internal).
+
+# Known scanner names accepted by scan_prompt/scan_response (edge 1/3). A name
+# outside this set is a configuration error (typo) that would silently skip the
+# scanner and pass raw text -- so it is rejected, not ignored (kiro round-2 #3).
+.DATA_SHIELD_KNOWN_SCANNERS <- c("regex", "value_match")
+
+# Validate a scanners= argument: every entry must be a known scanner name.
+# Returns the validated vector or stop()s on an unknown name (fail-closed).
+.data_shield_validate_scanners <- function(scanners) {
+  if (is.null(scanners) || !length(scanners))
+    return(.DATA_SHIELD_KNOWN_SCANNERS)
+  if (!is.character(scanners))
+    stop("`scanners` must be a character vector.", call. = FALSE)
+  unknown <- setdiff(scanners, .DATA_SHIELD_KNOWN_SCANNERS)
+  if (length(unknown))
+    stop(sprintf("Unknown scanner name(s): %s. Known scanners: %s.",
+                 paste(unknown, collapse = ", "),
+                 paste(.DATA_SHIELD_KNOWN_SCANNERS, collapse = ", ")),
+         call. = FALSE)
+  scanners
+}
+
 .new_shield_strategy <- function(type, ...) {
   structure(list(type = type, config = list(...)), class = "shield_strategy")
 }
@@ -996,17 +1018,28 @@ DataShield <- R6::R6Class(
       private$assert_open()
       if (!is.list(args) || !length(args)) return(list(action = "pass", args = args))
       changed <- FALSE
-      out <- args
-      for (nm in names(args)) {
-        v <- args[[nm]]
-        if (!is.character(v) || length(v) != 1L || !nzchar(v)) next
+      scan_leaf <- function(v) {
+        # Scan a single scalar-character leaf; return possibly-redacted value.
+        if (!is.character(v) || length(v) != 1L || !nzchar(v)) return(v)
         r <- tryCatch(self$scan_prompt(v, on_fail = "redact", scanners = scanners,
                                        context = list(edge = "tool_args")),
-                      error = function(e) list(action = "pass", text = v))
+                      error = function(e) list(action = "redact",
+                                               text = "[data_shield] tool arg redacted: scan failed (fail-closed)."))
         if (!identical(r$action, "pass") && !identical(r$text, v)) {
-          out[[nm]] <- r$text; changed <- TRUE
+          changed <<- TRUE
+          return(r$text)
         }
+        v
       }
+      # Recurse through nested lists so a protected value buried in e.g.
+      # edits=list(list(content="SUBJECT001")) is scanned, not skipped (kiro
+      # round-2 #4: the old single-level loop only saw top-level character(1)).
+      walk <- function(x) {
+        if (is.list(x)) return(lapply(x, walk))
+        if (is.character(x) && length(x) > 1L) return(vapply(x, scan_leaf, character(1), USE.NAMES = FALSE))
+        scan_leaf(x)
+      }
+      out <- walk(args)
       list(action = if (changed) "redact" else "pass", args = out)
     },
 
@@ -1043,6 +1076,7 @@ DataShield <- R6::R6Class(
                            scanners = c("regex", "value_match")) {
       private$assert_open()
       on_fail <- match.arg(on_fail)
+      scanners <- .data_shield_validate_scanners(scanners)
       edge <- context$edge %||% "prompt"
       if (!is.character(text) || length(text) != 1L || !nzchar(text))
         return(list(action = "pass", text = text, matches = 0L, score = 0))
@@ -1147,6 +1181,22 @@ DataShield <- R6::R6Class(
       context$edge <- "response"
       self$scan_prompt(text, on_fail = on_fail, on_progress = on_progress,
                        context = context, scanners = scanners)
+    },
+
+    #' @description Public bridge to the internal code reviewer rail (kiro
+    #'   round-2 #7). The reviewer logic lives in `private$review_code`, so an
+    #'   external caller (the AuditCode pipeline, `.audit_code_impl`) could not
+    #'   reach it -- `shield$review_code` resolved to NULL and every audit fell
+    #'   back to "reviewer unavailable". This public method exposes the rail so
+    #'   the deterministic audit can feed vetted, whitelisted file contents to
+    #'   the configured reviewer. Returns the reviewer verdict (list with
+    #'   `risk`/`error`) or a promise thereof; `list(error=TRUE, reason=...)`
+    #'   when no reviewer is configured.
+    #' @param text Character. Already-vetted code/content to review (the caller
+    #'   is responsible for deciding what to read; the reviewer gets no tools).
+    #' @param context Optional non-sensitive context (tool_name, capability).
+    review_code_public = function(text, context = list()) {
+      private$review_code(text, context = context)
     },
 
     #' @description Add a custom scanner function to the end of the egress pipeline.
@@ -1488,8 +1538,26 @@ refresh_data_shield_context <- function(client) {
   settings <- if (inherits(client, "CodeagentClient")) client$settings else list()
   cwd      <- settings$cwd %||% getwd()
   if (!inherits(chat, "Chat")) return(invisible(client))
+  # bare Chat path (kiro round-2 #11): a non-CodeagentClient carries no settings,
+  # so the shield (and its protected-data schema) must be recovered from the Chat
+  # attribute set by install(). Without this, refresh built a prompt from an empty
+  # settings list -> no schema injected -> the documented "refresh after upload"
+  # contract silently did nothing for bare Chats.
+  if (is.null(settings$data_shield_engine)) {
+    shield <- tryCatch(attr(chat, "codeagent_data_shield"), error = function(e) NULL)
+    if (inherits(shield, "DataShield")) settings$data_shield_engine <- shield
+  }
   sp <- tryCatch(.build_system_prompt(settings, cwd), error = function(e) NULL)
-  if (!is.null(sp)) tryCatch(chat$set_system_prompt(sp), error = function(e) NULL)
+  if (is.null(sp)) {
+    warning("refresh_data_shield_context: failed to build system prompt; ",
+            "system prompt left unchanged.", call. = FALSE)
+    return(invisible(FALSE))
+  }
+  ok <- tryCatch({ chat$set_system_prompt(sp); TRUE }, error = function(e) FALSE)
+  if (!isTRUE(ok)) {
+    warning("refresh_data_shield_context: set_system_prompt failed.", call. = FALSE)
+    return(invisible(FALSE))
+  }
   invisible(client)
 }
 
@@ -1881,7 +1949,20 @@ refresh_data_shield_context <- function(client) {
     ing <- tryCatch(shield$scan_tool_args(args), error = function(e) NULL)
     if (!is.null(ing) && identical(ing$action, "redact") && is.list(ing$args))
       args <- ing$args
-    shield$scan_egress(do.call(original, args), context=list(tool_name=tool_name))
+    result <- do.call(original, args)
+    # Async tools return a promise; scanning the promise object itself would let
+    # the resolved value (e.g. a protected id) reach the caller unfiltered (kiro
+    # round-2 #4). Defer the egress scan to resolution, and fail closed on
+    # rejection (never surface an unscanned error payload).
+    if (promises::is.promise(result)) {
+      return(promises::then(
+        result,
+        onFulfilled = function(v) shield$scan_egress(v, context = list(tool_name = tool_name)),
+        onRejected  = function(e) ellmer::tool_reject(
+          paste0("[data_shield] tool failed; result withheld (fail-closed): ",
+                 conditionMessage(e)))))
+    }
+    shield$scan_egress(result, context = list(tool_name = tool_name))
   }
   attr(wrapped, "data_shield_wrapped") <- TRUE
   attr(wrapped, "data_shield_original") <- original

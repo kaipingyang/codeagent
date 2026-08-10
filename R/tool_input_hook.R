@@ -18,8 +18,15 @@ NULL
 # Wrap one ToolDef so a PreToolUse hook can rewrite its arguments or deny it.
 # Re-wrapping unwraps to the original first (no nested hook layers). No-op when
 # hooks is NULL or the tool has no underlying function.
+#
+# `recheck_fn` (kiro round-2 #1): when a hook REWRITES the args, the rewritten
+# values never return to the central gate (which already ran on the original
+# args). If given, recheck_fn(name, input) re-runs the gate's authority (Data
+# Shield ingress + permission decide) on the FINAL args and returns
+# "allow"/"deny"/"block"; anything but "allow" rejects the call. Only invoked
+# when the args actually changed, so an un-rewritten call has zero overhead.
 #' @keywords internal
-.wrap_tool_pre_hook <- function(tool, hooks) {
+.wrap_tool_pre_hook <- function(tool, hooks, recheck_fn = NULL) {
   if (is.null(hooks)) return(tool)
   current <- tryCatch(S7::S7_data(tool), error = function(e) NULL)
   if (!is.function(current)) return(tool)
@@ -35,7 +42,18 @@ NULL
       if (identical(r[["action"]], "deny"))
         return(ellmer::tool_reject(r[["message"]] %||% "Blocked by PreToolUse hook."))
       # run_pre returns list(action="allow", input=<possibly rewritten args>).
-      if (!is.null(r[["input"]]) && is.list(r[["input"]])) args <- r[["input"]]
+      if (!is.null(r[["input"]]) && is.list(r[["input"]]) && !identical(r[["input"]], args)) {
+        args <- r[["input"]]
+        # Args were REWRITTEN -> re-run the gate authority on the final args so a
+        # hook cannot smuggle a denied/protected value past the gate (which only
+        # saw the original args).
+        if (is.function(recheck_fn)) {
+          verdict <- tryCatch(recheck_fn(tool_name, args), error = function(e) "block")
+          if (!identical(verdict, "allow"))
+            return(ellmer::tool_reject(sprintf(
+              "Rewritten tool arguments rejected on re-check (%s).", verdict)))
+        }
+      }
     }
     do.call(original, args)
   }
@@ -48,13 +66,20 @@ NULL
 
 # Wrap every tool currently on a Chat with the PreToolUse rewrite layer.
 # Called from .register_all_tools after all tools are registered, BEFORE the
-# permission gate is installed. No-op when hooks is NULL.
+# permission gate is installed. No-op when hooks is NULL. The re-check closure
+# resolves the chat's live gate context lazily (the gate is installed just after
+# this), so a rewrite is re-validated against the same authority as the gate.
 #' @keywords internal
 .install_tool_input_hooks <- function(chat, hooks) {
   if (is.null(hooks)) return(invisible(chat))
   tools <- tryCatch(chat$get_tools(), error = function(e) list())
   if (!length(tools)) return(invisible(chat))
-  wrapped <- lapply(tools, function(t) .wrap_tool_pre_hook(t, hooks))
+  recheck_fn <- function(name, input) {
+    ctx <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
+    if (is.null(ctx)) return("allow")            # no gate installed -> nothing to enforce
+    .gate_recheck(ctx, name, input)
+  }
+  wrapped <- lapply(tools, function(t) .wrap_tool_pre_hook(t, hooks, recheck_fn))
   tryCatch(chat$set_tools(wrapped), error = function(e) NULL)
   invisible(chat)
 }

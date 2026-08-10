@@ -45,16 +45,29 @@ NULL
     return(list(action = "pass", text = text))
   on_fail  <- settings$data_shield_response_on_fail %||% "redact"
   scanners <- settings$data_shield_output_scanners %||% c("value_match", "regex")
+  scanners <- .data_shield_validate_scanners(scanners)   # fail-closed on typo (#3)
+  # FAIL-CLOSED (kiro round-2 #3): a scan exception must not return the raw reply
+  # with action="pass" -- that silently disables edge 3. Fail safe by on_fail:
+  # block -> block, else -> redact the whole reply (never forward unscanned text).
+  fail_closed <- function(e) {
+    if (identical(on_fail, "block"))
+      return(list(action = "block",
+                  text = "[data_shield] reply blocked: output scan failed (fail-closed).",
+                  matches = 0L))
+    list(action = "redact",
+         text = "[data_shield] reply redacted: output scan failed (fail-closed).",
+         matches = 0L)
+  }
   r <- tryCatch(
     shield$scan_response(text, on_fail = on_fail, scanners = scanners,
                          on_progress = on_progress),
-    error = function(e) list(action = "pass", text = text, matches = 0L))
+    error = fail_closed)
   # "ask" has no wired approval path on the output side (the reply is already
   # produced); fail safe to redact-and-return, never surface unscanned text.
   if (identical(r$action, "ask")) {
     redacted <- tryCatch(
       shield$scan_response(text, on_fail = "redact", scanners = scanners),
-      error = function(e) list(action = "pass", text = text))
+      error = fail_closed)
     return(list(action = "redact", text = redacted$text %||% text,
                 matches = redacted$matches %||% 0L))
   }

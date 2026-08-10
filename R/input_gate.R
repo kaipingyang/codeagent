@@ -43,21 +43,35 @@ NULL
 # Scan one text scalar via the shield. Returns list(action, text). "ask" without
 # a wired approval path fails safe to redact-and-continue: we never send the
 # un-scanned text to the model on an unresolved ask.
+#
+# FAIL-CLOSED (kiro round-2 #3): a scan exception must NOT return raw text with
+# action="pass" (that silently disables edge 1 on any scanner bug / misconfig).
+# On error we fail safe by on_fail: "block" -> block, anything else -> redact the
+# WHOLE text (drop it) rather than forward unscanned content to the model. This
+# mirrors the tool-side scan_ingress (catch -> block), which was already
+# fail-closed; edge 1 now matches.
 #' @keywords internal
 .input_gate_scan_text <- function(shield, text, on_fail = "redact",
                                   on_progress = NULL,
                                   scanners = c("regex", "value_match")) {
   if (!is.character(text) || length(text) != 1L || !nzchar(text))
     return(list(action = "pass", text = text))
+  fail_closed <- function(e) {
+    if (identical(on_fail, "block"))
+      return(list(action = "block",
+                  text = "[data_shield] input blocked: scan failed (fail-closed)."))
+    # redact-mode fallback: drop the unverifiable text entirely.
+    list(action = "redact", text = "[data_shield] input redacted: scan failed (fail-closed).")
+  }
   res <- tryCatch(
     shield$scan_prompt(text, on_fail = on_fail, on_progress = on_progress,
                        scanners = scanners),
-    error = function(e) list(action = "pass", text = text, matches = 0L))
+    error = fail_closed)
   if (identical(res$action, "ask")) {
     redacted <- tryCatch(
       shield$scan_prompt(text, on_fail = "redact", on_progress = NULL,
                          scanners = scanners),
-      error = function(e) list(action = "pass", text = text))
+      error = fail_closed)
     return(list(action = "redact", text = redacted$text %||% text))
   }
   list(action = res$action %||% "pass", text = res$text %||% text)
@@ -98,6 +112,9 @@ NULL
   on_fail       <- settings$data_shield_prompt_on_fail %||% "redact"
   image_scanner <- image_scanner %||% settings$data_shield_image_scanner
   scanners      <- settings$data_shield_input_scanners %||% c("value_match", "regex")
+  # Reject an unknown scanner name up front (typo in settings would otherwise
+  # silently skip scanning -- fail-closed, kiro round-2 #3).
+  scanners      <- .data_shield_validate_scanners(scanners)
 
   # --- bare character scalar (CLI / ink) ---------------------------------
   if (is.character(input) && length(input) == 1L) {
@@ -137,12 +154,21 @@ NULL
       } else {
         # Other Content (ContentPDF, ...): scan extracted text. Immutable, so a
         # hit fails safe to block rather than sending unredacted content.
+        # FAIL-CLOSED (kiro round-2 #3): if the text cannot be extracted at all
+        # (empty @text -- e.g. an image-only / dynamically built ContentPDF), the
+        # content is UNVERIFIABLE. Do not silently pass it through; block, since
+        # it may carry protected content the scanner never saw. (Genuine image
+        # attachments are handled by the image_scanner branch above; this branch
+        # is for text-bearing Content whose text we failed to read.)
         txt <- .input_gate_content_text(el)
         if (nzchar(txt)) {
           r <- .input_gate_scan_text(shield, txt, "block", on_progress, scanners)
           if (identical(r$action, "block"))
             return(list(action = "block", input = input,
                         text = "[data_shield] attachment blocked: contains protected content."))
+        } else {
+          return(list(action = "block", input = input,
+                      text = "[data_shield] attachment blocked: text could not be extracted (fail-closed; content unverifiable)."))
         }
       }
     }

@@ -36,15 +36,37 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     )
   })
 
+  # Re-install the Data Shield egress wrapper after ANY tool re-registration
+  # (kiro round-2 #5). .register_all_tools / register_r_tools replace ToolDefs on
+  # the Chat, but the shield's egress filtering lives in a per-tool wrapper that
+  # install() applies to the current get_tools() snapshot. New/replaced tools
+  # have no wrapper, so their output would reach the model unfiltered until the
+  # shield is re-installed. Failure is surfaced (toast), never silently swallowed
+  # -- a UI running with the shield off is a security regression, not a no-op.
+  reinstall_shield <- function() {
+    shield <- settings$data_shield_engine %||%
+      tryCatch(attr(chat, "codeagent_data_shield"), error = function(e) NULL)
+    if (!inherits(shield, "DataShield")) return(invisible())
+    ok <- tryCatch({ shield$install(chat); TRUE }, error = function(e) FALSE)
+    if (!isTRUE(ok))
+      .ui_toast("Data Shield re-install failed after tool refresh -- output filtering may be OFF.",
+                "error")
+  }
+
   shiny::observeEvent(input$perm_mode, {
     settings$permission_mode <<- input$perm_mode
-    tryCatch(.register_all_tools(chat, settings), error = function(e) NULL)
+    ok <- tryCatch({ .register_all_tools(chat, settings); TRUE }, error = function(e) FALSE)
+    if (!isTRUE(ok))
+      .ui_toast("Tool re-registration failed after permission-mode change.", "warning")
+    reinstall_shield()
   }, ignoreInit = TRUE)
 
   shiny::observeEvent(input$btw_groups_input, {
-    tryCatch(
-      register_r_tools(chat, groups = input$btw_groups_input),
-      error = function(e) NULL)
+    ok <- tryCatch({ register_r_tools(chat, groups = input$btw_groups_input); TRUE },
+                   error = function(e) FALSE)
+    if (!isTRUE(ok))
+      .ui_toast("btw tool-group update failed.", "warning")
+    reinstall_shield()
   }, ignoreInit = TRUE)
 
   # Model switch -- Route A (in-place provider swap) keeps the SAME Chat object,

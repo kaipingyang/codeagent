@@ -154,6 +154,46 @@ register_tool_meta <- function(name,
   TRUE
 }
 
+# Re-check a tool's (possibly rewritten) arguments against the SAME authority the
+# central gate uses, for the PreToolUse-rewrite defence-in-depth path (kiro
+# round-2 #1). The gate sees the ORIGINAL args on `on_tool_request`; if a
+# PreToolUse hook then rewrites them (R/tool_input_hook.R), the rewritten values
+# never return to the gate. This runs the deterministic half of the gate on the
+# final args: Data Shield ingress + permission decide. Returns "allow", "deny",
+# or "block". A shield ingress that resolves to a promise (async reviewer) is
+# treated as "block" here -- a rewrite that introduces reviewer-worthy content is
+# suspicious and we fail closed rather than await inside the sync tool wrapper.
+#' @keywords internal
+.gate_recheck <- function(ctx, name, input, cap = NULL) {
+  if (is.null(ctx) || !is.environment(ctx)) return("allow")
+  cap <- cap %||% .tool_capability(name, NULL)
+  shield <- ctx$data_shield %||%
+    tryCatch(attr(ctx$chat, "codeagent_data_shield"), error = function(e) NULL)
+  if (inherits(shield, "DataShield")) {
+    sd <- tryCatch(shield$scan_ingress(name, input, capability = cap),
+                   error = function(e) list(action = "block"))
+    if (inherits(sd, "promise")) return("block")           # async reviewer -> fail closed
+    if (identical(sd$action, "block")) return("block")
+    if (identical(sd$action, "ask"))  return("deny")       # no sync approval path here
+  }
+  mode <- if (is.environment(ctx$mode_env)) ctx$mode_env$mode %||% "default"
+          else (ctx$mode_env %||% "default")
+  decision <- tryCatch(
+    .gate_decide(name, input, ctx$policy, mode, ctx$rules, cap),
+    error = function(e) "allow")
+  if (identical(decision, "deny")) return("deny")
+  if (identical(decision, "ask"))  return("deny")          # ask w/o path -> deny
+  "allow"
+}
+
+# Look up the live gate context for a chat (used by the tool-input-hook layer to
+# re-check rewritten args). Returns NULL when no gate is installed on the chat.
+#' @keywords internal
+.gate_ctx_for <- function(chat) {
+  key <- tryCatch(rlang::obj_address(chat), error = function(e) NULL) %||% "default"
+  .gate_contexts[[key]]
+}
+
 # Build the gate callback from a live context env (`ctx`). Reads ctx$policy,
 # ctx$mode_env, ctx$rules, ctx$ask_fn, ctx$hooks at call time. Returns invisible()
 # to allow, raises `ellmer::tool_reject()` to deny (sync), or returns a promise
