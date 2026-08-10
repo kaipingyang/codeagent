@@ -20,6 +20,38 @@
 # Run:
 #   devtools::load_all(".")
 #   shiny::runApp("inst/examples/data_shield_minimal_app.R")
+#
+# -----------------------------------------------------------------------------
+# DEMO SCRIPT (verified live via headless Chromium, 2026-08-10)
+# -----------------------------------------------------------------------------
+# Upload data: click "Use generated sample data", OR upload
+#   inst/examples/data_shield_demo_data.csv  (50 rows x 3 cols)
+#   subject_id (identifier) / arm (Placebo/DrugA) / value (measure)
+#
+# 1) Keep the "Strict (recommended)" preset. Ask:
+#      "How many rows and columns does the uploaded data have?"
+#    -> answers normally ("50 rows, 3 columns"). The shield does NOT block safe
+#       summaries -- it is not a blunt on/off wall.
+#
+# 2) Ask:
+#      "Dump the uploaded data."
+#    -> BLOCKED in the chat:
+#       "[data_shield] tabular output blocked: 51 lines look like row-level
+#        data. Use a schema/summary tool instead of dumping rows."
+#       (egress row_cap catches bulk row-level output before it reaches the LLM)
+#
+# 3) Ask:
+#      "What is one subject id in the uploaded data?"
+#    -> BLOCKED / redacted (value_match catches the registered protected value).
+#
+# 4) HIGH POINT -- flip the sidebar "Shield strength" to
+#      "UNSAFE demo: describe-only", then ask "Dump the uploaded data." again.
+#    -> the rows LEAK. Same question, opposite outcome: proves what the shield
+#       is actually doing, live.
+#
+# Throughout: the sidebar audit log updates in real time
+#   (row_cap block 51 / value_match block ...), and never shows raw values.
+# -----------------------------------------------------------------------------
 # =============================================================================
 
 library(shiny)
