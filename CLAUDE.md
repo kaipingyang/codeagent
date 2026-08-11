@@ -42,6 +42,17 @@ diff（`git diff --cached | grep -iE 'api[_-]?key|token|secret|sk-|ghp_|dapi|azu
 打印 remote URL 时用 `sed -E 's#//[^@]*@#//***@#g'` 掩码，**绝不回显完整
 token**。详见 skill `no-secrets`。
 
+**内部模型名同视为敏感标识（token 是绝对底线，模型名/endpoint
+次之但仍规避）：** 公司内部模型代号 （私有 serving-endpoint 名，非公开
+OpenAI/Anthropic 模型名）**不得**硬编码进被 git 跟踪的文件或 commit
+message。 example/demo/测试里模型一律
+`Sys.getenv("CODEAGENT_MODEL", "<通用占位>")`，默认值用通用公开名
+（`gpt-4.1`/`gpt-4o-mini`），绝不写真实内部代号。commit message
+也不提内部模型名。 运行时产物 `.shinychat/` 会话记录会记真实 model
+名——保持 git/Rbuild 忽略，别提交。 **注**：token
+全历史零泄露是硬底线；模型名/endpoint 若历史已泄（当前 HEAD
+已清）可接受不改历史，往后规避即可。
+
 **知识产权铁律 — 对齐是”对标公开接口/行为”，绝不是”复刻源码”：**
 codeagent 的设计参考对象是 Claude Code 和 Claude Agent
 SDK，对齐**只**针对它们的**公开接口 / 公开文档 / 公开可观察行为** （如

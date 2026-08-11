@@ -110,7 +110,6 @@ object for an independent user/thread boundary.</p>
 <li><p><a href="#method-DataShield-clear_audit"><code>DataShield$clear_audit()</code></a></p></li>
 <li><p><a href="#method-DataShield-clear"><code>DataShield$clear()</code></a></p></li>
 <li><p><a href="#method-DataShield-close"><code>DataShield$close()</code></a></p></li>
-<li><p><a href="#method-DataShield-finalize"><code>DataShield$finalize()</code></a></p></li>
 <li><p><a href="#method-DataShield-coverage"><code>DataShield$coverage()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-DataShield-initialize"></a><div class="section">
 <h3 id="datashield-new-"><code>DataShield$new()</code><a class="anchor" aria-label="anchor" href="#datashield-new-"></a></h3>
@@ -621,22 +620,10 @@ is responsible for deciding what to read; the reviewer gets no tools).</p></dd>
 
 </div>
 
-<p></p><hr><a id="method-DataShield-finalize"></a><div class="section">
-<h3 id="datashield-finalize-"><code>DataShield$finalize()</code><a class="anchor" aria-label="anchor" href="#datashield-finalize-"></a></h3>
-<p>R6 finalizer – best-effort backstop so a shield that is
-garbage-collected without an explicit close() still releases its
-sensitive closures/state (kiro round-2 #10). Idempotent (close() guards
-on private$closed).</p><div class="section">
-<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">finalize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-</div>
-
 <p></p><hr><a id="method-DataShield-coverage"></a><div class="section">
 <h3 id="datashield-coverage-"><code>DataShield$coverage()</code><a class="anchor" aria-label="anchor" href="#datashield-coverage-"></a></h3>
 <p>Summarise non-sensitive runtime coverage.</p><div class="section">
-<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
+<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">coverage</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 

@@ -101,31 +101,37 @@ default (<code>data_shield = NULL</code>), composed from independent
 strategies when on.</p>
 </div>
 <div class="section level2">
-<h2 id="the-core-two-edges">The core: two edges<a class="anchor" aria-label="anchor" href="#the-core-two-edges"></a>
+<h2 id="the-core-three-edges">The core: three edges<a class="anchor" aria-label="anchor" href="#the-core-three-edges"></a>
 </h2>
-<p>Strip away the agent machinery and data can reach the LLM through
-<strong>only two inbound edges</strong>. Guard both and you have guarded
+<p>Strip away the agent machinery and data crosses the model boundary at
+<strong>three edges</strong>. Guard all three and you have guarded
 everything:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Prompt / system-prompt content</strong> — including the
-framework’s own <strong>ambient-context auto-injection</strong>
-(codeagent can inject a summary of R session objects into the system
-reminder). This is the part we control and must keep
-<strong>schema-only</strong> (names / types / dimensions), never
+<strong>Prompt / system-prompt content</strong> (edge 1, input gate)
+— including the framework’s own <strong>ambient-context
+auto-injection</strong> (codeagent can inject a summary of R session
+objects into the system reminder). This is the part we control and must
+keep <strong>schema-only</strong> (names / types / dimensions), never
 values.</li>
 <li>
-<strong>Tool results</strong> — whatever a tool returns and that is
-fed back to the model.</li>
+<strong>Tool results</strong> (edge 2, tool gate) — whatever a tool
+returns and that is fed back to the model.</li>
+<li>
+<strong>The model’s final reply</strong> (edge 3, output gate) —
+scanned before it reaches the user, since the model may reproduce a
+protected value it inferred from an edge-2 aggregate even when the
+user’s own input was clean.</li>
 </ol>
-<p>Everything else reduces to these two (RAG and errors arrive as one of
-them; model-generated content is outbound, not inbound). The guarantee
-applies <strong>recursively to sub-agents</strong> — each has its own
-two edges.</p>
+<p>Everything else reduces to these (RAG and errors arrive as one of
+them). The guarantee applies <strong>recursively to sub-agents</strong>
+— each has its own edges.</p>
 <blockquote>
 <p>Blind spot to handle separately: an <strong>image/multimodal</strong>
-tool result (a rendered table/plot of raw rows) bypasses text
-scanning.</p>
+tool result (a rendered table/plot of raw rows) bypasses text scanning.
+An OCR image scanner is available opt-in
+(<code><a href="../reference/data_shield_ocr_scanner.html">data_shield_ocr_scanner()</a></code>) to close edge 1 for text baked
+into uploaded images.</p>
 </blockquote>
 <div class="section level3">
 <h3 id="architecture-at-a-glance">Architecture at a glance<a class="anchor" aria-label="anchor" href="#architecture-at-a-glance"></a>
@@ -1484,15 +1490,17 @@ roadmap</strong> (see the status banner): a rendered table/plot of raw
 rows bypasses text scanning, and the portable sandbox is a
 path/capability policy, not kernel isolation.</li>
 <li>
-<strong><code>shinychat</code> file attachments bypass Data Shield
-entirely.</strong> codeagent’s main UI enables
-<code>chat_ui(allow_attachments = TRUE)</code>; a user-dragged
-attachment goes straight into the prompt edge
-(<code>user_contents</code>) and is currently <strong>not
-scanned</strong> by any egress layer. This is a known, unfixed gap —
-distinct from <code>fileInput()</code> → <code>register_data()</code>,
-which IS a controlled, scanned path. Track before relying on attachments
-with a shield enabled.</li>
+<strong><code>shinychat</code> text-bearing attachments ARE now
+scanned at edge 1.</strong> codeagent’s main UI enables
+<code>chat_ui(allow_attachments = TRUE)</code>; the input gate extracts
+and scans text-bearing attachments (e.g. <code>ContentPDF</code>),
+failing <strong>closed</strong> to block when the content cannot be
+verified (immutable Content cannot be redacted in place). Image
+attachments remain a blind spot unless an OCR scanner
+(<code><a href="../reference/data_shield_ocr_scanner.html">data_shield_ocr_scanner()</a></code>) is wired in — with a scanner
+configured, an OCR or scan failure fails closed to block.
+<code>fileInput()</code> → <code>register_data()</code> remains the
+controlled, indexed path for tabular uploads.</li>
 <li>
 <strong>Data Shield does not govern destructive operations</strong>
 (<code>rm -rf</code>, dropping a table, force-pushing) — that is a

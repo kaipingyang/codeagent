@@ -62,8 +62,6 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$close()`](#method-DataShield-close)
 
-- [`DataShield$finalize()`](#method-DataShield-finalize)
-
 - [`DataShield$coverage()`](#method-DataShield-coverage)
 
 ------------------------------------------------------------------------
@@ -629,19 +627,6 @@ Clear sensitive state and close the shield.
 #### Usage
 
     DataShield$close()
-
-------------------------------------------------------------------------
-
-### `DataShield$finalize()`
-
-R6 finalizer – best-effort backstop so a shield that is
-garbage-collected without an explicit close() still releases its
-sensitive closures/state (kiro round-2 \#10). Idempotent (close() guards
-on private\$closed).
-
-#### Usage
-
-    DataShield$finalize()
 
 ------------------------------------------------------------------------
 

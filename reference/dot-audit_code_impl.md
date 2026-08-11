@@ -14,7 +14,8 @@ files, and only hands the reviewer vetted text.
   code,
   shield = NULL,
   project_root = getwd(),
-  max_bytes = 100000L
+  max_bytes = 100000L,
+  max_files = 20L
 )
 ```
 
