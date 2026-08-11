@@ -104,11 +104,15 @@ my_tool <- function(con, mode = "bypass") {
 
 ---
 
-**依赖包版本（当前已装）：**
-- `ellmer` 0.4.1.9000（dev，需 `Remotes: tidyverse/ellmer`，CRAN 0.4.1 缺 `set_model()`）
-- `btw` 1.3.0.9000（dev，含 `btw_tool_files_patch` 原子多文件编辑）
-- `shinychat` 0.4.0.9000（dev，monorepo，安装路径：`pak::pak("posit-dev/shinychat/pkg-r")`，注意不是 `pak::pak("posit-dev/shinychat")`）
-- `mcptools` 0.2.1（CRAN）
+**依赖包版本（当前已装，2026-08-11 dev HEAD）：**
+- `ellmer` 0.4.2.9000（dev，需 `Remotes: tidyverse/ellmer`；含 `set_model()`/`chat_posit()`/`finish_reason`/`Chat$token_count()`；`Model` 类已从 `Provider` 拆出，`chat_github()` defunct）
+- `btw` 1.4.0.9000（dev，含 `btw_tool_files_patch` 原子多文件编辑、`agents/` 子目录发现、`btw pkg desc`/`pkg src` CLI）
+- `shinychat` 0.4.0.9000（dev，monorepo，安装路径：`pak::pak("posit-dev/shinychat/pkg-r")`，注意不是 `pak::pak("posit-dev/shinychat")`；含官方 `tool_result_display()`+`chat_ui(tool_grouping=)`+`<shiny-aside>` citation）
+- `bslib` 0.12.0.9000（dev，含 `offcanvas()` 滑出面板 + 右侧 sidebar resize handle）
+- `shiny` 1.14.0.9000（dev，含 `startApp()` 非阻塞启动、`session$destroy()` 模块清理、`offcanvas()`）
+- `mcptools` 1.0.0（CRAN，含图片双向内容 + 认证远程 server + `_server.yml` Connect 部署）
+- `httr2` 1.3.0（CRAN，200x 流式加速 + `httr2_translate()` + OTel）
+
 
 ```r
 # Document + rebuild NAMESPACE

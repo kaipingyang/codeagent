@@ -212,6 +212,11 @@ chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
     fill             = TRUE,
     enable_cancel    = TRUE,
     submit_key       = submit_key,
+    # Group consecutive calls to the SAME tool into one collapsible activity row
+    # (shinychat >= dev). codeagent fires many tool calls per turn (Read/Grep/
+    # Bash bursts), so ungrouped cards flood the transcript; "tool" keeps
+    # distinct tools separate but folds repeats. (kiro dev-adoption A2.)
+    tool_grouping    = "tool",
     placeholder      = "Ask codeagent... (/ for skills, ESC to interrupt)",
     allow_attachments = TRUE,
     # Greeting + clickable suggestion cards for a fresh session. shinychat

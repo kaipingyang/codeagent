@@ -68,15 +68,6 @@ NULL
     detect_envs = "GROQ_API_KEY"
   ),
   list(
-    name        = "github",
-    label       = "GitHub Copilot",
-    fn          = "chat_github",
-    model       = "gpt-4o",
-    key_env     = "GITHUB_PAT",
-    base_url    = FALSE,
-    detect_envs = "GITHUB_PAT"
-  ),
-  list(
     name        = "ollama",
     label       = "Ollama (local)",
     fn          = "chat_ollama",

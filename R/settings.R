@@ -19,7 +19,7 @@ NULL
   model             = NULL,       # no default; set CODEAGENT_MODEL or model in settings.json
   provider          = NULL,      # ellmer chat_* factory: "openai_compatible",
                                   # "anthropic", "ollama", "databricks", "deepseek",
-                                  # "google_gemini", "groq", "openai", "github",
+                                  # "google_gemini", "groq", "openai",
                                   # "vllm", "lmstudio", ...
                                   # NULL -> auto-detect from base_url
   base_url          = NULL,      # non-NULL -> OpenAI-compatible endpoint
