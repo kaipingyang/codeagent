@@ -140,10 +140,20 @@ NULL
           return(list(action = "block", input = input, text = r$text))
         if (!identical(r$action, "pass")) { out[[i]] <- r$text; agg <- "redact" }
       } else if (isTRUE(is_image)) {
-        # Image attachment: optional host scanner (OCR/VLM). Default NULL = skip.
+        # Image attachment: optional host scanner (OCR/VLM). Default NULL = skip
+        # (an explicitly-accepted blind spot). But once a scanner IS configured,
+        # its failure or an invalid return contract must FAIL CLOSED to block
+        # (kiro round-3): a host that wired an OCR scanner expects the image
+        # boundary enforced, so a stop()/malformed result cannot silently pass.
         if (is.function(image_scanner)) {
-          ir  <- tryCatch(image_scanner(el), error = function(e) NULL)
-          act <- ir$action %||% "pass"
+          ir  <- tryCatch(image_scanner(el),
+                          error = function(e) list(action = "block",
+                                                   text = "[data_shield] image blocked: scanner failed (fail-closed)."))
+          if (!is.list(ir) || is.null(ir$action) ||
+              !ir$action %in% c("pass", "redact", "block"))
+            return(list(action = "block", input = input,
+                        text = "[data_shield] image blocked: scanner returned an invalid result (fail-closed)."))
+          act <- ir$action
           if (identical(act, "block"))
             return(list(action = "block", input = input,
                         text = ir$text %||% "[data_shield] image blocked."))
@@ -238,17 +248,49 @@ data_shield_ocr_scanner <- function(shield, on_fail = c("block", "pass"),
     if (is.null(shield) || !inherits(shield, "DataShield"))
       return(list(action = "pass"))
     src <- .input_gate_image_source(content_image)
-    if (!nzchar(src$path)) return(list(action = "pass"))
+    if (!nzchar(src$path))
+      return(list(action = "block",                       # configured but cannot obtain image -> unverifiable
+                  text = "[data_shield] image blocked: could not read image for OCR (fail-closed)."))
     on.exit(if (isTRUE(src$cleanup)) unlink(src$path), add = TRUE)
+    # OCR execution failure (tesseract present but errored) fails CLOSED -- the
+    # host wired OCR expecting the boundary enforced (kiro round-3). An empty
+    # OCR result (image genuinely has no text) is a legitimate pass.
+    ocr_failed <- FALSE
     txt <- tryCatch(tesseract::ocr(src$path, engine = engine),
-                    error = function(e) "")
+                    error = function(e) { ocr_failed <<- TRUE; "" })
+    if (isTRUE(ocr_failed))
+      return(list(action = "block",
+                  text = "[data_shield] image blocked: OCR failed (fail-closed)."))
     if (!is.character(txt) || length(txt) != 1L || !nzchar(trimws(txt)))
-      return(list(action = "pass"))
+      return(list(action = "pass"))                        # no text in image -> genuine pass
+    scan_failed <- FALSE
     r <- tryCatch(shield$scan_prompt(txt, on_fail = "block"),
-                  error = function(e) list(action = "pass"))
+                  error = function(e) { scan_failed <<- TRUE; list(action = "block") })
+    if (isTRUE(scan_failed))
+      return(list(action = "block",
+                  text = "[data_shield] image blocked: OCR text scan failed (fail-closed)."))
     if (!identical(r$action, "pass") && identical(on_fail, "block"))
       return(list(action = "block",
                   text = "[data_shield] image blocked: OCR found protected content."))
     list(action = "pass")
   }
 }
+
+# Entry-point wrapper (kiro round-3): call the input gate and FAIL CLOSED on any
+# exception. The gate helper is fail-closed internally, but callers previously
+# wrapped it in `tryCatch(error -> action="pass", raw input)`, which re-opened
+# every failure (a stop() from an unknown scanner name, or any detector bug,
+# silently forwarded the raw prompt). Here an exception becomes a BLOCK -- but
+# ONLY when a shield is active, so projects with no Data Shield are unaffected.
+#' @keywords internal
+.input_gate_guarded <- function(input, settings = list(), chat = NULL,
+                                on_progress = NULL, image_scanner = NULL) {
+  if (is.null(.input_gate_shield(settings, chat)))
+    return(list(action = "pass", input = input))          # no shield -> no-op
+  tryCatch(
+    .input_gate_scan(input, settings, chat, on_progress, image_scanner),
+    error = function(e)
+      list(action = "block", input = input,
+           text = "[data_shield] input blocked: gate failed (fail-closed)."))
+}
+

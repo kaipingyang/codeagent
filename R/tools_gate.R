@@ -156,34 +156,46 @@ register_tool_meta <- function(name,
 
 # Re-check a tool's (possibly rewritten) arguments against the SAME authority the
 # central gate uses, for the PreToolUse-rewrite defence-in-depth path (kiro
-# round-2 #1). The gate sees the ORIGINAL args on `on_tool_request`; if a
-# PreToolUse hook then rewrites them (R/tool_input_hook.R), the rewritten values
-# never return to the gate. This runs the deterministic half of the gate on the
-# final args: Data Shield ingress + permission decide. Returns "allow", "deny",
-# or "block". A shield ingress that resolves to a promise (async reviewer) is
-# treated as "block" here -- a rewrite that introduces reviewer-worthy content is
-# suspicious and we fail closed rather than await inside the sync tool wrapper.
+# round-2 #1 + round-3). The gate sees the ORIGINAL args on `on_tool_request`; if
+# a PreToolUse hook then rewrites them (R/tool_input_hook.R), the rewritten
+# values never return to the gate. This runs the deterministic half of the gate
+# on the FINAL args, IN THE CORRECT ORDER:
+#   scan_tool_args(final)  -- value-match/PII scrub of the rewritten strings
+#   scan_ingress(final)    -- cheap blacklist ingress
+#   permission decide      -- capability/mode/rule decision
+# Returns a list(action = "allow"/"deny"/"block", input = <scrubbed args>). The
+# caller executes with `input` so a hook cannot smuggle a protected value past
+# the value-match scrub (round-2 only ran the cheap scan_ingress here). A shield
+# ingress that resolves to a promise (async reviewer) is treated as "block".
+# Every decision error fails closed to "deny"/"block".
 #' @keywords internal
 .gate_recheck <- function(ctx, name, input, cap = NULL) {
-  if (is.null(ctx) || !is.environment(ctx)) return("allow")
+  if (is.null(ctx) || !is.environment(ctx)) return(list(action = "allow", input = input))
   cap <- cap %||% .tool_capability(name, NULL)
   shield <- ctx$data_shield %||%
     tryCatch(attr(ctx$chat, "codeagent_data_shield"), error = function(e) NULL)
   if (inherits(shield, "DataShield")) {
+    # (1) value-match/PII scrub of the final args (fail closed on error).
+    scrub <- tryCatch(shield$scan_tool_args(input),
+                      error = function(e) list(action = "block"))
+    if (identical(scrub$action, "block"))
+      return(list(action = "block", input = input))
+    if (is.list(scrub$args)) input <- scrub$args
+    # (2) cheap ingress blacklist on the scrubbed args.
     sd <- tryCatch(shield$scan_ingress(name, input, capability = cap),
                    error = function(e) list(action = "block"))
-    if (inherits(sd, "promise")) return("block")           # async reviewer -> fail closed
-    if (identical(sd$action, "block")) return("block")
-    if (identical(sd$action, "ask"))  return("deny")       # no sync approval path here
+    if (inherits(sd, "promise")) return(list(action = "block", input = input))  # async reviewer -> fail closed
+    if (identical(sd$action, "block")) return(list(action = "block", input = input))
+    if (identical(sd$action, "ask"))  return(list(action = "deny", input = input))  # no sync approval path here
   }
   mode <- if (is.environment(ctx$mode_env)) ctx$mode_env$mode %||% "default"
           else (ctx$mode_env %||% "default")
   decision <- tryCatch(
     .gate_decide(name, input, ctx$policy, mode, ctx$rules, cap),
-    error = function(e) "allow")
-  if (identical(decision, "deny")) return("deny")
-  if (identical(decision, "ask"))  return("deny")          # ask w/o path -> deny
-  "allow"
+    error = function(e) "deny")   # decision error -> deny (fail-closed, kiro round-3)
+  if (identical(decision, "deny")) return(list(action = "deny", input = input))
+  if (identical(decision, "ask"))  return(list(action = "deny", input = input))  # ask w/o path -> deny
+  list(action = "allow", input = input)
 }
 
 # Look up the live gate context for a chat (used by the tool-input-hook layer to
@@ -246,7 +258,7 @@ register_tool_meta <- function(name,
       if (!shield_ask && is.null(ov) && identical(cap, "read")) return(invisible())
       decision <- if (shield_ask) "ask" else tryCatch(
         .gate_decide(name, input, ctx$policy, resolve_mode(), ctx$rules, cap),
-        error = function(e) "allow")
+        error = function(e) "deny")   # decision error -> deny (fail-closed, kiro round-3)
       if (identical(decision, "allow")) return(invisible())
       if (identical(decision, "deny")) return(deny(name, input, cap))
 

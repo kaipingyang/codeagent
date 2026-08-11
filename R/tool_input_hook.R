@@ -46,12 +46,16 @@ NULL
         args <- r[["input"]]
         # Args were REWRITTEN -> re-run the gate authority on the final args so a
         # hook cannot smuggle a denied/protected value past the gate (which only
-        # saw the original args).
+        # saw the original args). recheck_fn now also SCRUBS the args
+        # (value-match/PII) and returns them, so we execute with the scrubbed
+        # version (kiro round-3: round-2 only ran the cheap ingress here).
         if (is.function(recheck_fn)) {
-          verdict <- tryCatch(recheck_fn(tool_name, args), error = function(e) "block")
-          if (!identical(verdict, "allow"))
+          rc <- tryCatch(recheck_fn(tool_name, args),
+                         error = function(e) list(action = "block", input = args))
+          if (!identical(rc$action, "allow"))
             return(ellmer::tool_reject(sprintf(
-              "Rewritten tool arguments rejected on re-check (%s).", verdict)))
+              "Rewritten tool arguments rejected on re-check (%s).", rc$action)))
+          if (is.list(rc$input)) args <- rc$input   # execute with scrubbed args
         }
       }
     }

@@ -79,5 +79,7 @@ cat("  NOTE: 4-digit SUBJID passes min_len=3 but pure small ints <100 are\n",
     "  dropped; SUBJID like '1015' is kept (len 4). Verify per-study id shape.\n")
 
 section("Done")
-cat("Use these numbers to decide: (a) add max_index_values cap if memory grows\n",
-    "unbounded; (b) retune min_len/min_card if FN/FP rates are unacceptable.\n")
+cat("The `max_index_values` cap now EXISTS (default 500000; register_data() errors\n",
+    "on overflow rather than silently dropping tail values). Use these numbers to\n",
+    "tune that cap for your data size, and to retune min_len/min_card if FN/FP\n",
+    "rates are unacceptable.\n")

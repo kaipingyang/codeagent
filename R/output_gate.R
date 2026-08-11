@@ -74,3 +74,22 @@ NULL
   list(action = r$action %||% "pass", text = r$text %||% text,
        matches = r$matches %||% 0L)
 }
+
+# Entry-point wrapper (kiro round-3): call the output gate and FAIL CLOSED on any
+# exception. Callers previously wrapped the gate in
+# `tryCatch(error -> action="pass", raw reply)`, re-opening every failure. Here
+# an exception REDACTS the whole reply (replaces it with a safe placeholder) --
+# only when a shield is active, so shield-less projects stream unchanged.
+#' @keywords internal
+.output_gate_guarded <- function(text, settings = list(), chat = NULL,
+                                 on_progress = NULL) {
+  if (is.null(.input_gate_shield(settings, chat)))
+    return(list(action = "pass", text = text, matches = 0L))  # no shield -> no-op
+  tryCatch(
+    .output_gate_scan(text, settings, chat, on_progress),
+    error = function(e)
+      list(action = "redact",
+           text = "[data_shield] reply withheld: output gate failed (fail-closed).",
+           matches = 0L))
+}
+

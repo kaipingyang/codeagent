@@ -353,8 +353,7 @@ codeagent <- function(client_or_prompt,
   # (kiro round-2 #2): codeagent() used to call chat$chat(prompt) directly, so a
   # protected value pasted into the prompt, or reproduced in the reply, bypassed
   # both edges. Reuse the same gates as agent_loop / the Shiny stream.
-  ig <- tryCatch(.input_gate_scan(prompt, settings, chat),
-                 error = function(e) list(action = "pass", input = prompt))
+  ig <- .input_gate_guarded(prompt, settings, chat)
   if (identical(ig$action, "block"))
     return(ig$text %||% "[Blocked by Data Shield input gate]")
   prompt <- ig$input %||% prompt
@@ -372,8 +371,7 @@ codeagent <- function(client_or_prompt,
   if (!is.character(response)) return("[No response]")
   # Output gate: scan the finalized reply before returning it (non-streaming
   # path, so it can redact in place).
-  og <- tryCatch(.output_gate_scan(response, settings, chat),
-                 error = function(e) list(action = "pass", text = response))
+  og <- .output_gate_guarded(response, settings, chat)
   og$text %||% response
 }
 
@@ -568,8 +566,7 @@ agent_loop <- function(user_input,
   #   before returning it. The model may reproduce a protected value it inferred
   #   from tool output even when the user's input was clean. CLI is non-streaming
   #   so we hold the full string and can redact in place. No-op without a shield.
-  og <- tryCatch(.output_gate_scan(response, settings, chat),
-                 error = function(e) list(action = "pass", text = response))
+  og <- .output_gate_guarded(response, settings, chat)
   if (!identical(og$action, "pass")) response <- og$text %||% response
 
   # 8. Save session

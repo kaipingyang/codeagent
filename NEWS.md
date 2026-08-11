@@ -91,9 +91,10 @@
   input was clean. The output gate (`R/output_gate.R` `.output_gate_scan()` +
   `DataShield$scan_response()`) closes this, reusing the same value_match + PII
   detectors as the input gate (audited under `edge = "response"`). CLI
-  (`agent_loop`) is non-streaming and **redacts the reply in place**; the Shiny
-  app streams token-by-token so it scans the finished reply and **appends a
-  warning below** (the text is already on screen). Configurable via
+  (`agent_loop`) is non-streaming and **redacts the reply in place**; when a
+  shield is active the Shiny and CLI streaming paths now **buffer the reply,
+  scan it, then show the (possibly redacted) text once** -- nothing reaches the
+  browser until the output gate has run (no plaintext-then-warning). Configurable via
   `settings$data_shield_response_on_fail` (`redact`/`block`/`ask`) and
   `settings$data_shield_output_scanners`. This brings Data Shield to the
   canonical three-edge coverage (input / tool / output), matching the output
@@ -163,8 +164,10 @@
   value-match hash index (default 500000 values, ~65MB of keys). Benchmarked on
   open-source CDISC-ADaM-format example data from the {pharmaverse} project
   (`inst/bench/value_match_benchmark.R`): index memory grows linearly and
-  unbounded (~130MB / 1M values), so on overflow indexing stops and a warning
-  is emitted; unindexed values rely on the other egress layers. Zero false
+  unbounded (~130MB / 1M values), so on overflow `register_data()` now **errors
+  and refuses the dataset** (a partial index that silently drops tail values
+  would fail open) -- raise `max_index_values`, register in smaller pieces, or
+  set it to `Inf`. Zero false
   positives on ordinary clinical prose and pharmaverse-format USUBJID/SUBJID
   caught, so the min_len/min_card thresholds are unchanged.
 

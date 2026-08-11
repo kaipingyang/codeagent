@@ -176,6 +176,11 @@ NULL
                 reason = sprintf("non-source extension '%s'", ext)))
   if (!file.exists(resolved))
     return(list(ok = FALSE, resolved = resolved, reason = "file does not exist"))
+  # Must be a REGULAR file, not a directory/pipe/device (kiro round-3): a
+  # directory named "not-a-file.R" passes file.exists() but read()s to nothing,
+  # which was silently swallowed to risk=none. Reject non-regular targets.
+  if (dir.exists(resolved) || !isTRUE(file.info(resolved)$isdir == FALSE))
+    return(list(ok = FALSE, resolved = resolved, reason = "not a regular file"))
   list(ok = TRUE, resolved = resolved, reason = NA_character_)
 }
 
@@ -198,39 +203,58 @@ NULL
 #'   verdicts when a shield is given), `risk` (overall: "none"/"review"/"block").
 #' @keywords internal
 .audit_code_impl <- function(code, shield = NULL, project_root = getwd(),
-                             max_bytes = 100000L) {
+                             max_bytes = 100000L, max_files = 20L) {
   refs <- .audit_r_code_refs(code)
   allowed <- character(); blocked <- list(); reviews <- list()
+  n_read <- 0L
   for (p in refs$static_paths) {
+    # Cap the number of files read (kiro round-3): a source-heavy snippet could
+    # otherwise fan out to unbounded reads. Excess refs are recorded as blocked.
+    if (n_read >= max_files) {
+      blocked[[length(blocked) + 1L]] <- list(path = p, reason = "max_files cap reached")
+      next
+    }
     dec <- .audit_path_allowed(p, project_root)
     if (!isTRUE(dec$ok)) {
       blocked[[length(blocked) + 1L]] <- list(path = p, reason = dec$reason)
       next
     }
+    n_read <- n_read + 1L
     allowed <- c(allowed, dec$resolved)
     if (inherits(shield, "DataShield")) {
+      read_failed <- FALSE
       content <- tryCatch({
-        con <- file(dec$resolved, "r"); on.exit(close(con), add = TRUE)
-        # TOCTOU guard (kiro round-2 #13): .audit_path_allowed validated the path
-        # BEFORE we opened it; a symlink could be swapped in between. Re-resolve
-        # the opened path and confirm it still points under the project root and
-        # matches the vetted target before reading a byte.
+        con <- file(dec$resolved, "rb"); on.exit(close(con), add = TRUE)  # rb: bounded binary read
+        # TOCTOU guard (kiro round-2 #13 + round-3): re-resolve the opened path
+        # and confirm it still matches the vetted target under project_root.
         recheck <- tryCatch(normalizePath(dec$resolved, winslash = "/", mustWork = TRUE),
                             error = function(e) NA_character_)
         if (is.na(recheck) || !identical(recheck, dec$resolved) ||
             !.data_shield_path_under(recheck, normalizePath(project_root, winslash = "/", mustWork = FALSE)))
           stop("path changed after validation (TOCTOU)")
-        # Bounded read: cap bytes at read time instead of readLines(n=-1) then
-        # substr (which pulls the whole file into memory first).
         readChar(con, nchars = max_bytes, useBytes = TRUE)
-      }, error = function(e) NULL)
-      if (is.character(content) && nzchar(content)) {
+      }, error = function(e) { read_failed <<- TRUE; NULL })
+      # A read/TOCTOU failure must NOT be silently dropped to risk=none (kiro
+      # round-3): record it as blocked so the overall risk escalates to block.
+      if (isTRUE(read_failed)) {
+        blocked[[length(blocked) + 1L]] <- list(path = dec$resolved,
+                                                reason = "read/TOCTOU check failed (fail-closed)")
+      } else if (is.character(content) && nzchar(content)) {
         v <- tryCatch(
           shield$review_code_public(content,
                              context = list(tool_name = paste0("audit:", basename(dec$resolved)),
                                             capability = "read")),
           error = function(e) list(error = TRUE, reason = "reviewer unavailable"))
-        reviews[[length(reviews) + 1L]] <- c(list(path = dec$resolved), v)
+        # Async reviewer returns a promise. This pipeline is synchronous and
+        # cannot await it here, so an unresolved promise is treated fail-closed:
+        # record a block rather than let unreviewed content pass as risk=none
+        # (kiro round-3). A host that needs async review should await upstream.
+        if (promises::is.promise(v)) {
+          blocked[[length(blocked) + 1L]] <- list(path = dec$resolved,
+                                                  reason = "reviewer is async; not awaited (fail-closed)")
+        } else {
+          reviews[[length(reviews) + 1L]] <- c(list(path = dec$resolved), v)
+        }
       }
     }
   }

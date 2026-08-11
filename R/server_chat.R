@@ -95,8 +95,7 @@ server_chat <- function(input, output, session, chat, settings,
     # standalone codeagent_stream_async() guards its own copy). No-op when no
     # shield is active; image attachments use settings$data_shield_image_scanner
     # (default NULL = blind spot). A block ends the turn with a chat message.
-    ig <- tryCatch(.input_gate_scan(actual_input, settings, chat),
-                   error = function(e) list(action = "pass", input = actual_input))
+    ig <- .input_gate_guarded(actual_input, settings, chat)
     if (identical(ig$action, "block")) {
       msg <- ig$text %||% "[Blocked by Data Shield input gate]"
       tryCatch(shinychat::chat_append("chat", msg, session = session),
@@ -149,8 +148,7 @@ server_chat <- function(input, output, session, chat, settings,
             for (chunk in await_each(stream)) { NULL }
             lt   <- tryCatch(chat$last_turn(role = "assistant"), error = function(e) NULL)
             txt  <- tryCatch(lt@text, error = function(e) "")
-            og   <- tryCatch(.output_gate_scan(txt, settings, chat),
-                             error = function(e) list(action = "pass", text = txt))
+            og   <- .output_gate_guarded(txt, settings, chat)
             shown <- og$text %||% txt
             if (nzchar(shown %||% ""))
               await(shinychat::chat_append("chat", shown, session = session))

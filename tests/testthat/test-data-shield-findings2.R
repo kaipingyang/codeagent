@@ -234,11 +234,15 @@ test_that("#10 close() clears strategies and both pipelines (no lingering closur
   expect_length(cov1$ingress_pipeline, 0L)
 })
 
-test_that("#10 DataShield has an R6 finalizer as a GC backstop", {
+test_that("#10 DataShield has a PRIVATE R6 finalizer as a GC backstop", {
   gen <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
-  # the class exposes a finalize method (idempotent close)
-  expect_true(is.function(gen$finalize))
-  expect_error(gen$finalize(), NA)   # calling it does not error
+  # kiro round-3: the finalizer MUST be private (public finalize warns/errors on
+  # newer R6). It is not reachable on the public interface, but exists in private
+  # and calls close() as a GC backstop. Assert it is not public, and that the
+  # private method is a function.
+  expect_false("finalize" %in% ls(gen))
+  expect_true(is.function(gen$.__enclos_env__$private$finalize))
+  expect_error(gen$.__enclos_env__$private$finalize(), NA)   # idempotent, no error
 })
 
 # --- Finding #9: reviewer isolation is verified, not best-effort -------------

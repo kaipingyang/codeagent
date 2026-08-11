@@ -759,7 +759,7 @@ DataShield <- R6::R6Class(
       deny_idx <- if (length(none_egress_cols))
         .data_shield_build_value_index(
           df, cols = none_egress_cols, min_len = min_len, min_card = min_card,
-          max_values = max_index_values)
+          max_values = max_index_values, deny_all = TRUE)
         else NULL
       private$datasets[[name]] <- list(
         name = name, data = df, sensitivity = sensitivity,
@@ -964,10 +964,11 @@ DataShield <- R6::R6Class(
           else paste(utils::capture.output(print(result)), collapse = "\n"),
           error = function(e) "")
         dv <- tryCatch(.data_shield_value_scan(deny_text, private$deny_index),
-                       error = function(e) list(hit = FALSE, n = 0L))
+                       error = function(e) list(hit = TRUE, n = 0L, failed = TRUE))
         if (isTRUE(dv$hit)) {
           audit_fn("column_egress", "deny",
-                   "egress=none column value in tool output", dv$n %||% 0L, 1)
+                   if (isTRUE(dv$failed)) "deny-index scan failed (fail-closed)"
+                   else "egress=none column value in tool output", dv$n %||% 0L, 1)
           return("[data_shield] tool output denied: contains a value from a column marked egress=none.")
         }
       }
@@ -1165,8 +1166,9 @@ DataShield <- R6::R6Class(
         on_fail = if (identical(on_fail, "block")) "block" else "redact",
         ignore_case = TRUE)
       rx <- tryCatch(regex_fn(current, list(edge = "prompt")),
-                     error = function(e) list(sanitized = current, valid = TRUE,
-                                              spans = data.frame(), action = "pass"))
+                     error = function(e)
+                       stop("data_shield regex detector failed: ",
+                            conditionMessage(e), call. = FALSE))
       rx_hits <- tryCatch(nrow(rx$spans), error = function(e) 0L) %||% 0L
       if (rx_hits > 0L) {
         total_matches <- total_matches + rx_hits
@@ -1189,7 +1191,9 @@ DataShield <- R6::R6Class(
         t1 <- proc.time()[["elapsed"]]
         emit("value_match", "scanning")
         vm <- tryCatch(.data_shield_value_scan(current, private$index),
-                       error = function(e) list(hit = FALSE, n = 0L, values = character(0)))
+                       error = function(e)
+                         stop("data_shield value_match detector failed: ",
+                              conditionMessage(e), call. = FALSE))
         if (isTRUE(vm$hit)) {
           total_matches <- total_matches + vm$n
           if (identical(on_fail, "block")) {
@@ -1356,14 +1360,6 @@ DataShield <- R6::R6Class(
       invisible(NULL)
     },
 
-    #' @description R6 finalizer -- best-effort backstop so a shield that is
-    #'   garbage-collected without an explicit close() still releases its
-    #'   sensitive closures/state (kiro round-2 #10). Idempotent (close() guards
-    #'   on private$closed).
-    finalize = function() {
-      tryCatch(self$close(), error = function(e) NULL)
-    },
-
     #' @description Summarise non-sensitive runtime coverage.
     coverage = function() {
       list(config = private$config, datasets = names(private$datasets),
@@ -1384,6 +1380,13 @@ DataShield <- R6::R6Class(
     }
   ),
   private = list(
+    # R6 finalizer -- best-effort GC backstop so a shield collected without an
+    # explicit close() still releases its sensitive closures/state (kiro round-2
+    # #10). MUST live in private: R6 (>= future) warns/errors on a public
+    # finalize (kiro round-3). Idempotent (close() guards on private$closed).
+    finalize = function() {
+      tryCatch(self$close(), error = function(e) NULL)
+    },
     config = NULL,
     datasets = NULL,
     assets = NULL,
@@ -1977,14 +1980,18 @@ refresh_data_shield_context <- function(client) {
   }
   if ("value_match" %in% detectors) {
     matched <- tryCatch(.data_shield_value_scan(text, index),
-                        error = function(e) list(hit = FALSE))
+                        error = function(e) list(hit = TRUE, n = 0L, failed = TRUE))
     if (isTRUE(matched$hit)) {
       verb <- if (identical(on_fail, "block")) "blocked" else "withheld"
       if (is.function(audit_fn))
-        audit_fn("value_match", on_fail, "protected value match", matched$n, min(1, matched$n / 5))
+        audit_fn("value_match", on_fail,
+                 if (isTRUE(matched$failed)) "value_match scan failed (fail-closed)"
+                 else "protected value match", matched$n %||% 0L, min(1, (matched$n %||% 0L) / 5))
       return(list(
-        text = sprintf("[data_shield] output %s: contains %d protected data value(s).",
-                       verb, matched$n),
+        text = if (isTRUE(matched$failed))
+          sprintf("[data_shield] output %s: scan failed (fail-closed).", verb)
+        else sprintf("[data_shield] output %s: contains %d protected data value(s).",
+                     verb, matched$n),
         changed = TRUE))
     }
   }
@@ -2016,6 +2023,20 @@ refresh_data_shield_context <- function(client) {
   if (is.character(result) && length(result) == 1L) {
     filtered <- process(result)
     if (isTRUE(filtered$changed)) return(filtered$text)
+    return(result)
+  }
+  # Catch-all (kiro round-3): ANY other model-facing shape -- a list
+  # (list(payload="FAKEID001")), a multi-element character vector, a named
+  # vector -- must still be scanned. Serialize it to text and run the detectors;
+  # if anything matches, WITHHOLD the whole result (we cannot safely redact an
+  # arbitrary structure in place, so fail closed to a safe message) rather than
+  # let the raw structure through.
+  serialized <- tryCatch(
+    paste(utils::capture.output(print(result)), collapse = "\n"),
+    error = function(e) "")
+  if (nzchar(serialized)) {
+    filtered <- process(serialized)
+    if (isTRUE(filtered$changed)) return(filtered$text)
   }
   result
 }
@@ -2037,18 +2058,31 @@ refresh_data_shield_context <- function(client) {
     ing <- tryCatch(shield$scan_tool_args(args), error = function(e) NULL)
     if (!is.null(ing) && identical(ing$action, "redact") && is.list(ing$args))
       args <- ing$args
-    result <- do.call(original, args)
+    # Sync tools can stop() with an error message that embeds a protected value
+    # (e.g. stop("bad row FAKEID001")); an unguarded error would skip egress and
+    # surface the raw message to the model (kiro round-3). Catch it and re-reject
+    # with a FIXED safe message via ellmer::tool_reject() (which RAISES an
+    # ellmer_tool_reject condition that invoke_tools turns into a tool result);
+    # the original error text is surfaced only to the local R session (warning).
+    result <- tryCatch(do.call(original, args),
+                       error = function(e) {
+                         warning("data_shield: tool '", tool_name,
+                                 "' errored; message withheld from model.",
+                                 call. = FALSE)
+                         ellmer::tool_reject(
+                           "[data_shield] tool failed; error withheld (fail-closed).")
+                       })
     # Async tools return a promise; scanning the promise object itself would let
     # the resolved value (e.g. a protected id) reach the caller unfiltered (kiro
     # round-2 #4). Defer the egress scan to resolution, and fail closed on
-    # rejection (never surface an unscanned error payload).
+    # rejection with a FIXED message -- conditionMessage(e) may itself contain a
+    # protected value, so it is NOT forwarded to the model (kiro round-3).
     if (promises::is.promise(result)) {
       return(promises::then(
         result,
         onFulfilled = function(v) shield$scan_egress(v, context = list(tool_name = tool_name)),
         onRejected  = function(e) ellmer::tool_reject(
-          paste0("[data_shield] tool failed; result withheld (fail-closed): ",
-                 conditionMessage(e)))))
+          "[data_shield] tool failed; result withheld (fail-closed).")))
     }
     shield$scan_egress(result, context = list(tool_name = tool_name))
   }
@@ -2081,7 +2115,7 @@ refresh_data_shield_context <- function(client) {
 #' @keywords internal
 .data_shield_build_value_index <- function(df, cols = names(df),
                                            min_len = 3L, min_card = 8L,
-                                           max_values = 500000L) {
+                                           max_values = 500000L, deny_all = FALSE) {
   set <- new.env(parent = emptyenv())
   n <- 0L
   truncated <- FALSE
@@ -2093,10 +2127,18 @@ refresh_data_shield_context <- function(client) {
     v <- df[[cn]]
     if (is.null(v)) next
     vals <- unique(v[!is.na(v)])
-    if (length(vals) < min_card) next                     # low-cardinality -> skip
     ch <- as.character(vals)
-    ch <- ch[nchar(ch) >= min_len]                        # too short -> skip
-    ch <- ch[!grepl("^[0-9]{1,2}$", ch)]                  # pure small int -> skip
+    if (!isTRUE(deny_all)) {
+      # Normal value-match index: apply entropy thresholds to avoid false
+      # positives on common/short/categorical values.
+      if (length(vals) < min_card) next                   # low-cardinality -> skip
+      ch <- ch[nchar(ch) >= min_len]                      # too short -> skip
+      ch <- ch[!grepl("^[0-9]{1,2}$", ch)]                # pure small int -> skip
+    }
+    # deny_all=TRUE (egress="none" deny index, kiro round-3): index EVERY value,
+    # no cardinality/length/int thresholds -- a "none" column with just two
+    # values (ALPHA/BETA) must still deny, so no value may be filtered out.
+    ch <- ch[nzchar(ch)]
     for (x in .data_shield_normalize(ch)) {
       if (n >= max_values) { truncated <- TRUE; break }
       assign(x, TRUE, envir = set); n <- n + 1L

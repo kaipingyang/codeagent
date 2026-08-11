@@ -85,8 +85,7 @@ codeagent_stream_async <- function(
   # Data Shield input gate (edge 1): scan the user's text + attachments before
   # the turn reaches the model. Mirrors agent_loop's 1a.6 for the Shiny/stream
   # path so both entry points guard edge 1. No-op when no shield is active.
-  ig <- tryCatch(.input_gate_scan(input, settings, chat),
-                 error = function(e) list(action = "pass", input = input))
+  ig <- .input_gate_guarded(input, settings, chat)
   if (identical(ig$action, "block")) {
     msg <- ig$text %||% "[Blocked by Data Shield input gate]"
     if (!is.null(on_delta)) tryCatch(on_delta(msg), error = function(e) NULL)
@@ -186,8 +185,7 @@ codeagent_stream_async <- function(
       # Output gate (edge 3): in buffer mode, scan the finalized reply and emit
       # the (possibly redacted) text in one shot before teardown.
       if (isTRUE(.buffer_output)) {
-        og <- tryCatch(.output_gate_scan(acc, settings, chat),
-                       error = function(e) list(action = "pass", text = acc))
+        og <- .output_gate_guarded(acc, settings, chat)
         acc <- og$text %||% acc
         if (!is.null(on_delta) && nzchar(acc)) tryCatch(on_delta(acc), error = function(e) NULL)
       }

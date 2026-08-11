@@ -718,8 +718,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       # Non-streaming: spinner while waiting for the response.
       # Input gate (edge 1): scan the user text before sending (kiro round-2 #2;
       # the non-streaming REPL path called chat$chat directly with no gate).
-      .ig <- tryCatch(.input_gate_scan(actual_input, client$settings, client$chat),
-                      error = function(e) list(action = "pass", input = actual_input))
+      .ig <- .input_gate_guarded(actual_input, client$settings, client$chat)
       if (identical(.ig$action, "block")) {
         cat(.ig$text %||% "[Blocked by Data Shield input gate]", "\n")
         next
@@ -741,8 +740,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       # Output gate (edge 3): scan the finalized reply before printing (the
       # non-streaming path holds the whole string, so it can redact in place).
       if (is.character(resp)) {
-        .og <- tryCatch(.output_gate_scan(resp, client$settings, client$chat),
-                        error = function(e) list(action = "pass", text = resp))
+        .og <- .output_gate_guarded(resp, client$settings, client$chat)
         resp <- .og$text %||% resp
       }
       cat(if (is.character(resp)) .render_markdown(resp) else "[no response]", "\n")

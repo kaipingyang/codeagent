@@ -56,7 +56,6 @@ shield$coverage()
     \item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
     \item \href{#method-DataShield-close}{\code{DataShield$close()}}
-    \item \href{#method-DataShield-finalize}{\code{DataShield$finalize()}}
     \item \href{#method-DataShield-coverage}{\code{DataShield$coverage()}}
   }
 }
@@ -573,21 +572,6 @@ is responsible for deciding what to read; the reviewer gets no tools).}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$close()}
-    \if{html}{\out{</div>}}
-  }
-}
-
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-DataShield-finalize"></a>}}
-\if{latex}{\out{\hypertarget{method-DataShield-finalize}{}}}
-\subsection{\code{DataShield$finalize()}}{
-  R6 finalizer -- best-effort backstop so a shield that is
-garbage-collected without an explicit close() still releases its
-sensitive closures/state (kiro round-2 #10). Idempotent (close() guards
-on private$closed).
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$finalize()}
     \if{html}{\out{</div>}}
   }
 }
