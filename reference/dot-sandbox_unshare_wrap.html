@@ -70,11 +70,21 @@
 <dd><p>Character vector: the command + args to run (e.g.
 <code>c("Rscript", "-e", "...")</code>).</p></dd>
 
+
+<dt id="arg-no-network">no_network<a class="anchor" aria-label="anchor" href="#arg-no-network"></a></dt>
+<dd><p>Logical. Request kernel-level network isolation.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A character vector prefixed with <code>unshare -Urn</code> when available and
-requested; otherwise <code>argv</code> unchanged.</p>
+requested; otherwise <code>argv</code> unchanged. When no-network was requested but
+<code>unshare</code> is unavailable, the returned vector carries
+<code>attr(x, "network_isolation") = "unavailable"</code> and a one-time session
+warning is emitted – the OS-level boundary has silently degraded to the
+command-name blacklist, which is bypassable (kiro round-2 #12). Callers
+should surface this in audit/UI rather than treat <code>allow_network=FALSE</code> as a
+hard guarantee.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

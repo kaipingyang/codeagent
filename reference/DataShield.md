@@ -46,6 +46,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$scan_response()`](#method-DataShield-scan_response)
 
+- [`DataShield$review_code_public()`](#method-DataShield-review_code_public)
+
 - [`DataShield$add_scanner()`](#method-DataShield-add_scanner)
 
 - [`DataShield$set_egress_ask()`](#method-DataShield-set_egress_ask)
@@ -59,6 +61,8 @@ create a new object for an independent user/thread boundary.
 - [`DataShield$clear()`](#method-DataShield-clear)
 
 - [`DataShield$close()`](#method-DataShield-close)
+
+- [`DataShield$finalize()`](#method-DataShield-finalize)
 
 - [`DataShield$coverage()`](#method-DataShield-coverage)
 
@@ -510,6 +514,35 @@ Same shape as `scan_prompt`.
 
 ------------------------------------------------------------------------
 
+### `DataShield$review_code_public()`
+
+Public bridge to the internal code reviewer rail (kiro round-2 \#7). The
+reviewer logic lives in `private$review_code`, so an external caller
+(the AuditCode pipeline, `.audit_code_impl`) could not reach it –
+`shield$review_code` resolved to NULL and every audit fell back to
+"reviewer unavailable". This public method exposes the rail so the
+deterministic audit can feed vetted, whitelisted file contents to the
+configured reviewer. Returns the reviewer verdict (list with
+`risk`/`error`) or a promise thereof; `list(error=TRUE, reason=...)`
+when no reviewer is configured.
+
+#### Usage
+
+    DataShield$review_code_public(text, context = list())
+
+#### Arguments
+
+- `text`:
+
+  Character. Already-vetted code/content to review (the caller is
+  responsible for deciding what to read; the reviewer gets no tools).
+
+- `context`:
+
+  Optional non-sensitive context (tool_name, capability).
+
+------------------------------------------------------------------------
+
 ### `DataShield$add_scanner()`
 
 Add a custom scanner function to the end of the egress pipeline.
@@ -596,6 +629,19 @@ Clear sensitive state and close the shield.
 #### Usage
 
     DataShield$close()
+
+------------------------------------------------------------------------
+
+### `DataShield$finalize()`
+
+R6 finalizer – best-effort backstop so a shield that is
+garbage-collected without an explicit close() still releases its
+sensitive closures/state (kiro round-2 \#10). Idempotent (close() guards
+on private\$closed).
+
+#### Usage
+
+    DataShield$finalize()
 
 ------------------------------------------------------------------------
 

@@ -102,6 +102,7 @@ object for an independent user/thread boundary.</p>
 <li><p><a href="#method-DataShield-scan_tool_args"><code>DataShield$scan_tool_args()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_prompt"><code>DataShield$scan_prompt()</code></a></p></li>
 <li><p><a href="#method-DataShield-scan_response"><code>DataShield$scan_response()</code></a></p></li>
+<li><p><a href="#method-DataShield-review_code_public"><code>DataShield$review_code_public()</code></a></p></li>
 <li><p><a href="#method-DataShield-add_scanner"><code>DataShield$add_scanner()</code></a></p></li>
 <li><p><a href="#method-DataShield-set_egress_ask"><code>DataShield$set_egress_ask()</code></a></p></li>
 <li><p><a href="#method-DataShield-bind_reviewer_factory"><code>DataShield$bind_reviewer_factory()</code></a></p></li>
@@ -109,6 +110,7 @@ object for an independent user/thread boundary.</p>
 <li><p><a href="#method-DataShield-clear_audit"><code>DataShield$clear_audit()</code></a></p></li>
 <li><p><a href="#method-DataShield-clear"><code>DataShield$clear()</code></a></p></li>
 <li><p><a href="#method-DataShield-close"><code>DataShield$close()</code></a></p></li>
+<li><p><a href="#method-DataShield-finalize"><code>DataShield$finalize()</code></a></p></li>
 <li><p><a href="#method-DataShield-coverage"><code>DataShield$coverage()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-DataShield-initialize"></a><div class="section">
 <h3 id="datashield-new-"><code>DataShield$new()</code><a class="anchor" aria-label="anchor" href="#datashield-new-"></a></h3>
@@ -506,10 +508,38 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 
 </div>
 
+<p></p><hr><a id="method-DataShield-review_code_public"></a><div class="section">
+<h3 id="datashield-review-code-public-"><code>DataShield$review_code_public()</code><a class="anchor" aria-label="anchor" href="#datashield-review-code-public-"></a></h3>
+<p>Public bridge to the internal code reviewer rail (kiro
+round-2 #7). The reviewer logic lives in <code>private$review_code</code>, so an
+external caller (the AuditCode pipeline, <code>.audit_code_impl</code>) could not
+reach it – <code>shield$review_code</code> resolved to NULL and every audit fell
+back to "reviewer unavailable". This public method exposes the rail so
+the deterministic audit can feed vetted, whitelisted file contents to
+the configured reviewer. Returns the reviewer verdict (list with
+<code>risk</code>/<code>error</code>) or a promise thereof; <code>list(error=TRUE, reason=...)</code>
+when no reviewer is configured.</p><div class="section">
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">review_code_public</span><span class="op">(</span><span class="va">text</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>text</code></dt>
+<dd><p>Character. Already-vetted code/content to review (the caller
+is responsible for deciding what to read; the reviewer gets no tools).</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>Optional non-sensitive context (tool_name, capability).</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div>
+
 <p></p><hr><a id="method-DataShield-add_scanner"></a><div class="section">
 <h3 id="datashield-add-scanner-"><code>DataShield$add_scanner()</code><a class="anchor" aria-label="anchor" href="#datashield-add-scanner-"></a></h3>
 <p>Add a custom scanner function to the end of the egress pipeline.</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">add_scanner</span><span class="op">(</span><span class="va">name</span>, <span class="va">fn</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -518,10 +548,10 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-set_egress_ask"></a><div class="section">
 <h3 id="datashield-set-egress-ask-"><code>DataShield$set_egress_ask()</code><a class="anchor" aria-label="anchor" href="#datashield-set-egress-ask-"></a></h3>
 <p>Set the sync/promise egress approval callback.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">set_egress_ask</span><span class="op">(</span>fn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fn</code></dt>
 <dd><p>Function receiving non-sensitive event metadata and returning
 <code>redact</code>, <code>block</code>, or (when enabled) <code>raw_once</code>; NULL clears it.</p></dd>
@@ -535,10 +565,10 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-bind_reviewer_factory"></a><div class="section">
 <h3 id="datashield-bind-reviewer-factory-"><code>DataShield$bind_reviewer_factory()</code><a class="anchor" aria-label="anchor" href="#datashield-bind-reviewer-factory-"></a></h3>
 <p>Bind codeagent's parent-provider reviewer Chat factory.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">bind_reviewer_factory</span><span class="op">(</span><span class="va">fn</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fn</code></dt>
 <dd><p>Function accepting optional model and returning a fresh Chat.</p></dd>
 
@@ -551,10 +581,10 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-audit"></a><div class="section">
 <h3 id="datashield-audit-"><code>DataShield$audit()</code><a class="anchor" aria-label="anchor" href="#datashield-audit-"></a></h3>
 <p>Return a copy of non-sensitive decision events.</p><div class="section">
-<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
+<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>limit</code></dt>
 <dd><p>Optional number of most recent events.</p></dd>
 
@@ -567,7 +597,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-clear_audit"></a><div class="section">
 <h3 id="datashield-clear-audit-"><code>DataShield$clear_audit()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-audit-"></a></h3>
 <p>Remove all in-memory audit events.</p><div class="section">
-<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
+<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -576,7 +606,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-clear"></a><div class="section">
 <h3 id="datashield-clear-"><code>DataShield$clear()</code><a class="anchor" aria-label="anchor" href="#datashield-clear-"></a></h3>
 <p>Remove one dataset, or all datasets when name is NULL.</p><div class="section">
-<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
+<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span>name <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -585,8 +615,20 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-close"></a><div class="section">
 <h3 id="datashield-close-"><code>DataShield$close()</code><a class="anchor" aria-label="anchor" href="#datashield-close-"></a></h3>
 <p>Clear sensitive state and close the shield.</p><div class="section">
-<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
+<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">close</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-DataShield-finalize"></a><div class="section">
+<h3 id="datashield-finalize-"><code>DataShield$finalize()</code><a class="anchor" aria-label="anchor" href="#datashield-finalize-"></a></h3>
+<p>R6 finalizer – best-effort backstop so a shield that is
+garbage-collected without an explicit close() still releases its
+sensitive closures/state (kiro round-2 #10). Idempotent (close() guards
+on private$closed).</p><div class="section">
+<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">finalize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 </div>
@@ -594,7 +636,7 @@ PII regex), differing only in the audit <code>edge</code> label (<code>"response
 <p></p><hr><a id="method-DataShield-coverage"></a><div class="section">
 <h3 id="datashield-coverage-"><code>DataShield$coverage()</code><a class="anchor" aria-label="anchor" href="#datashield-coverage-"></a></h3>
 <p>Summarise non-sensitive runtime coverage.</p><div class="section">
-<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
+<h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">coverage</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 

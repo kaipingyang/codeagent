@@ -82,6 +82,8 @@ Return value ignored (informational only).
 
 - [`HookRegistry$run_user_prompt_submit()`](#method-HookRegistry-run_user_prompt_submit)
 
+- [`HookRegistry$run_user_message()`](#method-HookRegistry-run_user_message)
+
 - [`HookRegistry$run_assistant_message()`](#method-HookRegistry-run_assistant_message)
 
 - [`HookRegistry$run_session_start()`](#method-HookRegistry-run_session_start)
@@ -248,6 +250,19 @@ if any hook blocked, else
 #### Usage
 
     HookRegistry$run_user_prompt_submit(message)
+
+------------------------------------------------------------------------
+
+### `HookRegistry$run_user_message()`
+
+Deprecated alias for `run_user_prompt_submit()` (kiro round-2 \#14). The
+event was renamed to align with Claude Code's public `UserPromptSubmit`;
+this shim forwards to the new method for one release cycle so existing
+callers do not break. Prefer `run_user_prompt_submit()`.
+
+#### Usage
+
+    HookRegistry$run_user_message(message)
 
 ------------------------------------------------------------------------
 
@@ -467,7 +482,7 @@ the synchronous CLI loop cannot pump the `later` queue watcher needs.
 
 Fire ConfigChange hooks (Shiny-only; watcher-driven). Callback:
 `function(source, file_path, context)`. Return value ignored. Not fired
-on the CLI (see run_file_changed note).
+on the CLI (see the `run_file_changed()` method note).
 
 #### Usage
 
