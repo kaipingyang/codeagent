@@ -679,93 +679,50 @@ All core subsystems are complete. 281 tests pass.
 对标 Claude Code
 的已知缺口，按价值排序。实现前先确认上游（ellmer/btw/shinychat）是否已有原生支持。
 
-### P1 — Shiny ask_fn（工具审批 UI）
+> **状态核对（2026-08-13）**：原 backlog 的 P1/P2/P3
+> 均已实现，下移到”已完成”。仅 P4/P5/语音仍待办。 更新前 P1/P2
+> 标”待做”但实际早已接线，误导过判断——核对后修正，避免再次误判。
 
-**现状**：CLI REPL 有
-`.console_ask_fn`（[`readline()`](https://rdrr.io/r/base/readline.html)
-阻塞等待）；Shiny app 的 `ask_fn = NULL`（默认模式下写操作无交互审批）。
+### 已完成（曾在 backlog，现已实现）
 
-**目标**：`default` 权限模式下，Shiny app 对”需要确认”的工具请求弹出审批
-UI，用户点 Allow/Deny，结果异步返回给权限门。
+- ✅ **Shiny ask_fn 工具审批 UI**（原 P1）—
+  `R/server_interaction.R`：`.shiny_ask_fn`（promise-returning， :26）+
+  `ask_fn` 接线（:244）+ `ca_tool_allow`/`ca_tool_deny` 按钮 +
+  observeEvent。`ui.R:385-388` 把
+  `shiny_ask_fn`/`shiny_ask_question_fn`/`egress_ask` 三条审批线全注入
+  session。footer inline bar 版 （`chat_ui(footer=)`），promise +
+  `.resolve_pending` 桥接。**三条审批线**：权限
+  Allow/Deny、AskUserQuestion 问答、数据盾
+  egress（redact/block/raw-once）。
+- ✅ **AskUserQuestion 工具**（原 P2）—
+  `R/tools_ask_user.R`：[`ask_user_tool()`](https://kaipingyang.github.io/codeagent/reference/ask_user_tool.md) +
+  [`register_ask_user_tool()`](https://kaipingyang.github.io/codeagent/reference/register_ask_user_tool.md)
+  （query.R:705 注册）。CLI 走 `readline`/test 覆盖，Shiny 走
+  `.shiny_ask_question_fn` 异步 promise。
+- ✅ **工具并发执行**（原 P3）— ellmer 已原生支持，codeagent
+  `tool_mode="concurrent"` 默认透传
+  `chat$stream_async(tool_mode=)`（stream.R:74/133）。并发只加速 async
+  工具（如子agent），同步 CLI 工具仍串行 （ellmer
+  语义）。不自实现调度，直接受益上游。
 
-**实现思路**（UI 设计参考 shinychat 的 inline tool-approval
-示例，但底层机制完全不同）：
-
-``` r
-
-# R/server_chat.R 里构造 Shiny ask_fn，注入 codeagent_client()
-.shiny_ask_fn <- function(session, state) {
-  function(tool_name, tool_input) {
-    # 通过 promise + reactiveVal 实现异步等待
-    # 1. state$pending_approval <- list(tool_name, tool_input, resolve_fn)
-    # 2. renderUI approval bar → Allow/Deny buttons
-    # 3. observeEvent(input$tool_allow) → resolve_fn(TRUE)
-    # 4. observeEvent(input$tool_deny)  → resolve_fn(FALSE)
-    # 返回 TRUE/FALSE 给 .make_permission_checker
-  }
-}
-```
-
-难点：`ask_fn` 目前是同步回调，Shiny 需要异步等待用户点击。需要用
-`promises`/[`coro::async`](https://coro.r-lib.org/reference/async.html)
-桥接，或改 `ask_fn` 接口为 promise-returning。
-
-### P2 — AskUserQuestion 工具
-
-Claude Code 的 `AskUserQuestionTool`：agent 在 loop
-中途主动暂停并问用户问题，用户回答后 loop 继续。
-
-**与 ask_fn 的区别**：ask_fn
-是权限门（“能不能执行这个工具”），AskUserQuestion
-是信息采集（“我需要更多信息才能继续”）。
-
-``` r
-
-# R/tools_ask_user.R
-ask_user_tool <- function(session = NULL) {
-  ellmer::tool(
-    name = "AskUserQuestion",
-    fun = function(question, choices = NULL) {
-      # CLI: readline(question)
-      # Shiny: showModal + reactiveVal + promise
-    },
-    description = "Ask the user a clarifying question and wait for their answer before continuing.",
-    arguments = list(
-      question = ellmer::type_string("The question to ask the user."),
-      choices  = ellmer::type_array("Optional choices.", items = ellmer::type_string(), required = FALSE)
-    ),
-    annotations = ellmer::tool_annotations(title = "AskUserQuestion", read_only_hint = TRUE)
-  )
-}
-```
-
-### P3 — 工具并发执行
-
-Claude Code 的 `StreamingToolExecutor` 区分 read-only
-工具（并发）和写操作（串行）。当前 ellmer 串行执行所有工具。
-
-**依赖上游**：ellmer 是否支持并发工具执行。关注 ellmer
-进展，有原生支持时直接受益，不自己实现。
-
-### P4 — `@path` import in CLAUDE.md
+### P4 — `@path` import in CLAUDE.md（真未实现）
 
 Claude Code 支持 CLAUDE.md 中用 `@/path/to/file.md`
 内联引用外部文件。当前
 [`.load_claude_md()`](https://kaipingyang.github.io/codeagent/reference/dot-load_claude_md.md)
-不解析 `@` 引用。
+（settings.R）只加载 CLAUDE.md 本体，**不解析 `@` 引用**（已核实）。
 
-**实现**：在
-[`.load_claude_md()`](https://kaipingyang.github.io/codeagent/reference/dot-load_claude_md.md)
-读取每个文件后，正则扫描 `^@(.+)`
-行，递归读取引用文件并替换。注意循环引用保护（`seen` set
-已有，复用即可）。
+**实现**：[`.load_claude_md()`](https://kaipingyang.github.io/codeagent/reference/dot-load_claude_md.md)
+读取每个文件后，正则扫描 `^@(.+)` 行，递归读取引用文件并替换。
+注意循环引用保护（`seen` set 已有，复用即可）。**小功能，价值中低**。
 
-### P5 — Dollar budget（成本控制）
+### P5 — Dollar budget（成本控制，真未实现）
 
-Claude Code 有 `maxBudgetUsd`，按 API 成本限制。当前只有 token budget。
+Claude Code 有 `maxBudgetUsd`，按 API 成本限制。当前只有 token
+budget（`chat$get_cost()` 已能读成本， 但无 USD 上限熔断）。
 
-**低优先级**：需维护各 provider 的 token
-价格表，维护成本高。等有明确需求再做。
+**低优先级**：需维护各 provider token 价格表（ellmer
+`models_update_prices()` 可拉，但仍需接线）。 等有明确需求再做。
 
 ### 语音输入
 

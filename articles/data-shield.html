@@ -948,11 +948,23 @@ write correct filters.</li>
 <li>
 <code>egress = "raw"</code> removes the column from the value-match
 index, so its values are not withheld from tool output.</li>
-<li>An override <strong>missing its <code>reason</code> is dropped with
-a warning</strong>, and the column falls back to its sensitivity tier —
-a mislabeled column fails safe, never silently leaks.
+<li>An override <strong>missing its <code>reason</code> is a hard
+error</strong> (<code>register_data()</code> refuses the dataset), so a
+mislabeled raw grant cannot pass unnoticed.
 <code>coverage()$raw_access_columns</code> counts active overrides.</li>
 </ul>
+<blockquote>
+<p><strong>egress tier caveat (kiro round-2 #8 / round-4 #7):</strong>
+on the EGRESS side only <code>none</code> (a fixed-string deny of every
+value) and <code>raw</code> (removed from the index) have distinct
+behaviour today; <code>schema</code> and <code>scan</code> both fall
+through to the ordinary value-match scan — there is no structured
+schema/scan egress difference yet, and column-level
+<code>scan_secrets</code> controls the PROMPT (raw DescribeData) path,
+not egress. Full per-column egress tiers need result→column provenance
+(tracked, not yet implemented). The PROMPT tier implements all four
+levels.</p>
+</blockquote>
 </div>
 <div class="section level3">
 <h3 id="host-pattern-a-provenance-tagging-spec-tool">Host pattern: a provenance-tagging spec tool<a class="anchor" aria-label="anchor" href="#host-pattern-a-provenance-tagging-spec-tool"></a>

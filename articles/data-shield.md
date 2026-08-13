@@ -384,10 +384,20 @@ shield$register_data(
   filters.
 - `egress = "raw"` removes the column from the value-match index, so its
   values are not withheld from tool output.
-- An override **missing its `reason` is dropped with a warning**, and
-  the column falls back to its sensitivity tier — a mislabeled column
-  fails safe, never silently leaks. `coverage()$raw_access_columns`
-  counts active overrides.
+- An override **missing its `reason` is a hard error**
+  (`register_data()` refuses the dataset), so a mislabeled raw grant
+  cannot pass unnoticed. `coverage()$raw_access_columns` counts active
+  overrides.
+
+> **egress tier caveat (kiro round-2 \#8 / round-4 \#7):** on the EGRESS
+> side only `none` (a fixed-string deny of every value) and `raw`
+> (removed from the index) have distinct behaviour today; `schema` and
+> `scan` both fall through to the ordinary value-match scan — there is
+> no structured schema/scan egress difference yet, and column-level
+> `scan_secrets` controls the PROMPT (raw DescribeData) path, not
+> egress. Full per-column egress tiers need result→column provenance
+> (tracked, not yet implemented). The PROMPT tier implements all four
+> levels.
 
 ### Host pattern: a provenance-tagging spec tool
 

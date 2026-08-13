@@ -17,11 +17,12 @@ clean. Symmetric to the input gate, it reuses the shield's
 `scan_response()` (a thin wrapper over `scan_prompt()` — identical
 value_match + PII detectors, audited under `edge = "response"`).
 
-**Streaming constraint (Shiny):**
-`shinychat::chat_append("chat", stream)` renders the reply
-token-by-token straight to the browser, so there is no "finalize then
-intercept" point — the text is already on screen. The Shiny caller
-therefore scans the finished reply AFTER the stream completes and
-APPENDS a warning message below (never redacts in place; the plaintext
-was already shown). The CLI path is non-streaming: `agent_loop` holds
-the full `response` string and CAN redact it before returning.
+**Streaming behaviour (kiro round-2/4):** when a shield is active, the
+Shiny and CLI streaming paths **buffer** the reply, run the output gate
+on the finished text, and emit the (possibly redacted) reply once –
+nothing reaches the browser until the gate has run (no
+plaintext-then-warning). The ERROR path is gated too: a partial reply is
+scanned before it leaves via the return value, and the raw error string
+is not surfaced. Without a shield, streaming renders token-by-token as
+before (zero cost). The CLI non-streaming path holds the full `response`
+and redacts it before returning.
