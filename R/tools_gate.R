@@ -338,14 +338,25 @@ register_tool_meta <- function(name,
     ctx$chat <- chat; ctx$data_shield <- shield
   }
   if (isTRUE(ctx$installed)) return(invisible(chat))   # gate already on this chat
-  ctx$installed <- TRUE
 
-  tryCatch(chat$on_tool_request(.tool_gate_fn(ctx)), error = function(e) NULL)
+  # Transactional install (kiro round-4 #2): register the callbacks FIRST, and
+  # only mark installed=TRUE if the (mandatory) on_tool_request gate registered.
+  # The OLD flow set installed=TRUE BEFORE registering and swallowed the
+  # registration error -- so a failed first install permanently short-circuited
+  # every retry (line above returns early), leaving the chat with NO gate = the
+  # sole authorization boundary for bypass-mode tools silently removed.
+  gate_ok <- tryCatch({ chat$on_tool_request(.tool_gate_fn(ctx)); TRUE },
+                      error = function(e) FALSE)
+  if (!isTRUE(gate_ok))
+    stop("permission gate install: on_tool_request() registration failed; the ",
+         "central authorization gate is NOT active (fail-closed). Not marking ",
+         "installed so a later call can retry.", call. = FALSE)
   tryCatch(chat$on_tool_result(function(result) {      # PostToolUse (reads ctx live)
     if (is.null(ctx$hooks)) return(invisible())
     nm <- tryCatch(result@request@name, error = function(e) "")
     tryCatch(ctx$hooks$run_post(nm, list(), result), error = function(e) NULL)
   }), error = function(e) NULL)
+  ctx$installed <- TRUE   # commit only after the mandatory gate registered
   invisible(chat)
 }
 

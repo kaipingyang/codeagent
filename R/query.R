@@ -467,7 +467,7 @@ agent_loop <- function(user_input,
   #   keeping the rest of the text). block -> reject the turn; redact -> continue
   #   with the sanitized text. This is the Data Shield half of the input gate
   #   (hooks half is the UserPromptSubmit hook above); see R/input_gate.R.
-  ig <- .input_gate_scan(user_input, settings, chat)
+  ig <- .input_gate_guarded(user_input, settings, chat)
   if (identical(ig$action, "block")) {
     if (!is.null(session_id))
       tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)

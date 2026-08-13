@@ -84,6 +84,9 @@ NULL
     .gate_recheck(ctx, name, input)
   }
   wrapped <- lapply(tools, function(t) .wrap_tool_pre_hook(t, hooks, recheck_fn))
-  tryCatch(chat$set_tools(wrapped), error = function(e) NULL)
+  ok <- tryCatch({ chat$set_tools(wrapped); TRUE }, error = function(e) FALSE)
+  if (!isTRUE(ok))
+    stop("tool-input-hook install: set_tools() failed; PreToolUse rewrite/re-check ",
+         "layer is NOT active (fail-closed).", call. = FALSE)
   invisible(chat)
 }

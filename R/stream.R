@@ -201,7 +201,20 @@ codeagent_stream_async <- function(
                             hooks = tryCatch(settings$hooks_registry,
                                              error = function(e2) NULL)),
         error = function(e2) paste0("[error] ", conditionMessage(e2)))
-      if (!is.null(on_error)) on_error(conditionMessage(e), is.character(recovered))
+      # Fail-closed on the ERROR path too (kiro round-4 #1): the partial reply in
+      # `acc` was accumulated but the output gate only ran on the success branch.
+      # When a shield is active, scan the partial text before it leaves via the
+      # return value, and DO NOT surface the raw error string (conditionMessage
+      # may itself embed a protected value, e.g. a mid-stream FAKEID) to on_error.
+      if (isTRUE(.buffer_output)) {
+        og  <- .output_gate_guarded(acc, settings, chat)
+        acc <- og$text %||% acc
+        if (!is.null(on_error)) on_error(
+          "[data_shield] stream error; details withheld (fail-closed).",
+          is.character(recovered))
+      } else if (!is.null(on_error)) {
+        on_error(conditionMessage(e), is.character(recovered))
+      }
       invisible(list(text = acc, usage = NULL, stop_reason = "error"))
     })
   })()

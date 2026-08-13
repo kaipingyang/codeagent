@@ -848,14 +848,37 @@ DataShield <- R6::R6Class(
       private$assert_open()
       if (!inherits(chat, "Chat"))
         stop("`chat` must be an ellmer Chat.", call. = FALSE)
-      attr(chat, "codeagent_data_shield") <- self
+      # Transactional install (kiro round-4 #2): prepare -> commit -> mark. The
+      # OLD flow set the codeagent_data_shield attribute FIRST, then swallowed a
+      # set_tools() failure -- leaving a chat that ADVERTISES a shield whose tools
+      # are not actually wrapped (silent fail-open). Now: register the describe
+      # tool, wrap the current tools, set them, and ONLY on full success set the
+      # attribute. Any failure raises (the caller must see it) and the attribute
+      # is not set, so no chat falsely claims protection.
       if (isTRUE(private$config$describe_enabled))
         .data_shield_register_describe_tool(chat, self)
-      tools <- tryCatch(chat$get_tools(), error = function(e) list())
+      tools <- tryCatch(chat$get_tools(),
+                        error = function(e)
+                          stop("data_shield install: get_tools() failed; refusing to ",
+                               "claim protection on an unknown tool set.", call. = FALSE))
       if (length(tools)) {
         wrapped <- lapply(tools, function(tool) .data_shield_wrap_tool(tool, self))
-        tryCatch(chat$set_tools(wrapped), error = function(e) NULL)
+        ok <- tryCatch({ chat$set_tools(wrapped); TRUE }, error = function(e) FALSE)
+        if (!isTRUE(ok))
+          stop("data_shield install: set_tools() failed; tools are NOT wrapped, ",
+               "shield NOT installed (fail-closed).", call. = FALSE)
+        # Verify set_tools actually took effect (the live tool count matches what
+        # we set) -- a set_tools that silently no-ops must not be treated as
+        # success. Per-tool wrapper-marker checks are intentionally NOT done here:
+        # idempotent re-wraps, the describe tool, and non-function tools legitimately
+        # lack the marker, and the wrap function is unit-tested separately.
+        live <- tryCatch(chat$get_tools(), error = function(e) NULL)
+        if (is.null(live) || length(live) != length(wrapped))
+          stop("data_shield install: post-install tool count mismatch; set_tools ",
+               "did not take effect (fail-closed).", call. = FALSE)
       }
+      # Commit: only now advertise the shield on the chat.
+      attr(chat, "codeagent_data_shield") <- self
       invisible(chat)
     },
 
@@ -954,6 +977,7 @@ DataShield <- R6::R6Class(
       # a match blocks rather than redacts. No-op when no none-tier column exists.
       if (!is.null(private$deny_index) &&
           length(ls(private$deny_index, all.names = TRUE))) {
+        deny_ser_failed <- FALSE
         deny_text <- tryCatch(
           if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
                               error = function(e) FALSE)))
@@ -962,8 +986,16 @@ DataShield <- R6::R6Class(
             paste(utils::capture.output(print(result)), collapse = "\n")
           else if (is.character(result)) paste(result, collapse = "\n")
           else paste(utils::capture.output(print(result)), collapse = "\n"),
-          error = function(e) "")
-        dv <- tryCatch(.data_shield_value_scan(deny_text, private$deny_index),
+          error = function(e) { deny_ser_failed <<- TRUE; "" })
+        # FAIL-CLOSED (kiro round-4 #5): if a none-tier column exists and the
+        # result cannot be serialized to check it, DENY -- an unverifiable result
+        # must not pass the "none = never" boundary.
+        if (isTRUE(deny_ser_failed)) {
+          audit_fn("column_egress", "deny",
+                   "deny-index serialization failed (fail-closed)", 0L, 1)
+          return("[data_shield] tool output denied: result could not be serialized to verify egress=none columns.")
+        }
+        dv <- tryCatch(.data_shield_deny_scan(deny_text, private$deny_index),
                        error = function(e) list(hit = TRUE, n = 0L, failed = TRUE))
         if (isTRUE(dv$hit)) {
           audit_fn("column_egress", "deny",
@@ -1594,14 +1626,20 @@ DataShield <- R6::R6Class(
     rebuild_index = function() {
       rm(list = ls(private$index, all.names = TRUE), envir = private$index)
       rm(list = ls(private$deny_index, all.names = TRUE), envir = private$deny_index)
+      deny_raw <- character()   # merge fixed-string deny values across datasets
       for (dataset in private$datasets) {
         keys <- ls(dataset$index, all.names = TRUE)
         for (key in keys) assign(key, TRUE, envir = private$index)
         if (!is.null(dataset$deny_index)) {
           dkeys <- ls(dataset$deny_index, all.names = TRUE)
           for (key in dkeys) assign(key, TRUE, envir = private$deny_index)
+          rv <- tryCatch(attr(dataset$deny_index, "raw_values"), error = function(e) NULL)
+          if (is.character(rv)) deny_raw <- c(deny_raw, rv)
         }
       }
+      # carry the merged fixed-string deny values onto the live deny_index
+      # (kiro round-4 #4: .data_shield_deny_scan reads this attr).
+      attr(private$deny_index, "raw_values") <- unique(deny_raw[nzchar(deny_raw)])
       invisible(length(ls(private$index, all.names = TRUE)))
     }
   )
@@ -2027,13 +2065,17 @@ refresh_data_shield_context <- function(client) {
   }
   # Catch-all (kiro round-3): ANY other model-facing shape -- a list
   # (list(payload="FAKEID001")), a multi-element character vector, a named
-  # vector -- must still be scanned. Serialize it to text and run the detectors;
-  # if anything matches, WITHHOLD the whole result (we cannot safely redact an
-  # arbitrary structure in place, so fail closed to a safe message) rather than
-  # let the raw structure through.
+  # vector -- must still be scanned. Serialize it to text and run the detectors.
+  # FAIL-CLOSED (kiro round-4 #5): if serialization itself fails (a custom
+  # print() that stop()s), we cannot verify the content, so WITHHOLD rather than
+  # let the unverifiable object through. Security must depend on "was it
+  # verified", not "did print() happen to succeed".
+  ser_failed <- FALSE
   serialized <- tryCatch(
     paste(utils::capture.output(print(result)), collapse = "\n"),
-    error = function(e) "")
+    error = function(e) { ser_failed <<- TRUE; "" })
+  if (isTRUE(ser_failed))
+    return("[data_shield] tool output withheld: result could not be serialized for scanning (fail-closed).")
   if (nzchar(serialized)) {
     filtered <- process(serialized)
     if (isTRUE(filtered$changed)) return(filtered$text)
@@ -2052,11 +2094,22 @@ refresh_data_shield_context <- function(client) {
   tool_name <- tryCatch(S7::prop(tool, "name"), error=function(e) NA_character_)
   wrapped <- function(...) {
     args <- list(...)
-    # Ingress rewrite: redact protected values inside string arguments before
-    # the tool runs (symmetric to the egress scan on the result). Runs after the
-    # permission gate, so a rewrite cannot bypass permission checks.
-    ing <- tryCatch(shield$scan_tool_args(args), error = function(e) NULL)
-    if (!is.null(ing) && identical(ing$action, "redact") && is.list(ing$args))
+    # Ingress scrub: redact protected values inside string arguments before the
+    # tool runs. FAIL-CLOSED (kiro round-4 #3): a scan_tool_args() exception, a
+    # malformed contract, or missing args must REJECT the call -- executing the
+    # ORIGINAL (unscrubbed) args would let a protected value reach a write/exec/
+    # net tool whose side effects cannot be undone at the result stage. Runs
+    # after the permission gate, so a rewrite cannot bypass permission checks.
+    scrub_failed <- FALSE
+    ing <- tryCatch(shield$scan_tool_args(args),
+                    error = function(e) { scrub_failed <<- TRUE; NULL })
+    if (isTRUE(scrub_failed) || !is.list(ing) || is.null(ing$action)) {
+      warning("data_shield: tool '", tool_name,
+              "' ingress scrub failed; call rejected (fail-closed).", call. = FALSE)
+      return(ellmer::tool_reject(
+        "[data_shield] tool arguments could not be scanned; call rejected (fail-closed)."))
+    }
+    if (identical(ing$action, "redact") && is.list(ing$args))
       args <- ing$args
     # Sync tools can stop() with an error message that embeds a protected value
     # (e.g. stop("bad row FAKEID001")); an unguarded error would skip egress and
@@ -2122,6 +2175,7 @@ refresh_data_shield_context <- function(client) {
   # NULL/Inf = unbounded. NA is NOT silently treated as unbounded here (the
   # register_data entry point rejects NA up front; kiro finding 3).
   max_values <- if (is.null(max_values)) Inf else max_values
+  raw_values <- character()   # deny_all only: full casefolded values for fixed-string match
   for (cn in intersect(cols, names(df))) {
     if (n >= max_values) { truncated <- TRUE; break }
     v <- df[[cn]]
@@ -2143,10 +2197,32 @@ refresh_data_shield_context <- function(client) {
       if (n >= max_values) { truncated <- TRUE; break }
       assign(x, TRUE, envir = set); n <- n + 1L
     }
+    if (isTRUE(deny_all))
+      raw_values <- c(raw_values, trimws(tolower(ch)))
   }
   attr(set, "n") <- n
   attr(set, "truncated") <- truncated
+  # For deny_all: keep the FULL casefolded values (short, multi-word, punctuated)
+  # so .data_shield_deny_scan can do fixed-string substring matching that the
+  # tokenizing value-match scanner would miss (kiro round-4 #4).
+  if (isTRUE(deny_all)) attr(set, "raw_values") <- unique(raw_values[nzchar(raw_values)])
   set
+}
+
+# Fixed-string deny scan (kiro round-4 #4): egress="none" means "these values may
+# NEVER appear". Unlike value_match (which tokenizes + drops <3-char tokens to
+# avoid false positives on high-entropy ids), the deny check must catch SHORT
+# (A/B) and MULTI-WORD ("alpha beta") values verbatim. So we substring-match the
+# full casefolded values with fixed=TRUE -- no tokenization, no length floor.
+#' @keywords internal
+.data_shield_deny_scan <- function(text, deny_index) {
+  vals <- tryCatch(attr(deny_index, "raw_values"), error = function(e) NULL)
+  if (!is.character(vals) || !length(vals) ||
+      !is.character(text) || length(text) != 1L || !nzchar(text))
+    return(list(hit = FALSE, n = 0L))
+  hay <- tolower(text)
+  hits <- vals[vapply(vals, function(v) grepl(v, hay, fixed = TRUE), logical(1))]
+  list(hit = length(hits) > 0L, n = length(hits))
 }
 
 # Scan text for indexed protected values (token-hash, v0).

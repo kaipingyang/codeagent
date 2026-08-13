@@ -169,6 +169,44 @@ test_that("codeagent_stream_async acc visible in error handler (partial text ret
   expect_equal(result$text, "partial")
 })
 
+test_that("shielded stream error path gates the partial reply (kiro round-4 #1)", {
+  skip_if_not_installed("coro"); skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+
+  # A shield with a protected value; the stream emits it then throws.
+  sh <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
+  df <- data.frame(id = sprintf("FAKEID%03d", 1:20), stringsAsFactors = FALSE)
+  sh$register_data(df, "d", cols = "id")
+  chat <- structure(list(
+    stream_async = function(...) {
+      coro::async_generator(function() {
+        coro::yield(ContentText("leaked FAKEID001"))
+        stop("mid-stream FAKEID002")
+      })()
+    },
+    get_tokens = function(...) data.frame(input=0L,output=0L,cached_input=0L,cost=0),
+    get_cost   = function(...) NA_real_,
+    on_tool_request = function(cb) invisible(NULL),
+    on_tool_result  = function(cb) invisible(NULL),
+    get_turns  = function(...) list()
+  ), class = "Chat")
+  attr(chat, "codeagent_data_shield") <- sh
+  client <- list(chat = chat, settings = list(data_shield_engine = sh))
+  class(client) <- "CodeagentClient"
+
+  err_msg <- NULL
+  p <- codeagent_stream_async(client, "test",
+                              on_error = function(msg, rec) err_msg <<- msg)
+  result <- .pump(p)
+
+  expect_equal(result$stop_reason, "error")
+  # the partial reply must be scanned on the error path -> protected value gone
+  expect_false(grepl("FAKEID001", result$text, fixed = TRUE))
+  # on_error must NOT surface the raw error (which embeds FAKEID002)
+  expect_false(is.null(err_msg))
+  expect_false(grepl("FAKEID002", err_msg, fixed = TRUE))
+})
+
 # ---------------------------------------------------------------------------
 # codeagent_stream: synchronous wrapper
 # ---------------------------------------------------------------------------

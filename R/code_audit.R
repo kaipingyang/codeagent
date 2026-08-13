@@ -176,11 +176,20 @@ NULL
                 reason = sprintf("non-source extension '%s'", ext)))
   if (!file.exists(resolved))
     return(list(ok = FALSE, resolved = resolved, reason = "file does not exist"))
-  # Must be a REGULAR file, not a directory/pipe/device (kiro round-3): a
-  # directory named "not-a-file.R" passes file.exists() but read()s to nothing,
-  # which was silently swallowed to risk=none. Reject non-regular targets.
-  if (dir.exists(resolved) || !isTRUE(file.info(resolved)$isdir == FALSE))
-    return(list(ok = FALSE, resolved = resolved, reason = "not a regular file"))
+  # Must be a REGULAR file, not a directory/FIFO/socket/device (kiro round-3 #dir
+  # + round-4 #8). A directory read()s to nothing (silently -> risk=none); a FIFO
+  # BLOCKS `file(open="rb")` forever waiting for a writer (DoS). file.info()$isdir
+  # only distinguishes directories, so a FIFO/socket slips through. Use POSIX
+  # `test -f` (true ONLY for a regular file) to reject every non-regular type.
+  if (dir.exists(resolved))
+    return(list(ok = FALSE, resolved = resolved, reason = "is a directory"))
+  is_regular <- tryCatch(
+    identical(0L, suppressWarnings(system2("test", c("-f", shQuote(resolved)),
+                                           stdout = FALSE, stderr = FALSE))),
+    error = function(e) FALSE)
+  if (!isTRUE(is_regular))
+    return(list(ok = FALSE, resolved = resolved,
+                reason = "not a regular file (FIFO/socket/device rejected)"))
   list(ok = TRUE, resolved = resolved, reason = NA_character_)
 }
 
@@ -204,6 +213,14 @@ NULL
 #' @keywords internal
 .audit_code_impl <- function(code, shield = NULL, project_root = getwd(),
                              max_bytes = 100000L, max_files = 20L) {
+  # Sanitize numeric caps (kiro round-4 #8): max_files = NA would make
+  # `n_read >= max_files` return NA and error the loop (public adapter then
+  # degrades to risk="review" -- weaker than block). Coerce NA/invalid to a safe
+  # bounded default; a non-positive cap reads nothing (all refs blocked).
+  if (length(max_files) != 1L || is.na(max_files) || !is.numeric(max_files))
+    max_files <- 20L
+  if (length(max_bytes) != 1L || is.na(max_bytes) || !is.numeric(max_bytes) || max_bytes <= 0)
+    max_bytes <- 100000L
   refs <- .audit_r_code_refs(code)
   allowed <- character(); blocked <- list(); reviews <- list()
   n_read <- 0L

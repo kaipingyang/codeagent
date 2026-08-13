@@ -157,15 +157,16 @@ server_chat <- function(input, output, session, chat, settings,
           }
         },
         error = function(e) {
+          # Fail-closed error message (kiro round-4 #1): when a shield is active,
+          # conditionMessage(e) may embed a protected value (mid-stream error),
+          # so withhold the raw error from the chat; show a fixed safe message.
+          emsg <- if (isTRUE(.shield_active))
+            "**Request failed.** Details withheld (data_shield fail-closed). Check the model endpoint / credentials and try again."
+          else
+            paste0("**Request failed.** ", conditionMessage(e),
+                   "\n\nCheck the model endpoint / credentials and try again.")
           tryCatch(
-            shinychat::chat_append(
-              "chat",
-              paste0(
-                "**Request failed.** ", conditionMessage(e),
-                "\n\nCheck the model endpoint / credentials and try again."
-              ),
-              session = session
-            ),
+            shinychat::chat_append("chat", emsg, session = session),
             error = function(e2) NULL
           )
         }

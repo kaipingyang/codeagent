@@ -157,8 +157,17 @@ NULL
           if (identical(act, "block"))
             return(list(action = "block", input = input,
                         text = ir$text %||% "[data_shield] image blocked."))
-          if (!identical(act, "pass") && !is.null(ir$content)) {
-            out[[i]] <- ir$content; agg <- "redact"
+          if (!identical(act, "pass")) {
+            # redact (or any non-pass): an image is IMMUTABLE content -- it cannot
+            # be redacted in place. If the scanner supplied replacement content,
+            # swap it; otherwise a "redact" with no content must ESCALATE TO BLOCK
+            # (kiro round-4 #6), never leave the original image through.
+            if (!is.null(ir$content)) {
+              out[[i]] <- ir$content; agg <- "redact"
+            } else {
+              return(list(action = "block", input = input,
+                          text = ir$text %||% "[data_shield] image blocked: scanner flagged it but supplied no replacement (fail-closed)."))
+            }
           }
         }
       } else {
