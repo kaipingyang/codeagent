@@ -418,29 +418,40 @@ mode resolves to `"ask"` (user confirms each call), `plan`/`dont_ask` →
 `.runr_to_tool_result()` is a special case of the `tool_display.R`
 adapter.
 
-**`tool_display.R`** — **typed tool-card contract + render dispatcher**.
-`extra$display$toolcard = {kind, status, icon, title, payload}` (private
-nested key (`toolcard`), never collides with shinychat’s reserved
-display keys). `kind ∈ {code, image, table, diff, text, error}`.
+**`tool_display.R`** — **typed tool-artifact contract + render
+dispatcher**. The typed artifact lives under
+`extra$codeagent$artifact = {kind, status, icon, title, payload}` — a
+**private key ellmer only transports** (never read), so shinychat never
+warns “Unrecognized field” (plan 35 B1: previously
+`extra$display$toolcard`/`right_output`, which shinychat’s
+`as_tool_result_display()` warned on + dropped).
+`kind ∈ {code, image, table, diff, text, error}`. `display` now carries
+ONLY shinychat-official fields:
+`title`/`icon`/`markdown`/`html`/`full_screen`/`open`.
 [`.tool_result2()`](https://kaipingyang.github.io/codeagent/reference/dot-tool_result2.md)
-builds it and renders the rich card ONCE into BOTH `display$html`
-(in-chat bubble, rendered natively by shinychat inside
-`<shiny-tool-result>`, `full_screen=TRUE` + `open=FALSE` =
-collapsed/expandable) AND `display$right_output` (right Output panel).
-`render_tool_output(display)` is the dispatcher
-(code→Prism-highlighted+copy, image→zoomable img+toolbar,
-table→reactable, diff→base-R-LCS colored, error→styled box).
-`.adapt_tool_result(result)` is the **universal adapter** called at the
-`server_chat.R` `on_tool_result` boundary — normalizes ANY native
-`ContentToolResult` (raw
+builds the artifact on `extra$codeagent`, then renders the rich card
+ONCE into `display$html` (in-chat bubble, rendered natively by shinychat
+inside `<shiny-tool-result>`, `full_screen=TRUE` + `open=FALSE` =
+collapsed/expandable). The right Output panel re-renders **on demand**
+from the artifact (`server_chat.R` `.push_output` calls
+`render_artifact(artifact, mode="panel")`) — no stored `right_output`
+copy. `render_artifact(artifact, mode=c("panel","bubble"))` is the
+dispatcher (code→Prism-highlighted+copy, image→zoomable img+toolbar,
+table→reactable, diff→base-R-LCS colored, error→styled box); the `mode`
+param is wired for future bubble/panel differentiation but currently
+renders identically (step 2, separately scheduled — differentiated
+views + A2UI). `.adapt_tool_result(result)` is the **universal adapter**
+called at the `server_chat.R` `on_tool_result` boundary — normalizes ANY
+native `ContentToolResult` (raw
 [`btw::btw_tools()`](https://posit-dev.github.io/btw/reference/btw_tools.html),
-web, skills) into the typed contract, idempotent. The 8 builtins + RunR
-use
+web, skills) into the typed contract, idempotent (checks
+`extra$codeagent$artifact` OR legacy `extra$display$toolcard` for old
+sessions). The 8 builtins + RunR use
 [`.tool_result2()`](https://kaipingyang.github.io/codeagent/reference/dot-tool_result2.md);
 everything else gets typed by the adapter. Interactivity
 (copy/zoom/fullscreen/download) is document-delegated JS in `agent.js`;
-CSS classes `.toolcard-*` in `styles.css`; Prism.js via CDN in
-`head_assets()`.
+CSS classes `.toolcard-*` + `data-toolcard-*` attributes in `styles.css`
+(unchanged across migration); Prism.js via CDN in `head_assets()`.
 
 **`tools_agent.R`** —
 [`agent_tool()`](https://kaipingyang.github.io/codeagent/reference/agent_tool.md)

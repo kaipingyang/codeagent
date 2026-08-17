@@ -1,10 +1,11 @@
 # Build a typed ContentToolResult
 
 Superset of the legacy `.tool_result()`: in addition to
-`title`/`markdown`, carries a typed `card` payload consumed by
-[`render_tool_output()`](https://kaipingyang.github.io/codeagent/reference/render_tool_output.md)
-and eagerly precomputes `right_output` so the existing server push path
-keeps working.
+`title`/`markdown`, carries a typed `artifact` payload (on
+`extra$codeagent`) consumed by
+[`render_artifact()`](https://kaipingyang.github.io/codeagent/reference/render_artifact.md),
+and renders the panel view into `display$html` so the in-chat card is
+rich without a separate stored copy.
 
 ## Usage
 

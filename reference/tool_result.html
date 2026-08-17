@@ -5,17 +5,17 @@ in codeagent's Shiny app and in any host UI that consumes the
 on_tool_result$display callback of codeagent_stream().
 value is the text the model sees; payload carries the rich artifact for
 the UI. Return the result from your tool's function body.
-A host UI reads display$toolcard$kind + display$toolcard$payload (the
+A host UI reads extra$codeagent$artifact$kind + ...$payload (the
 structured artifact, e.g. payload$df for a table); codeagent's Shiny app
-additionally receives a pre-rendered display$html / display$right_output."><meta property="og:description" content="Construct an ellmer::ContentToolResult that carries a typed display card,
+additionally receives a pre-rendered display$html."><meta property="og:description" content="Construct an ellmer::ContentToolResult that carries a typed display card,
 so a tool's output renders as a table / image / code / error / rich text both
 in codeagent's Shiny app and in any host UI that consumes the
 on_tool_result$display callback of codeagent_stream().
 value is the text the model sees; payload carries the rich artifact for
 the UI. Return the result from your tool's function body.
-A host UI reads display$toolcard$kind + display$toolcard$payload (the
+A host UI reads extra$codeagent$artifact$kind + ...$payload (the
 structured artifact, e.g. payload$df for a table); codeagent's Shiny app
-additionally receives a pre-rendered display$html / display$right_output."></head><body>
+additionally receives a pre-rendered display$html."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
@@ -76,9 +76,9 @@ in codeagent's Shiny app and in any host UI that consumes the
 <code>on_tool_result$display</code> callback of <code><a href="codeagent_stream.html">codeagent_stream()</a></code>.</p>
 <p><code>value</code> is the text the model sees; <code>payload</code> carries the rich artifact for
 the UI. Return the result from your tool's function body.</p>
-<p>A host UI reads <code>display$toolcard$kind</code> + <code>display$toolcard$payload</code> (the
+<p>A host UI reads <code>extra$codeagent$artifact$kind</code> + <code>...$payload</code> (the
 structured artifact, e.g. <code>payload$df</code> for a table); codeagent's Shiny app
-additionally receives a pre-rendered <code>display$html</code> / <code>display$right_output</code>.</p>
+additionally receives a pre-rendered <code>display$html</code>.</p>
     </div>
 
     <div class="section level2">

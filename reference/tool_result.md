@@ -11,10 +11,9 @@ of
 `value` is the text the model sees; `payload` carries the rich artifact
 for the UI. Return the result from your tool's function body.
 
-A host UI reads `display$toolcard$kind` + `display$toolcard$payload`
-(the structured artifact, e.g. `payload$df` for a table); codeagent's
-Shiny app additionally receives a pre-rendered `display$html` /
-`display$right_output`.
+A host UI reads `extra$codeagent$artifact$kind` + `...$payload` (the
+structured artifact, e.g. `payload$df` for a table); codeagent's Shiny
+app additionally receives a pre-rendered `display$html`.
 
 ## Usage
 
