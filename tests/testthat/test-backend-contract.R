@@ -50,12 +50,14 @@ test_that("Backend Contract v1: tool_result emits a typed display card", {
   tr <- tool_result("6 x 11 summary", kind = "table",
                      payload = list(df = utils::head(mtcars)), title = "Summary")
   expect_true(S7::S7_inherits(tr, ellmer::ContentToolResult))
-  disp <- tr@extra$display
-  expect_identical(disp$toolcard$kind, "table")
-  expect_true(is.data.frame(disp$toolcard$payload$df))
+  art <- tr@extra$codeagent$artifact
+  expect_identical(art$kind, "table")
+  expect_true(is.data.frame(art$payload$df))
+  # private artifact lives on extra$codeagent, never under extra$display
+  expect_null(tr@extra$display$toolcard)
 
   err <- tool_result("boom", kind = "error", payload = list(message = "boom"))
-  expect_identical(err@extra$display$toolcard$status, "error")
+  expect_identical(err@extra$codeagent$artifact$status, "error")
 
   expect_error(tool_result(1, kind = "text"))            # value must be char(1)
   expect_error(tool_result("x", kind = "bogus"))         # kind validated

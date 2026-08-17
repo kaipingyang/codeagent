@@ -15,12 +15,13 @@ NULL
 # ---------------------------------------------------------------------------
 
 # Wrap a tool result string in ContentToolResult with display metadata.
-.tool_result <- function(text, title = NULL, markdown = NULL,
-                          right_output = NULL) {
+# NOTE: display carries ONLY shinychat-official fields (title/markdown). The
+# legacy right_output param was removed (plan 35 B1) -- it was dead (no caller)
+# and putting it under extra$display triggered shinychat "Unrecognized field".
+.tool_result <- function(text, title = NULL, markdown = NULL) {
   display <- list()
   if (!is.null(title))        display$title        <- htmltools::HTML(title)
   if (!is.null(markdown))     display$markdown     <- markdown
-  if (!is.null(right_output)) display$right_output <- right_output
   if (length(display) == 0L)  display <- NULL
   ellmer::ContentToolResult(
     value = text,

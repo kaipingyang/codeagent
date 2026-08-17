@@ -35,7 +35,8 @@ An \code{ellmer::ContentToolResult}.
 }
 \description{
 Superset of the legacy \code{.tool_result()}: in addition to \code{title}/\code{markdown},
-carries a typed \code{card} payload consumed by \code{\link[=render_tool_output]{render_tool_output()}} and eagerly
-precomputes \code{right_output} so the existing server push path keeps working.
+carries a typed \code{artifact} payload (on \code{extra$codeagent}) consumed by
+\code{\link[=render_artifact]{render_artifact()}}, and renders the panel view into \code{display$html} so the
+in-chat card is rich without a separate stored copy.
 }
 \keyword{internal}

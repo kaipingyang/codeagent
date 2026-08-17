@@ -66,16 +66,22 @@ test_that("RunR transforms btw result into codeagent display contract", {
   res <- t(code = "1:5", `_intent` = "test")
   expect_true(S7::S7_inherits(res, ellmer::ContentToolResult))
   disp <- res@extra$display
-  expect_true(all(c("title", "markdown", "right_output") %in% names(disp)))
+  expect_true(all(c("title", "markdown") %in% names(disp)))
+  expect_null(disp$right_output)
   expect_match(disp$markdown, "```r", fixed = TRUE)
 })
 
-test_that("RunR embeds plot as base64 img in right_output", {
+test_that("RunR embeds plot as base64 img in the artifact payload", {
   skip_if_not_installed("btw")
   t <- run_r_tool(mode = "bypass")
   res <- t(code = "plot(1:10)", `_intent` = "test")
-  ro <- as.character(res@extra$display$right_output)
-  expect_true(grepl("data:image", ro, fixed = TRUE))
+  art <- res@extra$codeagent$artifact
+  expect_identical(art$kind, "image")
+  imgs <- art$payload$images
+  expect_true(length(imgs) >= 1L && nzchar(imgs[[1]]$b64))
+  # rendered panel view embeds it as a data: URI
+  h <- as.character(htmltools::tagList(codeagent:::render_artifact(art, mode = "panel")))
+  expect_true(grepl("data:image", h, fixed = TRUE))
   # LLM value notes the plot
   expect_match(.tool_val(res), "plot")
 })

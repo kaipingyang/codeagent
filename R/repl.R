@@ -143,9 +143,10 @@ NULL
 # Summarise a tool result for the one-line completion notice.
 # Prefers the typed display title; falls back to a char count of the value.
 .repl_tool_summary <- function(result) {
-  disp <- tryCatch(result@extra$display, error = function(e) NULL)
+  artifact <- tryCatch(result@extra$codeagent$artifact, error = function(e) NULL)
+  disp     <- tryCatch(result@extra$display, error = function(e) NULL)
   title <- tryCatch(
-    disp$toolcard$title %||% gsub("<[^>]+>", "", as.character(disp$title %||% "")),
+    artifact$title %||% gsub("<[^>]+>", "", as.character(disp$title %||% "")),
     error = function(e) ""
   )
   if (!is.null(title) && nzchar(title)) return(trimws(title))

@@ -37,7 +37,7 @@ read_tool <- function(mode = "default", rules = list()) {
         range_str <- if (!is.null(offset) || !is.null(limit))
           sprintf(" (lines %d-%d)", start, end) else ""
 
-        # right_output: code preview for the right panel
+        # code artifact -> in-chat card + right panel preview
         .tool_result2(
           result,
           kind     = "code",

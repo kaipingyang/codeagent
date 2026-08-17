@@ -1,13 +1,15 @@
 #' @title Typed Tool-Result Display Contract + Render Dispatcher
-#' @description Rich, interactive tool-card rendering for the right Output panel.
-#'   Defines a typed display contract (`extra$display$toolcard`) layered on top of the
-#'   existing `{title, markdown, right_output}` keys, a render dispatcher that
-#'   branches on result kind (code/image/table/diff/text/error), and a
-#'   generalized adapter that normalizes any native `ContentToolResult` -- raw
-#'   `btw::btw_tools()` results included -- into the typed contract.
+#' @description Rich, interactive tool-card rendering for both the in-chat bubble
+#'   and the right Output panel. Defines a typed artifact contract stored under
+#'   `extra$codeagent$artifact` (a private key ellmer only transports, so
+#'   shinychat never warns about it), a render dispatcher that branches on the
+#'   artifact kind (code/image/table/diff/text/error), and a generalized adapter
+#'   that normalizes any native `ContentToolResult` -- raw `btw::btw_tools()`
+#'   results included -- into the typed contract.
 #'
-#'   Design: the private `card` sub-list never collides with shinychat's reserved
-#'   display keys (title/icon/markdown/html/text), so the in-chat card keeps
+#'   Design: the artifact lives on `extra$codeagent`, never under `extra$display`,
+#'   so `display` carries ONLY shinychat-official fields (title/icon/markdown/
+#'   html/full_screen/open). The in-chat card keeps
 #'   rendering natively while codeagent owns the right-panel rendering.
 #' @name tool_display
 #' @keywords internal
@@ -69,8 +71,9 @@ NULL
 #' Build a typed ContentToolResult
 #'
 #' Superset of the legacy `.tool_result()`: in addition to `title`/`markdown`,
-#' carries a typed `card` payload consumed by [render_tool_output()] and eagerly
-#' precomputes `right_output` so the existing server push path keeps working.
+#' carries a typed `artifact` payload (on `extra$codeagent`) consumed by
+#' [render_artifact()], and renders the panel view into `display$html` so the
+#' in-chat card is rich without a separate stored copy.
 #'
 #' @param text Character. LLM-facing value.
 #' @param kind One of `"code"`, `"image"`, `"table"`, `"diff"`, `"text"`,
@@ -85,7 +88,14 @@ NULL
 .tool_result2 <- function(text, kind = "text", status = "success",
                           icon = NULL, title = NULL, payload = list(),
                           markdown = NULL) {
-  toolcard <- list(
+  # artifact = the single, UI-agnostic structured data source (kind/status/
+  # payload). It lives on `extra$codeagent` (NOT `extra$display`) so shinychat --
+  # which validates `extra$display` against its official field set and warns
+  # "Unrecognized field ... ignoring" -- never sees it. Other UIs (shinyAssistantUI,
+  # a React host, future A2UI) read `extra$codeagent$artifact` and render it
+  # themselves. This is the artifact/canvas pattern: one data source, multiple
+  # views. (plan 35 B1 step 1.)
+  artifact <- list(
     kind    = kind,
     status  = status,
     icon    = icon,
@@ -93,34 +103,35 @@ NULL
     payload = payload
   )
 
-  display <- list(toolcard = toolcard)
+  # display = ONLY shinychat's official fields. The rich card HTML goes into the
+  # official `html` field (shinychat injects it via innerHTML + Shiny.bindAll, so
+  # reactable/htmlwidgets mount). No private keys here -> no shinychat warning.
+  display <- list()
   if (!is.null(title))    display$title    <- htmltools::HTML(as.character(title))
   if (!is.null(icon))     display$icon     <- .icon_tag(icon)
   if (!is.null(markdown)) display$markdown <- markdown
 
-  # Render the rich card once, reuse for BOTH the in-chat bubble (display$html,
-  # rendered natively by shinychat inside <shiny-tool-result>) and the right
-  # Output panel (display$right_output, consumed by server_chat.R).
-  #
-  # full_screen=TRUE gives the whole card a single expand affordance (shinychat
-  # for the bubble, bslib card for the panel). The in-card toolbar only carries
-  # zoom/download (NO separate fullscreen button) so there is exactly one
-  # fullscreen control and no event conflict. All toolbar buttons are
-  # type="button" + document-delegated, so they survive card re-render/expand.
-  rendered <- tryCatch(render_tool_output(display), error = function(e) NULL)
+  # Render the artifact once. Step 1: bubble and panel share one render (mode is
+  # accepted but not yet branched -- step 2 will add a compact "bubble" vs full
+  # "panel" split). The right Output panel re-renders from the artifact on demand
+  # (server_chat), so we DO NOT store a separate right_output copy anymore.
+  rendered <- tryCatch(render_artifact(artifact, mode = "panel"),
+                       error = function(e) NULL)
   if (!is.null(rendered)) {
-    display$html         <- rendered   # in-chat card body (shinychat-native)
-    display$right_output <- rendered   # right Output panel
-    display$full_screen  <- TRUE       # single expand affordance per card
-    # Auto-expand: errors always open; long text output opens so user sees it
-    # without an extra click (mirrors side's tool-shell.R display$open logic).
+    display$html        <- rendered      # official field -> in-chat bubble
+    display$full_screen <- TRUE          # shinychat card full-screen affordance
+    # Auto-expand (official `open`): errors always open; long text opens so the
+    # user sees it without an extra click.
     display$open <- identical(status, "error") ||
                     (nchar(text %||% "") > 500L)
   }
 
   ellmer::ContentToolResult(
     value = text,
-    extra = list(display = display)
+    extra = list(
+      display   = display,                    # shinychat-only (official fields)
+      codeagent = list(artifact = artifact)   # private data source (right panel / other UIs)
+    )
   )
 }
 
@@ -135,9 +146,9 @@ NULL
 #' `value` is the text the model sees; `payload` carries the rich artifact for
 #' the UI. Return the result from your tool's function body.
 #'
-#' A host UI reads `display$toolcard$kind` + `display$toolcard$payload` (the
+#' A host UI reads `extra$codeagent$artifact$kind` + `...$payload` (the
 #' structured artifact, e.g. `payload$df` for a table); codeagent's Shiny app
-#' additionally receives a pre-rendered `display$html` / `display$right_output`.
+#' additionally receives a pre-rendered `display$html`.
 #'
 #' @param value Character(1). Text summary returned to the model.
 #' @param kind One of `"text"`, `"table"`, `"image"`, `"code"`, `"diff"`,
@@ -190,34 +201,41 @@ tool_result <- function(value,
 # Render dispatcher
 # ---------------------------------------------------------------------------
 
-# Extract a plain-text Output-panel card title from a tool-result `display`
-# object. PURE: strips any HTML tags and falls back through
-# display$title -> display$toolcard$title -> "Output". Used by server_chat's
-# .push_output; separated out so the title logic is unit-testable.
-.output_title <- function(display) {
+# Extract a plain-text Output-panel card title from an artifact (or a display).
+# PURE: strips HTML, falls back title -> artifact$title -> "Output". Used by
+# server_chat's .push_output; kept unit-testable.
+.artifact_title <- function(artifact) {
   tryCatch(
     gsub("<[^>]+>", "",
-         as.character(display$title %||% display$toolcard$title %||% "Output")),
+         as.character(artifact$title %||% artifact$toolcard$title %||%
+                      artifact$payload$title %||% "Output")),
     error = function(e) "Output"
   )
 }
 
-#' Render a typed tool-result display into an htmltools tag
+#' Render an artifact (typed tool-result data source) into an htmltools tag
 #'
-#' Branches on `display$toolcard$kind`. Falls back to `right_output`, then markdown,
-#' then a plain `<pre>` so untyped / raw results still render.
+#' Branches on `artifact$kind` (code/image/table/diff/text/error). This is the
+#' single renderer both the in-chat bubble and the right Output panel use.
 #'
-#' @param display A `display` list (the `extra$display` of a ContentToolResult).
+#' @param artifact The structured data source: `list(kind, status, icon, title,
+#'   payload)` from `extra$codeagent$artifact`. (Also tolerates being handed a
+#'   whole `display` list carrying a legacy `$toolcard`, for backward-compat.)
+#' @param mode `"bubble"` (compact, in-chat) or `"panel"` (full, right Output).
+#'   Step 1: accepted but not yet branched -- both render identically. Step 2
+#'   will split compact vs full. (plan 35 B1.)
 #' @return An htmltools tag.
 #' @keywords internal
-render_tool_output <- function(display) {
-  toolcard <- tryCatch(display$toolcard, error = function(e) NULL)
+render_artifact <- function(artifact, mode = c("panel", "bubble")) {
+  mode <- match.arg(mode)
+  # Backward-compat: accept a legacy `display` list (has $toolcard) or a raw
+  # artifact. Resolve to the artifact.
+  if (is.list(artifact) && !is.null(artifact$toolcard))
+    artifact <- artifact$toolcard
 
-  if (is.null(toolcard) || is.null(toolcard$kind)) {
-    # Backward-compat fallback paths.
-    ro <- tryCatch(display$right_output, error = function(e) NULL)
-    if (!is.null(ro)) return(ro)
-    md <- tryCatch(display$markdown, error = function(e) NULL)
+  if (is.null(artifact) || is.null(artifact$kind)) {
+    # Fallback: markdown -> <pre>.
+    md <- tryCatch(artifact$markdown %||% artifact$payload$markdown, error = function(e) NULL)
     if (!is.null(md) && nzchar(md)) {
       html <- tryCatch(commonmark::markdown_html(md),
                        error = function(e) paste0("<pre>", md, "</pre>"))
@@ -227,21 +245,21 @@ render_tool_output <- function(display) {
   }
 
   body <- switch(
-    toolcard$kind,
-    code  = .render_code(toolcard$payload),
-    image = .render_image(toolcard$payload),
-    table = .render_table(toolcard$payload),
-    diff  = .render_diff(toolcard$payload),
-    error = .render_error(toolcard$payload),
-    text  = .render_text(toolcard$payload),
-    .render_text(toolcard$payload)  # default
+    artifact$kind,
+    code  = .render_code(artifact$payload),
+    image = .render_image(artifact$payload),
+    table = .render_table(artifact$payload),
+    diff  = .render_diff(artifact$payload),
+    error = .render_error(artifact$payload),
+    text  = .render_text(artifact$payload),
+    .render_text(artifact$payload)  # default
   )
 
-  status_class <- paste0("toolcard-status-", toolcard$status %||% "success")
+  status_class <- paste0("toolcard-status-", artifact$status %||% "success")
   htmltools::tags$div(
     class            = paste("toolcard", status_class),
-    `data-toolcard-kind`   = toolcard$kind,
-    `data-toolcard-status` = toolcard$status %||% "success",
+    `data-toolcard-kind`   = artifact$kind,
+    `data-toolcard-status` = artifact$status %||% "success",
     body
   )
 }
@@ -480,7 +498,7 @@ render_tool_output <- function(display) {
 
 #' Normalize any tool result into the typed display contract
 #'
-#' Idempotent: if `result@extra$display$toolcard` already exists it is returned
+#' Idempotent: if `result@extra$codeagent$artifact` already exists it is returned
 #' unchanged. Otherwise inspects the result (and btw's `@extra$contents` Content
 #' objects) to classify a kind and build a typed `ContentToolResult` whose
 #' `@value` is preserved for the LLM.
@@ -489,20 +507,41 @@ render_tool_output <- function(display) {
 #' @return A typed `ContentToolResult`.
 #' @keywords internal
 .adapt_tool_result <- function(result) {
-  # Already typed?
-  has_toolcard <- tryCatch(!is.null(result@extra$display$toolcard),
-                     error = function(e) FALSE)
-  if (isTRUE(has_toolcard)) return(result)
+  # Already migrated? artifact lives on extra$codeagent -> return unchanged.
+  if (isTRUE(tryCatch(!is.null(result@extra$codeagent$artifact),
+                      error = function(e) FALSE)))
+    return(result)
+
+  # Pre-migration session: a typed card sits under extra$display$toolcard (which
+  # shinychat now warns on + drops). Promote it to extra$codeagent$artifact,
+  # strip it from display, and re-render the panel html into the official
+  # display$html field so old sessions render rich + warning-free.
+  legacy_card <- tryCatch(result@extra$display$toolcard, error = function(e) NULL)
+  if (!is.null(legacy_card)) {
+    ex <- tryCatch(result@extra, error = function(e) list()) %||% list()
+    disp <- ex$display %||% list()
+    disp$toolcard <- NULL
+    disp$right_output <- NULL
+    rendered <- tryCatch(render_artifact(legacy_card, mode = "panel"),
+                         error = function(e) NULL)
+    if (!is.null(rendered)) {
+      disp$html <- rendered
+      if (is.null(disp$full_screen)) disp$full_screen <- TRUE
+    }
+    ex$display <- if (length(disp)) disp else NULL
+    ex$codeagent <- c(ex$codeagent %||% list(), list(artifact = legacy_card))
+    result@extra <- ex
+    return(result)
+  }
 
   tool_name <- tryCatch(result@request@name, error = function(e) NULL) %||% "tool"
   icon      <- .icon_for_tool(tool_name)
   value     <- tryCatch(as.character(result@value), error = function(e) "")
   contents  <- tryCatch(result@extra$contents, error = function(e) NULL)
 
-  # If it has codeagent-legacy display keys but no `card`, keep them and just
-  # attach a generic text `card` so the dispatcher has a kind.
+  # Legacy display keys from raw btw / pre-migration results (markdown/title).
+  # right_output is no longer produced or consumed (removed in plan 35 B1).
   legacy_md <- tryCatch(result@extra$display$markdown, error = function(e) NULL)
-  legacy_ro <- tryCatch(result@extra$display$right_output, error = function(e) NULL)
   legacy_ti <- tryCatch(result@extra$display$title, error = function(e) NULL)
 
   images <- list(); text_parts <- character(0); has_error <- FALSE
@@ -548,9 +587,5 @@ render_tool_output <- function(display) {
     payload  = payload,
     markdown = legacy_md
   )
-  # Preserve a pre-rendered legacy right_output if the adapter produced none.
-  if (is.null(res@extra$display$right_output) && !is.null(legacy_ro)) {
-    res@extra$display$right_output <- legacy_ro
-  }
   res
 }

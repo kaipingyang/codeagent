@@ -48,9 +48,9 @@ in codeagent's Shiny app and in any host UI that consumes the
 \code{value} is the text the model sees; \code{payload} carries the rich artifact for
 the UI. Return the result from your tool's function body.
 
-A host UI reads \code{display$toolcard$kind} + \code{display$toolcard$payload} (the
+A host UI reads \code{extra$codeagent$artifact$kind} + \code{...$payload} (the
 structured artifact, e.g. \code{payload$df} for a table); codeagent's Shiny app
-additionally receives a pre-rendered \code{display$html} / \code{display$right_output}.
+additionally receives a pre-rendered \code{display$html}.
 }
 \examples{
 \dontrun{

@@ -20,11 +20,13 @@ server_chat <- function(input, output, session, chat, settings,
   }
 
   # Push a tool result into the right Output panel via the typed dispatcher.
+  # The right panel re-renders the PANEL view from the artifact data source
+  # (extra$codeagent$artifact) on demand -- no stored right_output (plan 35 B1).
   # Returns the (possibly adapted) result so callers can store it.
   .push_output <- function(result, immediate = TRUE) {
-    display <- tryCatch(result@extra$display, error = function(e) NULL)
-    title   <- .output_title(display)
-    content <- tryCatch(render_tool_output(display), error = function(e) NULL)
+    artifact <- tryCatch(result@extra$codeagent$artifact, error = function(e) NULL)
+    title   <- .artifact_title(artifact)
+    content <- tryCatch(render_artifact(artifact, mode = "panel"), error = function(e) NULL)
     if (is.null(content)) return(invisible(result))
 
     # Two-phase: instant raw-HTML push before stream finishes, then renderUI.

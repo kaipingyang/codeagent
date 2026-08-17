@@ -4,15 +4,17 @@
 \alias{tool_display}
 \title{Typed Tool-Result Display Contract + Render Dispatcher}
 \description{
-Rich, interactive tool-card rendering for the right Output panel.
-Defines a typed display contract (\code{extra$display$toolcard}) layered on top of the
-existing \verb{\{title, markdown, right_output\}} keys, a render dispatcher that
-branches on result kind (code/image/table/diff/text/error), and a
-generalized adapter that normalizes any native \code{ContentToolResult} -- raw
-\code{btw::btw_tools()} results included -- into the typed contract.
+Rich, interactive tool-card rendering for both the in-chat bubble
+and the right Output panel. Defines a typed artifact contract stored under
+\code{extra$codeagent$artifact} (a private key ellmer only transports, so
+shinychat never warns about it), a render dispatcher that branches on the
+artifact kind (code/image/table/diff/text/error), and a generalized adapter
+that normalizes any native \code{ContentToolResult} -- raw \code{btw::btw_tools()}
+results included -- into the typed contract.
 
-Design: the private \code{card} sub-list never collides with shinychat's reserved
-display keys (title/icon/markdown/html/text), so the in-chat card keeps
+Design: the artifact lives on \code{extra$codeagent}, never under \code{extra$display},
+so \code{display} carries ONLY shinychat-official fields (title/icon/markdown/
+html/full_screen/open). The in-chat card keeps
 rendering natively while codeagent owns the right-panel rendering.
 }
 \keyword{internal}
