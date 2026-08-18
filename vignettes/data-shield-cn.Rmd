@@ -16,9 +16,9 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 > **状态 — P0/P0.5/P1/P1.5/C2/C5-policy 已实现；完整设计仍在推进。**
 > egress 行数上限、受保护值精确匹配、严格 `DescribeData`、有序扫描器管道、
 > 通用工具调用前置扫描、按工具策略、基于 promise 的 egress 审批、便携式
-> 路径/符号链接沙箱、以及可选的脱敏代码语义审查器均已接线完成。完整 OS
-> 执行隔离适配器与 `distributions="on"/"dp"` 仍是路线图项。默认关闭
-> （`data_shield = NULL`）。
+> 路径/符号链接沙箱、可选的脱敏代码语义审查器、以及 DP 加噪类别计数
+> （`distributions="dp"`）均已接线完成。完整 OS 执行隔离适配器与数值/连续
+> 统计量的差分隐私仍是路线图项。默认关闭（`data_shield = NULL`）。
 
 ## 为什么需要它
 
@@ -147,13 +147,36 @@ data.frame/tibble 打印签名或多行矩形表格外观时才会触发。
 
 | 参数 | 默认值 | 实际效果 |
 |---|---|---|
-| `distributions` | `"off"` | 已实现的严格模式：不给直方图/分位数/均值/类别计数/行/自由文本示例。`on`/`dp` 是路线图项，会显式报错 |
-| `k_anon` | `5` | 支持行数少于 k 的类别标签会变成 `<rare suppressed>` |
+| `distributions` | `"off"` | `"off"`：不给计数，只给类别标签。`"on"`：真实类别计数（无隐私保护）。`"dp"`：Laplace 加噪的类别计数，从每个 dataset 的 `dp_budget` 里扣 `dp_epsilon`；预算耗尽后降级为 `"off"` 式的纯标签输出。**数值/日期/logical/自由文本列在三种模式下行为完全不变**——见下文 |
+| `k_anon` | `5` | 支持行数少于 k 的类别标签会变成 `<rare suppressed>`（三种 `distributions` 模式下都适用，计数是在这一步之后才加的） |
 | `category_max` | `20` | 判定为分类处理的最大字符值去重数 |
 | `category_ratio` | `0.2` | 判定为字符分类处理的最大去重/非缺失比率 |
+| `dp_epsilon` | `1` | `"dp"` 模式下，每次 `describe()`/schema-block 调用里每个暴露计数的分类列收取的隐私成本，在该列存活类别间均分。只在 `"dp"` 下有意义 |
+| `dp_budget` | `5` | `"dp"` 模式下每个 dataset 的总 epsilon 预算——一次性额度，不做时间窗口重置。只在 `"dp"` 下有意义 |
 
 敏感度仍然钳制输出：`identifier`/`quasi` 值始终被抑制；`measure`/`open` 可能给
-数值/日期的 min-max 和安全的类别标签（不给计数）。
+数值/日期的 min-max 和安全的类别标签，`"on"`/`"dp"` 下会附加计数。
+
+**v1 范围边界**：只有分类列会得到计数。数值列（mean/sum/分位数等）不在本轮范围
+内——对连续统计量做差分隐私需要一个"裁剪边界"来算噪声强度，而这个边界不能从
+真实数据自己的 min/max 直接算（那样等于用私有信息定义隐私保护的强度，是已知的
+DP 陷阱）。在宿主能提供真实的、不依赖数据本身的边界之前，`range=[min, max]`
+在三种 `distributions` 模式下保持不变。logical 列和自由文本列同理不变。
+进展跟踪：`references/plan/31x-dp-distributions.TODO.md`。
+
+某个 dataset 的 `dp_budget` 耗尽是静默且永久的（直到该 dataset 重新注册为止）：
+不报错、不给真实计数，只是悄悄退回 `"off"` 式的纯标签输出。调用
+`shield$dp_budget_remaining(name)`（不传参数则返回所有已注册 dataset 的具名
+向量）查看剩余预算，供宿主端展示"隐私预算：2/5"之类的提示。每次消耗/耗尽都会
+记进审计日志（`strategy = "dp_budget"`）。
+
+```r
+dp_metadata <- shield_describe(distributions = "dp", dp_epsilon = 1, dp_budget = 5)
+shield <- DataShield$new(strategies = list(dp_metadata))
+shield$register_data(df, name = "study")
+shield$describe("study")             # 如果 "arm" 是分类列，花掉 1 epsilon
+shield$dp_budget_remaining("study")  # 4
+```
 
 ### `shield_regex()` —— 未注册的 PII/密钥
 
@@ -558,8 +581,10 @@ btw 不被假定提供 OS 级隔离。它的文件工具用 `fs::path_has_parent
   上限漏过的**定点**泄漏（例如只 print 一个病人的名字）。
 - **P1 —— `DescribeData` + 受保护数据注册表（严格模式已实现）**：模型的
   经批准的强化视图（schema、敏感度、是否缺失、measure/open 的范围和
-  满足 k-支持的标签；不给分布/计数/示例）。`distributions="on"/"dp"`
-  仍是后续阶段。
+  满足 k-支持的标签；严格 `"off"` 模式下不给分布/计数/示例）。
+  `distributions="on"`/`"dp"`（类别计数，真实值或按 dataset 记账的 DP
+  加噪值）**已实现**；数值/连续统计量的 DP 仍是后续阶段（需要宿主提供
+  不依赖数据本身的裁剪边界）。
 - **P1.5 —— 有序 scanner 管道 + `shield_regex()`（已实现）**：未注册的
   PII/密钥会被精确定位并脱敏/拦截；自定义 scanner 失败会 fail closed。
 - **C2 —— `shield_ingress()`（已实现）**：所有工具参数都经过中央权限门；
@@ -569,7 +594,7 @@ btw 不被假定提供 OS 级隔离。它的文件工具用 `fs::path_has_parent
   完整 OS 进程适配器仍是路线图项。
 - **C4 —— `shield_reviewer()`（已实现）**：可选的脱敏 ingress 代码语义
   审查，使用一个全新的小模型 Chat；远程 raw 输出仍被禁止。
-- **P2 —— 完整 OS 沙箱适配器，以及分布查询的差分隐私（opt-in）。**
+- **P2 —— 完整 OS 沙箱适配器，以及数值/连续统计量的差分隐私（opt-in）。**
 
 ## 子代理边界
 

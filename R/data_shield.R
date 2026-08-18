@@ -6,6 +6,12 @@
 # scanner and pass raw text -- so it is rejected, not ignored (kiro round-2 #3).
 .DATA_SHIELD_KNOWN_SCANNERS <- c("regex", "value_match")
 
+# DP categorical-count defaults (31x). Conservative: ~5 column-reveals worth of
+# budget per dataset at epsilon=1 per reveal. Both overridable via
+# shield_describe(dp_epsilon=, dp_budget=).
+.DATA_SHIELD_DP_EPSILON_DEFAULT <- 1
+.DATA_SHIELD_DP_BUDGET_DEFAULT  <- 5
+
 # Validate a scanners= argument: every entry must be a known scanner name.
 # Returns the validated vector or stop()s on an unknown name (fail-closed).
 .data_shield_validate_scanners <- function(scanners) {
@@ -59,10 +65,21 @@
 #' numeric/date min-max and low-cardinality labels whose support is at least
 #' `k_anon` (labels are shown without counts).
 #'
-#' @param distributions `"off"` is implemented and is the safe default.
-#'   `"on"` and `"dp"` are accepted as roadmap configuration but DescribeData
-#'   returns an explicit not-implemented error instead of silently weakening
-#'   privacy.
+#' `distributions = "on"`/`"dp"` add a per-category COUNT next to each
+#' k-anonymity-surviving categorical label (`"on"` = real count, `"dp"` =
+#' Laplace-noised count). Numeric/date/logical/free-text columns are
+#' UNCHANGED in all three modes -- differential privacy for continuous
+#' statistics (mean/sum) needs a clipping bound that must not be derived from
+#' the private data's own min/max, and that is not yet implemented (31x scope
+#' limit; tracked in `references/plan/31x-dp-distributions.TODO.md`).
+#'
+#' @param distributions `"off"` (default, safe): no counts, labels only.
+#'   `"on"`: real per-category counts, no privacy protection -- explicit
+#'   opt-in. `"dp"`: Laplace-noised per-category counts, spending `dp_epsilon`
+#'   from that dataset's `dp_budget` on every `describe()`/schema-block call
+#'   that exposes them; once a dataset's budget is exhausted it silently
+#'   degrades to `"off"`-style labels-only output for that dataset (no error,
+#'   no raw count, permanent until re-registration).
 #' @param k_anon Minimum rows supporting a categorical label before it may be
 #'   exposed; rarer labels become `<rare suppressed>`.
 #' @param category_max Maximum distinct values for automatically treating a
@@ -70,16 +87,32 @@
 #' @param category_ratio Maximum `n_distinct / n_non_missing` ratio for automatic
 #'   character-categorical treatment. Higher-cardinality text is marked
 #'   `free_text` and no examples are returned.
+#' @param dp_epsilon Privacy cost (epsilon) charged per describe() call for
+#'   each categorical column exposed under `distributions = "dp"`; split
+#'   across that column's surviving categories. Only meaningful with `"dp"`.
+#' @param dp_budget Total per-dataset epsilon budget under `distributions =
+#'   "dp"`; a one-time allowance (no time-window reset). Only meaningful with
+#'   `"dp"`.
 #' @return A Data Shield strategy specification.
 #' @examples
 #' strict_metadata <- shield_describe(k_anon = 5)
+#' dp_metadata <- shield_describe(distributions = "dp", dp_epsilon = 1, dp_budget = 5)
 #' @export
 shield_describe <- function(distributions = "off", k_anon = 5L,
-                            category_max = 20L, category_ratio = 0.2) {
+                            category_max = 20L, category_ratio = 0.2,
+                            dp_epsilon = .DATA_SHIELD_DP_EPSILON_DEFAULT,
+                            dp_budget  = .DATA_SHIELD_DP_BUDGET_DEFAULT) {
+  if (!is.numeric(dp_epsilon) || length(dp_epsilon) != 1L || is.na(dp_epsilon) ||
+      dp_epsilon <= 0)
+    stop("`dp_epsilon` must be a single positive number.", call. = FALSE)
+  if (!is.numeric(dp_budget) || length(dp_budget) != 1L || is.na(dp_budget) ||
+      dp_budget <= 0)
+    stop("`dp_budget` must be a single positive number.", call. = FALSE)
   .new_shield_strategy(
     "describe", distributions = match.arg(distributions, c("off", "on", "dp")),
     k_anon = as.integer(k_anon), category_max = as.integer(category_max),
-    category_ratio = as.numeric(category_ratio))
+    category_ratio = as.numeric(category_ratio),
+    dp_epsilon = as.numeric(dp_epsilon), dp_budget = as.numeric(dp_budget))
 }
 
 #' Configure tool-result egress protection
@@ -686,13 +719,18 @@ DataShield <- R6::R6Class(
     #' @param max_rows Direct `row_cap` value when `strategies = NULL`: `0`
     #'   exposes no raw tabular line; positive values retain that many leading
     #'   printed lines.
-    #' @param distributions Direct DescribeData policy. Strict `"off"` only is
-    #'   implemented; `"on"`/`"dp"` fail explicitly.
+    #' @param distributions Direct DescribeData policy. `"off"` (default,
+    #'   safe): labels only. `"on"`/`"dp"`: real/DP-noised per-category counts
+    #'   (see [shield_describe()]); numeric/date columns unchanged in all modes.
     #' @param k_anon Minimum category support for exposing a label.
     #' @param category_max Maximum distinct character values treated as a category.
     #' @param category_ratio Maximum distinct/non-missing ratio for character
     #'   categorical treatment.
     #' @param audit_max Maximum in-memory non-sensitive decision events retained.
+    #' @param dp_epsilon Direct per-column-per-call DP privacy cost when
+    #'   `distributions = "dp"` (see [shield_describe()]).
+    #' @param dp_budget Direct per-dataset total DP privacy budget when
+    #'   `distributions = "dp"` (see [shield_describe()]).
     #' @param strategies Optional ordered list from [shield_describe()],
     #'   [shield_egress()], [shield_regex()], [shield_ingress()],
     #'   [shield_tool_policy()], [shield_sandbox()], and [shield_reviewer()].
@@ -700,12 +738,16 @@ DataShield <- R6::R6Class(
     #'   egress execution order.
     initialize = function(max_rows = 0L, distributions = "off", k_anon = 5L,
                           category_max = 20L, category_ratio = 0.2,
-                          audit_max = 1000L, strategies = NULL) {
+                          audit_max = 1000L,
+                          dp_epsilon = .DATA_SHIELD_DP_EPSILON_DEFAULT,
+                          dp_budget  = .DATA_SHIELD_DP_BUDGET_DEFAULT,
+                          strategies = NULL) {
       private$config <- list(
         max_rows = as.integer(max_rows),
         distributions = match.arg(distributions, c("off", "on", "dp")),
         k_anon = as.integer(k_anon), category_max = as.integer(category_max),
         category_ratio = as.numeric(category_ratio),
+        dp_epsilon = as.numeric(dp_epsilon), dp_budget = as.numeric(dp_budget),
         detectors = c("row_cap", "value_match"), on_fail = "redact",
         allow_raw_approval = FALSE, approval_timeout = 60,
         describe_enabled = TRUE, egress_enabled = TRUE)
@@ -713,6 +755,7 @@ DataShield <- R6::R6Class(
       private$assets <- list()
       private$index <- new.env(parent = emptyenv())
       private$deny_index <- new.env(parent = emptyenv())
+      private$dp_budget <- new.env(parent = emptyenv())
       private$strategies <- list()
       private$egress_pipeline <- list()
       private$ingress_pipeline <- list()
@@ -824,6 +867,12 @@ DataShield <- R6::R6Class(
         column_access = col_access,
         index = idx, index_columns = index_cols,
         deny_index = deny_idx, deny_columns = none_egress_cols)
+      # Initialize this dataset's DP privacy budget (31x). One-time allowance,
+      # no time-window reset; consumed by describe()/schema_block() and never
+      # replenished except by re-registering the dataset.
+      if (identical(private$config$distributions, "dp"))
+        private$dp_budget[[name]] <- private$config$dp_budget %||%
+          .DATA_SHIELD_DP_BUDGET_DEFAULT
       private$rebuild_index()
       invisible(length(ls(idx, all.names = TRUE)))
     },
@@ -955,9 +1004,18 @@ DataShield <- R6::R6Class(
       dataset <- private$datasets[[name]]
       if (is.null(dataset))
         return(sprintf("[Error] Protected dataset '%s' is not registered.", name))
-      if (!identical(private$config$distributions, "off"))
-        return("[Error] Distribution modes 'on'/'dp' are planned but not implemented; use strict 'off'.")
-      .data_shield_describe(dataset, private$config)
+      budget_before <- private$dp_budget[[name]]   # NULL unless distributions="dp"
+      result <- .data_shield_describe(dataset, private$config, budget_before)
+      if (!is.null(budget_before)) {
+        private$dp_budget[[name]] <- result$budget_after %||% budget_before
+        private$record_event(
+          edge = "describe", tool_name = "DescribeData", strategy = "dp_budget",
+          action = if (isTRUE(result$degraded)) "exhausted" else "consume",
+          reason = sprintf("dataset=%s remaining=%.2f", name,
+                           private$dp_budget[[name]] %||% NA_real_),
+          match_count = 0L, score = 0)
+      }
+      result$text
     },
 
     #' @description Build a system-prompt block listing every registered
@@ -973,8 +1031,21 @@ DataShield <- R6::R6Class(
       nms <- names(private$datasets)
       if (!length(nms)) return("")
       blocks <- vapply(nms, function(nm) {
-        tryCatch(.data_shield_describe(private$datasets[[nm]], private$config),
-                 error = function(e) "")
+        tryCatch({
+          budget_before <- private$dp_budget[[nm]]
+          result <- .data_shield_describe(private$datasets[[nm]], private$config,
+                                          budget_before)
+          if (!is.null(budget_before)) {
+            private$dp_budget[[nm]] <- result$budget_after %||% budget_before
+            private$record_event(
+              edge = "describe", tool_name = "schema_block", strategy = "dp_budget",
+              action = if (isTRUE(result$degraded)) "exhausted" else "consume",
+              reason = sprintf("dataset=%s remaining=%.2f", nm,
+                               private$dp_budget[[nm]] %||% NA_real_),
+              match_count = 0L, score = 0)
+          }
+          result$text
+        }, error = function(e) "")
       }, character(1))
       blocks <- blocks[nzchar(blocks)]
       if (!length(blocks)) return("")
@@ -986,6 +1057,19 @@ DataShield <- R6::R6Class(
         "live view; never assume unlisted columns or values.\n\n",
         paste(blocks, collapse = "\n\n"),
         "\n</protected-data>")
+    },
+
+    #' @description Return remaining DP privacy budget (epsilon units) for a
+    #'   registered dataset, or a named vector for all datasets when `name` is
+    #'   NULL. `NA_real_` for a dataset not under `distributions="dp"`.
+    #' @param name Character or NULL.
+    dp_budget_remaining = function(name = NULL) {
+      private$assert_open()
+      if (!is.null(name)) return(private$dp_budget[[name]] %||% NA_real_)
+      nms <- names(private$datasets)
+      if (!length(nms)) return(stats::setNames(numeric(0), character(0)))
+      stats::setNames(vapply(nms, function(nm) private$dp_budget[[nm]] %||% NA_real_,
+                             numeric(1)), nms)
     },
 
     #' @description Apply the ordered egress strategy pipeline to a tool result.
@@ -1482,6 +1566,7 @@ DataShield <- R6::R6Class(
     assets = NULL,
     index = NULL,
     deny_index = NULL,
+    dp_budget = NULL,
     strategies = NULL,
     egress_pipeline = NULL,
     ingress_pipeline = NULL,
@@ -2426,15 +2511,33 @@ refresh_data_shield_context <- function(client) {
   format(r, scientific = FALSE, trim = TRUE)
 }
 
+# Draw n iid Laplace(0, scale) samples via inverse-CDF sampling (standard
+# construction; base R only, no diffpriv dependency -- a count-query Laplace
+# mechanism at sensitivity=1 is simple enough to audit inline and test
+# deterministically with set.seed()). Used only for categorical column counts
+# under distributions="dp" (31x); scale = C/dp_epsilon where C is the number
+# of surviving (k-anonymity-passing) categories in that column, so exposing
+# all C counts in one describe() call composes to a total privacy loss of
+# exactly dp_epsilon for that column.
+#' @keywords internal
+.data_shield_laplace_noise <- function(n, scale) {
+  u <- stats::runif(n, -0.5, 0.5)
+  -scale * sign(u) * log(1 - 2 * abs(u))
+}
+
 # Strict schema for one registered dataset: no distributions/counts/examples.
 #' @keywords internal
-.data_shield_describe <- function(dataset, config) {
+.data_shield_describe <- function(dataset, config, budget_remaining = NULL) {
   df <- dataset$data
   sensitivity <- dataset$sensitivity
   column_access <- dataset$column_access %||% list()
   k <- config$k_anon %||% 5L
   category_max <- config$category_max %||% 20L
   category_ratio <- config$category_ratio %||% 0.2
+  distributions <- config$distributions %||% "off"
+  dp_epsilon <- config$dp_epsilon %||% .DATA_SHIELD_DP_EPSILON_DEFAULT
+  budget_after <- budget_remaining
+  degraded <- FALSE
   lines <- sprintf("Protected dataset '%s': %d rows x %d columns",
                    dataset$name, nrow(df), ncol(df))
   for (cn in names(df)) {
@@ -2482,6 +2585,12 @@ refresh_data_shield_context <- function(client) {
                 sprintf("missing=%s", if (anyNA(x)) "yes" else "no"))
     if (sens %in% c("measure", "open")) {
       if (is.numeric(x) || inherits(x, c("Date", "POSIXt"))) {
+        # 31x scope: numeric/date columns are UNCHANGED across off/on/dp --
+        # DP for continuous stats needs a clipping bound that must not be
+        # derived from the private data's own min/max (that would leak
+        # privacy strength from private data); deferred until a host can
+        # supply a real, data-independent bound. Only categorical counts are
+        # implemented below.
         r <- .data_shield_range(x)
         if (!is.null(r)) fields <- c(fields, sprintf("range=[%s, %s]", r[[1L]], r[[2L]]))
       } else if (is.logical(x)) {
@@ -2494,10 +2603,33 @@ refresh_data_shield_context <- function(client) {
           (length(tab) <= category_max && ratio <= category_ratio)
         if (categorical) {
           safe <- names(tab)[tab >= k]
-          labels <- safe
-          if (any(tab < k)) labels <- c(labels, "<rare suppressed>")
-          if (length(labels))
+          rare <- any(tab < k)
+          if (identical(distributions, "on") && length(safe)) {
+            # Real counts, no noise -- explicit non-private opt-in.
+            labels <- sprintf("%s (n=%d)", safe, as.integer(tab[safe]))
+            if (rare) labels <- c(labels, "<rare suppressed>")
             fields <- c(fields, sprintf("labels=[%s]", paste(labels, collapse = ", ")))
+          } else if (identical(distributions, "dp") && length(safe) &&
+                     !is.null(budget_after) && budget_after >= dp_epsilon) {
+            # DP-noised counts: dp_epsilon is split across the surviving
+            # categories so exposing all of them this call composes to a
+            # total privacy loss of exactly dp_epsilon for this column.
+            scale <- length(safe) / dp_epsilon
+            noised <- pmax(0L, round(as.integer(tab[safe]) +
+                                      .data_shield_laplace_noise(length(safe), scale)))
+            labels <- sprintf("%s (n≈%d)", safe, noised)
+            if (rare) labels <- c(labels, "<rare suppressed>")
+            fields <- c(fields, sprintf("labels=[%s]", paste(labels, collapse = ", ")))
+            budget_after <- budget_after - dp_epsilon
+          } else {
+            # "off", or "dp" with the budget exhausted for this dataset --
+            # degrade to presence/absence only, same as strict "off".
+            if (identical(distributions, "dp") && length(safe)) degraded <- TRUE
+            labels <- safe
+            if (rare) labels <- c(labels, "<rare suppressed>")
+            if (length(labels))
+              fields <- c(fields, sprintf("labels=[%s]", paste(labels, collapse = ", ")))
+          }
         } else {
           fields <- c(fields, "format=free_text")
         }
@@ -2507,18 +2639,31 @@ refresh_data_shield_context <- function(client) {
     }
     lines <- c(lines, sprintf("- %s: %s", cn, paste(fields, collapse = "; ")))
   }
-  paste(lines, collapse = "\n")
+  list(text = paste(lines, collapse = "\n"), budget_after = budget_after,
+       degraded = degraded)
 }
+
 
 # Build/register the strict DescribeData tool (internal; lifecycle belongs to R6).
 .data_shield_make_describe_tool <- function(shield) {
+  distributions <- tryCatch(shield$coverage()$config$distributions,
+                            error = function(e) "off") %||% "off"
+  desc <- paste0(
+    "Describe a registered protected data.frame without returning raw rows. ",
+    "Strict mode returns schema, sensitivity, missing presence, safe numeric/date ranges, ",
+    "and k-supported low-cardinality labels; never row-level or free-text examples.")
+  desc <- switch(distributions,
+    "on"  = paste0(desc, " Real per-category counts are also shown for ",
+                  "k-supported categorical labels (no privacy noise)."),
+    "dp"  = paste0(desc, " Differentially-private (noised) per-category counts ",
+                  "are shown for k-supported categorical labels, drawn from a ",
+                  "per-dataset privacy budget; once exhausted this silently ",
+                  "reverts to labels-only output for that dataset."),
+    paste0(desc, " Never distributions or counts."))
   ellmer::tool(
     function(data_name = NULL) shield$describe(data_name),
     name = "DescribeData",
-    description = paste0(
-      "Describe a registered protected data.frame without returning raw rows. ",
-      "Strict mode returns schema, sensitivity, missing presence, safe numeric/date ranges, ",
-      "and k-supported low-cardinality labels; never distributions, counts, or free-text examples."),
+    description = desc,
     arguments = list(
       data_name = ellmer::type_string(
         "Registered protected dataset name. Optional when exactly one exists.",

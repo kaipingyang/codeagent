@@ -139,7 +139,14 @@ client <- codeagent_client(chat, data_shield = shield)
 Data Shield never sends raw rows through `DescribeData`; bulk tool output and
 registered high-entropy values are withheld before reaching the LLM. Foreground
 `Agent` sub-chats inherit the same shield; cross-process `BackgroundAgent`/`/bg`
-fail closed while a shield is active.
+fail closed while a shield is active. `shield_describe(distributions=)`
+defaults to `"off"` (category labels only, no counts); `"on"` shows real
+per-category counts and `"dp"` shows Laplace-noised counts drawn from a
+per-dataset `dp_budget` (default 5, `dp_epsilon = 1` per exposure) that
+silently degrades back to `"off"`-style output once exhausted -- numeric
+columns are unaffected by either mode (see the
+[Data Shield vignette](https://kaipingyang.github.io/codeagent/articles/data-shield.html)
+for why DP for continuous statistics is a separate, harder problem).
 
 Data Shield guards **three edges at the model boundary**. Edge 2 (tool traffic) is the
 `scan_ingress`/`scan_egress` layer below. Edge 1 (everything the user sends) is

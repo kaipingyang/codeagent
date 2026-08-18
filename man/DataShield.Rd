@@ -43,6 +43,7 @@ shield$coverage()
     \item \href{#method-DataShield-install}{\code{DataShield$install()}}
     \item \href{#method-DataShield-describe}{\code{DataShield$describe()}}
     \item \href{#method-DataShield-schema_block}{\code{DataShield$schema_block()}}
+    \item \href{#method-DataShield-dp_budget_remaining}{\code{DataShield$dp_budget_remaining()}}
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-scan_tool_args}{\code{DataShield$scan_tool_args()}}
@@ -73,6 +74,8 @@ shield$coverage()
   category_max = 20L,
   category_ratio = 0.2,
   audit_max = 1000L,
+  dp_epsilon = .DATA_SHIELD_DP_EPSILON_DEFAULT,
+  dp_budget = .DATA_SHIELD_DP_BUDGET_DEFAULT,
   strategies = NULL
 )}
     \if{html}{\out{</div>}}
@@ -83,13 +86,18 @@ shield$coverage()
       \item{\code{max_rows}}{Direct \code{row_cap} value when \code{strategies = NULL}: \code{0}
 exposes no raw tabular line; positive values retain that many leading
 printed lines.}
-      \item{\code{distributions}}{Direct DescribeData policy. Strict \code{"off"} only is
-implemented; \code{"on"}/\code{"dp"} fail explicitly.}
+      \item{\code{distributions}}{Direct DescribeData policy. \code{"off"} (default,
+safe): labels only. \code{"on"}/\code{"dp"}: real/DP-noised per-category counts
+(see \code{\link[=shield_describe]{shield_describe()}}); numeric/date columns unchanged in all modes.}
       \item{\code{k_anon}}{Minimum category support for exposing a label.}
       \item{\code{category_max}}{Maximum distinct character values treated as a category.}
       \item{\code{category_ratio}}{Maximum distinct/non-missing ratio for character
 categorical treatment.}
       \item{\code{audit_max}}{Maximum in-memory non-sensitive decision events retained.}
+      \item{\code{dp_epsilon}}{Direct per-column-per-call DP privacy cost when
+\code{distributions = "dp"} (see \code{\link[=shield_describe]{shield_describe()}}).}
+      \item{\code{dp_budget}}{Direct per-dataset total DP privacy budget when
+\code{distributions = "dp"} (see \code{\link[=shield_describe]{shield_describe()}}).}
       \item{\code{strategies}}{Optional ordered list from \code{\link[=shield_describe]{shield_describe()}},
 \code{\link[=shield_egress]{shield_egress()}}, \code{\link[=shield_regex]{shield_regex()}}, \code{\link[=shield_ingress]{shield_ingress()}},
 \code{\link[=shield_tool_policy]{shield_tool_policy()}}, \code{\link[=shield_sandbox]{shield_sandbox()}}, and \code{\link[=shield_reviewer]{shield_reviewer()}}.
@@ -267,6 +275,27 @@ registered or \code{DescribeData} is disabled.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$schema_block()}
+    \if{html}{\out{</div>}}
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-dp_budget_remaining"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-dp_budget_remaining}{}}}
+\subsection{\code{DataShield$dp_budget_remaining()}}{
+  Return remaining DP privacy budget (epsilon units) for a
+registered dataset, or a named vector for all datasets when \code{name} is
+NULL. \code{NA_real_} for a dataset not under \code{distributions="dp"}.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$dp_budget_remaining(name = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Character or NULL.}
+    }
     \if{html}{\out{</div>}}
   }
 }

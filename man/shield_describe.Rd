@@ -8,14 +8,19 @@ shield_describe(
   distributions = "off",
   k_anon = 5L,
   category_max = 20L,
-  category_ratio = 0.2
+  category_ratio = 0.2,
+  dp_epsilon = .DATA_SHIELD_DP_EPSILON_DEFAULT,
+  dp_budget = .DATA_SHIELD_DP_BUDGET_DEFAULT
 )
 }
 \arguments{
-\item{distributions}{\code{"off"} is implemented and is the safe default.
-\code{"on"} and \code{"dp"} are accepted as roadmap configuration but DescribeData
-returns an explicit not-implemented error instead of silently weakening
-privacy.}
+\item{distributions}{\code{"off"} (default, safe): no counts, labels only.
+\code{"on"}: real per-category counts, no privacy protection -- explicit
+opt-in. \code{"dp"}: Laplace-noised per-category counts, spending \code{dp_epsilon}
+from that dataset's \code{dp_budget} on every \code{describe()}/schema-block call
+that exposes them; once a dataset's budget is exhausted it silently
+degrades to \code{"off"}-style labels-only output for that dataset (no error,
+no raw count, permanent until re-registration).}
 
 \item{k_anon}{Minimum rows supporting a categorical label before it may be
 exposed; rarer labels become \verb{<rare suppressed>}.}
@@ -26,6 +31,13 @@ character column as categorical.}
 \item{category_ratio}{Maximum \code{n_distinct / n_non_missing} ratio for automatic
 character-categorical treatment. Higher-cardinality text is marked
 \code{free_text} and no examples are returned.}
+
+\item{dp_epsilon}{Privacy cost (epsilon) charged per describe() call for
+each categorical column exposed under \code{distributions = "dp"}; split
+across that column's surviving categories. Only meaningful with \code{"dp"}.}
+
+\item{dp_budget}{Total per-dataset epsilon budget under \code{distributions = "dp"}; a one-time allowance (no time-window reset). Only meaningful with
+\code{"dp"}.}
 }
 \value{
 A Data Shield strategy specification.
@@ -37,7 +49,16 @@ histograms, quantiles, means, category counts, or real free-text examples.
 \code{identifier}/\code{quasi} values are suppressed; \code{measure}/\code{open} columns may show
 numeric/date min-max and low-cardinality labels whose support is at least
 \code{k_anon} (labels are shown without counts).
+
+\code{distributions = "on"}/\code{"dp"} add a per-category COUNT next to each
+k-anonymity-surviving categorical label (\code{"on"} = real count, \code{"dp"} =
+Laplace-noised count). Numeric/date/logical/free-text columns are
+UNCHANGED in all three modes -- differential privacy for continuous
+statistics (mean/sum) needs a clipping bound that must not be derived from
+the private data's own min/max, and that is not yet implemented (31x scope
+limit; tracked in \verb{references/plan/31x-dp-distributions.TODO.md}).
 }
 \examples{
 strict_metadata <- shield_describe(k_anon = 5)
+dp_metadata <- shield_describe(distributions = "dp", dp_epsilon = 1, dp_budget = 5)
 }
