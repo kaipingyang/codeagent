@@ -232,6 +232,16 @@ shield$register_asset(
 Raw egress is never a default and requires provenance (`shield$trusted_result()`),
 a reason, expiry/session scope, and audit.
 
+`audit_code_tool(shield, project_root)` is an opt-in `AuditCode` tool the
+main-loop model can call to vet a block of R code **before running it**: it
+deterministically extracts referenced paths from the AST, enforces an in-project
+source-file whitelist in code (never delegated to the model), reads only
+whitelisted files, and — with a shield — routes the vetted text through the
+`shield_reviewer()` rail. It returns risk metadata only (which refs, which were
+blocked and why, reviewer verdict), never file contents, and grants no
+read/write/shell capability. Host wires it in (e.g. when the sandbox is
+disabled) so the model can self-audit external references.
+
 ### Skill system
 
 Compatible with Claude Code and btw skill format (`name/SKILL.md` directories).
