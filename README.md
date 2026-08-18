@@ -242,6 +242,17 @@ blocked and why, reviewer verdict), never file contents, and grants no
 read/write/shell capability. Host wires it in (e.g. when the sandbox is
 disabled) so the model can self-audit external references.
 
+`shield_preset_strict()`, `shield_preset_balanced()`, and
+`shield_preset_clinical()` are ready-made strategy combinations for
+`codeagent_client(data_shield = ...)` — the same three templates documented in
+`vignette("data-shield")`'s "combination safety" matrix, as callable functions
+instead of copy-pasted code:
+
+```r
+client <- codeagent_client(chat, data_shield = shield_preset_strict())
+```
+
+
 ### Skill system
 
 Compatible with Claude Code and btw skill format (`name/SKILL.md` directories).

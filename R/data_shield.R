@@ -591,6 +591,64 @@ shield_sandbox <- function(
     backend=match.arg(backend), on_unavailable=match.arg(on_unavailable))
 }
 
+#' Ready-made Data Shield strategy combinations
+#'
+#' @description
+#' Three combination templates lifted verbatim from the "ready-to-use
+#' combination templates" section of `vignette("data-shield")`, as callable
+#' functions instead of copy-pasted code. Each returns a `list()` of strategy
+#' specifications suitable for `codeagent_client(data_shield = ...)` or
+#' `DataShield$new(strategies = ...)`. None of them register `shield_reviewer`
+#' with a live client_factory except `shield_preset_clinical()`, which uses
+#' `CODEAGENT_FAST_MODEL` like the rest of the package.
+#'
+#' - `shield_preset_strict()`: compliance/audit demos. Fails closed
+#'   (`on_fail = "block"` everywhere) and strict k-anonymity.
+#' - `shield_preset_balanced()`: everyday development, low friction. Redacts
+#'   instead of blocking; no ingress scanning or describe metadata.
+#' - `shield_preset_clinical()`: adds the semantic `shield_reviewer()` rail on
+#'   top of strict k-anonymity, with `"ask"` (not `"block"`) fail policy.
+#'
+#' These are starting points, not a certification -- read the vignette's
+#' "Combination safety" matrix before deploying any of them as-is.
+#'
+#' @return A `list()` of Data Shield strategy specifications.
+#' @examples
+#' client <- codeagent_client(chat, data_shield = shield_preset_strict())
+#' client <- codeagent_client(chat, data_shield = shield_preset_balanced())
+#' @name shield_preset
+NULL
+
+#' @rdname shield_preset
+#' @export
+shield_preset_strict <- function() {
+  list(
+    shield_describe(k_anon = 5),
+    shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0,
+                  on_fail = "block"),
+    shield_regex(on_fail = "block"),
+    shield_ingress(on_fail = "block"))
+}
+
+#' @rdname shield_preset
+#' @export
+shield_preset_balanced <- function() {
+  list(
+    shield_egress(max_rows = 0, on_fail = "redact"),
+    shield_regex(on_fail = "redact"))
+}
+
+#' @rdname shield_preset
+#' @export
+shield_preset_clinical <- function() {
+  list(
+    shield_describe(k_anon = 5),
+    shield_egress(max_rows = 0),
+    shield_regex(),
+    shield_ingress(on_fail = "ask"),
+    shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask"))
+}
+
 #' Stateful protected-data policy engine
 #'
 #' @description

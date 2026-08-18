@@ -172,6 +172,11 @@ reference:
       - shield_tool_policy
       - shield_sandbox
       - shield_reviewer
+      # --- Data Shield: ready-made strategy-combination presets ---
+      - shield_preset
+      - shield_preset_strict
+      - shield_preset_balanced
+      - shield_preset_clinical
       # --- Data Shield: optional scanners / code-safety auditors ---
       - data_shield_ocr_scanner
       - audit_code_tool
