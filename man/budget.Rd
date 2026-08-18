@@ -11,6 +11,9 @@ should stop. Mirrors Claude Code's budget tracking:
 \item Diminishing-return detection: stop if token growth < \code{.BUDGET_MIN_GROWTH}
 for \code{.BUDGET_MAX_STALL_TURNS} consecutive turns
 \item Minimum \code{.BUDGET_MIN_ITERATIONS} iterations before stopping
+\item Optional dollar-cost hard cap (= Claude Code's \code{maxBudgetUsd}), fires
+immediately once actual spend reaches it, independent of the token
+heuristics above
 \item Sub-agents are exempt from budget constraints
 }
 }

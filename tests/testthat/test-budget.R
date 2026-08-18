@@ -84,3 +84,55 @@ test_that("BudgetTracker: model_limit (not max_turns*2000) is the right max_toke
   bt2 <- BudgetTracker$new()
   expect_true(bt2$should_stop(180001L, model_limit, iteration = 5L))
 })
+
+# ---------------------------------------------------------------------------
+# P5: dollar-cost hard cap (= Claude Code maxBudgetUsd)
+# ---------------------------------------------------------------------------
+
+test_that("should_stop() fires the dollar cap immediately, before min iterations", {
+  bt <- BudgetTracker$new()
+  # iteration = 1 is below .BUDGET_MIN_ITERATIONS for the token heuristics, but
+  # a dollar cap is a hard stop and must not wait for them.
+  expect_true(bt$should_stop(100L, 200000L, iteration = 1L,
+                              current_cost_usd = 5.00, max_budget_usd = 5.00))
+})
+
+test_that("should_stop() dollar cap does not fire below the cap", {
+  bt <- BudgetTracker$new()
+  expect_false(bt$should_stop(100L, 200000L, iteration = 1L,
+                               current_cost_usd = 4.99, max_budget_usd = 5.00))
+})
+
+test_that("should_stop() ignores the dollar cap when cost is NA (unpriced provider)", {
+  bt <- BudgetTracker$new()
+  # NA cost (ellmer has no price data) must never spuriously trigger a stop --
+  # falls through to the normal token-based checks, which are also false here.
+  expect_false(bt$should_stop(100L, 200000L, iteration = 5L,
+                               current_cost_usd = NA_real_, max_budget_usd = 5.00))
+})
+
+test_that("should_stop() ignores cost entirely when max_budget_usd is NULL", {
+  bt <- BudgetTracker$new()
+  expect_false(bt$should_stop(100L, 200000L, iteration = 1L,
+                               current_cost_usd = 999, max_budget_usd = NULL))
+})
+
+test_that("should_stop() dollar cap still respects the sub-agent exemption", {
+  bt <- BudgetTracker$new()
+  expect_false(bt$should_stop(100L, 200000L, iteration = 1L, is_subagent = TRUE,
+                               current_cost_usd = 999, max_budget_usd = 5.00))
+})
+
+test_that(".current_cost_usd() reads chat$get_cost() and coerces to a plain double", {
+  stub <- list(get_cost = function() structure(3.5, class = c("ellmer_dollars", "numeric")))
+  expect_identical(.current_cost_usd(stub), 3.5)
+})
+
+test_that(".current_cost_usd() returns NA when the chat has no get_cost() method", {
+  expect_true(is.na(.current_cost_usd(list(chat = function(x) x))))
+})
+
+test_that(".current_cost_usd() returns NA when get_cost() errors or is NULL", {
+  expect_true(is.na(.current_cost_usd(NULL)))
+  expect_true(is.na(.current_cost_usd(list(get_cost = function() stop("boom")))))
+})

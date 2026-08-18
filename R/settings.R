@@ -32,6 +32,8 @@ NULL
   max_turns         = 100L,
   model_limit       = 200000L,
   max_output_tokens = 8192L,
+  max_budget_usd    = NULL,      # hard dollar-cost cap (= Claude Code maxBudgetUsd);
+                                  # NULL = no cap. See budget.R should_stop().
 
   # Behaviour flags (Claude Code schema)
   thinking               = FALSE,
@@ -163,6 +165,12 @@ load_settings <- function(cwd = getwd()) {
     # Resolve the context window dynamically from the model (Claude Code:
     # getContextWindowForModel) instead of the hard-coded 200K default.
     settings$model_limit <- .model_context_window(settings$model %||% "")
+  }
+
+  env_budget_usd <- Sys.getenv("CODEAGENT_MAX_BUDGET_USD", "")
+  if (nzchar(env_budget_usd)) {
+    v <- suppressWarnings(as.numeric(env_budget_usd))
+    if (!is.na(v) && v > 0) settings$max_budget_usd <- v
   }
 
   env_base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")

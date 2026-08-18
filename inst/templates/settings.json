@@ -29,5 +29,6 @@
   "enableAllProjectMcpServers": false,
   "enabledMcpjsonServers": [],
   "disabledMcpjsonServers": [],
-  "outputStyle": null
+  "outputStyle": null,
+  "max_budget_usd": null
 }

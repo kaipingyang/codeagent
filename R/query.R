@@ -145,6 +145,15 @@ print.CodeagentClient <- function(x, ...) {
 #'   loop when it reports failures (e.g. [verify_r_tests()]).
 #' @param mcp_config MCP client config (JSON path or inline list) to connect
 #'   external MCP servers; see [register_mcp_client()]. NULL disables.
+#' @param max_budget_usd Numeric or NULL (default). Hard dollar-cost cap for
+#'   this client's `chat` (mirrors Claude Code's `maxBudgetUsd`), checked
+#'   alongside the token budget in [agent_loop()] via `chat$get_cost()`. NULL
+#'   (default) means no cap. Only takes effect where ellmer has price data for
+#'   the provider/model; unpriced custom endpoints (e.g. a Databricks/Azure
+#'   serving endpoint ellmer doesn't recognize) report cost `$0` forever, so
+#'   the cap silently never fires there -- this is a known limitation, not a
+#'   bug (see `CODEAGENT_MAX_BUDGET_USD` env var / `max_budget_usd` in
+#'   settings.json for the same knob without a client-code change).
 #' @param register_tools Logical. If `TRUE` (default) register all tools now.
 #'   `FALSE` returns a lightweight shell (chat + settings + system prompt, no
 #'   tools) so callers (e.g. [codeagent_app()]) can render UI first and defer the
@@ -167,7 +176,8 @@ codeagent_client <- function(
   verify_fn          = NULL,
   mcp_config         = NULL,
   register_tools     = TRUE,
-  data_shield        = NULL
+  data_shield        = NULL,
+  max_budget_usd     = NULL
 ) {
   # Input validation (user-facing entry point).
   if (!is.null(chat) && !inherits(chat, "Chat"))
@@ -181,6 +191,10 @@ codeagent_client <- function(
     ))
   if (!is.list(rules))
     cli::cli_abort("{.arg rules} must be a list of {.fn PermissionRule} objects.")
+  if (!is.null(max_budget_usd) &&
+      (!is.numeric(max_budget_usd) || length(max_budget_usd) != 1L ||
+       is.na(max_budget_usd) || max_budget_usd <= 0))
+    cli::cli_abort("{.arg max_budget_usd} must be NULL or a single positive number.")
 
   settings <- load_settings(cwd)
   settings$permission_mode     <- permission_mode
@@ -193,6 +207,9 @@ codeagent_client <- function(
   settings$worktree_isolation  <- isTRUE(worktree_isolation)
   settings$verify_fn           <- verify_fn
   settings$mcp_config          <- mcp_config
+  # NULL (default) preserves whatever settings.json/CODEAGENT_MAX_BUDGET_USD
+  # already loaded; only an explicit caller value overrides it.
+  if (!is.null(max_budget_usd)) settings$max_budget_usd <- as.numeric(max_budget_usd)
   shield_state <- .data_shield_resolve(data_shield)
   settings$data_shield <- if (is.null(shield_state)) NULL else shield_state$coverage()$config
   settings$data_shield_engine <- shield_state
@@ -489,17 +506,28 @@ agent_loop <- function(user_input,
   else
     user_input
 
-  # 2. Budget check
+  # 2. Budget check (token ratio/diminishing-returns + optional USD hard cap)
   current_tokens <- estimate_tokens(chat)
+  current_cost   <- tryCatch(.current_cost_usd(chat), error = function(e) NA_real_)
   if (budget_tracker$should_stop(current_tokens,
                                    settings$model_limit %||% 200000L,
-                                   iteration)) {
+                                   iteration,
+                                   current_cost_usd = current_cost,
+                                   max_budget_usd    = settings$max_budget_usd)) {
+    budget_usd  <- settings$max_budget_usd
+    usd_capped  <- !is.null(budget_usd) && !is.na(current_cost) &&
+                    current_cost >= budget_usd
+    reason  <- if (usd_capped) "budget_usd_exceeded" else "budget_exceeded"
+    stop_msg <- if (usd_capped)
+      sprintf("[Budget exceeded: cost $%.4f reached the $%.4f cap -- stopping agent loop]",
+              current_cost, budget_usd)
+    else "[Budget exceeded: stopping agent loop]"
     if (!is.null(hooks)) tryCatch(
-      hooks$run_stop("budget_exceeded", list(tokens = current_tokens)),
+      hooks$run_stop(reason, list(tokens = current_tokens, cost_usd = current_cost)),
       error = function(e) NULL)
-    return(list(response    = "[Budget exceeded: stopping agent loop]",
+    return(list(response    = stop_msg,
                 session_id  = session_id,
-                stop_reason = "budget_exceeded"))
+                stop_reason = reason))
   }
 
   # 3. Compaction (fire PreCompact hook first)

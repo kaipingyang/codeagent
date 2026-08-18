@@ -366,7 +366,7 @@ All core subsystems are complete. 281 tests pass.
 
 对标 Claude Code 的已知缺口，按价值排序。实现前先确认上游（ellmer/btw/shinychat）是否已有原生支持。
 
-> **状态核对（2026-08-18）**：P4 已实现，下移到"已完成"。仅 P5/语音仍待办。
+> **状态核对（2026-08-18）**：P4/P5 已实现，下移到"已完成"。仅语音输入待上游。
 
 ### 已完成（曾在 backlog，现已实现）
 
@@ -384,14 +384,14 @@ All core subsystems are complete. 281 tests pass.
   只把**整行**匹配 `^@(.+)$` 的行当作导入（正文/邮箱里的 `@` 不误伤），复用 `.load_claude_md()`
   已有的 `seen` 去重集做跨文件循环保护，另加 `max_depth`（默认 5）兜底长链。支持 `~` 展开和绝对路径；
   找不到/为空/命中循环/超深度都留 `<!-- @import ... -->` 注释说明，不静默吞掉也不报错中断。
-
-### P5 — Dollar budget（成本控制，真未实现）
-
-Claude Code 有 `maxBudgetUsd`，按 API 成本限制。当前只有 token budget（`chat$get_cost()` 已能读成本，
-但无 USD 上限熔断）。
-
-**低优先级**：需维护各 provider token 价格表（ellmer `models_update_prices()` 可拉，但仍需接线）。
-等有明确需求再做。
+- ✅ **Dollar budget**（原 P5）— `R/budget.R` `BudgetTracker$should_stop()` 新增 `current_cost_usd`/
+  `max_budget_usd` 参数：dollar cap 独立于 token 启发式，一旦 `chat$get_cost()`（`.current_cost_usd()`
+  封装）读到的花费 ≥ 上限即硬停（不等 `.BUDGET_MIN_ITERATIONS`），子agent 豁免同 token budget 一致。
+  接线：`codeagent_client(max_budget_usd=)` / `CODEAGENT_MAX_BUDGET_USD` env / `settings.json`
+  `max_budget_usd` 三处任一设置生效（函数参数优先，NULL 时保留已加载值）。**已知局限**：ellmer 对未注册
+  价格的自定义端点（如 Databricks/Azure serving-endpoint）`get_cost()` 恒返回 `$0`，此时上限永不触发——
+  这不是 bug，是"没有价格表就没法算钱"的固有限制（原 backlog 已预判）。未做：`models_update_prices()`
+  自动拉价格表（仍需上游/用户自行维护）。
 
 ### 语音输入
 

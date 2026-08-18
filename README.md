@@ -84,7 +84,7 @@ codeagent_console(client)
 
 | Feature | Details |
 |---------|---------|
-| **Agent loop** | `agent_loop()` with max_turns, budget tracking, compaction |
+| **Agent loop** | `agent_loop()` with max_turns, token budget tracking, an optional hard `max_budget_usd` dollar-cost cap (`codeagent_client(max_budget_usd=)` / `CODEAGENT_MAX_BUDGET_USD` / `max_budget_usd` in `settings.json`; checked via `chat$get_cost()`, only fires where ellmer has price data for the model/provider), and compaction |
 | **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
 | **Hooks** | 27 Claude Code-aligned lifecycle events (tool, permission, message, session, task, worktree, compaction), configurable from `settings.json`. `PreToolUse` can **rewrite tool arguments** (SDK-style `updatedInput`) or deny a call |
 | **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, an "N% context left" indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds |
