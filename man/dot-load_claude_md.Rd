@@ -18,6 +18,8 @@ home (\verb{~/.claude/CLAUDE.md}, \verb{~/.codeagent/CLAUDE.md}) plus every leve
 the working directory up to the filesystem root (max 5 hops), then merge them
 in priority order (user first, then outer-to-inner project dirs) with section
 headers showing each source.  More-specific (deeper) files appear later so
-they visually override.  Duplicate paths are de-duplicated.
+they visually override.  Duplicate paths are de-duplicated. Each file's body
+is also scanned for whole-line \verb{@path/to/file} imports (see
+\code{\link[=.expand_claude_md_imports]{.expand_claude_md_imports()}}) before being merged in.
 }
 \keyword{internal}

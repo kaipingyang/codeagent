@@ -241,6 +241,65 @@ load_settings <- function(cwd = getwd()) {
 # CLAUDE.md loading
 # ---------------------------------------------------------------------------
 
+# Expand `@path/to/file` import lines inside a CLAUDE.md-style file's body
+# (Claude Code convention: a line consisting ONLY of `@` + a path inlines that
+# file's content at that point). Only a line matching `^@(.+)$` in full is
+# treated as an import -- prose mentioning "@" mid-sentence, or an email
+# address, never matches because the regex is anchored at both ends against
+# the trimmed line. `seen` (normalized paths already loaded) is threaded
+# through and returned so imports share cycle/dedup protection with the
+# caller's outer candidate-file loop: an import that resolves to an
+# already-loaded file (a prior top-level candidate, or an ancestor in the
+# import chain) is skipped rather than re-included or looped forever.
+# `max_depth` bounds a chain of distinct files (not caught by `seen`): once
+# `depth` reaches it, an otherwise-valid import line is reported as skipped
+# rather than followed, so the guard applies to the NEXT hop, not the current
+# file's own content (which is always fully included once its import line was
+# accepted at the caller's depth).
+.expand_claude_md_imports <- function(text, base_dir, seen,
+                                      depth = 0L, max_depth = 5L) {
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1]]
+  if (!length(lines)) return(list(text = text, seen = seen))
+  out <- character(length(lines))
+  for (i in seq_along(lines)) {
+    ln <- lines[[i]]
+    m <- regmatches(trimws(ln), regexec("^@(.+)$", trimws(ln)))[[1]]
+    if (length(m) != 2L) { out[[i]] <- ln; next }
+    ref <- trimws(m[[2]])
+    if (depth >= max_depth) {
+      out[[i]] <- sprintf("<!-- @import skipped (max depth %d reached): %s -->",
+                          max_depth, ref)
+      next
+    }
+    ref_path <-
+      if (startsWith(ref, "~")) path.expand(ref)
+      else if (grepl("^(?:/|[A-Za-z]:[\\\\/])", ref)) ref
+      else file.path(base_dir, ref)
+    norm <- tryCatch(normalizePath(ref_path, winslash = "/", mustWork = FALSE),
+                     error = function(e) ref_path)
+    if (norm %in% seen) {
+      out[[i]] <- sprintf("<!-- @import skipped (already loaded / cycle): %s -->", ref)
+      next
+    }
+    if (!file.exists(norm) || dir.exists(norm)) {
+      out[[i]] <- sprintf("<!-- @import not found: %s -->", ref)
+      next
+    }
+    seen <- c(seen, norm)
+    sub_lines <- tryCatch(readLines(norm, warn = FALSE), error = function(e) NULL)
+    if (is.null(sub_lines) || !length(sub_lines)) {
+      out[[i]] <- sprintf("<!-- @import empty/unreadable: %s -->", ref)
+      next
+    }
+    expanded <- .expand_claude_md_imports(
+      paste(sub_lines, collapse = "\n"), dirname(norm), seen,
+      depth = depth + 1L, max_depth = max_depth)
+    seen <- expanded$seen
+    out[[i]] <- sprintf("<!-- @import: %s -->\n%s", norm, expanded$text)
+  }
+  list(text = paste(out, collapse = "\n"), seen = seen)
+}
+
 #' Load and merge CLAUDE.md from all levels
 #'
 #' Mirrors Claude Code's multi-level memory: collect CLAUDE.md from the user
@@ -248,7 +307,9 @@ load_settings <- function(cwd = getwd()) {
 #' the working directory up to the filesystem root (max 5 hops), then merge them
 #' in priority order (user first, then outer-to-inner project dirs) with section
 #' headers showing each source.  More-specific (deeper) files appear later so
-#' they visually override.  Duplicate paths are de-duplicated.
+#' they visually override.  Duplicate paths are de-duplicated. Each file's body
+#' is also scanned for whole-line `@path/to/file` imports (see
+#' [.expand_claude_md_imports()]) before being merged in.
 #'
 #' @param cwd Character. Starting directory.
 #' @return Character(1) with merged contents, or NULL if none found.
@@ -292,6 +353,12 @@ load_settings <- function(cwd = getwd()) {
     if (is.null(lines) || !length(lines)) next
     body <- paste(lines, collapse = "\n")
     if (!nzchar(trimws(body))) next
+    # @path/to/file inline imports (Claude Code convention). Threads the same
+    # `seen` set used above so an import cannot re-include an already-loaded
+    # candidate or loop back on an ancestor in its own chain.
+    expanded <- .expand_claude_md_imports(body, dirname(norm), seen)
+    body <- expanded$text
+    seen <- expanded$seen
     loaded <- c(loaded, norm)
     parts <- c(parts, sprintf("<!-- source: %s -->\n%s", norm, body))
   }

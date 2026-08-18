@@ -366,8 +366,7 @@ All core subsystems are complete. 281 tests pass.
 
 对标 Claude Code 的已知缺口，按价值排序。实现前先确认上游（ellmer/btw/shinychat）是否已有原生支持。
 
-> **状态核对（2026-08-13）**：原 backlog 的 P1/P2/P3 均已实现，下移到"已完成"。仅 P4/P5/语音仍待办。
-> 更新前 P1/P2 标"待做"但实际早已接线，误导过判断——核对后修正，避免再次误判。
+> **状态核对（2026-08-18）**：P4 已实现，下移到"已完成"。仅 P5/语音仍待办。
 
 ### 已完成（曾在 backlog，现已实现）
 
@@ -381,14 +380,10 @@ All core subsystems are complete. 281 tests pass.
 - ✅ **工具并发执行**（原 P3）— ellmer 已原生支持，codeagent `tool_mode="concurrent"` 默认透传
   `chat$stream_async(tool_mode=)`（stream.R:74/133）。并发只加速 async 工具（如子agent），同步 CLI 工具仍串行
   （ellmer 语义）。不自实现调度，直接受益上游。
-
-### P4 — `@path` import in CLAUDE.md（真未实现）
-
-Claude Code 支持 CLAUDE.md 中用 `@/path/to/file.md` 内联引用外部文件。当前 `.load_claude_md()`
-（settings.R）只加载 CLAUDE.md 本体，**不解析 `@` 引用**（已核实）。
-
-**实现**：`.load_claude_md()` 读取每个文件后，正则扫描 `^@(.+)` 行，递归读取引用文件并替换。
-注意循环引用保护（`seen` set 已有，复用即可）。**小功能，价值中低**。
+- ✅ **`@path` import in CLAUDE.md**（原 P4）— `R/settings.R` `.expand_claude_md_imports()`：
+  只把**整行**匹配 `^@(.+)$` 的行当作导入（正文/邮箱里的 `@` 不误伤），复用 `.load_claude_md()`
+  已有的 `seen` 去重集做跨文件循环保护，另加 `max_depth`（默认 5）兜底长链。支持 `~` 展开和绝对路径；
+  找不到/为空/命中循环/超深度都留 `<!-- @import ... -->` 注释说明，不静默吞掉也不报错中断。
 
 ### P5 — Dollar budget（成本控制，真未实现）
 
