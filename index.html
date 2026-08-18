@@ -164,7 +164,7 @@
 <tr>
 <td><strong>Agent loop</strong></td>
 <td>
-<code><a href="reference/agent_loop.html">agent_loop()</a></code> with max_turns, budget tracking, compaction</td>
+<code><a href="reference/agent_loop.html">agent_loop()</a></code> with max_turns, token budget tracking, an optional hard <code>max_budget_usd</code> dollar-cost cap (<code>codeagent_client(max_budget_usd=)</code> / <code>CODEAGENT_MAX_BUDGET_USD</code> / <code>max_budget_usd</code> in <code>settings.json</code>; checked via <code>chat$get_cost()</code>, only fires where ellmer has price data for the model/provider), and compaction</td>
 </tr>
 <tr>
 <td><strong>Permissions</strong></td>
@@ -320,12 +320,16 @@
 <span>  reason <span class="op">=</span> <span class="st">"Validated public specification"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p><code>kind</code> says what the asset is; <code>llm_access</code> says what may enter/leave the LLM. Raw egress is never a default and requires provenance (<code>shield$trusted_result()</code>), a reason, expiry/session scope, and audit.</p>
+<p><code>audit_code_tool(shield, project_root)</code> is an opt-in <code>AuditCode</code> tool the main-loop model can call to vet a block of R code <strong>before running it</strong>: it deterministically extracts referenced paths from the AST, enforces an in-project source-file whitelist in code (never delegated to the model), reads only whitelisted files, and — with a shield — routes the vetted text through the <code><a href="reference/shield_reviewer.html">shield_reviewer()</a></code> rail. It returns risk metadata only (which refs, which were blocked and why, reviewer verdict), never file contents, and grants no read/write/shell capability. Host wires it in (e.g. when the sandbox is disabled) so the model can self-audit external references.</p>
+<p><code><a href="reference/shield_preset.html">shield_preset_strict()</a></code>, <code><a href="reference/shield_preset.html">shield_preset_balanced()</a></code>, and <code><a href="reference/shield_preset.html">shield_preset_clinical()</a></code> are ready-made strategy combinations for <code>codeagent_client(data_shield = ...)</code> — the same three templates documented in <code><a href="articles/data-shield.html">vignette("data-shield")</a></code>’s “combination safety” matrix, as callable functions instead of copy-pasted code:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="reference/shield_preset.html">shield_preset_strict</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="skill-system">Skill system<a class="anchor" aria-label="anchor" href="#skill-system"></a>
 </h3>
 <p>Compatible with Claude Code and btw skill format (<code>name/SKILL.md</code> directories).</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install Posit's data-science skill collection</span></span>
 <span><span class="fu"><a href="reference/install_ds_skills.html">install_ds_skills</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -337,7 +341,7 @@
 <div class="section level3">
 <h3 id="multi-agent-teams">Multi-agent teams<a class="anchor" aria-label="anchor" href="#multi-agent-teams"></a>
 </h3>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Work-stealing over a shared SQLite board</span></span>
 <span><span class="fu"><a href="reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"task 1"</span>, <span class="st">"task 2"</span>, <span class="st">"task 3"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -347,7 +351,7 @@
 <div class="section level3">
 <h3 id="mcp-server">MCP server<a class="anchor" aria-label="anchor" href="#mcp-server"></a>
 </h3>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_mcp_server.html">codeagent_mcp_server</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co"># Claude Desktop config:</span></span>
 <span><span class="co"># {"mcpServers": {"codeagent": {"command": "Rscript",</span></span>
@@ -356,7 +360,7 @@
 <div class="section level3">
 <h3 id="shiny-app">Shiny app<a class="anchor" aria-label="anchor" href="#shiny-app"></a>
 </h3>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Single-user / interactive convenience:</span></span>
 <span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>,</span>
@@ -377,24 +381,24 @@
 <h2 id="configuration-reference">Configuration reference<a class="anchor" aria-label="anchor" href="#configuration-reference"></a>
 </h2>
 <p>Precedence (low → high): package defaults → <code>~/.codeagent/settings.json</code> → <code>.codeagent/settings.json</code> → environment variables.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb15-5"><a href="#cb15-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb15-6"><a href="#cb15-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span>       <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
-<span id="cb15-7"><a href="#cb15-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint"</span><span class="fu">,</span></span>
-<span id="cb15-8"><a href="#cb15-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span>  <span class="st">"your-fast-endpoint"</span></span>
-<span id="cb15-9"><a href="#cb15-9" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb15-10"><a href="#cb15-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb15-11"><a href="#cb15-11" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb15-12"><a href="#cb15-12" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb15-13"><a href="#cb15-13" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb15-14"><a href="#cb15-14" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
-<span id="cb15-15"><a href="#cb15-15" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb15-16"><a href="#cb15-16" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span><span class="fu">,</span></span>
-<span id="cb15-17"><a href="#cb15-17" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{}</span></span>
-<span id="cb15-18"><a href="#cb15-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span>       <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
+<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint"</span><span class="fu">,</span></span>
+<span id="cb16-8"><a href="#cb16-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span>  <span class="st">"your-fast-endpoint"</span></span>
+<span id="cb16-9"><a href="#cb16-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb16-10"><a href="#cb16-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb16-11"><a href="#cb16-11" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb16-12"><a href="#cb16-12" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb16-13"><a href="#cb16-13" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb16-14"><a href="#cb16-14" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
+<span id="cb16-15"><a href="#cb16-15" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb16-16"><a href="#cb16-16" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span><span class="fu">,</span></span>
+<span id="cb16-17"><a href="#cb16-17" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{}</span></span>
+<span id="cb16-18"><a href="#cb16-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <blockquote>
 <p><strong>API key:</strong> keep <code>CODEAGENT_API_KEY</code> in <code>~/.Renviron</code>, not in <code>settings.json</code>.</p>
 </blockquote>

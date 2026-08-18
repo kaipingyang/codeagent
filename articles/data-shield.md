@@ -699,27 +699,36 @@ defense-in-depth and cannot substitute for it.**
 
 ### Three ready-to-use combination templates
 
+[`shield_preset_strict()`](https://kaipingyang.github.io/codeagent/reference/shield_preset.md),
+[`shield_preset_balanced()`](https://kaipingyang.github.io/codeagent/reference/shield_preset.md),
+and
+[`shield_preset_clinical()`](https://kaipingyang.github.io/codeagent/reference/shield_preset.md)
+are callable functions returning these exact combinations – no
+copy-pasting required:
+
 ``` r
 
 # Strict: compliance / audit demos
-strict <- list(
-  shield_describe(k_anon = 5),
-  shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0, on_fail = "block"),
-  shield_regex(on_fail = "block"),
-  shield_ingress(on_fail = "block"))
+strict <- shield_preset_strict()
+# shield_describe(k_anon = 5),
+# shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0, on_fail = "block"),
+# shield_regex(on_fail = "block"),
+# shield_ingress(on_fail = "block")
 
 # Balanced: everyday development, low friction
-balanced <- list(
-  shield_egress(max_rows = 0, on_fail = "redact"),
-  shield_regex(on_fail = "redact"))
+balanced <- shield_preset_balanced()
+# shield_egress(max_rows = 0, on_fail = "redact"),
+# shield_regex(on_fail = "redact")
 
 # Clinical: adds the semantic reviewer + strict k-anonymity
-clinical <- list(
-  shield_describe(k_anon = 5),
-  shield_egress(max_rows = 0),
-  shield_regex(),
-  shield_ingress(on_fail = "ask"),
-  shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask"))
+clinical <- shield_preset_clinical()
+# shield_describe(k_anon = 5),
+# shield_egress(max_rows = 0),
+# shield_regex(),
+# shield_ingress(on_fail = "ask"),
+# shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask")
+
+client <- codeagent_client(chat, data_shield = shield_preset_strict())
 ```
 
 ### Two intentionally UNSAFE demo combinations

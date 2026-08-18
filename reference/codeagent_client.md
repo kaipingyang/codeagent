@@ -21,7 +21,8 @@ codeagent_client(
   verify_fn = NULL,
   mcp_config = NULL,
   register_tools = TRUE,
-  data_shield = NULL
+  data_shield = NULL,
+  max_budget_usd = NULL
 )
 ```
 
@@ -94,6 +95,20 @@ codeagent_client(
   [DataShield](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
   instance shared by selected chat threads. For a harness-only client,
   attach tools then call `client$data_shield$install(client$chat)`.
+
+- max_budget_usd:
+
+  Numeric or NULL (default). Hard dollar-cost cap for this client's
+  `chat` (mirrors Claude Code's `maxBudgetUsd`), checked alongside the
+  token budget in
+  [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md)
+  via `chat$get_cost()`. NULL (default) means no cap. Only takes effect
+  where ellmer has price data for the provider/model; unpriced custom
+  endpoints (e.g. a Databricks/Azure serving endpoint ellmer doesn't
+  recognize) report cost `$0` forever, so the cap silently never fires
+  there – this is a known limitation, not a bug (see
+  `CODEAGENT_MAX_BUDGET_USD` env var / `max_budget_usd` in settings.json
+  for the same knob without a client-code change).
 
 ## Value
 

@@ -37,7 +37,9 @@ Determine whether the agent loop should stop.
       current_tokens,
       max_tokens,
       iteration = 1L,
-      is_subagent = FALSE
+      is_subagent = FALSE,
+      current_cost_usd = NA_real_,
+      max_budget_usd = NULL
     )
 
 #### Arguments
@@ -57,6 +59,18 @@ Determine whether the agent loop should stop.
 - `is_subagent`:
 
   Logical. If TRUE, budget limits are not applied.
+
+- `current_cost_usd`:
+
+  Numeric or NA. Current session spend in US dollars (e.g. from
+  `.current_cost_usd()`); NA when unknown/unpriced.
+
+- `max_budget_usd`:
+
+  Numeric or NULL. Hard dollar cap; NULL disables the check. When set
+  and `current_cost_usd` is known, this fires immediately (bypassing
+  `iteration`/`.BUDGET_MIN_ITERATIONS`) – a dollar cap is a hard stop,
+  not a heuristic.
 
 #### Returns
 

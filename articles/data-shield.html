@@ -1397,26 +1397,32 @@ cannot substitute for it.</strong></p>
 <div class="section level3">
 <h3 id="three-ready-to-use-combination-templates">Three ready-to-use combination templates<a class="anchor" aria-label="anchor" href="#three-ready-to-use-combination-templates"></a>
 </h3>
+<p><code><a href="../reference/shield_preset.html">shield_preset_strict()</a></code>,
+<code><a href="../reference/shield_preset.html">shield_preset_balanced()</a></code>, and
+<code><a href="../reference/shield_preset.html">shield_preset_clinical()</a></code> are callable functions returning
+these exact combinations – no copy-pasting required:</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Strict: compliance / audit demos</span></span>
-<span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>detectors <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"row_cap"</span>, <span class="st">"value_match"</span><span class="op">)</span>, max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shield_preset.html">shield_preset_strict</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co"># shield_describe(k_anon = 5),</span></span>
+<span><span class="co"># shield_egress(detectors = c("row_cap", "value_match"), max_rows = 0, on_fail = "block"),</span></span>
+<span><span class="co"># shield_regex(on_fail = "block"),</span></span>
+<span><span class="co"># shield_ingress(on_fail = "block")</span></span>
 <span></span>
 <span><span class="co"># Balanced: everyday development, low friction</span></span>
-<span><span class="va">balanced</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span>, on_fail <span class="op">=</span> <span class="st">"redact"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"redact"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">balanced</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shield_preset.html">shield_preset_balanced</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co"># shield_egress(max_rows = 0, on_fail = "redact"),</span></span>
+<span><span class="co"># shield_regex(on_fail = "redact")</span></span>
 <span></span>
 <span><span class="co"># Clinical: adds the semantic reviewer + strict k-anonymity</span></span>
-<span><span class="va">clinical</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span>,</span>
-<span>  <span class="fu"><a href="../reference/shield_reviewer.html">shield_reviewer</a></span><span class="op">(</span>model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_FAST_MODEL"</span><span class="op">)</span>, on_risk <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">clinical</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shield_preset.html">shield_preset_clinical</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co"># shield_describe(k_anon = 5),</span></span>
+<span><span class="co"># shield_egress(max_rows = 0),</span></span>
+<span><span class="co"># shield_regex(),</span></span>
+<span><span class="co"># shield_ingress(on_fail = "ask"),</span></span>
+<span><span class="co"># shield_reviewer(model = Sys.getenv("CODEAGENT_FAST_MODEL"), on_risk = "ask")</span></span>
+<span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="../reference/shield_preset.html">shield_preset_strict</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="two-intentionally-unsafe-demo-combinations">Two intentionally UNSAFE demo combinations<a class="anchor" aria-label="anchor" href="#two-intentionally-unsafe-demo-combinations"></a>

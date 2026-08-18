@@ -6,7 +6,9 @@ level from the working directory up to the filesystem root (max 5 hops),
 then merge them in priority order (user first, then outer-to-inner
 project dirs) with section headers showing each source. More-specific
 (deeper) files appear later so they visually override. Duplicate paths
-are de-duplicated.
+are de-duplicated. Each file's body is also scanned for whole-line
+`@path/to/file` imports (see `.expand_claude_md_imports()`) before being
+merged in.
 
 ## Usage
 

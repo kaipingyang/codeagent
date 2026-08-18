@@ -94,7 +94,7 @@ codeagent_console(client)
 
 | Feature | Details |
 |----|----|
-| **Agent loop** | [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md) with max_turns, budget tracking, compaction |
+| **Agent loop** | [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md) with max_turns, token budget tracking, an optional hard `max_budget_usd` dollar-cost cap (`codeagent_client(max_budget_usd=)` / `CODEAGENT_MAX_BUDGET_USD` / `max_budget_usd` in `settings.json`; checked via `chat$get_cost()`, only fires where ellmer has price data for the model/provider), and compaction |
 | **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
 | **Hooks** | 27 Claude Code-aligned lifecycle events (tool, permission, message, session, task, worktree, compaction), configurable from `settings.json`. `PreToolUse` can **rewrite tool arguments** (SDK-style `updatedInput`) or deny a call |
 | **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds |
@@ -261,6 +261,34 @@ shield$register_asset(
 `kind` says what the asset is; `llm_access` says what may enter/leave
 the LLM. Raw egress is never a default and requires provenance
 (`shield$trusted_result()`), a reason, expiry/session scope, and audit.
+
+`audit_code_tool(shield, project_root)` is an opt-in `AuditCode` tool
+the main-loop model can call to vet a block of R code **before running
+it**: it deterministically extracts referenced paths from the AST,
+enforces an in-project source-file whitelist in code (never delegated to
+the model), reads only whitelisted files, and — with a shield — routes
+the vetted text through the
+[`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)
+rail. It returns risk metadata only (which refs, which were blocked and
+why, reviewer verdict), never file contents, and grants no
+read/write/shell capability. Host wires it in (e.g. when the sandbox is
+disabled) so the model can self-audit external references.
+
+[`shield_preset_strict()`](https://kaipingyang.github.io/codeagent/reference/shield_preset.md),
+[`shield_preset_balanced()`](https://kaipingyang.github.io/codeagent/reference/shield_preset.md),
+and
+[`shield_preset_clinical()`](https://kaipingyang.github.io/codeagent/reference/shield_preset.md)
+are ready-made strategy combinations for
+`codeagent_client(data_shield = ...)` — the same three templates
+documented in
+[`vignette("data-shield")`](https://kaipingyang.github.io/codeagent/articles/data-shield.md)’s
+“combination safety” matrix, as callable functions instead of
+copy-pasted code:
+
+``` r
+
+client <- codeagent_client(chat, data_shield = shield_preset_strict())
+```
 
 ### Skill system
 

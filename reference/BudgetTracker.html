@@ -87,7 +87,9 @@ due to context exhaustion or diminishing returns.</p>
 <span>  <span class="va">current_tokens</span>,</span>
 <span>  <span class="va">max_tokens</span>,</span>
 <span>  iteration <span class="op">=</span> <span class="fl">1L</span>,</span>
-<span>  is_subagent <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  is_subagent <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  current_cost_usd <span class="op">=</span> <span class="cn">NA_real_</span>,</span>
+<span>  max_budget_usd <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
@@ -102,6 +104,16 @@ due to context exhaustion or diminishing returns.</p>
 
       <dt><code>is_subagent</code></dt>
 <dd><p>Logical. If TRUE, budget limits are not applied.</p></dd>
+
+      <dt><code>current_cost_usd</code></dt>
+<dd><p>Numeric or NA. Current session spend in US
+dollars (e.g. from <code>.current_cost_usd()</code>); NA when unknown/unpriced.</p></dd>
+
+      <dt><code>max_budget_usd</code></dt>
+<dd><p>Numeric or NULL. Hard dollar cap; NULL disables
+the check. When set and <code>current_cost_usd</code> is known, this fires
+immediately (bypassing <code>iteration</code>/<code>.BUDGET_MIN_ITERATIONS</code>) – a
+dollar cap is a hard stop, not a heuristic.</p></dd>
 
 
 </dl><p></p></div>

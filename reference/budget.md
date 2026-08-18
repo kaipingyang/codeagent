@@ -10,4 +10,8 @@ stop. Mirrors Claude Code's budget tracking:
 
 - Minimum `.BUDGET_MIN_ITERATIONS` iterations before stopping
 
+- Optional dollar-cost hard cap (= Claude Code's `maxBudgetUsd`), fires
+  immediately once actual spend reaches it, independent of the token
+  heuristics above
+
 - Sub-agents are exempt from budget constraints

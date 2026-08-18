@@ -5,6 +5,9 @@ should stop. Mirrors Claude Code's budget tracking:
 Diminishing-return detection: stop if token growth &amp;lt; .BUDGET_MIN_GROWTH
 for .BUDGET_MAX_STALL_TURNS consecutive turns
 Minimum .BUDGET_MIN_ITERATIONS iterations before stopping
+Optional dollar-cost hard cap (= Claude Code's maxBudgetUsd), fires
+immediately once actual spend reaches it, independent of the token
+heuristics above
 Sub-agents are exempt from budget constraints
 
 "><meta property="og:description" content="BudgetTracker monitors token usage and signals when the agent
@@ -13,6 +16,9 @@ should stop. Mirrors Claude Code's budget tracking:
 Diminishing-return detection: stop if token growth &amp;lt; .BUDGET_MIN_GROWTH
 for .BUDGET_MAX_STALL_TURNS consecutive turns
 Minimum .BUDGET_MIN_ITERATIONS iterations before stopping
+Optional dollar-cost hard cap (= Claude Code's maxBudgetUsd), fires
+immediately once actual spend reaches it, independent of the token
+heuristics above
 Sub-agents are exempt from budget constraints
 
 "></head><body>
@@ -75,6 +81,9 @@ should stop. Mirrors Claude Code's budget tracking:</p><ul><li><p><code>.BUDGET_
 <li><p>Diminishing-return detection: stop if token growth &lt; <code>.BUDGET_MIN_GROWTH</code>
 for <code>.BUDGET_MAX_STALL_TURNS</code> consecutive turns</p></li>
 <li><p>Minimum <code>.BUDGET_MIN_ITERATIONS</code> iterations before stopping</p></li>
+<li><p>Optional dollar-cost hard cap (= Claude Code's <code>maxBudgetUsd</code>), fires
+immediately once actual spend reaches it, independent of the token
+heuristics above</p></li>
 <li><p>Sub-agents are exempt from budget constraints</p></li>
 </ul></div>
 

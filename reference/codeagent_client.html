@@ -76,7 +76,8 @@ is the single object passed to <code><a href="codeagent.html">codeagent()</a></c
 <span>  verify_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  mcp_config <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  register_tools <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max_budget_usd <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -138,6 +139,18 @@ expensive tool registration; call <code><a href="dot-register_all_tools.html">.r
 private <a href="DataShield.html">DataShield</a> R6), or an explicit <a href="DataShield.html">DataShield</a> instance shared by
 selected chat threads. For a harness-only client, attach tools then call
 <code>client$data_shield$install(client$chat)</code>.</p></dd>
+
+
+<dt id="arg-max-budget-usd">max_budget_usd<a class="anchor" aria-label="anchor" href="#arg-max-budget-usd"></a></dt>
+<dd><p>Numeric or NULL (default). Hard dollar-cost cap for
+this client's <code>chat</code> (mirrors Claude Code's <code>maxBudgetUsd</code>), checked
+alongside the token budget in <code><a href="agent_loop.html">agent_loop()</a></code> via <code>chat$get_cost()</code>. NULL
+(default) means no cap. Only takes effect where ellmer has price data for
+the provider/model; unpriced custom endpoints (e.g. a Databricks/Azure
+serving endpoint ellmer doesn't recognize) report cost <code>$0</code> forever, so
+the cap silently never fires there – this is a known limitation, not a
+bug (see <code>CODEAGENT_MAX_BUDGET_USD</code> env var / <code>max_budget_usd</code> in
+settings.json for the same knob without a client-code change).</p></dd>
 
 </dl></div>
     <div class="section level2">
