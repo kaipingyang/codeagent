@@ -36,6 +36,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$schema_block()`](#method-DataShield-schema_block)
 
+- [`DataShield$dp_budget_remaining()`](#method-DataShield-dp_budget_remaining)
+
 - [`DataShield$scan_egress()`](#method-DataShield-scan_egress)
 
 - [`DataShield$scan_ingress()`](#method-DataShield-scan_ingress)
@@ -79,6 +81,8 @@ Create a Data Shield.
       category_max = 20L,
       category_ratio = 0.2,
       audit_max = 1000L,
+      dp_epsilon = .DATA_SHIELD_DP_EPSILON_DEFAULT,
+      dp_budget = .DATA_SHIELD_DP_BUDGET_DEFAULT,
       strategies = NULL
     )
 
@@ -91,8 +95,10 @@ Create a Data Shield.
 
 - `distributions`:
 
-  Direct DescribeData policy. Strict `"off"` only is implemented;
-  `"on"`/`"dp"` fail explicitly.
+  Direct DescribeData policy. `"off"` (default, safe): labels only.
+  `"on"`/`"dp"`: real/DP-noised per-category counts (see
+  [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md));
+  numeric/date columns unchanged in all modes.
 
 - `k_anon`:
 
@@ -110,6 +116,18 @@ Create a Data Shield.
 - `audit_max`:
 
   Maximum in-memory non-sensitive decision events retained.
+
+- `dp_epsilon`:
+
+  Direct per-column-per-call DP privacy cost when `distributions = "dp"`
+  (see
+  [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)).
+
+- `dp_budget`:
+
+  Direct per-dataset total DP privacy budget when `distributions = "dp"`
+  (see
+  [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)).
 
 - `strategies`:
 
@@ -311,6 +329,24 @@ is disabled.
 #### Usage
 
     DataShield$schema_block()
+
+------------------------------------------------------------------------
+
+### `DataShield$dp_budget_remaining()`
+
+Return remaining DP privacy budget (epsilon units) for a registered
+dataset, or a named vector for all datasets when `name` is NULL.
+`NA_real_` for a dataset not under `distributions="dp"`.
+
+#### Usage
+
+    DataShield$dp_budget_remaining(name = NULL)
+
+#### Arguments
+
+- `name`:
+
+  Character or NULL.
 
 ------------------------------------------------------------------------
 
@@ -668,6 +704,12 @@ shield$coverage()
 #> 
 #> $config$category_ratio
 #> [1] 0.2
+#> 
+#> $config$dp_epsilon
+#> [1] 1
+#> 
+#> $config$dp_budget
+#> [1] 5
 #> 
 #> $config$detectors
 #> [1] "row_cap"     "value_match"

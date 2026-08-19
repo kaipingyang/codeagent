@@ -143,21 +143,29 @@ my_tool <- function(con, mode = "bypass") {
 
 ------------------------------------------------------------------------
 
-**依赖包版本（当前已装，2026-08-11 dev HEAD）：** - `ellmer`
-0.4.2.9000（dev，需 `Remotes: tidyverse/ellmer`；含
-`set_model()`/`chat_posit()`/`finish_reason`/`Chat$token_count()`；`Model`
-类已从 `Provider` 拆出，`chat_github()` defunct） - `btw`
-1.4.0.9000（dev，含 `btw_tool_files_patch` 原子多文件编辑、`agents/`
-子目录发现、`btw pkg desc`/`pkg src` CLI） - `shinychat`
-0.4.0.9000（dev，monorepo，安装路径：`pak::pak("posit-dev/shinychat/pkg-r")`，注意不是
-`pak::pak("posit-dev/shinychat")`；含官方
-`tool_result_display()`+`chat_ui(tool_grouping=)`+`<shiny-aside>`
-citation） - `bslib` 0.12.0.9000（dev，含 `offcanvas()` 滑出面板 + 右侧
-sidebar resize handle） - `shiny` 1.14.0.9000（dev，含 `startApp()`
-非阻塞启动、`session$destroy()` 模块清理、`offcanvas()`） - `mcptools`
-1.0.0（CRAN，含图片双向内容 + 认证远程 server + `_server.yml` Connect
-部署） - `httr2` 1.3.0（CRAN，200x 流式加速 + `httr2_translate()` +
-OTel）
+**冻结依赖基线（Plan 37，2026-08-19）：** - `ellmer` 0.4.2.9000 @
+`19be478ebf1a2e5d2db96a8aeaca71592c8d3f26`（`Remotes: tidyverse/ellmer`） -
+`btw` 1.4.0.9000 @ `d11591b09d9127b05d673e8c96569d2bbae2ec44` -
+`shinychat` 0.4.0.9000 @
+`aa35a0988319103c35637e6d467ebc02a3180e3c`（monorepo；必须安装
+`posit-dev/shinychat/pkg-r`） - `shiny` 1.14.0.9000 @
+`d19095f4b3dd`（冻结验证目标，含 \#4425 reconnect progress reset） -
+`bslib` 0.12.0.9000 @ `97aa1abc262b`（冻结验证目标，含 \#1342/#1346） -
+`mcptools` 1.0.1（CRAN；所有 MCP client/server 入口的最低安全版本） -
+`httr2` 1.3.0（CRAN；保持，不追无运行时变化的 dev HEAD）
+
+Shiny/bslib 是按冻结 SHA 验证兼容，不代表普通 CRAN
+安装自动包含对应修复；不要把瞬时 HEAD SHA 强锁进
+DESCRIPTION。价格数据也不在启动或模型请求时自动联网刷新。需要时由用户显式调用：
+
+``` r
+
+price_update <- update_model_prices()
+price_update$message
+```
+
+该调用只刷新 ellmer 的公开价格快照；网络失败保留现有
+cache，custom/private endpoint 更新后仍可能无价格。
 
 ``` r
 
@@ -401,10 +409,14 @@ MultiEdit, Glob, Grep, LS). All return `ContentToolResult` with
 have `_intent` parameter for card display.
 
 **`tools_r.R`** — Wraps
-[`btw::btw_tools()`](https://posit-dev.github.io/btw/reference/btw_tools.html).
-`.BTW_GROUPS` covers all 10 btw 1.2.1 groups:
-`agent, cran, docs, env, files, git, ide, pkg, sessioninfo, web`.
-`btw_tool_skill` excluded (handled by skill system).
+[`btw::btw_tools()`](https://posit-dev.github.io/btw/reference/btw_tools.html)
+with explicit ownership. Full-client/UI registration filters raw
+`btw_tool_agent_*`; the dedicated Agent owner selects exactly one
+foreground implementation (shield/async/worktree → codeagent Agent,
+plain sync → upstream agent). Runtime btw-group changes build a target
+snapshot and call `set_tools()` atomically, preserving
+core/MCP/skill/file-owner tools; failures restore the old snapshot and
+wrappers. `btw_tool_skill` remains owned by the skill system.
 
 **`tool_run_r.R`** —
 [`run_r_tool()`](https://kaipingyang.github.io/codeagent/reference/run_r_tool.md)
@@ -418,65 +430,40 @@ mode resolves to `"ask"` (user confirms each call), `plan`/`dont_ask` →
 `.runr_to_tool_result()` is a special case of the `tool_display.R`
 adapter.
 
-**`tool_display.R`** — **typed tool-artifact contract + render
-dispatcher**. The typed artifact lives under
-`extra$codeagent$artifact = {kind, status, icon, title, payload}` — a
-**private key ellmer only transports** (never read), so shinychat never
-warns “Unrecognized field” (plan 35 B1: previously
-`extra$display$toolcard`/`right_output`, which shinychat’s
-`as_tool_result_display()` warned on + dropped).
-`kind ∈ {code, image, table, diff, text, error}`. `display` now carries
-ONLY shinychat-official fields:
-`title`/`icon`/`markdown`/`html`/`full_screen`/`open`.
+**`tool_display.R`** — **typed tool-artifact contract + official
+shinychat display**. The UI-neutral source stays under
+`extra$codeagent$artifact = {kind,status,icon,title,payload}` (and web
+provenance under `extra$codeagent$sources`).
 [`.tool_result2()`](https://kaipingyang.github.io/codeagent/reference/dot-tool_result2.md)
-builds the artifact on `extra$codeagent`, then renders the rich card
-ONCE into `display$html` (in-chat bubble, rendered natively by shinychat
-inside `<shiny-tool-result>`, `full_screen=TRUE` + `open=FALSE` =
-collapsed/expandable). The right Output panel re-renders **on demand**
-from the artifact (`server_chat.R` `.push_output` calls
-`render_artifact(artifact, mode="panel")`) — no stored `right_output`
-copy. `render_artifact(artifact, mode=c("panel","bubble"))` is the
-dispatcher (code→Prism-highlighted+copy, image→zoomable img+toolbar,
-table→reactable, diff→base-R-LCS colored, error→styled box); the `mode`
-param is wired for future bubble/panel differentiation but currently
-renders identically (step 2, separately scheduled — differentiated
-views + A2UI). `.adapt_tool_result(result)` is the **universal adapter**
-called at the `server_chat.R` `on_tool_result` boundary — normalizes ANY
-native `ContentToolResult` (raw
-[`btw::btw_tools()`](https://posit-dev.github.io/btw/reference/btw_tools.html),
-web, skills) into the typed contract, idempotent (checks
-`extra$codeagent$artifact` OR legacy `extra$display$toolcard` for old
-sessions). The 8 builtins + RunR use
-[`.tool_result2()`](https://kaipingyang.github.io/codeagent/reference/dot-tool_result2.md);
-everything else gets typed by the adapter. Interactivity
-(copy/zoom/fullscreen/download) is document-delegated JS in `agent.js`;
-CSS classes `.toolcard-*` + `data-toolcard-*` attributes in `styles.css`
-(unchanged across migration); Prism.js via CDN in `head_assets()`.
+feature-detects and uses
+[`shinychat::tool_result_display()`](https://posit-dev.github.io/shinychat/r/reference/tool_result_display.html);
+the fallback accepts only official fields, including compact
+`label`/`value_preview` and footer. The right panel renders on demand
+from the artifact, so no `right_output` duplicate is stored.
+[`.adapt_tool_result()`](https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.md)
+normalizes native/btw/MCP results without dropping `request`;
+unsupported complex values deterministically become a legal
+`ContentToolResult` or safe text error. Legacy
+`display$toolcard/right_output` migration is presentation-only during
+replay and never mutates provider-facing turns, IDs, values, or
+ordering.
 
-**`tools_agent.R`** —
-[`agent_tool()`](https://kaipingyang.github.io/codeagent/reference/agent_tool.md)
-uses `btw_tool_agent_subagent` when btw available; falls back to
-codeagent’s own loop. Supports `worktree_isolation=TRUE` (git worktree
-per sub-agent). Discovers custom agents from `.btw/agent-*.md`,
-`.claude/agents/`.
-[`codeagent_mcp_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mcp_server.md)
-wraps
-[`btw::btw_mcp_server()`](https://posit-dev.github.io/btw/reference/mcp.html).
-[`install_codeagent_cli()`](https://kaipingyang.github.io/codeagent/reference/install_codeagent_cli.md)
-installs Rapp-based CLI.
+**`tools_agent.R`** — Dedicated Agent ownership prevents duplicate
+foreground subagent tools. Shielded foreground subagents inherit the
+same live `DataShield`, gate the reply before hooks/callbacks/parent
+results, and do not persist raw sidechains; shielded background agents
+fail closed. `codeagent_mcp_server(..., session_tools=FALSE)` calls
+[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
+directly, requires mcptools \>= 1.0.1, and rejects session tools on
+non-loopback HTTP because those controls bypass the Chat permission
+gate/Data Shield.
 
-**`mcp_client.R`** — **MCP client (M8)**.
-`register_mcp_client(chat, config)` wraps
-[`mcptools::mcp_tools()`](https://posit-dev.github.io/mcptools/reference/client.html)
-to connect EXTERNAL MCP servers (stdio transport via processx child
-process) and register their tools onto the Chat. Config = JSON path or
-inline list (`mcpServers: {name: {command, args, env}}`).
-`codeagent_client(mcp_config=)` opts in. Complements
-[`codeagent_mcp_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mcp_server.md)
-(server side). Graceful: missing mcptools/bad config → 0 tools, no
-crash. Sandbox (fs/network isolation) NOT implemented — see
-`references/sandbox-limitations.md` (権限门控 + Hook 策略 is the
-security model; OS/container sandbox is host-layer responsibility).
+**`mcp_client.R`** — External MCP registration and generated server
+subprocesses enforce mcptools \>= 1.0.1. An old client warns and
+registers zero tools; an old server stops. stdio and loopback HTTP keep
+`session_tools=FALSE` unless explicitly enabled. Config remains a JSON
+path or inline `mcpServers` list; OS/container sandboxing is still host
+responsibility.
 
 **`compaction.R`** — **Five-level** compaction: - L1 `snip_old_tools`:
 replace large old tool results with placeholder - L2
@@ -503,17 +490,25 @@ projection (truncate all tool result values)
 > request, inside `invoke_tools`, per tool). True parity needs upstream
 > `on_turn_start` (PR tidyverse/ellmer#1052); see
 > `references/plan/13-mid-loop-compaction.md`.
+>
+> Token accounting is deliberately zero-implicit-network:
+> `token_count_with_estimation(chat, allow_network=FALSE)` includes
+> `cached_input` from the last usage and otherwise uses the heuristic.
+> Compaction, context-left, teardown and Shiny never call remote token
+> counting; only an explicit future action may pass
+> `allow_network=TRUE`.
 
-**`tools_web.R`** —
-[`web_fetch_tool()`](https://kaipingyang.github.io/codeagent/reference/web_fetch_tool.md)
-and
-[`web_search_tool()`](https://kaipingyang.github.io/codeagent/reference/web_search_tool.md).
-All tools return `ContentToolResult` with `extra$display` (HTML title +
-markdown preview for humans). WebSearch backend: `BRAVE_API_KEY` → Brave
-Search API (real results, 2000 free/month); fallback → DuckDuckGo
-Instant Answer (entity queries only, no key needed). WebFetch uses httr2
-directly (no Chrome dependency). btw `web_read_url` (needs Chrome) is
-available as extra via `btw_groups = "web"`.
+**`tools_web.R` / `web_citations.R`** — WebSearch/WebFetch return legal
+`ContentToolResult`s plus validated source records in
+`extra$codeagent$sources`. Citation mode is opt-in
+(`"off" | "shiny_aside"`) and buffers the final answer; the model may
+emit only `[[cite:SOURCE_ID|visible claim]]`. codeagent accepts only
+current-turn IDs, scans fields, escapes untrusted values, and rebuilds a
+fixed `<shiny-aside>` allowlist before the browser sees anything. Web
+fetches allow only public http/https, reject
+userinfo/private/reserved/mixed DNS, re-authorize every redirect, and
+pin the validated address with curl resolve to prevent DNS rebinding.
+Provider-native web tools remain out of scope.
 
 **`skills.R`** — **btw-compatible** skill system. Skill format:
 `<name>/SKILL.md` directories (not flat `.md` files). Uses
@@ -550,14 +545,16 @@ facts;
 is injected into `.build_system_reminder` on iteration 1 (not every turn
 — model retains it after). Survives across sessions.
 
-**`model_switch.R`** — **lossless model switch (M1)**.
-`switch_model(client, model)`: Route A swaps ellmer R6
-`private$provider` in place (same Chat object →
-callbacks/stream_controller/closures untouched); Route B (tryCatch
-fallback) rebuilds via public API. `.resolve_model_chat` reuses
-`client_config` alias resolution. Shiny uses `.swap_provider` directly
-(Route A only, to keep Chat identity); CLI uses full `switch_model`. See
-`references/model-switch-alternatives.md`.
+**`model_switch.R`** — **verified lossless model switch**. Route A is
+strictly name-only: provider configuration and Model params/extra_args
+must be unchanged, then public `set_model()` is verified and rolled back
+on failure. Provider/endpoint/credentials/API-arg changes use Route B,
+which rebuilds a client while preserving history, tools, hooks, budgets,
+MCP settings and the same live Data Shield. Shiny keeps its captured
+Chat identity and therefore rejects Route-B targets with guidance to
+start a new session/app; picker, `/model`, and modal share this rule and
+reject changes while streaming. Direct private provider replacement is
+forbidden because it caused Provider/Model split-brain.
 
 **`settings.R`** — Priority: env vars \> `~/.codeagent/settings.json` \>
 `.codeagent/settings.json` \> defaults.
@@ -565,44 +562,38 @@ fallback) rebuilds via public API. `.resolve_model_chat` reuses
 injects ephemeral per-turn context (date/iteration/cwd) into user
 message (not system prompt) to preserve prompt cache.
 
+**`query.R` / `stream.R` / `server_chat.R`** — All terminal paths use
+the pure `.map_finish_reason()` mapping. Fixed order is final
+response/retry → map raw finish reason → append static note → output
+gate → visible callback/AssistantMessage hook → save → Stop hook. Sync,
+stream and Shiny therefore agree on
+completed/truncated/filtered/incomplete-tool-use semantics while
+retaining the raw provider reason.
+
 **`compaction.R` `.make_compact_chat()`** — When `CODEAGENT_BASE_URL`
-set, uses `chat_openai_compatible` with `databricks-claude-haiku-4-5`;
+set, uses `chat_openai_compatible` with the configured compact model;
 otherwise `chat_anthropic`.
 
 **`ui.R`** —
-`codeagent_app(client, pinned_skills, theme, port, launch.browser)`.
-**Instant startup**: the UI shell renders first; tool + skill
-registration is deferred into a `session$onFlushed()` step behind a
-full-window “Initializing codeagent…” overlay
-(`uiOutput("ca_init_overlay")` gated on `state$initializing`), with the
-chat input disabled until it completes. Pass a bare ellmer `Chat` (not a
-pre-built `CodeagentClient`) to get the lazy path — `codeagent_app` then
-builds a cheap shell client (`register_tools=FALSE`) and registers tools
-in-server. Sidebar accordions: Sessions (1st, open), Customizations,
-Settings (permission mode + btw tool groups + theme toggle). Skills are
-NOT a sidebar panel — they ride shinychat’s slash-command typeahead
-(type `/`; see `server_slash.R`). Right output panel (`ui_panels.R`
-`output_panel_ui`) has three **static** navset tabs: Output / Files
-(jsTreeR tree) / File (single scrollable viewer driven by
-`server_right.R`’s `ca_file_view` reactiveVal — clicking a file renders
-its preview there; NB: do NOT reintroduce per-file `nav_insert()` tabs,
-which mis-render outside the navset and cover the tab strip). Themes:
-`"default"` (pure bslib), `"flatly"`, `"darkly"` (Bootswatch), `"glass"`
-(custom). Tools stream via `stream="content"` → shinychat renders tool
-cards automatically.
+[`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
+keeps instant startup: tool/skill registration is deferred behind the
+initialization overlay, and input remains disabled until ready. Citation
+mode is explicitly opt-in and buffer-then-show; ordinary streaming is
+unchanged. The greeting uses `chat_greeting(..., persistent=TRUE)` and
+is restored without duplication across New/Delete/session restore.
+Sidebar and the three static right-panel tabs (Output / Files / File)
+remain unchanged; do not reintroduce per-file dynamic tabs. Tool-group
+and permission mutation are rejected while streaming and applied
+atomically otherwise.
 
-**`sessions.R / mutations.R`** — Sessions stored as JSONL under
-`~/.codeagent/projects/<hash>/`. Session titles fall back to first user
-message (not UUID).
-[`fork_session()`](https://kaipingyang.github.io/codeagent/reference/fork_session.md)
-implemented. **Lossless persistence (M7)**: `save_session` writes a
-`chat-state` line (`contents_record` → gzip → base64, JSON-safe)
-preserving tool requests/results; per-message text lines remain for UI
-display + legacy fallback.
-`restore_session_into_chat(chat, session_id, cwd)` prefers the lossless
-state (tool calls intact), falls back to text turns for pre-M7 sessions.
-`session_id = NULL` → continue most recent (CLI `--continue`). Shiny
-session-load + CLI `--continue`/`--resume` both use it.
+**`sessions.R / mutations.R`** — Sessions remain lossless JSONL
+(`contents_record` → gzip → base64) with text presentation lines for
+UI/legacy fallback. Citation mode saves only the finalized, gated
+deterministic presentation text while retaining lossless tool/source
+metadata. Replay clones a presentation Chat, migrates legacy display
+only on that copy, and never changes provider-facing values,
+request/result IDs, turn ordering, or the original Chat.
+`session_id=NULL` continues the most recent session.
 
 ### Key design decisions
 
@@ -614,11 +605,11 @@ session-load + CLI `--continue`/`--resume` both use it.
   [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
   accept `CodeagentClient` as first arg; old flat params still work for
   backward compat.
-- **All tools return `ContentToolResult` with `extra$display`**: `title`
-  (HTML, use
-  [`htmltools::HTML()`](https://rstudio.github.io/htmltools/reference/HTML.html)),
-  `markdown` (human-readable preview), `value` (LLM-facing text). See
-  `ellmer-tool-calling.md` for the full `extra$display` field spec.
+- **Tool results use official display + private metadata**:
+  `extra$display` is built with shinychat’s official
+  constructor/fallback fields; typed artifacts and source provenance
+  live under `extra$codeagent`. LLM-facing `value` remains
+  provider-safe.
 - **WebSearch backends**: `BRAVE_API_KEY` env var enables Brave Search
   API; without it falls back to DuckDuckGo (entity queries only). Never
   rely on DDG for general questions.
@@ -628,8 +619,10 @@ session-load + CLI `--continue`/`--resume` both use it.
   compete.
 - **Skill format is `name/SKILL.md`** (btw/Claude Code compatible).
   Never use flat `.md` files.
-- **`ContentToolResult` with `extra$display`**: all tools return typed
-  results with HTML title + markdown for shinychat cards.
+- **Tool result normalization is explicit**: known complex results
+  become legal `ContentToolResult`s; unknown classes deterministically
+  error or degrade to safe text rather than relying on ellmer’s
+  deprecated complex-return coercion.
 - **S7 slot access is fragile**: wrap in `tryCatch`.
 - **`%||%` null-coalescing**: defined in `utils.R`.
 - **shinyAssistantUI canonical groups**: when mimicking the slash menu,
@@ -730,11 +723,12 @@ All core subsystems are complete. 281 tests pass.
   `CODEAGENT_MAX_BUDGET_USD` env / `settings.json` `max_budget_usd`
   三处任一设置生效（函数参数优先，NULL
   时保留已加载值）。**已知局限**：ellmer 对未注册 价格的自定义端点（如
-  Databricks/Azure serving-endpoint）`get_cost()` 恒返回
+  Databricks/Azure serving-endpoint）`get_cost()` 可能恒返回
   `$0`，此时上限永不触发—— 这不是
-  bug，是”没有价格表就没法算钱”的固有限制（原 backlog
-  已预判）。未做：`models_update_prices()`
-  自动拉价格表（仍需上游/用户自行维护）。
+  bug，是“没有价格表就没法算钱”的固有限制。已提供显式
+  [`update_model_prices()`](https://kaipingyang.github.io/codeagent/reference/update_model_prices.md)
+  刷新 ellmer 公开价格快照；它从不在启动或模型请求中自动调用，且
+  custom/private endpoint 刷新后仍可能无匹配价格。
 
 ### 语音输入
 

@@ -15,7 +15,10 @@ register_agent_tool(
   worktree_isolation = FALSE,
   ask_fn = NULL,
   async = FALSE,
-  data_shield = NULL
+  data_shield = NULL,
+  cwd = getwd(),
+  parent_chat = NULL,
+  hooks = NULL
 )
 ```
 
@@ -63,6 +66,23 @@ register_agent_tool(
   [DataShield](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
   inherited by codeagent sub-agents; disables uninstrumented
   btw/custom-agent delegation.
+
+- cwd:
+
+  Character. Working directory used for upstream agent discovery.
+
+- parent_chat:
+
+  Optional parent
+  [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html);
+  reserved for owned sub-agent lifecycle integration.
+
+- hooks:
+
+  Optional
+  [HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md)
+  used for SubagentStart/Stop lifecycle events on the owned codeagent
+  Agent path.
 
 ## Value
 

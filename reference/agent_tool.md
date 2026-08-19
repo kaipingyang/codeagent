@@ -16,7 +16,8 @@ agent_tool(
   hooks = NULL,
   ask_fn = NULL,
   async = FALSE,
-  data_shield = NULL
+  data_shield = NULL,
+  parent_chat = NULL
 )
 ```
 
@@ -68,6 +69,13 @@ agent_tool(
   [DataShield](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
   inherited from the parent. When set, the sub-agent's own tools are
   wrapped before its first LLM request.
+
+- parent_chat:
+
+  Optional parent
+  [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
+  The owned Agent path clones this Chat, clears history/tools, and
+  verifies provider + Model inheritance.
 
 ## Value
 

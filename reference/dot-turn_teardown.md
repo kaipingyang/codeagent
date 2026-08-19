@@ -5,7 +5,7 @@ Run per-turn teardown: save session and return usage + cost.
 ## Usage
 
 ``` r
-.turn_teardown(client, cwd = NULL, session_id = NULL)
+.turn_teardown(client, cwd = NULL, session_id = NULL, presentation_text = NULL)
 ```
 
 ## Arguments
@@ -22,6 +22,11 @@ Run per-turn teardown: save session and return usage + cost.
 - session_id:
 
   Character or NULL.
+
+- presentation_text:
+
+  Character or NULL. Safe finalized assistant text for the session's
+  presentation record.
 
 ## Value
 

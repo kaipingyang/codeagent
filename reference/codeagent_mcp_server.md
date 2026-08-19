@@ -1,11 +1,10 @@
-# Exposes codeagent's tool set as an MCP server. By default uses btw's `btw_mcp_server()` over stdio (for Claude Desktop / VS Code MCP config). With `transport = "http"` it serves over HTTP via `mcptools::mcp_server()` (\>= 0.2.1), enabling remote MCP clients. The server runs in a blocking loop.
+# Exposes codeagent's tool set as an MCP server via `mcptools::mcp_server()`. Session tools are disabled by default because they expose a separate R-session control surface that does not pass through codeagent's Chat permission gate or Data Shield.
 
-Exposes codeagent's tool set as an MCP server. By default uses btw's
-`btw_mcp_server()` over stdio (for Claude Desktop / VS Code MCP config).
-With `transport = "http"` it serves over HTTP via
-[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
-(\>= 0.2.1), enabling remote MCP clients. The server runs in a blocking
-loop.
+Exposes codeagent's tool set as an MCP server via
+[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html).
+Session tools are disabled by default because they expose a separate
+R-session control surface that does not pass through codeagent's Chat
+permission gate or Data Shield.
 
 ## Usage
 
@@ -15,6 +14,7 @@ codeagent_mcp_server(
   transport = c("stdio", "http"),
   host = "127.0.0.1",
   port = 8000L,
+  session_tools = FALSE,
   ...
 )
 ```
@@ -39,6 +39,11 @@ codeagent_mcp_server(
 
   Integer. Port to bind when `transport = "http"`.
 
+- session_tools:
+
+  Logical. Expose mcptools R-session controls. Defaults to `FALSE`; may
+  only be enabled for stdio or a loopback HTTP listener.
+
 - ...:
 
   Additional arguments passed to the underlying server function.
@@ -46,3 +51,12 @@ codeagent_mcp_server(
 ## Value
 
 Does not return (blocking).
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+# Session controls are disabled unless explicitly requested.
+codeagent_mcp_server(session_tools = FALSE)
+} # }
+```

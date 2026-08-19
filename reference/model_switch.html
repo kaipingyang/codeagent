@@ -3,14 +3,13 @@
 functions usable from both the CLI and the Shiny app. Conversation history
 (including tool requests/results) is preserved across the switch.
 Two strategies:
-Route A (default) – swap the ellmer Chat's internal provider in place.
-The Chat object identity is unchanged, so callbacks (on_tool_result),
-the stream controller, and any closures capturing the Chat keep working
-untouched. Touches ellmer's private R6 field, guarded by tryCatch.
-Route B (fallback) – build a fresh Chat from the new spec, migrate
-turns via set_turns(), and rebuild the client through
-codeagent_client() (re-registers tools + system prompt). Pure public
-API; returns a NEW client object.
+Route A (strict name-only) – use public set_model() only when the
+provider configuration and Model params/extra args are unchanged. Chat
+identity, callbacks, and tools remain intact.
+Route B (fallback) – for provider/configuration changes, build a
+fresh Chat, migrate turns, and rebuild tools while carrying forward the
+complete live client settings, hooks, and Data Shield engine. Returns a
+NEW client object; the original remains unchanged if rebuilding fails.
 
 
 See references/model-switch-alternatives.md for the 13-point empirical
@@ -18,14 +17,13 @@ validation behind this design."><meta property="og:description" content="Lossles
 functions usable from both the CLI and the Shiny app. Conversation history
 (including tool requests/results) is preserved across the switch.
 Two strategies:
-Route A (default) – swap the ellmer Chat's internal provider in place.
-The Chat object identity is unchanged, so callbacks (on_tool_result),
-the stream controller, and any closures capturing the Chat keep working
-untouched. Touches ellmer's private R6 field, guarded by tryCatch.
-Route B (fallback) – build a fresh Chat from the new spec, migrate
-turns via set_turns(), and rebuild the client through
-codeagent_client() (re-registers tools + system prompt). Pure public
-API; returns a NEW client object.
+Route A (strict name-only) – use public set_model() only when the
+provider configuration and Model params/extra args are unchanged. Chat
+identity, callbacks, and tools remain intact.
+Route B (fallback) – for provider/configuration changes, build a
+fresh Chat, migrate turns, and rebuild tools while carrying forward the
+complete live client settings, hooks, and Data Shield engine. Returns a
+NEW client object; the original remains unchanged if rebuilding fails.
 
 
 See references/model-switch-alternatives.md for the 13-point empirical
@@ -87,14 +85,13 @@ validation behind this design."></head><body>
     <p>Lossless mid-conversation model switching. Pure-R harness
 functions usable from both the CLI and the Shiny app. Conversation history
 (including tool requests/results) is preserved across the switch.</p>
-<p>Two strategies:</p><ul><li><p><strong>Route A (default)</strong> – swap the ellmer Chat's internal provider in place.
-The Chat object identity is unchanged, so callbacks (<code>on_tool_result</code>),
-the stream controller, and any closures capturing the Chat keep working
-untouched. Touches ellmer's private R6 field, guarded by tryCatch.</p></li>
-<li><p><strong>Route B (fallback)</strong> – build a fresh Chat from the new spec, migrate
-turns via <code>set_turns()</code>, and rebuild the client through
-<code><a href="codeagent_client.html">codeagent_client()</a></code> (re-registers tools + system prompt). Pure public
-API; returns a NEW client object.</p></li>
+<p>Two strategies:</p><ul><li><p><strong>Route A (strict name-only)</strong> – use public <code>set_model()</code> only when the
+provider configuration and Model params/extra args are unchanged. Chat
+identity, callbacks, and tools remain intact.</p></li>
+<li><p><strong>Route B (fallback)</strong> – for provider/configuration changes, build a
+fresh Chat, migrate turns, and rebuild tools while carrying forward the
+complete live client settings, hooks, and Data Shield engine. Returns a
+NEW client object; the original remains unchanged if rebuilding fails.</p></li>
 </ul><p>See <code>references/model-switch-alternatives.md</code> for the 13-point empirical
 validation behind this design.</p>
     </div>

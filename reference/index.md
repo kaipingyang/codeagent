@@ -182,12 +182,11 @@ Model Context Protocol client and server.
 - [`codeagent_mcp_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mcp_server.md)
   :
 
-  Exposes codeagent's tool set as an MCP server. By default uses btw's
-  `btw_mcp_server()` over stdio (for Claude Desktop / VS Code MCP
-  config). With `transport = "http"` it serves over HTTP via
-  [`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
-  (\>= 0.2.1), enabling remote MCP clients. The server runs in a
-  blocking loop.
+  Exposes codeagent's tool set as an MCP server via
+  [`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html).
+  Session tools are disabled by default because they expose a separate
+  R-session control surface that does not pass through codeagent's Chat
+  permission gate or Data Shield.
 
 - [`register_mcp_client()`](https://kaipingyang.github.io/codeagent/reference/register_mcp_client.md)
   : Register external MCP server tools onto a Chat
@@ -219,6 +218,8 @@ Miscellaneous helpers.
 
 - [`switch_model()`](https://kaipingyang.github.io/codeagent/reference/switch_model.md)
   : Switch the active model on a CodeagentClient, preserving history
+- [`update_model_prices()`](https://kaipingyang.github.io/codeagent/reference/update_model_prices.md)
+  : Explicitly update ellmer model pricing data
 - [`verify_r_tests()`](https://kaipingyang.github.io/codeagent/reference/verify_r_tests.md)
   : R package test verification function
 - [`verify_r_lints()`](https://kaipingyang.github.io/codeagent/reference/verify_r_lints.md)

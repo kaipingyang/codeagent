@@ -74,7 +74,9 @@
 <span>  permission_mode <span class="op">=</span> <span class="st">"default"</span>,</span>
 <span>  cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  btw_groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  chat <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  chat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  web_citations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"off"</span>, <span class="st">"shiny_aside"</span><span class="op">)</span>,</span>
+<span>  web_allow_private <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -159,6 +161,20 @@ long multi-line prompts). Set at launch; not switchable live.</p></dd>
 <dt id="arg-chat">chat<a class="anchor" aria-label="anchor" href="#arg-chat"></a></dt>
 <dd><p>An <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> template cloned inside each Shiny session;
 convenient multi-user entry point.</p></dd>
+
+
+<dt id="arg-web-citations">web_citations<a class="anchor" aria-label="anchor" href="#arg-web-citations"></a></dt>
+<dd><p>Citation presentation mode: <code>"off"</code> (default) or
+<code>"shiny_aside"</code> for the deterministic current-turn
+<code>[[cite:SOURCE_ID|claim]]</code> bridge. Logical <code>TRUE</code>/<code>FALSE</code> remains accepted
+for compatibility. Enabled replies are buffered and validated before any
+<code>&lt;shiny-aside&gt;</code> markup is built server-side.</p></dd>
+
+
+<dt id="arg-web-allow-private">web_allow_private<a class="anchor" aria-label="anchor" href="#arg-web-allow-private"></a></dt>
+<dd><p>Logical. Reserved opt-in for local development.
+Private-network fetching remains disabled in this release; <code>TRUE</code> fails
+closed rather than weakening SSRF protection.</p></dd>
 
 </dl></div>
     <div class="section level2">

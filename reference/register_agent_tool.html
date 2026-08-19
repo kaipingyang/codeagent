@@ -71,7 +71,10 @@ discovered from <code>.btw/agent-*.md</code>, <code>.claude/agents/</code>, etc.
 <span>  worktree_isolation <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  ask_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  parent_chat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  hooks <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -116,6 +119,20 @@ on async parent turns. Default <code>FALSE</code>.</p></dd>
 <dt id="arg-data-shield">data_shield<a class="anchor" aria-label="anchor" href="#arg-data-shield"></a></dt>
 <dd><p>Optional <a href="DataShield.html">DataShield</a> inherited by codeagent sub-agents;
 disables uninstrumented btw/custom-agent delegation.</p></dd>
+
+
+<dt id="arg-cwd">cwd<a class="anchor" aria-label="anchor" href="#arg-cwd"></a></dt>
+<dd><p>Character. Working directory used for upstream agent discovery.</p></dd>
+
+
+<dt id="arg-parent-chat">parent_chat<a class="anchor" aria-label="anchor" href="#arg-parent-chat"></a></dt>
+<dd><p>Optional parent <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code>; reserved for owned
+sub-agent lifecycle integration.</p></dd>
+
+
+<dt id="arg-hooks">hooks<a class="anchor" aria-label="anchor" href="#arg-hooks"></a></dt>
+<dd><p>Optional <a href="HookRegistry.html">HookRegistry</a> used for SubagentStart/Stop lifecycle
+events on the owned codeagent Agent path.</p></dd>
 
 </dl></div>
     <div class="section level2">

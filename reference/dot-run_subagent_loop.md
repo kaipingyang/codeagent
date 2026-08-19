@@ -14,7 +14,8 @@ ephemeral.
   max_turns = 30L,
   persist = FALSE,
   cwd = getwd(),
-  description = NULL
+  description = NULL,
+  data_shield = NULL
 )
 ```
 
@@ -44,6 +45,13 @@ ephemeral.
 - description:
 
   Character. Used as the sidechain session title.
+
+- data_shield:
+
+  Optional
+  [DataShield](https://kaipingyang.github.io/codeagent/reference/DataShield.md).
+  Replies are gated before hooks, return, or persistence. Shielded
+  sidechains are not persisted.
 
 ## Value
 

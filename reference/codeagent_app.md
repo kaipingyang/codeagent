@@ -20,7 +20,9 @@ codeagent_app(
   permission_mode = "default",
   cwd = getwd(),
   btw_groups = NULL,
-  chat = NULL
+  chat = NULL,
+  web_citations = c("off", "shiny_aside"),
+  web_allow_private = FALSE
 )
 ```
 
@@ -109,6 +111,20 @@ codeagent_app(
   An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
   template cloned inside each Shiny session; convenient multi-user entry
   point.
+
+- web_citations:
+
+  Citation presentation mode: `"off"` (default) or `"shiny_aside"` for
+  the deterministic current-turn `[[cite:SOURCE_ID|claim]]` bridge.
+  Logical `TRUE`/`FALSE` remains accepted for compatibility. Enabled
+  replies are buffered and validated before any `<shiny-aside>` markup
+  is built server-side.
+
+- web_allow_private:
+
+  Logical. Reserved opt-in for local development. Private-network
+  fetching remains disabled in this release; `TRUE` fails closed rather
+  than weakening SSRF protection.
 
 ## Value
 

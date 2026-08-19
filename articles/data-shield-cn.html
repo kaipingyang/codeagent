@@ -91,9 +91,10 @@
 行数上限、受保护值精确匹配、严格
 <code>DescribeData</code>、有序扫描器管道、
 通用工具调用前置扫描、按工具策略、基于 promise 的 egress 审批、便携式
-路径/符号链接沙箱、以及可选的脱敏代码语义审查器均已接线完成。完整 OS
-执行隔离适配器与 <code>distributions="on"/"dp"</code>
-仍是路线图项。默认关闭 （<code>data_shield = NULL</code>）。</p>
+路径/符号链接沙箱、可选的脱敏代码语义审查器、以及 DP 加噪类别计数
+（<code>distributions="dp"</code>）均已接线完成。完整 OS
+执行隔离适配器与数值/连续
+统计量的差分隐私仍是路线图项。默认关闭（<code>data_shield = NULL</code>）。</p>
 </blockquote>
 <div class="section level2">
 <h2 id="为什么需要它">为什么需要它<a class="anchor" aria-label="anchor" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%9C%80%E8%A6%81%E5%AE%83"></a>
@@ -312,15 +313,18 @@ redact。Raw-once 只对本次结果生效，且会被审计。</p>
 <tr class="odd">
 <td><code>distributions</code></td>
 <td><code>"off"</code></td>
-<td>已实现的严格模式：不给直方图/分位数/均值/类别计数/行/自由文本示例。<code>on</code>/<code>dp</code>
-是路线图项，会显式报错</td>
+<td>
+<code>"off"</code>：不给计数，只给类别标签。<code>"on"</code>：真实类别计数（无隐私保护）。<code>"dp"</code>：Laplace
+加噪的类别计数，从每个 dataset 的 <code>dp_budget</code> 里扣
+<code>dp_epsilon</code>；预算耗尽后降级为 <code>"off"</code>
+式的纯标签输出。<strong>数值/日期/logical/自由文本列在三种模式下行为完全不变</strong>——见下文</td>
 </tr>
 <tr class="even">
 <td><code>k_anon</code></td>
 <td><code>5</code></td>
 <td>支持行数少于 k 的类别标签会变成
-<code>&lt;rare suppressed&gt;</code>
-</td>
+<code>&lt;rare suppressed&gt;</code>（三种 <code>distributions</code>
+模式下都适用，计数是在这一步之后才加的）</td>
 </tr>
 <tr class="odd">
 <td><code>category_max</code></td>
@@ -332,11 +336,49 @@ redact。Raw-once 只对本次结果生效，且会被审计。</p>
 <td><code>0.2</code></td>
 <td>判定为字符分类处理的最大去重/非缺失比率</td>
 </tr>
+<tr class="odd">
+<td><code>dp_epsilon</code></td>
+<td><code>1</code></td>
+<td>
+<code>"dp"</code> 模式下，每次 <code>describe()</code>/schema-block
+调用里每个暴露计数的分类列收取的隐私成本，在该列存活类别间均分。只在
+<code>"dp"</code> 下有意义</td>
+</tr>
+<tr class="even">
+<td><code>dp_budget</code></td>
+<td><code>5</code></td>
+<td>
+<code>"dp"</code> 模式下每个 dataset 的总 epsilon
+预算——一次性额度，不做时间窗口重置。只在 <code>"dp"</code> 下有意义</td>
+</tr>
 </tbody>
 </table>
 <p>敏感度仍然钳制输出：<code>identifier</code>/<code>quasi</code>
 值始终被抑制；<code>measure</code>/<code>open</code> 可能给 数值/日期的
-min-max 和安全的类别标签（不给计数）。</p>
+min-max 和安全的类别标签，<code>"on"</code>/<code>"dp"</code>
+下会附加计数。</p>
+<p><strong>v1
+范围边界</strong>：只有分类列会得到计数。数值列（mean/sum/分位数等）不在本轮范围
+内——对连续统计量做差分隐私需要一个”裁剪边界”来算噪声强度，而这个边界不能从
+真实数据自己的 min/max
+直接算（那样等于用私有信息定义隐私保护的强度，是已知的 DP
+陷阱）。在宿主能提供真实的、不依赖数据本身的边界之前，<code>range=[min, max]</code>
+在三种 <code>distributions</code> 模式下保持不变。logical
+列和自由文本列同理不变。
+进展跟踪：<code>references/plan/31x-dp-distributions.TODO.md</code>。</p>
+<p>某个 dataset 的 <code>dp_budget</code> 耗尽是静默且永久的（直到该
+dataset 重新注册为止）： 不报错、不给真实计数，只是悄悄退回
+<code>"off"</code> 式的纯标签输出。调用
+<code>shield$dp_budget_remaining(name)</code>（不传参数则返回所有已注册
+dataset 的具名
+向量）查看剩余预算，供宿主端展示”隐私预算：2/5”之类的提示。每次消耗/耗尽都会
+记进审计日志（<code>strategy = "dp_budget"</code>）。</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dp_metadata</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>distributions <span class="op">=</span> <span class="st">"dp"</span>, dp_epsilon <span class="op">=</span> <span class="fl">1</span>, dp_budget <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">dp_metadata</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"study"</span><span class="op">)</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">describe</span><span class="op">(</span><span class="st">"study"</span><span class="op">)</span>             <span class="co"># 如果 "arm" 是分类列，花掉 1 epsilon</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">dp_budget_remaining</span><span class="op">(</span><span class="st">"study"</span><span class="op">)</span>  <span class="co"># 4</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="shield_regex-未注册的-pii密钥">
@@ -766,7 +808,7 @@ scanner 名</td>
 限制内存（最旧的事件会被丢弃）；用 <code>shield$clear_audit()</code>
 清空。 每个 <code>DataShield</code> R6 都有自己的日志，所以
 session/thread 隔离与策略实例保持一致。</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">recent</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">shield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -832,7 +874,7 @@ session/thread 隔离与策略实例保持一致。</p>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span></span>
 <span>  <span class="va">adam_spec</span>,</span>
 <span>  name <span class="op">=</span> <span class="st">"adam_spec"</span>,</span>
@@ -846,7 +888,7 @@ session/thread 隔离与策略实例保持一致。</p>
 <span><span class="va">prompt_text</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">prompt_content</span><span class="op">(</span><span class="st">"adam_spec"</span><span class="op">)</span></span></code></pre></div>
 <p>Raw egress <strong>不会</strong>仅凭 <code>kind</code>
 就自动放行，它需要显式策略 + 来源凭证（provenance）：</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span></span>
 <span>  <span class="va">adam_spec</span>, name <span class="op">=</span> <span class="st">"adam_spec"</span>, kind <span class="op">=</span> <span class="st">"spec"</span>,</span>
 <span>  llm_access <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>prompt <span class="op">=</span> <span class="st">"raw"</span>, egress <span class="op">=</span> <span class="st">"raw"</span><span class="op">)</span>,</span>
@@ -868,7 +910,7 @@ POSIXct 过期时间，且每次都会产生 bypass 审计事件。Synthetic 的
 <code>none</code>/<code>schema</code>/<code>scan</code>/<code>raw</code>
 访问级别，拆成 <code>prompt</code>/<code>egress</code> 两个 scope，raw
 边同样要求非空的 <code>reason</code>。</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span></span>
 <span>  <span class="va">vs</span>, name <span class="op">=</span> <span class="st">"vs"</span>,</span>
 <span>  sensitivity   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>SUBJID <span class="op">=</span> <span class="st">"identifier"</span>, TESTCD <span class="op">=</span> <span class="st">"identifier"</span><span class="op">)</span>,</span>
@@ -895,7 +937,7 @@ POSIXct 过期时间，且每次都会产生 bypass 审计事件。Synthetic 的
 <p>Raw 资产的 egress 需要来源凭证。与其在框架里造一个”trusted
 tool”类型， 不如让宿主用现成的原语——<code>register_asset()</code> 加
 <code>trusted_result()</code>——自己 拼一个工具：</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">read_adam_spec_tool</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">shield</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">tool</a></span><span class="op">(</span></span>
 <span>    name <span class="op">=</span> <span class="st">"ReadADaMSpec"</span>,</span>
@@ -923,7 +965,7 @@ tool”类型， 不如让宿主用现成的原语——<code>register_asset()</
 <h2 id="p0-地基现已可用">P0 —— 地基（现已可用）<a class="anchor" aria-label="anchor" href="#p0-%E5%9C%B0%E5%9F%BA%E7%8E%B0%E5%B7%B2%E5%8F%AF%E7%94%A8"></a>
 </h2>
 <p>已经能提供真实保护的最小确定性切片：</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 简单入口：策略 spec 会为这个 client 创建一个私有 DataShield R6。</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
@@ -956,7 +998,7 @@ ambient 注入本来就只 给出
 <p>数据集<strong>不需要</strong>在 app 启动时就已知。在上传的 observer
 里，读完文件后立刻 注册即可；工具可能已经挂好并被包裹了，因为 value
 matching 在每次调用时 读取的是活的索引。</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 每个 Shiny server session 内部：一个 R6 可以被选定的多个 chat 共享。</span></span>
 <span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -972,10 +1014,10 @@ matching 在每次调用时 读取的是活的索引。</p>
 <span>  <span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"uploaded"</span><span class="op">)</span> <span class="co"># 无需预先知道列</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>一个完整可运行的宿主风格 Shiny 示例安装在：</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples/data_shield_upload_app.R"</span>, package <span class="op">=</span> <span class="st">"codeagent"</span><span class="op">)</span></span></code></pre></div>
 <p>从开发检出目录：</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"inst/examples/data_shield_upload_app.R"</span><span class="op">)</span></span></code></pre></div>
 <p>它演示了上传后的五种结果：整批行被 <code>row_cap</code>
@@ -1114,7 +1156,7 @@ PII、且每个暴露的水平都满足 k-匿名阈值时，
 </h2>
 <p>策略列表的顺序就是执行顺序。即使没有注册任何
 data.frame，<code><a href="../reference/shield_regex.html">shield_regex()</a></code> 也能抓到敏感内容：</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"redact"</span><span class="op">)</span>,</span>
@@ -1135,7 +1177,7 @@ data.frame，<code><a href="../reference/shield_regex.html">shield_regex()</a></
 一个与之竞争的回调/门。它在只读快速路径之前扫描每个工具的参数。<code>block</code>
 结果会抛出 <code>tool_reject</code>；<code>ask</code> 结果复用当前
 CLI/Shiny 的审批回调， 包括 tool-call id 的关联。</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -1190,8 +1232,10 @@ cwd/options/环境变量。 因此数据盾对 native、btw、MCP
 <strong>P1 —— <code>DescribeData</code> +
 受保护数据注册表（严格模式已实现）</strong>：模型的
 经批准的强化视图（schema、敏感度、是否缺失、measure/open 的范围和 满足
-k-支持的标签；不给分布/计数/示例）。<code>distributions="on"/"dp"</code>
-仍是后续阶段。</li>
+k-支持的标签；严格 <code>"off"</code> 模式下不给分布/计数/示例）。
+<code>distributions="on"</code>/<code>"dp"</code>（类别计数，真实值或按
+dataset 记账的 DP 加噪值）<strong>已实现</strong>；数值/连续统计量的 DP
+仍是后续阶段（需要宿主提供 不依赖数据本身的裁剪边界）。</li>
 <li>
 <strong>P1.5 —— 有序 scanner 管道 +
 <code><a href="../reference/shield_regex.html">shield_regex()</a></code>（已实现）</strong>：未注册的
@@ -1211,7 +1255,7 @@ realpath/符号链接容纳和策略降级； 完整 OS 进程适配器仍是路
 <code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code>（已实现）</strong>：可选的脱敏 ingress
 代码语义 审查，使用一个全新的小模型 Chat；远程 raw 输出仍被禁止。</li>
 <li><strong>P2 —— 完整 OS
-沙箱适配器，以及分布查询的差分隐私（opt-in）。</strong></li>
+沙箱适配器，以及数值/连续统计量的差分隐私（opt-in）。</strong></li>
 </ul>
 </div>
 <div class="section level2">
@@ -1301,7 +1345,7 @@ CI 测试套件，不是一段描述性文字）：未来任何破坏这些结�
 </h3>
 <p><code><a href="../reference/shield_preset.html">shield_preset_strict()</a></code>、<code><a href="../reference/shield_preset.html">shield_preset_balanced()</a></code>、<code><a href="../reference/shield_preset.html">shield_preset_clinical()</a></code>
 是可直接调用的函数，返回下面这些确切组合——不用复制粘贴：</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 严格：合规/审计演示场景</span></span>
 <span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shield_preset.html">shield_preset_strict</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co"># shield_describe(k_anon = 5),</span></span>
@@ -1331,7 +1375,7 @@ CI 测试套件，不是一段描述性文字）：未来任何破坏这些结�
 <code>inst/examples/data_shield_minimal_app.R</code> 的”Shield
 strength”选择器里接线的 代码完全一致——在 demo
 里切到其中一个，问聊天”dump the uploaded data”， 亲眼看它当场泄漏。</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 不安全：只开 ingress —— 完全没有 egress 边界。</span></span>
 <span><span class="va">unsafe_ingress_only</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>

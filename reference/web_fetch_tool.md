@@ -1,13 +1,21 @@
 # Create the WebFetch tool
 
-Primary: Jina Reader (r.jina.ai) – converts any URL to clean Markdown
-without Chrome. Fallback: httr2 direct fetch with HTML stripping.
+Fetches an authorized public HTTP(S) URL directly. DNS answers are
+validated and the selected public IP is pinned for the connection;
+redirects are re-authorized one hop at a time.
 
 ## Usage
 
 ``` r
-web_fetch_tool()
+web_fetch_tool(citations = FALSE)
 ```
+
+## Arguments
+
+- citations:
+
+  Logical. Append the source-ID marker protocol to model-facing output.
+  Source metadata is always retained in the tool result.
 
 ## Value
 

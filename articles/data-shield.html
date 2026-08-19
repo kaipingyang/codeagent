@@ -85,9 +85,11 @@
 design in progress.</strong> The egress row-cap, protected-value
 matching, strict DescribeData, ordered scanners, universal pre-tool
 ingress, per-tool policy, promise-backed egress approval, portable
-path/symlink sandbox, and optional sanitized-code reviewer are wired.
-Full OS execution adapter and <code>distributions="on"/"dp"</code>
-remain roadmap. Off by default (<code>data_shield = NULL</code>).</p>
+path/symlink sandbox, optional sanitized-code reviewer, and DP-noised
+categorical counts (<code>distributions="dp"</code>) are wired. Full OS
+execution adapter and differential privacy for numeric/continuous
+statistics remain roadmap. Off by default
+(<code>data_shield = NULL</code>).</p>
 </blockquote>
 <div class="section level2">
 <h2 id="why">Why<a class="anchor" aria-label="anchor" href="#why"></a>
@@ -329,16 +331,21 @@ timeout. Raw-once applies to one result only and is audited.</p>
 <tr class="odd">
 <td><code>distributions</code></td>
 <td><code>"off"</code></td>
-<td>Implemented strict mode: no histograms, quantiles, means, category
-counts, rows, or free-text examples. <code>on</code>/<code>dp</code> are
-roadmap and fail explicitly</td>
+<td>
+<code>"off"</code>: no counts, category labels only.
+<code>"on"</code>: real per-category counts (no privacy protection).
+<code>"dp"</code>: Laplace-noised per-category counts, spending
+<code>dp_epsilon</code> from a per-dataset <code>dp_budget</code>;
+degrades to <code>"off"</code>-style labels once the budget is
+exhausted. <strong>Numeric/date/logical/free-text columns are unchanged
+in all three modes</strong> — see below</td>
 </tr>
 <tr class="even">
 <td><code>k_anon</code></td>
 <td><code>5</code></td>
 <td>Category labels supported by fewer than k rows become
-<code>&lt;rare suppressed&gt;</code>
-</td>
+<code>&lt;rare suppressed&gt;</code> (applies in all three
+<code>distributions</code> modes, before any count is added)</td>
 </tr>
 <tr class="odd">
 <td><code>category_max</code></td>
@@ -352,12 +359,55 @@ roadmap and fail explicitly</td>
 treatment; otherwise <code>free_text</code>
 </td>
 </tr>
+<tr class="odd">
+<td><code>dp_epsilon</code></td>
+<td><code>1</code></td>
+<td>Privacy cost charged per <code>describe()</code>/schema-block call
+for each categorical column exposed under <code>"dp"</code>; split
+across that column’s surviving categories. Only meaningful with
+<code>"dp"</code>
+</td>
+</tr>
+<tr class="even">
+<td><code>dp_budget</code></td>
+<td><code>5</code></td>
+<td>Total per-dataset epsilon budget under <code>"dp"</code> — a
+one-time allowance, no time-window reset. Only meaningful with
+<code>"dp"</code>
+</td>
+</tr>
 </tbody>
 </table>
 <p>Sensitivity still clamps output:
 <code>identifier</code>/<code>quasi</code> values stay suppressed;
 <code>measure</code>/<code>open</code> may show numeric/date min–max and
-safe category labels without counts.</p>
+safe category labels, with counts added under
+<code>"on"</code>/<code>"dp"</code>.</p>
+<p><strong>Scope limit (v1)</strong>: only categorical columns get
+counts. Numeric columns (mean/sum/quantiles) are not covered —
+differentially-private release of a continuous statistic needs a
+<em>clipping bound</em> to calibrate its noise, and that bound must not
+be derived from the private data’s own min/max (doing so would leak
+privacy strength from the private data itself, a well-known DP pitfall).
+Until a host can supply a real, data-independent bound per numeric
+column, <code>range=[min, max]</code> is shown unchanged in all three
+<code>distributions</code> modes. Logical and free-text columns are
+likewise unchanged. Track:
+<code>references/plan/31x-dp-distributions.TODO.md</code>.</p>
+<p>Exhausting a dataset’s <code>dp_budget</code> is silent and permanent
+for that dataset’s lifetime (until it is re-registered): no error, no
+raw count, just a quiet drop back to <code>"off"</code>-style
+labels-only output. Call <code>shield$dp_budget_remaining(name)</code>
+(or with no argument, a named vector for every registered dataset) to
+check remaining budget, e.g. for a host-side “privacy budget: 2/5
+remaining” indicator. Every consumption/exhaustion is also recorded in
+the audit log (<code>strategy = "dp_budget"</code>).</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dp_metadata</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>distributions <span class="op">=</span> <span class="st">"dp"</span>, dp_epsilon <span class="op">=</span> <span class="fl">1</span>, dp_budget <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">dp_metadata</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"study"</span><span class="op">)</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">describe</span><span class="op">(</span><span class="st">"study"</span><span class="op">)</span>            <span class="co"># spends 1 epsilon if "arm" is categorical</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">dp_budget_remaining</span><span class="op">(</span><span class="st">"study"</span><span class="op">)</span>  <span class="co"># 4</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="shield_regex-unregistered-piisecrets">
@@ -824,7 +874,7 @@ memory (oldest events are dropped); use
 <code>shield$clear_audit()</code> to clear it. Each
 <code>DataShield</code> R6 has its own log, so session/thread isolation
 matches the policy instance.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">recent</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit<span class="op">=</span><span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">shield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -895,7 +945,7 @@ applies unless explicitly disabled</td>
 </tr>
 </tbody>
 </table>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span></span>
 <span>  <span class="va">adam_spec</span>,</span>
 <span>  name <span class="op">=</span> <span class="st">"adam_spec"</span>,</span>
@@ -909,7 +959,7 @@ applies unless explicitly disabled</td>
 <span><span class="va">prompt_text</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">prompt_content</span><span class="op">(</span><span class="st">"adam_spec"</span><span class="op">)</span></span></code></pre></div>
 <p>Raw egress never follows from <code>kind</code> alone. It requires
 explicit policy and provenance:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span></span>
 <span>  <span class="va">adam_spec</span>, name <span class="op">=</span> <span class="st">"adam_spec"</span>, kind <span class="op">=</span> <span class="st">"spec"</span>,</span>
 <span>  llm_access <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>prompt <span class="op">=</span> <span class="st">"raw"</span>, egress <span class="op">=</span> <span class="st">"raw"</span><span class="op">)</span>,</span>
@@ -933,7 +983,7 @@ same
 access levels as assets, split into
 <code>prompt</code>/<code>egress</code>, and a raw edge likewise
 requires a non-empty <code>reason</code>.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span></span>
 <span>  <span class="va">vs</span>, name <span class="op">=</span> <span class="st">"vs"</span>,</span>
 <span>  sensitivity   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>SUBJID <span class="op">=</span> <span class="st">"identifier"</span>, TESTCD <span class="op">=</span> <span class="st">"identifier"</span><span class="op">)</span>,</span>
@@ -973,7 +1023,7 @@ levels.</p>
 “trusted tool” type, a host composes the existing primitives —
 <code>register_asset()</code> plus <code>trusted_result()</code> —
 inside its own tool:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">read_adam_spec_tool</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">shield</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">tool</a></span><span class="op">(</span></span>
 <span>    name <span class="op">=</span> <span class="st">"ReadADaMSpec"</span>,</span>
@@ -1002,7 +1052,7 @@ mixed/untagged result from any other tool is still scanned.</p>
 </h2>
 <p>The minimal, deterministic slice that already gives real
 protection:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Easy entry: strategy specs create one private DataShield R6 for this client.</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
@@ -1037,7 +1087,7 @@ Shield keeps it that way.</li>
 starts. Register it in the upload observer immediately after reading it;
 tools may already be attached and wrapped, because value matching reads
 the live index at invocation time.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Inside each Shiny server session: one R6 may be shared by selected chats.</span></span>
 <span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span><span class="op">)</span>, <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -1053,10 +1103,10 @@ the live index at invocation time.</p>
 <span>  <span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">df</span>, name <span class="op">=</span> <span class="st">"uploaded"</span><span class="op">)</span> <span class="co"># no advance columns needed</span></span>
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>A complete runnable host-style Shiny example is installed at:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples/data_shield_upload_app.R"</span>, package <span class="op">=</span> <span class="st">"codeagent"</span><span class="op">)</span></span></code></pre></div>
 <p>From a development checkout:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">devtools</span><span class="fu">::</span><span class="fu"><a href="https://devtools.r-lib.org/reference/load_all.html" class="external-link">load_all</a></span><span class="op">(</span><span class="st">"."</span><span class="op">)</span></span>
 <span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="st">"inst/examples/data_shield_upload_app.R"</span><span class="op">)</span></span></code></pre></div>
 <p>It demonstrates five outcomes after upload: bulk rows withheld by
@@ -1202,7 +1252,7 @@ receives real examples in strict mode.</p>
 <p>Strategy-list order is the execution order.
 <code><a href="../reference/shield_regex.html">shield_regex()</a></code> catches sensitive content even when no
 data.frame was registered:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"redact"</span><span class="op">)</span>,</span>
@@ -1225,7 +1275,7 @@ callback/gate. It scans every tool’s arguments before the read-only fast
 path. A <code>block</code> result raises <code>tool_reject</code>; an
 <code>ask</code> result reuses the current CLI/Shiny approval callback,
 including tool-call id correlation.</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail<span class="op">=</span><span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">0</span><span class="op">)</span>,</span>
@@ -1281,8 +1331,13 @@ against high-entropy values registered with
 <strong>P1 — <code>DescribeData</code> + protected-data registry
 (strict available)</strong>: the model’s sanctioned hardened view
 (schema, sensitivity, missing presence, measure/open ranges and
-k-supported labels; no distributions/counts/examples).
-<code>distributions="on"/"dp"</code> remain later phases.</li>
+k-supported labels; no distributions/counts/examples in strict
+<code>"off"</code> mode).
+<code>distributions="on"</code>/<code>"dp"</code> (categorical counts,
+real or DP-noised with a per-dataset budget) are
+<strong>available</strong>; DP for numeric/continuous statistics remains
+a later phase (needs a host-supplied, data-independent clipping
+bound).</li>
 <li>
 <strong>P1.5 — ordered scanner pipeline +
 <code><a href="../reference/shield_regex.html">shield_regex()</a></code> (available)</strong>: unregistered
@@ -1302,7 +1357,7 @@ fallback; full OS process adapter remains roadmap.</li>
 optional sanitized ingress-code semantic rail using a fresh small-model
 Chat; remote raw output remains forbidden.</li>
 <li><strong>P2 — full OS sandbox adapter and differential privacy for
-distributions (opt-in).</strong></li>
+numeric/continuous statistics (opt-in).</strong></li>
 </ul>
 </div>
 <div class="section level2">
@@ -1401,7 +1456,7 @@ cannot substitute for it.</strong></p>
 <code><a href="../reference/shield_preset.html">shield_preset_balanced()</a></code>, and
 <code><a href="../reference/shield_preset.html">shield_preset_clinical()</a></code> are callable functions returning
 these exact combinations – no copy-pasting required:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Strict: compliance / audit demos</span></span>
 <span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/shield_preset.html">shield_preset_strict</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="co"># shield_describe(k_anon = 5),</span></span>
@@ -1432,7 +1487,7 @@ exactly as wired in
 <code>inst/examples/data_shield_minimal_app.R</code>’s “Shield strength”
 selector — switch to one there, ask the chat to dump the uploaded data,
 and watch it leak live.</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># UNSAFE: ingress-only — no egress boundary at all.</span></span>
 <span><span class="va">unsafe_ingress_only</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/shield_ingress.html">shield_ingress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"block"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>

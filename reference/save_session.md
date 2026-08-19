@@ -6,7 +6,13 @@ Serialises all turns in `chat` to a JSONL file under
 ## Usage
 
 ``` r
-save_session(chat, cwd = getwd(), session_id = NULL, title = NULL)
+save_session(
+  chat,
+  cwd = getwd(),
+  session_id = NULL,
+  title = NULL,
+  assistant_text_override = NULL
+)
 ```
 
 ## Arguments
@@ -27,6 +33,11 @@ save_session(chat, cwd = getwd(), session_id = NULL, title = NULL)
 - title:
 
   Character or NULL. Optional human-readable title.
+
+- assistant_text_override:
+
+  Character or NULL. Safe finalized text for the last assistant turn's
+  presentation line. Lossless chat-state remains intact.
 
 ## Value
 

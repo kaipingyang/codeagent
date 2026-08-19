@@ -5,7 +5,7 @@ Register web tools to an ellmer Chat object
 ## Usage
 
 ``` r
-register_web_tools(chat)
+register_web_tools(chat, citations = FALSE)
 ```
 
 ## Arguments
@@ -14,6 +14,10 @@ register_web_tools(chat)
 
   An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
   object.
+
+- citations:
+
+  Logical. Enable marker-protocol instructions in tool output.
 
 ## Value
 

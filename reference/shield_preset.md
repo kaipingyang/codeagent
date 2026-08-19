@@ -43,8 +43,6 @@ specifications.
 ## Examples
 
 ``` r
-client <- codeagent_client(chat, data_shield = shield_preset_strict())
-#> Error: object 'chat' not found
-client <- codeagent_client(chat, data_shield = shield_preset_balanced())
-#> Error: object 'chat' not found
+strict <- shield_preset_strict()
+balanced <- shield_preset_balanced()
 ```

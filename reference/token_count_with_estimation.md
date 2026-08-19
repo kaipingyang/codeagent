@@ -9,7 +9,7 @@ approximation.
 ## Usage
 
 ``` r
-token_count_with_estimation(chat)
+token_count_with_estimation(chat, allow_network = FALSE)
 ```
 
 ## Arguments
@@ -18,6 +18,12 @@ token_count_with_estimation(chat)
 
   An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
   object.
+
+- allow_network:
+
+  Logical. If `TRUE`, explicitly call
+  `chat$token_count(include = "complete")`; defaults to `FALSE` so UI
+  and compaction paths never perform implicit token-count HTTP requests.
 
 ## Value
 

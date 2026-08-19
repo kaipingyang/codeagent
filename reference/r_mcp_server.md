@@ -36,3 +36,11 @@ r_mcp_server(
 ## Value
 
 A named list with `type`, `command`, and `args`.
+
+## Examples
+
+``` r
+config <- r_mcp_server(session_tools = FALSE)
+config$type
+#> [1] "stdio"
+```

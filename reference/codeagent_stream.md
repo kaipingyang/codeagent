@@ -79,7 +79,7 @@ codeagent_stream(
 
 ## Value
 
-Invisibly, `list(text, usage, stop_reason)`.
+Invisibly, `list(text, usage, stop_reason, finish_reason)`.
 
 ## See also
 

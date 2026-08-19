@@ -71,7 +71,8 @@ subagent-), so sub-agent history survives instead of being ephemeral."></head><b
 <span>  max_turns <span class="op">=</span> <span class="fl">30L</span>,</span>
 <span>  persist <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  description <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  description <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -101,6 +102,11 @@ subagent-), so sub-agent history survives instead of being ephemeral."></head><b
 
 <dt id="arg-description">description<a class="anchor" aria-label="anchor" href="#arg-description"></a></dt>
 <dd><p>Character. Used as the sidechain session title.</p></dd>
+
+
+<dt id="arg-data-shield">data_shield<a class="anchor" aria-label="anchor" href="#arg-data-shield"></a></dt>
+<dd><p>Optional <a href="DataShield.html">DataShield</a>. Replies are gated before hooks,
+return, or persistence. Shielded sidechains are not persisted.</p></dd>
 
 </dl></div>
     <div class="section level2">

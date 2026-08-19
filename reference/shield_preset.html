@@ -118,10 +118,8 @@ top of strict k-anonymity, with <code>"ask"</code> (not <code>"block"</code>) fa
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu">shield_preset_strict</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'chat' not found</span>
-<span class="r-in"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu">shield_preset_balanced</span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'chat' not found</span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">strict</span> <span class="op">&lt;-</span> <span class="fu">shield_preset_strict</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">balanced</span> <span class="op">&lt;-</span> <span class="fu">shield_preset_balanced</span><span class="op">(</span><span class="op">)</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

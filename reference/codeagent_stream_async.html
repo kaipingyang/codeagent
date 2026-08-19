@@ -159,8 +159,9 @@ injection and memory recall on iteration 1).</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>A <code><a href="https://coro.r-lib.org/reference/async.html" class="external-link">coro::async</a></code> promise resolving to
-<code>list(text, usage, stop_reason)</code> where <code>stop_reason</code> is one of
-<code>"completed"</code>, <code>"error"</code>, or <code>"interrupted"</code>.</p>
+<code>list(text, usage, stop_reason, finish_reason)</code>. Successful provider
+reasons are normalized by the same mapper used by <code><a href="agent_loop.html">agent_loop()</a></code>; errors
+and interrupts retain their harness stop reasons.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

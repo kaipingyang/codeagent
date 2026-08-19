@@ -4,9 +4,10 @@
 > progress.** The egress row-cap, protected-value matching, strict
 > DescribeData, ordered scanners, universal pre-tool ingress, per-tool
 > policy, promise-backed egress approval, portable path/symlink sandbox,
-> and optional sanitized-code reviewer are wired. Full OS execution
-> adapter and `distributions="on"/"dp"` remain roadmap. Off by default
-> (`data_shield = NULL`).
+> optional sanitized-code reviewer, and DP-noised categorical counts
+> (`distributions="dp"`) are wired. Full OS execution adapter and
+> differential privacy for numeric/continuous statistics remain roadmap.
+> Off by default (`data_shield = NULL`).
 
 ## Why
 
@@ -163,14 +164,45 @@ to one result only and is audited.
 
 | Parameter | Default | Actual effect |
 |----|----|----|
-| `distributions` | `"off"` | Implemented strict mode: no histograms, quantiles, means, category counts, rows, or free-text examples. `on`/`dp` are roadmap and fail explicitly |
-| `k_anon` | `5` | Category labels supported by fewer than k rows become `<rare suppressed>` |
+| `distributions` | `"off"` | `"off"`: no counts, category labels only. `"on"`: real per-category counts (no privacy protection). `"dp"`: Laplace-noised per-category counts, spending `dp_epsilon` from a per-dataset `dp_budget`; degrades to `"off"`-style labels once the budget is exhausted. **Numeric/date/logical/free-text columns are unchanged in all three modes** — see below |
+| `k_anon` | `5` | Category labels supported by fewer than k rows become `<rare suppressed>` (applies in all three `distributions` modes, before any count is added) |
 | `category_max` | `20` | Maximum distinct character values for categorical treatment |
 | `category_ratio` | `0.2` | Maximum distinct/non-missing ratio for character-categorical treatment; otherwise `free_text` |
+| `dp_epsilon` | `1` | Privacy cost charged per `describe()`/schema-block call for each categorical column exposed under `"dp"`; split across that column’s surviving categories. Only meaningful with `"dp"` |
+| `dp_budget` | `5` | Total per-dataset epsilon budget under `"dp"` — a one-time allowance, no time-window reset. Only meaningful with `"dp"` |
 
 Sensitivity still clamps output: `identifier`/`quasi` values stay
 suppressed; `measure`/`open` may show numeric/date min–max and safe
-category labels without counts.
+category labels, with counts added under `"on"`/`"dp"`.
+
+**Scope limit (v1)**: only categorical columns get counts. Numeric
+columns (mean/sum/quantiles) are not covered — differentially-private
+release of a continuous statistic needs a *clipping bound* to calibrate
+its noise, and that bound must not be derived from the private data’s
+own min/max (doing so would leak privacy strength from the private data
+itself, a well-known DP pitfall). Until a host can supply a real,
+data-independent bound per numeric column, `range=[min, max]` is shown
+unchanged in all three `distributions` modes. Logical and free-text
+columns are likewise unchanged. Track:
+`references/plan/31x-dp-distributions.TODO.md`.
+
+Exhausting a dataset’s `dp_budget` is silent and permanent for that
+dataset’s lifetime (until it is re-registered): no error, no raw count,
+just a quiet drop back to `"off"`-style labels-only output. Call
+`shield$dp_budget_remaining(name)` (or with no argument, a named vector
+for every registered dataset) to check remaining budget, e.g. for a
+host-side “privacy budget: 2/5 remaining” indicator. Every
+consumption/exhaustion is also recorded in the audit log
+(`strategy = "dp_budget"`).
+
+``` r
+
+dp_metadata <- shield_describe(distributions = "dp", dp_epsilon = 1, dp_budget = 5)
+shield <- DataShield$new(strategies = list(dp_metadata))
+shield$register_data(df, name = "study")
+shield$describe("study")            # spends 1 epsilon if "arm" is categorical
+shield$dp_budget_remaining("study")  # 4
+```
 
 ### `shield_regex()` — unregistered PII/secrets
 
@@ -640,8 +672,11 @@ block when no approval channel exists.
 - **P1 — `DescribeData` + protected-data registry (strict available)**:
   the model’s sanctioned hardened view (schema, sensitivity, missing
   presence, measure/open ranges and k-supported labels; no
-  distributions/counts/examples). `distributions="on"/"dp"` remain later
-  phases.
+  distributions/counts/examples in strict `"off"` mode).
+  `distributions="on"`/`"dp"` (categorical counts, real or DP-noised
+  with a per-dataset budget) are **available**; DP for
+  numeric/continuous statistics remains a later phase (needs a
+  host-supplied, data-independent clipping bound).
 - **P1.5 — ordered scanner pipeline +
   [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
   (available)**: unregistered PII/secrets are redacted/blocked with
@@ -660,7 +695,7 @@ block when no approval channel exists.
   (available)**: optional sanitized ingress-code semantic rail using a
   fresh small-model Chat; remote raw output remains forbidden.
 - **P2 — full OS sandbox adapter and differential privacy for
-  distributions (opt-in).**
+  numeric/continuous statistics (opt-in).**
 
 ## Sub-agent boundary
 

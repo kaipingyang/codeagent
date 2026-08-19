@@ -110,8 +110,10 @@ codeagent_stream_async(
 ## Value
 
 A [`coro::async`](https://coro.r-lib.org/reference/async.html) promise
-resolving to `list(text, usage, stop_reason)` where `stop_reason` is one
-of `"completed"`, `"error"`, or `"interrupted"`.
+resolving to `list(text, usage, stop_reason, finish_reason)`. Successful
+provider reasons are normalized by the same mapper used by
+[`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md);
+errors and interrupts retain their harness stop reasons.
 
 ## Details
 

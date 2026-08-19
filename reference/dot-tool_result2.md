@@ -17,7 +17,10 @@ rich without a separate stored copy.
   icon = NULL,
   title = NULL,
   payload = list(),
-  markdown = NULL
+  markdown = NULL,
+  footer = NULL,
+  label = NULL,
+  value_preview = NULL
 )
 ```
 
@@ -50,6 +53,18 @@ rich without a separate stored copy.
 - markdown:
 
   Character. In-chat card body + two-phase fallback.
+
+- footer:
+
+  Optional official shinychat footer content.
+
+- label:
+
+  Optional compact activity label.
+
+- value_preview:
+
+  Optional compact result preview.
 
 ## Value
 
