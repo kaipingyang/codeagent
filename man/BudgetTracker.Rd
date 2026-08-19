@@ -53,7 +53,7 @@ due to context exhaustion or diminishing returns.
       \item{\code{iteration}}{Integer. Current loop iteration (1-indexed).}
       \item{\code{is_subagent}}{Logical. If TRUE, budget limits are not applied.}
       \item{\code{current_cost_usd}}{Numeric or NA. Current session spend in US
-dollars (e.g. from \code{\link[=.current_cost_usd]{.current_cost_usd()}}); NA when unknown/unpriced.}
+dollars (e.g. from \code{.current_cost_usd()}); NA when unknown/unpriced.}
       \item{\code{max_budget_usd}}{Numeric or NULL. Hard dollar cap; NULL disables
 the check. When set and \code{current_cost_usd} is known, this fires
 immediately (bypassing \code{iteration}/\code{.BUDGET_MIN_ITERATIONS}) -- a

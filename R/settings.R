@@ -43,10 +43,11 @@ NULL
   auto_compact_enabled   = TRUE,    # autoCompactEnabled
   cleanup_period_days    = 30L,     # cleanupPeriodDays
 
-  # UI / presentation (stored, not yet all wired)
+  # UI / presentation
   theme         = "default",
   output_style  = NULL,   # outputStyle (placeholder)
   status_line   = NULL,   # statusLine  (placeholder)
+  web_citations = "off",  # "off" | "shiny_aside" deterministic bridge
 
   # Permissions (parallel Claude Code structure)
   permission_mode     = "default",
@@ -317,7 +318,7 @@ load_settings <- function(cwd = getwd()) {
 #' headers showing each source.  More-specific (deeper) files appear later so
 #' they visually override.  Duplicate paths are de-duplicated. Each file's body
 #' is also scanned for whole-line `@path/to/file` imports (see
-#' [.expand_claude_md_imports()]) before being merged in.
+#' `.expand_claude_md_imports()` before being merged in.
 #'
 #' @param cwd Character. Starting directory.
 #' @return Character(1) with merged contents, or NULL if none found.

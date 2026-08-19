@@ -14,9 +14,10 @@
 ^\.gitignore$
 ^\.Renviron$
 ^.*\.code-workspace$
-^\.codegraph$
+^\.codegraph
 ^\.codeagent$
 ^\.claude$
+^inst/examples/\.shinychat$
 ^\.kiro$
 ^\.shinychat$
 ^lessons$

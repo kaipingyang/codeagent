@@ -42,6 +42,46 @@ test_that("restore_session_into_chat returns NULL when no session exists", {
   expect_length(ch$get_turns(), 0L)
 })
 
+test_that("replay migration updates only a presentation copy", {
+  tool <- ellmer::tool(function(x) x, name = "fixture_tool",
+                       description = "fixture tool",
+                       arguments = list(x = ellmer::type_string("x")))
+  req <- ContentToolRequest(id = "req-legacy", name = "fixture_tool",
+                            arguments = list(x = "x"), tool = tool)
+  fixture <- jsonlite::fromJSON(
+    test_path("fixtures", "sessions", "legacy-display.json"),
+    simplifyVector = FALSE)
+  legacy <- ContentToolResult(
+    value = fixture$value, request = req,
+    extra = list(display = fixture$display))
+  chat <- chat_anthropic(model = "fixture")
+  chat$register_tool(tool)
+  chat$set_turns(list(Turn("user", contents = list(legacy))))
+
+  replay_chat <- .presentation_chat_for_replay(chat)
+  original <- chat$get_turns()[[1L]]@contents[[1L]]
+  migrated <- replay_chat$get_turns()[[1L]]@contents[[1L]]
+
+  expect_false(identical(replay_chat, chat))
+  expect_false(is.null(original@extra$display$toolcard))
+  expect_null(migrated@extra$display$toolcard)
+  expect_null(migrated@extra$display$right_output)
+  expect_s3_class(migrated@extra$display, "shinychat_tool_result_display")
+  expect_identical(as.character(migrated@value), "provider value")
+  expect_identical(migrated@request@id, "req-legacy")
+  expect_identical(length(chat$get_turns()), length(replay_chat$get_turns()))
+})
+
+test_that("replay migration safely degrades malformed display records", {
+  malformed <- ContentToolResult(value = "safe text",
+    extra = list(display = list(toolcard = list(kind = "unknown"))))
+  turns <- list(Turn("user", contents = list(malformed)))
+  migrated <- expect_no_error(.migrate_replay_turns(turns))
+  result <- migrated[[1L]]@contents[[1L]]
+  expect_identical(as.character(result@value), "safe text")
+  expect_null(result@extra$display$toolcard)
+  expect_s3_class(result@extra$display, "shinychat_tool_result_display")
+})
 
 test_that(".replay_turns_to_ui skips empty assistant turns (no stuck '...' on restore)", {
   rendered <- list()

@@ -1,0 +1,4 @@
+{
+  "safe": ["https://example.com/start", "https://example.org/final"],
+  "blocked": ["https://example.com/start", "http://127.0.0.1/private"]
+}

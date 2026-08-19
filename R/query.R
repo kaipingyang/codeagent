@@ -124,6 +124,34 @@ print.CodeagentClient <- function(x, ...) {
   match.arg(as.character(ft), c("core", "btw", "both"))
 }
 
+# Bind reviewers to verified clones of the current parent Chat. Rebinding is
+# intentional after Route B so reviewers never retain the previous provider.
+.bind_data_shield_reviewer_factory <- function(shield, parent_chat, settings,
+                                               cwd = getwd()) {
+  if (!inherits(shield, "DataShield") ||
+      shield$coverage()$reviewers <= 0L || !inherits(parent_chat, "Chat"))
+    return(invisible(FALSE))
+  shield$bind_reviewer_factory(function(model = NULL) {
+    clone <- parent_chat$clone()
+    expected_provider <- parent_chat$get_provider()
+    expected_model <- parent_chat$get_model_object()
+    target <- model %||% expected_model@name
+    clone$set_model(target)
+    clone$set_turns(list())
+    clone$set_tools(list())
+    got_model <- clone$get_model_object()
+    if (!.provider_configuration_equal(expected_provider,
+                                        clone$get_provider()) ||
+        !.model_configuration_equal(expected_model, got_model,
+                                     include_name = FALSE) ||
+        !identical(got_model@name, target) ||
+        length(clone$get_turns()) != 0L || length(clone$get_tools()) != 0L)
+      stop("reviewer Chat clone isolation verification failed", call. = FALSE)
+    clone
+  })
+  invisible(TRUE)
+}
+
 #' Create a codeagent client from any ellmer Chat
 #'
 #' Injects codeagent tools (Bash, Read, Write, Edit, Glob, Grep, LS, btw tools,
@@ -243,40 +271,9 @@ codeagent_client <- function(
                                error = function(e) settings$model)
   }
 
-  if (inherits(shield_state,"DataShield") && shield_state$coverage()$reviewers > 0L &&
-      !isTRUE(shield_state$coverage()$reviewer_factory_bound)) {
-    reviewer_settings <- settings
-    user_supplied_chat <- !is.null(chat)
-    parent_chat <- chat
-    shield_state$bind_reviewer_factory(function(model) {
-      # When the caller supplied their own Chat, derive the reviewer from THAT
-      # provider (clone + swap model), not from global settings -- otherwise the
-      # reviewer could use a different provider/endpoint/credentials than the
-      # injected Chat. (kiro finding 6.) Fall back to settings only for the
-      # internally-built chat path (where provider already matches settings).
-      if (isTRUE(user_supplied_chat) && inherits(parent_chat, "Chat")) {
-        rc <- tryCatch({
-          c2 <- parent_chat$clone()
-          # Isolation must VERIFIABLY take effect (kiro round-2 #9): a swallowed
-          # set_model/set_turns/set_tools error previously left the reviewer on
-          # the main model with the main history. Verify each step and the final
-          # model identity; drop the clone (fall back to .make_chat) if anything
-          # cannot be confirmed rather than reuse an unproven chat.
-          c2$set_model(model)
-          c2$set_turns(list())
-          c2$set_tools(list())
-          got <- tryCatch(c2$get_model(), error = function(e) NA_character_)
-          if (!identical(got, model)) stop("reviewer model identity mismatch")
-          if (length(tryCatch(c2$get_turns(), error = function(e) list())) != 0L)
-            stop("reviewer history not cleared")
-          c2
-        }, error = function(e) NULL)
-        if (inherits(rc, "Chat")) return(rc)
-      }
-      cfg <- reviewer_settings; cfg$model <- model
-      .make_chat(cfg,cwd)
-    })
-  }
+  if (inherits(shield_state, "DataShield"))
+    tryCatch(.bind_data_shield_reviewer_factory(
+      shield_state, chat, settings, cwd), error = function(e) NULL)
 
   ask_fn <- if (interactive()) .console_ask_fn else NULL
   if (interactive() && inherits(shield_state,"DataShield") &&
@@ -386,8 +383,11 @@ codeagent <- function(client_or_prompt,
     error = function(e) paste0("[Error] ", conditionMessage(e))
   )
   if (!is.character(response)) return("[No response]")
-  # Output gate: scan the finalized reply before returning it (non-streaming
-  # path, so it can redact in place).
+  # Citation markers are resolved only against source records from this round,
+  # then the complete deterministic output passes through the response gate.
+  if (.web_citations_enabled(settings$web_citations))
+    response <- .render_citation_markers(
+      response, .citation_registry_from_last_round(chat), settings, chat)
   og <- .output_gate_guarded(response, settings, chat)
   og$text %||% response
 }
@@ -558,21 +558,8 @@ agent_loop <- function(user_input,
 
   if (!is.character(response)) response <- "[No text response]"
 
-  # 6b. Inspect the model's stop reason (ellmer AssistantTurn$finish_reason).
-  #     "length" means the reply hit the output-token cap -> flag it so the UI /
-  #     caller knows the answer may be cut off. ellmer resolves tool_use loops
-  #     inside chat$chat(), so the final turn is normally "stop"/"length".
-  finish_reason <- .last_finish_reason(chat)
-  if (identical(finish_reason, "length")) {
-    response <- paste0(
-      response,
-      "\n\n[Note: response was truncated at the model's output-token limit.]")
-  }
-
-  # 7. Fire AssistantMessage hook
-  if (!is.null(hooks)) tryCatch(hooks$run_assistant_message(response), error = function(e) NULL)
-
-  # 7b. Verification loop -- run verify_fn and re-enter if it reports failures
+  # 6b. Verification must settle the actual final AssistantTurn before its
+  # finish reason is read.
   verify_fn <- settings$verify_fn
   if (!is.null(verify_fn) && is.function(verify_fn)) {
     verify_result <- tryCatch(verify_fn(response, chat, cwd), error = function(e) {
@@ -580,35 +567,41 @@ agent_loop <- function(user_input,
     })
     if (!isTRUE(verify_result$passed)) {
       verify_msg <- verify_result$message %||% "Verification failed."
-      re_input   <- paste0(
+      re_input <- paste0(
         "The previous response had verification failures. Please fix:\n\n",
-        verify_msg
-      )
+        verify_msg)
       re_response <- tryCatch(chat$chat(re_input),
-                               error = function(e) paste0("[Verify retry error] ", conditionMessage(e)))
+        error = function(e) paste0("[Verify retry error] ", conditionMessage(e)))
       if (is.character(re_response)) response <- re_response
     }
   }
 
-  # 7c. Data Shield output gate (edge 3): scan the model's finalized reply
-  #   before returning it. The model may reproduce a protected value it inferred
-  #   from tool output even when the user's input was clean. CLI is non-streaming
-  #   so we hold the full string and can redact in place. No-op without a shield.
+  # 7. Map the final reason once, append only a static note, then gate the full
+  # visible response before any hook/callback can observe it.
+  finish <- .map_finish_reason(.last_finish_reason(chat))
+  response <- .append_finish_note(response, finish$note)
+  if (.web_citations_enabled(settings$web_citations))
+    response <- .render_citation_markers(
+      response, .citation_registry_from_last_round(chat), settings, chat)
   og <- .output_gate_guarded(response, settings, chat)
   if (!identical(og$action, "pass")) response <- og$text %||% response
 
-  # 8. Save session
-  if (!is.null(session_id))
-    tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)
-
-  # 9. Fire Stop hook (normal completion)
   if (!is.null(hooks)) tryCatch(
-    hooks$run_stop("completed", list(session_id = session_id)),
+    hooks$run_assistant_message(response), error = function(e) NULL)
+
+  if (!is.null(session_id))
+    tryCatch(save_session(
+      chat, cwd, session_id, assistant_text_override = response),
+      error = function(e) NULL)
+
+  if (!is.null(hooks)) tryCatch(
+    hooks$run_stop(finish$stop_reason, list(
+      session_id = session_id, finish_reason = finish$finish_reason)),
     error = function(e) NULL)
 
   list(response = response, session_id = session_id,
-       stop_reason = if (identical(finish_reason, "length")) "truncated" else "completed",
-       finish_reason = finish_reason)
+       stop_reason = finish$stop_reason,
+       finish_reason = finish$finish_reason)
 }
 
 # ---------------------------------------------------------------------------
@@ -649,19 +642,6 @@ agent_loop <- function(user_input,
   }
   ask_question_fn <- settings$shiny_ask_question_fn %||% ask_question_fn
 
-  # Set btw.client so btw's subagent tool uses our gateway (Databricks /
-  # OpenAI-compatible) instead of falling back to chat_anthropic() which
-  # requires ANTHROPIC_API_KEY.  We build a fresh chat for subagents and
-  # store it in the btw.client option; this persists for the session lifetime
-  # so subagent_resolve_client() finds it at tool execution time.
-  if (requireNamespace("btw", quietly = TRUE) && is.null(getOption("btw.client"))) {
-    sub_settings <- list(model       = settings$model %||% "claude-sonnet-4-6",
-                         base_url    = Sys.getenv("CODEAGENT_BASE_URL", ""),
-                         api_key_env = "CODEAGENT_API_KEY")
-    btw_chat <- tryCatch(.make_chat(sub_settings, cwd), error = function(e) NULL)
-    if (!is.null(btw_chat)) options(btw.client = btw_chat)
-  }
-
   # Core tools -- file-tool set is selectable (settings$file_tools):
   #   "core" (default): codeagent Read/Write/Edit/MultiEdit/Glob/Grep/LS -- work
   #                     on ANY path (absolute or relative), not limited to cwd.
@@ -680,7 +660,8 @@ agent_loop <- function(user_input,
     tryCatch(register_btw_file_tools(chat, "bypass", rules, NULL),
              error = function(e) NULL)
   }
-  tryCatch(register_web_tools(chat),                          error = function(e) NULL)
+  tryCatch(register_web_tools(chat, citations = .web_citations_enabled(settings$web_citations)),
+                                                              error = function(e) NULL)
   tryCatch(register_run_r_tool(chat, "bypass", rules, NULL,
                                sandbox = settings$sandbox,
                                async = FALSE), error = function(e) NULL)
@@ -694,7 +675,9 @@ agent_loop <- function(user_input,
   tryCatch(register_btw_task_tools(chat, settings),           error = function(e) NULL)
   tryCatch(register_todo_tool(chat, settings$session_id %||% "default"),
                                                               error = function(e) NULL)
-  tryCatch(register_team_tool(chat, settings$model %||% NULL, cwd),
+  parent_model <- tryCatch(chat$get_model_object()@name,
+                           error = function(e) settings$model %||% NULL)
+  tryCatch(register_team_tool(chat, parent_model, cwd),
                                                               error = function(e) NULL)
   # Data exploration tool (opt-in via settings$explore_data = TRUE; default TRUE
   # since ExploreData is read-only and does not modify any data).
@@ -707,18 +690,25 @@ agent_loop <- function(user_input,
   if (rag_on)
     tryCatch(register_rag_tool(chat, cwd), error = function(e) NULL)
   tryCatch(register_notebook_tools(chat, "bypass", rules, NULL),error = function(e) NULL)
-  tryCatch(register_agent_tool(chat, settings$model %||% "claude-sonnet-4-6",
+  tryCatch(register_agent_tool(chat, parent_model,
                                 "bypass", rules,
                                 worktree_isolation = isTRUE(settings$worktree_isolation),
                                 ask_fn = NULL,
                                 async = isTRUE(settings$async_subagents),
-                                data_shield = settings$data_shield_engine),
+                                data_shield = settings$data_shield_engine,
+                                cwd = cwd, parent_chat = chat,
+                                hooks = settings$hooks_registry),
                                                               error = function(e) NULL)
   # Background (non-blocking) sub-agent tool -- opt-in, requires mirai.
   if (isTRUE(settings$background_agents))
     tryCatch(register_background_agent_tool(chat, settings$data_shield_engine),
              error = function(e) NULL)
-  tryCatch(register_r_tools(chat, groups = settings$btw_groups %||% NULL),
+  # Agent tools are owned by register_agent_tool() above. The internal path
+  # excludes btw_tool_agent_* so a raw upstream delegator cannot bypass
+  # worktree/async/Data Shield semantics. The exported register_r_tools() keeps
+  # groups="agent" compatibility for standalone callers.
+  tryCatch(.register_r_tools_impl(chat, groups = settings$btw_groups %||% NULL,
+                                  include_agent = FALSE),
                                                               error = function(e) NULL)
   # Plan-mode tools: let the model enter/exit read-only planning mode. Skip in
   # bypass (nothing to gate) so the model can't lock itself out.
@@ -742,6 +732,10 @@ agent_loop <- function(user_input,
   gate_ask_fn <- settings$shiny_ask_fn %||% ask_fn
   gate_hooks  <- settings$hooks_registry %||%
                  tryCatch(.hooks_from_settings(settings), error = function(e) NULL)
+  # Normalize complex list/data.frame results inside ToolDefs before ellmer sees
+  # them; already-normalized Content/image/PDF values pass through unchanged.
+  tryCatch(.install_tool_result_normalizers(chat),
+           error = function(e) stop(conditionMessage(e), call. = FALSE))
   # PreToolUse updatedInput: wrap tools so a hook can rewrite arguments before
   # execution. Installed BEFORE the gate so the gate still sees original args
   # (a rewrite cannot bypass permission checks). No-op when no hooks.
@@ -795,6 +789,33 @@ agent_loop <- function(user_input,
 .ERR_AUTH        <- "401|403|unauthorized|forbidden|invalid.*key"
 # ellmer dev warns/errors on truncated / filtered / incomplete responses.
 .ERR_TRUNCATED   <- "truncat|incomplete|max_tokens|finish_reason.*length|content.*filter|response.*filtered"
+
+# Normalize provider/current/legacy finish reasons at one boundary. The raw
+# reason is retained for diagnostics; notes are static and safe to pass through
+# the output gate.
+.map_finish_reason <- function(finish_reason) {
+  raw <- if (is.null(finish_reason) || !length(finish_reason))
+    NA_character_ else as.character(finish_reason)[1L]
+  key <- if (is.na(raw) || !nzchar(raw)) "" else tolower(trimws(raw))
+  stop_reason <- switch(key,
+    success =, stop = "completed",
+    max_tokens =, context_window =, length = "truncated",
+    content_filter = "filtered",
+    tool_use = "incomplete_tool_use",
+    "completed")
+  note <- switch(stop_reason,
+    truncated = "[Note: response was truncated at the model's output-token or context limit.]",
+    filtered = "[Note: response was filtered by the model provider's safety policy.]",
+    incomplete_tool_use = "[Note: response ended with an unresolved tool request.]",
+    NULL)
+  list(stop_reason = stop_reason, finish_reason = raw, note = note)
+}
+
+.append_finish_note <- function(text, note) {
+  text <- as.character(text %||% "")[1L]
+  if (is.null(note) || !length(note) || is.na(note) || !nzchar(note)) return(text)
+  if (nzchar(text)) paste0(text, "\n\n", note) else note
+}
 
 # Read the finish_reason of the most recent assistant turn (ellmer dev
 # AssistantTurn$finish_reason): "stop" | "length" | "tool_use" | "content_filter"

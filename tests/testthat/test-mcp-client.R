@@ -27,3 +27,27 @@ test_that("codeagent_client accepts mcp_config without registering on NULL", {
                           btw_groups = NULL, mcp_config = NULL, cwd = getwd())
   expect_s3_class(cli, "CodeagentClient")
 })
+
+
+test_that("MCP client refuses unsupported mcptools versions", {
+  testthat::local_mocked_bindings(
+    .mcptools_supported = function(...) FALSE,
+    .package = "codeagent")
+  expect_warning(
+    out <- mcp_client_tools(list(mcpServers = list())),
+    "mcptools >= 1.0.1")
+  expect_equal(out, list())
+})
+
+test_that("r_mcp_server child expression enforces version and safe default", {
+  cfg <- r_mcp_server(rscript = Sys.which("Rscript"))
+  code <- paste(cfg$args, collapse = " ")
+  expect_match(code, "1.0.1", fixed = TRUE)
+  expect_match(code, "session_tools = FALSE", fixed = TRUE)
+})
+
+
+test_that("mcp_client_tools accepts documented inline list config", {
+  skip_if_not_installed("mcptools", minimum_version = "1.0.1")
+  expect_equal(mcp_client_tools(list(mcpServers = list())), list())
+})

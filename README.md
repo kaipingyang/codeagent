@@ -87,13 +87,26 @@ codeagent_console(client)
 | **Agent loop** | `agent_loop()` with max_turns, token budget tracking, an optional hard `max_budget_usd` dollar-cost cap (`codeagent_client(max_budget_usd=)` / `CODEAGENT_MAX_BUDGET_USD` / `max_budget_usd` in `settings.json`; checked via `chat$get_cost()`, only fires where ellmer has price data for the model/provider), and compaction |
 | **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
 | **Hooks** | 27 Claude Code-aligned lifecycle events (tool, permission, message, session, task, worktree, compaction), configurable from `settings.json`. `PreToolUse` can **rewrite tool arguments** (SDK-style `updatedInput`) or deny a call |
-| **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), real token counts via `get_tokens()`, PTL/413 fallback, an "N% context left" indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds |
+| **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), context counts include cached input and default to zero implicit token-count network calls, PTL/413 fallback, an "N% context left" indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds |
 | **System prompt** | Tone, task, convention, tool-use, and R-specific behavioural guidance |
-| **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff |
+| **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff; one finish-reason mapper reports completed/truncated/filtered/incomplete-tool-use consistently across sync, stream, and Shiny paths |
 | **Verification** | `verify_fn` param + `verify_r_tests()` re-enters loop on test failures |
 | **Plan mode** | Model enters/exits read-only planning mid-turn |
 | **Rewind** | `truncate_chat_turns()` / REPL `/rewind` roll the conversation back |
-| **Model switch** | `switch_model(client, model)` swaps provider/model mid-session |
+| **Model switch** | `switch_model(client, model)` uses verified name-only in-place switching; provider/config changes rebuild a new client while preserving history, hooks, tools, budgets, and the live Data Shield engine |
+
+Pricing data is never refreshed automatically during startup or model requests.
+Opt in to the network request explicitly when you want to refresh ellmer's public
+pricing snapshot:
+
+```r
+price_update <- update_model_prices()
+price_update$message
+```
+
+Custom or private provider endpoints may still have no matching price after a
+refresh. In that case `chat$get_cost()` may remain zero and a
+`max_budget_usd` cap cannot trigger; token budgets continue to work normally.
 
 ### Tools
 
@@ -108,6 +121,26 @@ codeagent_console(client)
 | web | btw | URL → Markdown |
 | agent | btw | hierarchical subagent delegation |
 | data | codeagent | `ExploreData` — sandboxed data.frame queries; `DescribeData` — strict protected-data metadata (Data Shield) |
+
+### Deterministic web citations (opt-in)
+
+```r
+codeagent_app(client, web_citations = "shiny_aside")
+```
+
+`WebSearch` and `WebFetch` retain validated source records in
+`extra$codeagent$sources`. The model may cite only a current-turn ID with
+`[[cite:SOURCE_ID|visible claim]]`; citation mode buffers the complete reply,
+rejects unknown/conflicting/prior-turn IDs, scans claim/title/quote/URL, escapes
+model-authored markup, and builds the fixed `<shiny-aside>` allowlist on the
+server. Raw model `<shiny-aside>` tags never enter the browser in citation mode.
+Session replay repeats this deterministic presentation transform while the
+lossless tool-result metadata remains in chat state.
+
+Web fetching accepts only public `http`/`https` URLs without userinfo. It rejects
+private, loopback, link-local, reserved, mixed public/private DNS answers and
+unsafe redirects. Every redirect is re-authorized, and each request pins the
+validated DNS address for the connection to prevent DNS rebinding.
 
 ### Data Shield (opt-in)
 
@@ -138,8 +171,10 @@ client <- codeagent_client(chat, data_shield = shield)
 
 Data Shield never sends raw rows through `DescribeData`; bulk tool output and
 registered high-entropy values are withheld before reaching the LLM. Foreground
-`Agent` sub-chats inherit the same shield; cross-process `BackgroundAgent`/`/bg`
-fail closed while a shield is active. `shield_describe(distributions=)`
+`Agent` sub-chats inherit the same shield through codeagent's owned Agent path;
+raw `btw_tool_agent_*` delegators are not exposed, replies are output-gated before
+hooks or parent results, and shielded sidechains are not persisted. Cross-process
+`BackgroundAgent`/`/bg` fail closed while a shield is active. `shield_describe(distributions=)`
 defaults to `"off"` (category labels only, no counts); `"on"` shows real
 per-category counts and `"dp"` shows Laplace-noised counts drawn from a
 per-dataset `dp_budget` (default 5, `dp_epsilon = 1` per exposure) that
@@ -288,11 +323,15 @@ team_lead("Refactor the parser and add tests", max_rounds = 3)
 ### MCP server
 
 ```r
-codeagent_mcp_server()
+codeagent_mcp_server() # session_tools = FALSE by default
 # Claude Desktop config:
 # {"mcpServers": {"codeagent": {"command": "Rscript",
-#   "args": ["-e", "codeagent::codeagent_mcp_server()"]}}}
+#   "args": ["-e", "codeagent::codeagent_mcp_server(session_tools = FALSE)"]}}}
 ```
+
+MCP client and server entry points require `mcptools >= 1.0.1`. Session tools
+must be explicitly enabled and are rejected for non-loopback HTTP transports;
+stdio and the default loopback HTTP configuration keep them disabled.
 
 ### Shiny app
 
@@ -312,6 +351,24 @@ codeagent_app(client_factory = function(session) {
     credentials = function() Sys.getenv("CODEAGENT_API_KEY")))
 })
 ```
+
+Shiny model controls only perform verified name-only switches that keep the
+captured Chat identity. A provider, endpoint, credentials, params, or API-args
+change is rejected with guidance to start a new session/app; the CLI/R
+`switch_model()` API can safely take the rebuilding Route B.
+
+Tool-group changes in the Settings panel are atomic: deselected btw groups are
+actually removed while core, MCP, skill, and separately owned tools are retained;
+the Agent checkbox controls the single foreground Agent owner. Permission or
+tool-group changes are rejected while a response is streaming, and a failed
+refresh restores the previous tool snapshot before input is re-enabled.
+
+Tool results use shinychat's official display constructor with compact labels and
+value previews while retaining codeagent artifacts/source metadata outside the
+display contract. Legacy session cards are migrated only on a presentation copy,
+so provider-facing values and tool request/result IDs remain unchanged. The fresh
+session greeting is persistent across New/Delete and is not duplicated when
+history is restored; `codeagent_app(greeting=)` remains a composer-prefill API.
 
 ## Configuration reference
 

@@ -4,10 +4,14 @@
 \alias{token_count_with_estimation}
 \title{Token count preferring real usage over the char heuristic}
 \usage{
-token_count_with_estimation(chat)
+token_count_with_estimation(chat, allow_network = FALSE)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
+
+\item{allow_network}{Logical. If \code{TRUE}, explicitly call
+\code{chat$token_count(include = "complete")}; defaults to \code{FALSE} so UI and
+compaction paths never perform implicit token-count HTTP requests.}
 }
 \value{
 Integer token count.

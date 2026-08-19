@@ -25,6 +25,25 @@
 #' @keywords internal
 NULL
 
+.MCPTOOLS_MIN_VERSION <- base::package_version("1.0.1")
+
+.mcptools_supported <- function(min_version = .MCPTOOLS_MIN_VERSION) {
+  requireNamespace("mcptools", quietly = TRUE) &&
+    utils::packageVersion("mcptools") >= min_version
+}
+
+.mcptools_assert_server <- function() {
+  if (!.mcptools_supported())
+    stop("MCP server requires mcptools >= 1.0.1. Install or update mcptools, ",
+         "then restart all MCP and R sessions.", call. = FALSE)
+  invisible(TRUE)
+}
+
+.mcp_loopback_host <- function(host) {
+  host <- tolower(trimws(as.character(host %||% "")))
+  host %in% c("localhost", "127.0.0.1", "::1", "[::1]")
+}
+
 #' Load tools from external MCP servers
 #'
 #' @param config Path to an MCP config JSON file, or an inline list with the
@@ -32,10 +51,19 @@ NULL
 #' @return A list of `ellmer::tool()` objects (empty list on failure).
 #' @keywords internal
 mcp_client_tools <- function(config = NULL) {
-  if (!requireNamespace("mcptools", quietly = TRUE)) {
-    warning("[codeagent] mcptools not available; MCP client tools skipped.",
-            call. = FALSE)
+  if (!.mcptools_supported()) {
+    warning("[codeagent] MCP client requires mcptools >= 1.0.1; tools skipped. ",
+            "Update mcptools and restart the R session.", call. = FALSE)
     return(list())
+  }
+  if (is.list(config)) {
+    if (!"mcpServers" %in% names(config))
+      stop("Inline MCP config must have a top-level 'mcpServers' entry.",
+           call. = FALSE)
+    config_path <- tempfile("codeagent-mcp-", fileext = ".json")
+    jsonlite::write_json(config, config_path, auto_unbox = TRUE, pretty = FALSE)
+    on.exit(unlink(config_path), add = TRUE)
+    config <- config_path
   }
   tryCatch(
     mcptools::mcp_tools(config),
@@ -126,6 +154,9 @@ register_mcp_client <- function(chat, config = NULL) {
 #'   management tools. Default `FALSE`.
 #' @param rscript Character(1). Path to the `Rscript` binary.
 #' @return A named list with `type`, `command`, and `args`.
+#' @examples
+#' config <- r_mcp_server(session_tools = FALSE)
+#' config$type
 #' @export
 r_mcp_server <- function(
     tools_script  = NULL,
@@ -134,6 +165,7 @@ r_mcp_server <- function(
       R.home("bin"),
       if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript"
     )) {
+  .mcptools_assert_server()
   if (!file.exists(rscript)) {
     fallback <- unname(Sys.which("Rscript"))
     if (!nzchar(fallback))
@@ -141,12 +173,17 @@ r_mcp_server <- function(
     rscript <- fallback
   }
   st_str <- if (isTRUE(session_tools)) "TRUE" else "FALSE"
-  rcode  <- if (is.null(tools_script)) {
+  guard <- paste0(
+    "if (!requireNamespace('mcptools', quietly=TRUE) || ",
+    "utils::packageVersion('mcptools') < package_version('1.0.1')) ",
+    "stop('MCP server requires mcptools >= 1.0.1'); ")
+  server_call <- if (is.null(tools_script)) {
     sprintf("mcptools::mcp_server(session_tools = %s)", st_str)
   } else {
     ts <- normalizePath(tools_script, mustWork = FALSE)
     ts <- gsub("'", "\\'", ts, fixed = TRUE)
     sprintf("mcptools::mcp_server(tools = '%s', session_tools = %s)", ts, st_str)
   }
-  list(type = "stdio", command = rscript, args = c("-e", rcode))
+  list(type = "stdio", command = rscript,
+       args = c("-e", paste0(guard, server_call)))
 }

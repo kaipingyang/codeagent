@@ -138,6 +138,14 @@ NULL
 #' @param btw_groups Character vector or NULL. Legacy: btw tool groups.
 #' @param chat An `ellmer::Chat` template cloned inside each Shiny session;
 #'   convenient multi-user entry point.
+#' @param web_citations Citation presentation mode: `"off"` (default) or
+#'   `"shiny_aside"` for the deterministic current-turn
+#'   `[[cite:SOURCE_ID|claim]]` bridge. Logical `TRUE`/`FALSE` remains accepted
+#'   for compatibility. Enabled replies are buffered and validated before any
+#'   `<shiny-aside>` markup is built server-side.
+#' @param web_allow_private Logical. Reserved opt-in for local development.
+#'   Private-network fetching remains disabled in this release; `TRUE` fails
+#'   closed rather than weakening SSRF protection.
 #' @return A `shiny.appobj`.
 #' @export
 codeagent_app <- function(
@@ -156,8 +164,20 @@ codeagent_app <- function(
   permission_mode = "default",
   cwd             = getwd(),
   btw_groups      = NULL,
-  chat            = NULL
+  chat            = NULL,
+  web_citations   = c("off", "shiny_aside"),
+  web_allow_private = FALSE
 ) {
+
+  if (is.logical(web_citations)) {
+    if (length(web_citations) != 1L || is.na(web_citations))
+      stop("`web_citations` must be TRUE/FALSE, 'off', or 'shiny_aside'.", call. = FALSE)
+    web_citations <- if (isTRUE(web_citations)) "shiny_aside" else "off"
+  } else {
+    web_citations <- match.arg(web_citations)
+  }
+  if (!identical(web_allow_private, FALSE))
+    stop("Private-network web fetching is not enabled in this release.", call. = FALSE)
 
   if (!is.null(client_factory) && (!is.null(client) || !is.null(chat)))
     stop("Use only one of `client_factory`, `client`, or `chat`.", call. = FALSE)
@@ -308,10 +328,20 @@ codeagent_app <- function(
       .invoke_codeagent_client_factory(client_factory, session) else ca_client
     chat_obj <- session_client$chat
     settings <- session_client$settings
+    settings$web_citations <- web_citations
     cwd <- settings$cwd %||% getwd()
     tools_ready <- if (!is.null(client_factory))
       length(tryCatch(chat_obj$get_tools(), error = function(e) list())) > 0L else
       tools_ready
+    if (.web_citations_enabled(settings$web_citations)) {
+      # The app-level opt-in may be applied after a factory built its client.
+      # Refresh prompt and already-registered web tools before the first turn.
+      tryCatch(chat_obj$set_system_prompt(.build_system_prompt(settings, cwd)),
+               error = function(e) NULL)
+      if (isTRUE(tools_ready))
+        tryCatch(register_web_tools(chat_obj, citations = TRUE),
+                 error = function(e) NULL)
+    }
 
     # SessionEnd hook (CC parity): fire when the browser session ends, matching
     # CC's executeSessionEndHooks. hooks live on the session's settings.
@@ -437,12 +467,11 @@ codeagent_app <- function(
       state$initializing <- FALSE
     }, once = TRUE)
 
-    # Auto-continue: restore the most recent session on startup so users
-    # pick up where they left off (mirrors `codeagent chat --continue`).
-    # Gated by settings$auto_continue (default TRUE); set FALSE for a fresh
-    # session on every open.
-    shiny::observe({
-      shiny::req(TRUE)   # run once at startup
+    # Auto-continue: restore only after the first UI flush. The former
+    # url_hostname-bound observer could run before shinychat was ready on the
+    # fast tools-ready path, so replay calls were silently lost; slow deferred
+    # initialization merely hid the race.
+    session$onFlushed(function() {
       if (!isTRUE(settings$auto_continue %||% FALSE)) return()
       sid <- tryCatch(
         restore_session_into_chat(chat_obj, session_id = NULL, cwd = cwd),
@@ -454,16 +483,16 @@ codeagent_app <- function(
         state$pending_interaction <- NULL
         shinychat::chat_clear("chat", session = session)
         # Replay via contents_shinychat -- native tool card rendering.
-        .replay_turns_to_ui(chat_obj, session)
+        .replay_turns_to_ui(chat_obj, session, settings)
         # Refresh the CONTEXT token meter for the auto-restored conversation.
         tryCatch({
-          n_tokens <- token_count_with_estimation(chat_obj)
+          n_tokens <- token_count_with_estimation(chat_obj, allow_network = FALSE)
           session$sendCustomMessage("update_budget",
             .budget_payload(n_tokens, settings$model_limit %||% 200000L,
                             settings$model %||% ""))
         }, error = function(e) NULL)
       }
-    }) |> shiny::bindEvent(session$clientData$url_hostname, once = TRUE)
+    }, once = TRUE)
 
     server_settings(input, output, session,
                     chat        = chat_obj,

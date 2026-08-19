@@ -62,3 +62,48 @@ test_that("codeagent_task wrappers are exported and delegate to btw", {
   expect_identical(.as_ellmer_chat(list(chat = ch)), ch)
   expect_null(.as_ellmer_chat(NULL))
 })
+
+
+test_that("owned Agent clones current parent provider and Model", {
+  parent <- ellmer::chat_openai_compatible(
+    base_url = "https://parent.invalid/v1", model = "parent-model",
+    credentials = function() "placeholder")
+  parent$set_turns(list(ellmer::Turn("user", "parent history")))
+  seen <- NULL
+  testthat::local_mocked_bindings(
+    .run_subagent_loop = function(sub_chat, ...) {
+      seen <<- sub_chat
+      "ok"
+    },
+    .package = "codeagent")
+
+  out <- agent_tool(async = TRUE, parent_chat = parent)(
+    description = "inspect inheritance", prompt = "noop")
+
+  expect_identical(out, "ok")
+  expect_s3_class(seen, "Chat")
+  expect_identical(seen$get_model_object()@name, "parent-model")
+  expect_identical(seen$get_provider()@base_url, "https://parent.invalid/v1")
+  expect_false(identical(seen, parent))
+  expect_length(parent$get_turns(), 1L)
+})
+
+
+test_that("upstream Agent captures each session parent without global option leak", {
+  global <- ellmer::chat_anthropic(model = "global-sentinel")
+  withr::local_options(list(btw.client = global))
+  a <- ellmer::chat_anthropic(model = "session-a")
+  b <- ellmer::chat_anthropic(model = "session-b")
+
+  register_agent_tool(a, parent_chat = a)
+  register_agent_tool(b, parent_chat = b)
+  ta <- a$get_tools()[["btw_tool_agent_subagent"]]
+  tb <- b$get_tools()[["btw_tool_agent_subagent"]]
+  ca <- get("config", envir = environment(ta), inherits = FALSE)$client
+  cb <- get("config", envir = environment(tb), inherits = FALSE)$client
+
+  expect_identical(ca, a)
+  expect_identical(cb, b)
+  expect_false(identical(ca, cb))
+  expect_identical(getOption("btw.client"), global)
+})

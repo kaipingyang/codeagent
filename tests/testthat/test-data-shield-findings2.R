@@ -325,14 +325,7 @@ test_that("#14 legacy 6-positional register_data still works", {
 # --- Finding #15: no non-ASCII literals in R sources -------------------------
 
 test_that("#15 server_chat.R has no literal non-ASCII characters", {
-  path <- system.file("R", package = "codeagent")
-  # When testing from source (load_all), read the source file directly.
-  src <- tryCatch(readLines("../../R/server_chat.R", warn = FALSE),
-                  error = function(e) character())
-  if (length(src)) {
-    non_ascii <- grepl("[^\x01-\x7F]", src, useBytes = TRUE)
-    expect_false(any(non_ascii))
-  } else {
-    succeed("source not available in this test context")
-  }
+  src <- deparse(body(server_chat))
+  non_ascii <- grepl("[^\x01-\x7F]", src, useBytes = TRUE)
+  expect_false(any(non_ascii))
 })

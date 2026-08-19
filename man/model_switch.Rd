@@ -10,14 +10,13 @@ functions usable from both the CLI and the Shiny app. Conversation history
 
 Two strategies:
 \itemize{
-\item \strong{Route A (default)} -- swap the ellmer Chat's internal provider in place.
-The Chat object identity is unchanged, so callbacks (\code{on_tool_result}),
-the stream controller, and any closures capturing the Chat keep working
-untouched. Touches ellmer's private R6 field, guarded by tryCatch.
-\item \strong{Route B (fallback)} -- build a fresh Chat from the new spec, migrate
-turns via \code{set_turns()}, and rebuild the client through
-\code{\link[=codeagent_client]{codeagent_client()}} (re-registers tools + system prompt). Pure public
-API; returns a NEW client object.
+\item \strong{Route A (strict name-only)} -- use public \code{set_model()} only when the
+provider configuration and Model params/extra args are unchanged. Chat
+identity, callbacks, and tools remain intact.
+\item \strong{Route B (fallback)} -- for provider/configuration changes, build a
+fresh Chat, migrate turns, and rebuild tools while carrying forward the
+complete live client settings, hooks, and Data Shield engine. Returns a
+NEW client object; the original remains unchanged if rebuilding fails.
 }
 
 See \code{references/model-switch-alternatives.md} for the 13-point empirical

@@ -58,8 +58,9 @@ NULL
 #' @param compaction_ctrl A `CompactionController` or NULL.
 #' @param resource_state A `ContentReplacementState` or NULL.
 #' @return A `coro::async` promise resolving to
-#'   `list(text, usage, stop_reason)` where `stop_reason` is one of
-#'   `"completed"`, `"error"`, or `"interrupted"`.
+#'   `list(text, usage, stop_reason, finish_reason)`. Successful provider
+#'   reasons are normalized by the same mapper used by [agent_loop()]; errors
+#'   and interrupts retain their harness stop reasons.
 #' @seealso [codeagent_stream()] for the synchronous wrapper.
 #' @export
 codeagent_stream_async <- function(
@@ -90,7 +91,8 @@ codeagent_stream_async <- function(
     msg <- ig$text %||% "[Blocked by Data Shield input gate]"
     if (!is.null(on_delta)) tryCatch(on_delta(msg), error = function(e) NULL)
     return(promises::promise_resolve(
-      list(text = msg, usage = NULL, stop_reason = "shield_blocked")))
+      list(text = msg, usage = NULL, stop_reason = "shield_blocked",
+           finish_reason = NA_character_)))
   }
   input <- ig$input %||% input   # may be redacted; rest preserved
 
@@ -102,7 +104,9 @@ codeagent_stream_async <- function(
   # (possibly redacted) text once at the end. No shield => stream live as before
   # (zero cost). Sacrifices the typewriter effect for real edge-3 enforcement.
   .shield_active <- !is.null(.input_gate_shield(settings, chat))
-  .buffer_output <- isTRUE(.shield_active)
+  .citation_active <- .web_citations_enabled(settings$web_citations)
+  .buffer_output <- isTRUE(.shield_active) || isTRUE(.citation_active)
+  citation_registry <- .new_citation_registry()
 
   # Run turn setup OUTSIDE the coro::async body: coro cannot assign the result
   # of an `if` expression, and .turn_setup contains such branches.
@@ -154,9 +158,11 @@ codeagent_stream_async <- function(
           }
 
         } else if (S7::S7_inherits(chunk, ellmer::ContentToolResult)) {
-          # Tool completed: adapt to typed display contract and notify.
+          # Tool completed: collect current-turn sources before display adaption.
+          adapted <- tryCatch(.adapt_tool_result(chunk), error = function(e) chunk)
+          .citation_registry_add(
+            citation_registry, .citation_sources_from_result(adapted))
           if (!is.null(on_tool_result)) {
-            adapted <- tryCatch(.adapt_tool_result(chunk), error = function(e) chunk)
             display <- tryCatch(adapted@extra$display, error = function(e) NULL)
             req     <- tryCatch(chunk@request, error = function(e) NULL)
             on_tool_result(list(
@@ -182,17 +188,37 @@ codeagent_stream_async <- function(
         }
       }
 
-      # Output gate (edge 3): in buffer mode, scan the finalized reply and emit
-      # the (possibly redacted) text in one shot before teardown.
-      if (isTRUE(.buffer_output)) {
-        og <- .output_gate_guarded(acc, settings, chat)
-        acc <- og$text %||% acc
-        if (!is.null(on_delta) && nzchar(acc)) tryCatch(on_delta(acc), error = function(e) NULL)
+      # Map only after the stream has closed and the final AssistantTurn exists.
+      # Append the static note before the output gate. In live mode only the note
+      # remains to emit; buffered mode emits the complete gated response once.
+      finish <- .map_finish_reason(.last_finish_reason(chat))
+      acc <- .append_finish_note(acc, finish$note)
+      if (isTRUE(.citation_active))
+        acc <- .render_citation_markers(
+          acc, citation_registry, settings, chat)
+      og <- .output_gate_guarded(acc, settings, chat)
+      acc <- og$text %||% acc
+      if (!is.null(on_delta)) {
+        if (isTRUE(.buffer_output) && nzchar(acc))
+          tryCatch(on_delta(acc), error = function(e) NULL)
+        if (!isTRUE(.buffer_output) && !is.null(finish$note))
+          tryCatch(on_delta(paste0("\n\n", finish$note)), error = function(e) NULL)
       }
 
-      usage <- .turn_teardown(client, cwd, session_id)
+      hooks <- tryCatch(settings$hooks_registry, error = function(e) NULL)
+      if (!is.null(hooks)) tryCatch(
+        hooks$run_assistant_message(acc), error = function(e) NULL)
+      usage <- .turn_teardown(
+        client, cwd, session_id, presentation_text = acc)
+      if (!is.null(hooks)) tryCatch(
+        hooks$run_stop(finish$stop_reason,
+                       list(session_id = session_id,
+                            finish_reason = finish$finish_reason)),
+        error = function(e) NULL)
       if (!is.null(on_usage)) on_usage(usage)
-      invisible(list(text = acc, usage = usage, stop_reason = "completed"))
+      invisible(list(text = acc, usage = usage,
+                     stop_reason = finish$stop_reason,
+                     finish_reason = finish$finish_reason))
 
     }, error = function(e) {
       # acc is visible here (outer-scope variable in the async closure).
@@ -207,6 +233,9 @@ codeagent_stream_async <- function(
       # return value, and DO NOT surface the raw error string (conditionMessage
       # may itself embed a protected value, e.g. a mid-stream FAKEID) to on_error.
       if (isTRUE(.buffer_output)) {
+        if (isTRUE(.citation_active))
+          acc <- .render_citation_markers(
+            acc, citation_registry, settings, chat)
         og  <- .output_gate_guarded(acc, settings, chat)
         acc <- og$text %||% acc
         if (!is.null(on_error)) on_error(
@@ -215,7 +244,8 @@ codeagent_stream_async <- function(
       } else if (!is.null(on_error)) {
         on_error(conditionMessage(e), is.character(recovered))
       }
-      invisible(list(text = acc, usage = NULL, stop_reason = "error"))
+      invisible(list(text = acc, usage = NULL, stop_reason = "error",
+                     finish_reason = .last_finish_reason(chat)))
     })
   })()
   promises::finally(.async_result, function() .exit_async_turn())
@@ -236,7 +266,7 @@ codeagent_stream_async <- function(
 #' @param on_tick Optional `function()` called once per ~100 ms event-loop tick
 #'   while pumping the loop (e.g. to animate a spinner).
 #' @param ... Passed to [codeagent_stream_async()].
-#' @return Invisibly, `list(text, usage, stop_reason)`.
+#' @return Invisibly, `list(text, usage, stop_reason, finish_reason)`.
 #' @seealso [codeagent_stream_async()] for the async variant.
 #' @export
 codeagent_stream <- function(client, input, ...,
@@ -283,5 +313,7 @@ codeagent_stream <- function(client, input, ...,
     # Do NOT re-throw: the caller (REPL / ink) continues to the next input.
   })
 
-  invisible(result %||% list(text = "", usage = NULL, stop_reason = "interrupted"))
+  invisible(result %||% list(text = "", usage = NULL,
+                            stop_reason = "interrupted",
+                            finish_reason = NA_character_))
 }

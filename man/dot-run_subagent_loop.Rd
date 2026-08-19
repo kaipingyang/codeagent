@@ -10,7 +10,8 @@
   max_turns = 30L,
   persist = FALSE,
   cwd = getwd(),
-  description = NULL
+  description = NULL,
+  data_shield = NULL
 )
 }
 \arguments{
@@ -25,6 +26,9 @@
 \item{cwd}{Character. Project dir for session storage.}
 
 \item{description}{Character. Used as the sidechain session title.}
+
+\item{data_shield}{Optional \link{DataShield}. Replies are gated before hooks,
+return, or persistence. Shielded sidechains are not persisted.}
 }
 \value{
 Character. The sub-agent's text response.

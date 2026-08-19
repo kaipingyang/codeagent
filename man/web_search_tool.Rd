@@ -4,12 +4,15 @@
 \alias{web_search_tool}
 \title{Create the WebSearch tool}
 \usage{
-web_search_tool()
+web_search_tool(citations = FALSE)
+}
+\arguments{
+\item{citations}{Logical. Append the source-ID marker protocol to model-facing
+output. Source metadata is always retained in the tool result.}
 }
 \value{
 An \code{ellmer::tool()} object.
 }
 \description{
-Primary: DuckDuckGo HTML scraping -- real search results, no API key.
-Fallback: DuckDuckGo Instant Answer API for entity queries.
+Create the WebSearch tool
 }

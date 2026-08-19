@@ -83,7 +83,7 @@ NULL
 # Compute context breakdown: returns named integer vector.
 # All values are estimated (char/3.5 heuristic).
 .context_breakdown <- function(chat, settings = list()) {
-  total  <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
+  total  <- tryCatch(token_count_with_estimation(chat, allow_network = FALSE), error = function(e) 0L)
   model  <- settings$model %||% tryCatch(chat$get_model(), error = function(e) "")
   window <- tryCatch(.model_context_window(model, chat), error = function(e) 200000L)
 
@@ -115,7 +115,7 @@ NULL
 
 # Print a one-line token-budget status (only when usage is notable).
 .repl_budget_line <- function(chat, settings, force = FALSE) {
-  n     <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
+  n     <- tryCatch(token_count_with_estimation(chat, allow_network = FALSE), error = function(e) 0L)
   model <- settings$model %||% ""
   ws    <- tryCatch(calculate_token_warning_state(n, model),
                     error = function(e) NULL)
@@ -521,7 +521,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       bg = { cat(.bg_slash_spawn(act$arg, client$data_shield), "\n", sep = ""); TRUE },
       bgstatus = { cat(.bg_status_text(), "\n", sep = ""); TRUE },
       cost = {
-        n     <- tryCatch(token_count_with_estimation(client$chat),
+        n     <- tryCatch(token_count_with_estimation(client$chat, allow_network = FALSE),
                           error = function(e) 0L)
         last  <- tryCatch(client$chat$get_cost(include = "last"),
                           error = function(e) NA_real_)

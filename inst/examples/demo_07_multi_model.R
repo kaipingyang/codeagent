@@ -8,8 +8,10 @@
 # a single model, so its dropdown has just one entry (nothing to switch to).
 #
 # This demo wires up a `codeagent.md` config with several models so the dropdown
-# lists them all -- pick another to switch live (chat history is preserved). The
-# `/model <name>` command works too (e.g. `/model gpt-4o-mini`).
+# lists them all -- pick another name on the same provider configuration to switch
+# live (chat history is preserved). Shiny rejects provider/endpoint/params changes
+# because its modules capture Chat identity; use `switch_model()` outside Shiny or
+# start a new app/session for those. `/model <name>` also works.
 #
 # Run from the package root:
 #   Rscript inst/examples/demo_07_multi_model.R

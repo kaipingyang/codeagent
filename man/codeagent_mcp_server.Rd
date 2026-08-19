@@ -2,16 +2,17 @@
 % Please edit documentation in R/tools_agent.R
 \name{codeagent_mcp_server}
 \alias{codeagent_mcp_server}
-\title{Exposes codeagent's tool set as an MCP server. By default uses btw's
-\code{btw_mcp_server()} over stdio (for Claude Desktop / VS Code MCP config). With
-\code{transport = "http"} it serves over HTTP via \code{mcptools::mcp_server()} (>= 0.2.1),
-enabling remote MCP clients. The server runs in a blocking loop.}
+\title{Exposes codeagent's tool set as an MCP server via
+\code{mcptools::mcp_server()}. Session tools are disabled by default because they
+expose a separate R-session control surface that does not pass through
+codeagent's Chat permission gate or Data Shield.}
 \usage{
 codeagent_mcp_server(
   tools = NULL,
   transport = c("stdio", "http"),
   host = "127.0.0.1",
   port = 8000L,
+  session_tools = FALSE,
   ...
 )
 }
@@ -25,14 +26,23 @@ codeagent_mcp_server(
 
 \item{port}{Integer. Port to bind when \code{transport = "http"}.}
 
+\item{session_tools}{Logical. Expose mcptools R-session controls. Defaults to
+\code{FALSE}; may only be enabled for stdio or a loopback HTTP listener.}
+
 \item{...}{Additional arguments passed to the underlying server function.}
 }
 \value{
 Does not return (blocking).
 }
 \description{
-Exposes codeagent's tool set as an MCP server. By default uses btw's
-\code{btw_mcp_server()} over stdio (for Claude Desktop / VS Code MCP config). With
-\code{transport = "http"} it serves over HTTP via \code{mcptools::mcp_server()} (>= 0.2.1),
-enabling remote MCP clients. The server runs in a blocking loop.
+Exposes codeagent's tool set as an MCP server via
+\code{mcptools::mcp_server()}. Session tools are disabled by default because they
+expose a separate R-session control surface that does not pass through
+codeagent's Chat permission gate or Data Shield.
+}
+\examples{
+\dontrun{
+# Session controls are disabled unless explicitly requested.
+codeagent_mcp_server(session_tools = FALSE)
+}
 }

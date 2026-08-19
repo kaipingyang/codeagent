@@ -19,6 +19,7 @@ Imports:
     R6,
     jsonlite,
     httr2,
+    curl,
     cli,
     shiny,
     bslib (>= 0.11.0),
@@ -35,6 +36,7 @@ Imports:
     rlang,
     watcher
 Suggests:
+    codetools,
     clipr,
     otel,
     otelsdk,
@@ -43,7 +45,7 @@ Suggests:
     styler,
     prettycode,
     btw,
-    mcptools,
+    mcptools (>= 1.0.1),
     Rapp,
     promises,
     rappdirs,

@@ -45,10 +45,13 @@ NULL
 #' @param cwd Character. Working directory (used to key the project).
 #' @param session_id Character or NULL. UUID; generated if NULL.
 #' @param title Character or NULL. Optional human-readable title.
+#' @param assistant_text_override Character or NULL. Safe finalized text for the
+#'   last assistant turn's presentation line. Lossless chat-state remains intact.
 #' @return Character(1). The session UUID.
 #' @export
 save_session <- function(chat, cwd = getwd(),
-                          session_id = NULL, title = NULL) {
+                          session_id = NULL, title = NULL,
+                          assistant_text_override = NULL) {
   if (is.null(session_id)) session_id <- .generate_uuid_v4()
   session_dir <- .ensure_session_dir(cwd)
   file_path   <- file.path(session_dir, paste0(session_id, ".jsonl"))
@@ -86,14 +89,21 @@ save_session <- function(chat, cwd = getwd(),
       auto_unbox = TRUE))
   }
 
-  # Turn lines (text-level -- drives UI display, titles, and legacy fallback)
-  for (turn in turns) {
-    role     <- tryCatch(turn@role, error = function(e) "unknown")
+  # Turn lines (text-level -- drives UI display, titles, and legacy fallback).
+  roles <- vapply(turns, function(turn)
+    tryCatch(turn@role, error = function(e) "unknown"), character(1L))
+  assistant_idx <- which(roles == "assistant")
+  last_assistant <- if (length(assistant_idx)) utils::tail(assistant_idx, 1L) else NA_integer_
+  for (i in seq_along(turns)) {
+    turn <- turns[[i]]
+    role <- roles[[i]]
     contents <- tryCatch(turn@contents, error = function(e) list())
     text_parts <- vapply(contents, function(c) {
       tryCatch(as.character(c@text %||% ""), error = function(e) "")
     }, character(1))
     text <- paste(text_parts[nzchar(text_parts)], collapse = "\n")
+    if (!is.null(assistant_text_override) && identical(i, last_assistant))
+      text <- as.character(assistant_text_override)[1L]
 
     entry <- list(
       type      = if (identical(role, "user")) "user" else "assistant",

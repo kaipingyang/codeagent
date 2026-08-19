@@ -5,6 +5,8 @@ test_that(".tool_capability classifies tools (unknown -> read/allow)", {
   expect_identical(.tool_capability("Format"), "write")
   expect_identical(.tool_capability("btw_tool_git_commit"), "write")
   expect_identical(.tool_capability("btw_tool_github"), "net")
+  expect_identical(.tool_capability("WebFetch"), "net")
+  expect_identical(.tool_capability("WebSearch"), "net")
   expect_identical(.tool_capability("btw_tool_files_read"), "read")
   expect_identical(.tool_capability("some_unknown_tool"), "read")
 })

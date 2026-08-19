@@ -647,8 +647,8 @@ shield_sandbox <- function(
 #'
 #' @return A `list()` of Data Shield strategy specifications.
 #' @examples
-#' client <- codeagent_client(chat, data_shield = shield_preset_strict())
-#' client <- codeagent_client(chat, data_shield = shield_preset_balanced())
+#' strict <- shield_preset_strict()
+#' balanced <- shield_preset_balanced()
 #' @name shield_preset
 NULL
 
@@ -937,7 +937,7 @@ DataShield <- R6::R6Class(
       out <- private$scan_raw_secrets(text, asset, edge="prompt", tool_name=paste0("asset:",name))
       private$record_event(
         edge="prompt", tool_name=paste0("asset:",name), strategy="asset_policy",
-        action="bypass", reason=asset$reason, match_count=0L, score=0)
+        action="bypass", reason="approved_asset_policy", match_count=0L, score=0)
       out
     },
 
@@ -1104,7 +1104,7 @@ DataShield <- R6::R6Class(
           edge=context$edge %||% "egress",
           tool_name=context$tool_name %||% paste0("asset:",result$source),
           tool_call_id=context$tool_call_id, strategy="asset_policy",
-          action="bypass", reason=asset$reason, match_count=0L, score=0)
+          action="bypass", reason="approved_asset_policy", match_count=0L, score=0)
         return(out)
       }
       audit_fn <- function(strategy, action, reason, match_count=0L, score=0) {
@@ -2232,8 +2232,15 @@ refresh_data_shield_context <- function(client) {
 .data_shield_wrap_tool <- function(tool, shield) {
   current <- tryCatch(S7::S7_data(tool), error = function(e) NULL)
   if (!is.function(current)) return(tool)
-  if (identical(attr(current, "data_shield_state"), shield)) return(tool)
-  original <- attr(current, "data_shield_original") %||% current
+  current_env <- tryCatch(environment(current), error = function(e) NULL)
+  current_state <- attr(current, "data_shield_state") %||%
+    if (is.environment(current_env))
+      get0(".codeagent_data_shield_state", current_env, inherits = FALSE) else NULL
+  if (identical(current_state, shield)) return(tool)
+  original <- attr(current, "data_shield_original") %||%
+    if (is.environment(current_env))
+      get0(".codeagent_data_shield_original", current_env,
+           inherits = FALSE, ifnotfound = current) else current
   tool_name <- tryCatch(S7::prop(tool, "name"), error=function(e) NA_character_)
   wrapped <- function(...) {
     args <- list(...)
@@ -2285,6 +2292,10 @@ refresh_data_shield_context <- function(client) {
   attr(wrapped, "data_shield_wrapped") <- TRUE
   attr(wrapped, "data_shield_original") <- original
   attr(wrapped, "data_shield_state") <- shield
+  assign(".codeagent_data_shield_state", shield,
+         envir = environment(wrapped))
+  assign(".codeagent_data_shield_original", original,
+         envir = environment(wrapped))
   tryCatch({ S7::S7_data(tool) <- wrapped }, error = function(e) NULL)
   tool
 }
@@ -2617,7 +2628,7 @@ refresh_data_shield_context <- function(client) {
             scale <- length(safe) / dp_epsilon
             noised <- pmax(0L, round(as.integer(tab[safe]) +
                                       .data_shield_laplace_noise(length(safe), scale)))
-            labels <- sprintf("%s (n≈%d)", safe, noised)
+            labels <- sprintf("%s (n\u2248%d)", safe, noised)
             if (rare) labels <- c(labels, "<rare suppressed>")
             fields <- c(fields, sprintf("labels=[%s]", paste(labels, collapse = ", ")))
             budget_after <- budget_after - dp_epsilon

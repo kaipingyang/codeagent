@@ -333,3 +333,27 @@ test_that(".runr_sandboxed_exec resists regex-bypass secret reads", {
     expect_false(grepl("SECRET_BYPASS", val))
   })
 })
+
+
+test_that("codeagent_mcp_server has an explicit safe session-tools default", {
+  fm <- formals(codeagent_mcp_server)
+  expect_true("session_tools" %in% names(fm))
+  expect_identical(fm$session_tools, FALSE)
+})
+
+test_that("codeagent_mcp_server refuses old mcptools", {
+  testthat::local_mocked_bindings(
+    .mcptools_supported = function(...) FALSE,
+    .package = "codeagent")
+  expect_error(codeagent_mcp_server(tools = list()), "mcptools >= 1.0.1")
+})
+
+test_that("network MCP server cannot expose session tools", {
+  testthat::local_mocked_bindings(
+    .mcptools_supported = function(...) TRUE,
+    .package = "codeagent")
+  expect_error(
+    codeagent_mcp_server(tools = list(), transport = "http",
+                         host = "0.0.0.0", session_tools = TRUE),
+    "loopback")
+})

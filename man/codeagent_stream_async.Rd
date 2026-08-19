@@ -66,8 +66,9 @@ injection and memory recall on iteration 1).}
 }
 \value{
 A \code{coro::async} promise resolving to
-\code{list(text, usage, stop_reason)} where \code{stop_reason} is one of
-\code{"completed"}, \code{"error"}, or \code{"interrupted"}.
+\code{list(text, usage, stop_reason, finish_reason)}. Successful provider
+reasons are normalized by the same mapper used by \code{\link[=agent_loop]{agent_loop()}}; errors
+and interrupts retain their harness stop reasons.
 }
 \description{
 Runs the full turn pipeline (compaction, system-reminder injection, session

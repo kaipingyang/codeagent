@@ -4,7 +4,13 @@
 \alias{save_session}
 \title{Save an ellmer Chat session to disk}
 \usage{
-save_session(chat, cwd = getwd(), session_id = NULL, title = NULL)
+save_session(
+  chat,
+  cwd = getwd(),
+  session_id = NULL,
+  title = NULL,
+  assistant_text_override = NULL
+)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
@@ -14,6 +20,9 @@ save_session(chat, cwd = getwd(), session_id = NULL, title = NULL)
 \item{session_id}{Character or NULL. UUID; generated if NULL.}
 
 \item{title}{Character or NULL. Optional human-readable title.}
+
+\item{assistant_text_override}{Character or NULL. Safe finalized text for the
+last assistant turn's presentation line. Lossless chat-state remains intact.}
 }
 \value{
 Character(1). The session UUID.

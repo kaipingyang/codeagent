@@ -1,0 +1,1 @@
+Jina fixture intentionally not applicable: codeagent uses direct DNS-authorized, IP-pinned fetches and does not forward user URLs to Jina.

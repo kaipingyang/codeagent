@@ -81,20 +81,25 @@ NULL
 #' @param client A `CodeagentClient` or bare `ellmer::Chat`.
 #' @param cwd Character or NULL.
 #' @param session_id Character or NULL.
+#' @param presentation_text Character or NULL. Safe finalized assistant text for
+#'   the session's presentation record.
 #' @return Named list with elements:
 #'   * `n_tokens`: integer token count (real or estimated)
 #'   * `model_limit`: integer context window limit
 #'   * `warning_state`: list from `calculate_token_warning_state()` or NULL
 #'   * `cost_last`: numeric cost of the last turn in USD, or NA_real_
 #' @keywords internal
-.turn_teardown <- function(client, cwd = NULL, session_id = NULL) {
+.turn_teardown <- function(client, cwd = NULL, session_id = NULL,
+                           presentation_text = NULL) {
   chat     <- if (inherits(client, "CodeagentClient")) client$chat else client
   settings <- if (inherits(client, "CodeagentClient")) client$settings else list()
   if (is.null(cwd)) cwd <- settings$cwd %||% getwd()
 
-  tryCatch(save_session(chat, cwd, session_id), error = function(e) NULL)
+  tryCatch(save_session(
+    chat, cwd, session_id, assistant_text_override = presentation_text),
+    error = function(e) NULL)
 
-  n    <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
+  n    <- tryCatch(token_count_with_estimation(chat, allow_network = FALSE), error = function(e) 0L)
   lim  <- settings$model_limit %||% 200000L
   ws   <- tryCatch(calculate_token_warning_state(n, settings$model %||% ""),
                    error = function(e) NULL)

@@ -76,3 +76,40 @@ test_that(".session_state_encode/decode round-trips through JSON", {
   dec <- codeagent:::.session_state_decode(enc)
   expect_length(dec, 2L)
 })
+
+
+test_that("versioned pre-M7 fixture restores through text fallback", {
+  withr::local_envvar(CODEAGENT_HOME = withr::local_tempdir())
+  cwd <- withr::local_tempdir()
+  sid <- "pre-m7-fixture"
+  lines <- readLines(test_path("fixtures", "sessions", "pre-m7.jsonl"),
+                     warn = FALSE)
+  lines <- gsub("FIXTURE_CWD", cwd, lines, fixed = TRUE)
+  path <- file.path(codeagent:::.ensure_session_dir(cwd), paste0(sid, ".jsonl"))
+  writeLines(lines, path)
+  chat <- chat_anthropic(model = "fixture")
+  expect_identical(restore_session_into_chat(chat, sid, cwd), sid)
+  expect_identical(chat$get_turns()[[1L]]@contents[[1L]]@text,
+                   "legacy question")
+})
+
+test_that("corrupt and unknown fixture records do not crash restore", {
+  withr::local_envvar(CODEAGENT_HOME = withr::local_tempdir())
+  cwd <- withr::local_tempdir()
+  sid <- "corrupt-unknown"
+  file.copy(test_path("fixtures", "sessions", "corrupt-unknown.jsonl"),
+            file.path(codeagent:::.ensure_session_dir(cwd), paste0(sid, ".jsonl")))
+  chat <- chat_anthropic(model = "fixture")
+  expect_no_error(restore_session_into_chat(chat, sid, cwd))
+  turns <- chat$get_turns()
+  expect_length(turns, 1L)
+  expect_identical(turns[[1L]]@contents[[1L]]@text, "safe fallback")
+})
+
+test_that("M7 fixture declares the frozen lossless record encoding", {
+  record <- jsonlite::fromJSON(
+    test_path("fixtures", "sessions", "m7-chat-state.jsonl"),
+    simplifyVector = FALSE)
+  expect_identical(record$type, "chat-state")
+  expect_identical(record$encoding, "ellmer-contents-record-json")
+})

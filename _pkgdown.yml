@@ -135,6 +135,7 @@ reference:
     desc: "Miscellaneous helpers."
     contents:
       - switch_model
+      - update_model_prices
       - verify_r_tests
       - verify_r_lints
       - codeagent_otel_status

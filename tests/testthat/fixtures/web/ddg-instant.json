@@ -1,0 +1,8 @@
+{
+  "Heading": "Example topic",
+  "Abstract": "A deterministic abstract.",
+  "AbstractURL": "https://example.com/topic",
+  "RelatedTopics": [
+    {"Text": "Related example", "FirstURL": "https://example.com/related"}
+  ]
+}

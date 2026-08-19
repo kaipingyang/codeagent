@@ -27,3 +27,7 @@ A named list with \code{type}, \code{command}, and \code{args}.
 Builds an \code{mcp_servers} list entry that launches an R subprocess running
 \code{mcptools::mcp_server()} over stdio.
 }
+\examples{
+config <- r_mcp_server(session_tools = FALSE)
+config$type
+}

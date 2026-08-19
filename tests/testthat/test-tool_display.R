@@ -63,6 +63,40 @@ test_that(".tool_result legacy wrapper still works", {
   expect_identical(as.character(r@value), "legacy")
 })
 
+
+
+test_that("tool displays use shinychat official constructor with useful previews", {
+  r <- codeagent:::.tool_result2(
+    "first line\nsecond line", kind = "text", title = "Read file.R",
+    payload = list(text = "first line\nsecond line"))
+  expect_s3_class(r@extra$display, "shinychat_tool_result_display")
+  expect_identical(r@extra$display$label, "Read file.R")
+  expect_identical(r@extra$display$value_preview, "first line second line")
+})
+
+test_that("display constructor feature-detect falls back to validated official fields", {
+  testthat::local_mocked_bindings(
+    .shinychat_tool_result_constructor = function() NULL
+  )
+  d <- codeagent:::.new_tool_result_display(
+    title = "T", label = "L", value_preview = "V", open = FALSE)
+  expect_type(d, "list")
+  expect_named(d, c("title", "show_request", "open", "full_screen", "label",
+                    "value_preview"), ignore.order = TRUE)
+  expect_null(d$toolcard)
+})
+
+test_that("raw btw footer survives normalization and recognizable patches become diff", {
+  footer <- htmltools::tags$span("btw footer")
+  raw <- ellmer::ContentToolResult(
+    value = "diff --git a/a.R b/a.R\n@@ -1 +1 @@\n-old\n+new",
+    extra = list(display = list(title = "Patch", footer = footer)))
+  adapted <- codeagent:::.adapt_tool_result(raw)
+  expect_identical(adapted@extra$codeagent$artifact$kind, "diff")
+  expect_identical(as.character(adapted@extra$display$footer),
+                   as.character(footer))
+  expect_match(adapted@extra$display$value_preview, "diff --git", fixed = TRUE)
+})
 # ---------------------------------------------------------------------------
 # render_artifact per kind
 # ---------------------------------------------------------------------------
@@ -184,4 +218,25 @@ test_that(".artifact_title strips HTML and follows the fallback chain", {
   # Nothing usable -> "Output".
   expect_equal(codeagent:::.artifact_title(NULL), "Output")
   expect_equal(codeagent:::.artifact_title(list()), "Output")
+})
+
+
+test_that("official display survives shinychat contents conversion without warnings", {
+  tool <- ellmer::tool(function(x) x, name = "fixture_tool",
+                       description = "fixture",
+                       arguments = list(x = ellmer::type_string("x")))
+  request <- ellmer::ContentToolRequest(
+    id = "display-1", name = "fixture_tool", arguments = list(x = "x"),
+    tool = tool)
+  result <- codeagent:::.adapt_tool_result(ellmer::ContentToolResult(
+    value = "fixture output", request = request,
+    extra = list(display = list(title = "Fixture"))))
+  chat <- ellmer::chat_anthropic(model = "fixture")
+  expect_identical(result@request@id, "display-1")
+  chat$register_tool(tool)
+  chat$set_turns(list(
+    ellmer::Turn("assistant", contents = list(request)),
+    ellmer::Turn("user", contents = list(result))))
+  items <- expect_no_warning(shinychat::contents_shinychat(chat))
+  expect_length(items, 1L)
 })

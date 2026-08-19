@@ -41,7 +41,7 @@ NULL
   # 2+3+4+5. btw built-ins + attached packages + btw user dirs + btw project dirs
   if (requireNamespace("btw", quietly = TRUE)) {
     tryCatch({
-      dirs <- c(dirs, btw:::btw_skills_directories())
+      dirs <- c(dirs, utils::getFromNamespace("btw_skills_directories", "btw")())
     }, error = function(e) NULL)
   }
 
@@ -151,7 +151,7 @@ list_skills_meta <- function(cwd = getwd()) {
   btw_covered <- character(0)
   if (requireNamespace("btw", quietly = TRUE)) {
     tryCatch({
-      btw_skills <- btw:::btw_skills_list()
+      btw_skills <- utils::getFromNamespace("btw_skills_list", "btw")()
       btw_covered <- vapply(btw_skills, function(s) s$path, character(1))
       for (s in btw_skills) {
         # btw drops non-spec frontmatter (argument-hint now lives under
@@ -219,7 +219,7 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
 
   # Use btw's find_skill if available (handles resources listing too)
   if (requireNamespace("btw", quietly = TRUE)) {
-    skill_info <- tryCatch(btw:::find_skill(name), error = function(e) NULL)
+    skill_info <- tryCatch(utils::getFromNamespace("find_skill", "btw")(name), error = function(e) NULL)
     if (!is.null(skill_info) && skill_info$validation$valid) {
       fm   <- tryCatch(
         frontmatter::read_front_matter(skill_info$path),
@@ -416,6 +416,7 @@ build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
 
 # Parse SKILL.md frontmatter for a skill directory
 .parse_skill_md <- function(path) {
+  if (!file.exists(path)) return(NULL)
   lines <- tryCatch(readLines(path, n = 40L, warn = FALSE),
                     error = function(e) NULL)
   if (is.null(lines) || length(lines) < 2L) return(NULL)

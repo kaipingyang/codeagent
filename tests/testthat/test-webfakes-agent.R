@@ -204,10 +204,10 @@ test_that("plan mode denies Write tool and file is not created", {
   on.exit(proc$stop(), add = TRUE)
 
   client <- .make_mock_client(proc, permission_mode = "plan")
-  tryCatch(
+  suppressWarnings(tryCatch(
     codeagent(client, paste0("Write content to ", tmp)),
     error = function(e) NULL
-  )
+  ))
 
   expect_false(file.exists(tmp))
 })

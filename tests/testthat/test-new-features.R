@@ -215,14 +215,12 @@ test_that("verify_r_tests() returns a function", {
 })
 
 test_that("verify_r_tests() passes when devtools not available", {
+  testthat::local_mocked_bindings(
+    .devtools_available = function() FALSE
+  )
   fn <- verify_r_tests()
-  # If devtools is not installed, should pass through
-  if (!requireNamespace("devtools", quietly = TRUE)) {
-    result <- fn("response", NULL, tempdir())
-    expect_true(result$passed)
-  } else {
-    skip("devtools available — skip pass-through test")
-  }
+  result <- fn("response", NULL, tempdir())
+  expect_true(result$passed)
 })
 
 # ---------------------------------------------------------------------------

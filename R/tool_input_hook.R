@@ -30,9 +30,17 @@ NULL
   if (is.null(hooks)) return(tool)
   current <- tryCatch(S7::S7_data(tool), error = function(e) NULL)
   if (!is.function(current)) return(tool)
-  # Idempotent: if already wrapped for these hooks, leave as-is.
-  if (identical(attr(current, "pre_hook_state"), hooks)) return(tool)
-  original  <- attr(current, "pre_hook_original") %||% current
+  # ellmer ToolDef reconstruction may strip arbitrary function attributes, so
+  # wrapper identity is also stored in the closure environment.
+  current_env <- tryCatch(environment(current), error = function(e) NULL)
+  current_state <- attr(current, "pre_hook_state") %||%
+    if (is.environment(current_env))
+      get0(".codeagent_pre_hook_state", current_env, inherits = FALSE) else NULL
+  if (identical(current_state, hooks)) return(tool)
+  original <- attr(current, "pre_hook_original") %||%
+    if (is.environment(current_env))
+      get0(".codeagent_pre_hook_original", current_env,
+           inherits = FALSE, ifnotfound = current) else current
   tool_name <- tryCatch(S7::prop(tool, "name"), error = function(e) NA_character_)
 
   wrapped <- function(...) {
@@ -64,6 +72,10 @@ NULL
   attr(wrapped, "pre_hook_wrapped")  <- TRUE
   attr(wrapped, "pre_hook_original") <- original
   attr(wrapped, "pre_hook_state")    <- hooks
+  assign(".codeagent_pre_hook_state", hooks,
+         envir = environment(wrapped))
+  assign(".codeagent_pre_hook_original", original,
+         envir = environment(wrapped))
   tryCatch({ S7::S7_data(tool) <- wrapped }, error = function(e) NULL)
   tool
 }

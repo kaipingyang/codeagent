@@ -177,22 +177,26 @@ NULL
 # Agent calls interleave (ellmer tool_mode = "concurrent").
 .run_subagent_loop_async <- function(sub_chat, prompt, max_turns = 30L,
                                       persist = FALSE, cwd = getwd(),
-                                      description = NULL) {
+                                      description = NULL, data_shield = NULL) {
+  sanitize <- function(response) {
+    .subagent_safe_response(response, data_shield, sub_chat)
+  }
   p <- promises::then(
     sub_chat$chat_async(prompt),
     onFulfilled = function(response) {
-      if (isTRUE(persist)) {
+      response <- sanitize(if (is.character(response)) response else
+        "[Sub-agent completed with no text output]")
+      if (isTRUE(persist) && !inherits(data_shield, "DataShield")) {
         sid <- paste0("subagent-", substr(tryCatch(.generate_uuid_v4(),
                       error = function(e) "x"), 1L, 8L))
         tryCatch(save_session(sub_chat, cwd, sid,
                               title = description %||% "sub-agent"),
                  error = function(e) NULL)
       }
-      if (is.character(response)) response
-      else "[Sub-agent completed with no text output]"
+      response
     })
   promises::catch(p, function(e)
-    paste0("[Error in sub-agent] ", conditionMessage(e)))
+    sanitize(paste0("[Error in sub-agent] ", conditionMessage(e))))
 }
 
 # Human-readable status block for /bgstatus (markdown; also fine in a terminal).

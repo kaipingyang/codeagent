@@ -260,3 +260,36 @@ test_that("codeagent_stream_async expands multimodal input into ellmer content d
   expect_true(S7::S7_inherits(seen[[2L]], ellmer::ContentImage))
   expect_identical(seen$stream, "content")
 })
+
+
+test_that("finish reason mapper covers current and legacy values", {
+  cases <- list(
+    success = "completed", stop = "completed",
+    max_tokens = "truncated", context_window = "truncated", length = "truncated",
+    content_filter = "filtered", tool_use = "incomplete_tool_use",
+    future_reason = "completed")
+  for (raw in names(cases)) {
+    mapped <- .map_finish_reason(raw)
+    expect_identical(mapped$stop_reason, cases[[raw]], info = raw)
+    expect_identical(mapped$finish_reason, raw, info = raw)
+  }
+  expect_identical(.map_finish_reason(NA_character_)$stop_reason, "completed")
+  expect_true(nzchar(.map_finish_reason("max_tokens")$note))
+})
+
+test_that("public stream returns mapped finish reason and appends note", {
+  skip_if_not_installed("coro"); skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+
+  chat <- .mk_fake_chat(list(ContentText("partial")))
+  chat$last_turn <- function(...) AssistantTurn(
+    contents = list(ContentText("partial")), finish_reason = "max_tokens")
+  deltas <- character()
+  result <- .pump(codeagent_stream_async(
+    chat, "test", on_delta = function(x) deltas <<- c(deltas, x)))
+
+  expect_identical(result$stop_reason, "truncated")
+  expect_identical(result$finish_reason, "max_tokens")
+  expect_match(result$text, "truncated", ignore.case = TRUE)
+  expect_match(paste(deltas, collapse = ""), "truncated", ignore.case = TRUE)
+})

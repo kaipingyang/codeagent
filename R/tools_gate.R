@@ -30,6 +30,8 @@ NULL
   Grep        = list(set = "A", capability = "read"),
   LS          = list(set = "A", capability = "read"),
   Lint        = list(set = "A", capability = "read"),
+  WebFetch    = list(set = "A", capability = "net"),
+  WebSearch   = list(set = "A", capability = "net"),
   # btw file tools (set B)
   btw_tool_files_write   = list(set = "B", capability = "write"),
   btw_tool_files_edit    = list(set = "B", capability = "write"),
@@ -411,6 +413,7 @@ install_permission_gate <- function(chat, permission_mode = "default",
   mode_env <- new.env(parent = emptyenv())
   mode_env$mode <- permission_mode
   settings <- list(permission_mode = permission_mode, tools = tools)
+  .install_tool_result_normalizers(chat)
   .install_permission_gate(chat, settings, mode_env, rules = rules,
                            ask_fn = ask_fn)
   invisible(chat)

@@ -13,7 +13,10 @@ register_agent_tool(
   worktree_isolation = FALSE,
   ask_fn = NULL,
   async = FALSE,
-  data_shield = NULL
+  data_shield = NULL,
+  cwd = getwd(),
+  parent_chat = NULL,
+  hooks = NULL
 )
 }
 \arguments{
@@ -37,6 +40,14 @@ on async parent turns. Default \code{FALSE}.}
 
 \item{data_shield}{Optional \link{DataShield} inherited by codeagent sub-agents;
 disables uninstrumented btw/custom-agent delegation.}
+
+\item{cwd}{Character. Working directory used for upstream agent discovery.}
+
+\item{parent_chat}{Optional parent \code{ellmer::Chat}; reserved for owned
+sub-agent lifecycle integration.}
+
+\item{hooks}{Optional \link{HookRegistry} used for SubagentStart/Stop lifecycle
+events on the owned codeagent Agent path.}
 }
 \value{
 Invisibly returns \code{chat}.

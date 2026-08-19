@@ -75,7 +75,7 @@ test_that("two-level maybe_compact falls back to full when session-memory can't 
   # hitting an API.
   calls <- character(0)
   local_mocked_bindings(
-    token_count_with_estimation = function(chat) 999999L,   # force over threshold
+    token_count_with_estimation = function(chat, ...) 999999L, # force over threshold
     snip_old_tools              = function(chat, ...) { calls <<- c(calls, "snip"); invisible(NULL) },
     session_memory_compact      = function(chat, ...) { calls <<- c(calls, "sm"); invisible(FALSE) },
     full_compact                = function(chat, ...) { calls <<- c(calls, "full"); invisible(NULL) }
@@ -189,4 +189,32 @@ test_that(".resolve_compact_model prefers small model, else chat model, else hai
   # last resort when no chat + nothing configured
   withr::local_options(codeagent.small_fast_model = NULL)
   expect_identical(.resolve_compact_model(NULL, list()), .HAIKU_MODEL)
+})
+
+
+test_that("token count includes cached input and defaults to zero network calls", {
+  calls <- 0L
+  chat <- list(
+    get_tokens = function(...) data.frame(
+      input = 10, output = 5, cached_input = 7, cost = 0),
+    token_count = function(...) { calls <<- calls + 1L; 99L },
+    get_turns = function(...) list())
+
+  expect_equal(token_count_with_estimation(chat), 22L)
+  expect_equal(calls, 0L)
+  expect_equal(token_count_with_estimation(chat, allow_network = TRUE), 99L)
+  expect_equal(calls, 1L)
+})
+
+test_that("token count falls back without calling unsupported endpoint", {
+  calls <- 0L
+  chat <- list(
+    get_tokens = function(...) data.frame(),
+    token_count = function(...) { calls <<- calls + 1L; stop("unsupported") },
+    get_turns = function(...) list(ellmer::Turn("user", "1234567")))
+
+  expect_equal(token_count_with_estimation(chat), 2L)
+  expect_equal(calls, 0L)
+  expect_equal(token_count_with_estimation(chat, allow_network = TRUE), 2L)
+  expect_equal(calls, 1L)
 })

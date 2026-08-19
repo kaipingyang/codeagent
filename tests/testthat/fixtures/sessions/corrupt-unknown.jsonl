@@ -1,0 +1,3 @@
+not-json
+{"type":"unknown-future-record","payload":{"unexpected":true}}
+{"type":"assistant","message":{"role":"assistant","content":"safe fallback"}}

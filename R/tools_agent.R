@@ -71,6 +71,17 @@ NULL
   invisible(NULL)
 }
 
+# Gate a sub-agent response before any hook, callback, persistence, or parent
+# result can observe it. Internal and deliberately returns only a safe scalar.
+.subagent_safe_response <- function(response, data_shield = NULL, chat = NULL) {
+  if (!is.character(response) || length(response) != 1L)
+    response <- "[Sub-agent completed with no text output]"
+  if (!inherits(data_shield, "DataShield")) return(response)
+  gated <- .output_gate_guarded(
+    response, list(data_shield_engine = data_shield), chat)
+  gated$text %||% "[data_shield] sub-agent reply withheld (fail-closed)."
+}
+
 # ---------------------------------------------------------------------------
 # Agent tool (btw subagent or codeagent fallback)
 # ---------------------------------------------------------------------------
@@ -98,6 +109,8 @@ NULL
 #'   sub-agents otherwise. Default `FALSE`.
 #' @param data_shield Optional [DataShield] inherited from the parent. When set,
 #'   the sub-agent's own tools are wrapped before its first LLM request.
+#' @param parent_chat Optional parent `ellmer::Chat`. The owned Agent path clones
+#'   this Chat, clears history/tools, and verifies provider + Model inheritance.
 #' @return An `ellmer::tool()` object.
 #' @export
 agent_tool <- function(model              = "claude-sonnet-4-6",
@@ -108,7 +121,8 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                         hooks              = NULL,
                         ask_fn             = NULL,
                         async              = FALSE,
-                        data_shield        = NULL) {
+                        data_shield        = NULL,
+                        parent_chat        = NULL) {
   # Prefer btw's upstream subagent (`btw_tool_agent_subagent`: own conversation
   # thread, resumable via session_id) -- no reinvention. Only fall through to
   # codeagent's own sub-agent loop when a codeagent-specific capability is
@@ -128,10 +142,13 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
   # codeagent's own sub-agent -- used when btw is unavailable OR when
   # worktree_isolation = TRUE (adds isolated git worktree + sidechain
   # persistence + bubble permission mode on top of a plain sub-loop).
+  resolved_model <- tryCatch(
+    if (inherits(parent_chat, "Chat")) parent_chat$get_model_object()@name else model,
+    error = function(e) model)
   ellmer::tool(
     fun = function(description, prompt, subagent_type = NULL) {
       if (!is.null(hooks)) tryCatch(
-        hooks$run_subagent_start(description, list(model = model)),
+        hooks$run_subagent_start(description, list(model = resolved_model)),
         error = function(e) NULL)
 
       # Async sub-agents (concurrent via ellmer tool_mode="concurrent") are only
@@ -150,17 +167,37 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         sub_mode <- "bubble"
         system_prompt <- .prompt_subagent(description, sub_mode, wt_path)
         sub_settings <- list(
-          model = model, permission_mode = sub_mode,
+          model = resolved_model, permission_mode = sub_mode,
           cwd = sub_cwd, max_turns = as.integer(max_turns),
           base_url = Sys.getenv("CODEAGENT_BASE_URL", "")
         )
-        sub_chat <- .make_chat(sub_settings, sub_cwd)
-        # .make_chat() builds its own system prompt from settings; replace it
-        # with the sub-agent (bubble-mode) prompt. Passing system_prompt to
-        # .make_chat() would collide in its `...` forwarding.
-        tryCatch(sub_chat$set_system_prompt(system_prompt), error = function(e) NULL)
-        register_builtin_tools(sub_chat, mode = sub_mode, rules = rules,
-                               ask_fn = ask_fn)
+        if (inherits(parent_chat, "Chat")) {
+          sub_chat <- parent_chat$clone()
+          expected_provider <- parent_chat$get_provider()
+          expected_model <- parent_chat$get_model_object()
+          sub_chat$set_turns(list())
+          sub_chat$set_tools(list())
+          if (!.provider_configuration_equal(expected_provider,
+                                              sub_chat$get_provider()) ||
+              !.model_configuration_equal(expected_model,
+                                           sub_chat$get_model_object(),
+                                           include_name = TRUE) ||
+              length(sub_chat$get_turns()) != 0L ||
+              length(sub_chat$get_tools()) != 0L)
+            stop("parent Chat clone isolation verification failed")
+        } else {
+          sub_chat <- .make_chat(sub_settings, sub_cwd)
+        }
+        # Replace the inherited/default prompt only after clone isolation.
+        sub_chat$set_system_prompt(system_prompt)
+        # Build tools ungated and install the same single central permission
+        # gate used by the parent. Any failure aborts before the first request.
+        register_builtin_tools(sub_chat, mode = "bypass", rules = rules,
+                               ask_fn = NULL)
+        mode_env <- new.env(parent = emptyenv())
+        mode_env$mode <- sub_mode
+        .install_permission_gate(sub_chat, sub_settings, mode_env, rules,
+                                 ask_fn = ask_fn, hooks = hooks)
         if (inherits(data_shield, "DataShield")) data_shield$install(sub_chat)
         list(sub_chat = sub_chat, wt_path = wt_path, repo_dir = repo_dir)
       }, error = function(e)
@@ -168,9 +205,9 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                   class = "agent_setup_error"))
 
       if (inherits(setup, "agent_setup_error")) {
-        msg <- unclass(setup)
+        msg <- .subagent_safe_response(unclass(setup), data_shield, NULL)
         if (!is.null(hooks)) tryCatch(
-          hooks$run_subagent_stop(description, msg, list(model = model)),
+          hooks$run_subagent_stop(description, msg, list(model = resolved_model)),
           error = function(e) NULL)
         return(msg)
       }
@@ -182,9 +219,12 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
       finish <- function(r) {
         tryCatch(.cleanup_worktree(setup$wt_path, setup$repo_dir),
                  error = function(e) NULL)
-        out <- truncate_tool_result(r, "default")
+        # Gate before hooks/callbacks/parent output. The runner also gates
+        # before persistence; this boundary keeps custom runners safe.
+        out <- .subagent_safe_response(
+          truncate_tool_result(r, "default"), data_shield, setup$sub_chat)
         if (!is.null(hooks)) tryCatch(
-          hooks$run_subagent_stop(description, out, list(model = model)),
+          hooks$run_subagent_stop(description, out, list(model = resolved_model)),
           error = function(e) NULL)
         out
       }
@@ -194,7 +234,8 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         return(promises::then(
           .run_subagent_loop_async(setup$sub_chat, prompt, max_turns,
                                    persist = TRUE, cwd = setup$repo_dir,
-                                   description = description),
+                                   description = description,
+                                   data_shield = data_shield),
           finish))
       }
 
@@ -202,7 +243,8 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
       r <- tryCatch(
         .run_subagent_loop(setup$sub_chat, prompt, max_turns,
                            persist = TRUE, cwd = setup$repo_dir,
-                           description = description),
+                           description = description,
+                           data_shield = data_shield),
         error = function(e) paste0("[Error in sub-agent] ", conditionMessage(e)))
       finish(r)
     },
@@ -246,6 +288,11 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
 #'   on async parent turns. Default `FALSE`.
 #' @param data_shield Optional [DataShield] inherited by codeagent sub-agents;
 #'   disables uninstrumented btw/custom-agent delegation.
+#' @param cwd Character. Working directory used for upstream agent discovery.
+#' @param parent_chat Optional parent `ellmer::Chat`; reserved for owned
+#'   sub-agent lifecycle integration.
+#' @param hooks Optional [HookRegistry] used for SubagentStart/Stop lifecycle
+#'   events on the owned codeagent Agent path.
 #' @return Invisibly returns `chat`.
 #' @export
 register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
@@ -253,36 +300,34 @@ register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
                                   max_turns = 30L,
                                   worktree_isolation = FALSE,
                                   ask_fn = NULL, async = FALSE,
-                                  data_shield = NULL) {
-  chat$register_tool(agent_tool(model, mode, rules, max_turns,
-                                worktree_isolation, ask_fn = ask_fn,
-                                async = async, data_shield = data_shield))
-
-  # Uninstrumented btw custom agents cannot inherit DataShield; fail closed by
-  # not registering them when a shield is active.
-  if (is.null(data_shield) && requireNamespace("btw", quietly = TRUE)) {
-    tryCatch({
-      ns <- getNamespace("btw")
-      # btw_agent_tool() discovers agents from .btw/, .claude/agents/, etc.
-      # btw_tools() doesn't list them by default -- use btw_agent_tool() per path
-      agent_dirs <- c(
-        file.path(getwd(), ".btw"),
-        file.path(getwd(), ".claude", "agents"),
-        file.path(path.expand("~"), ".btw")
-      )
-      for (d in agent_dirs[dir.exists(agent_dirs)]) {
-        agent_files <- list.files(d, pattern = "^agent-.*\\.md$",
-                                   full.names = TRUE)
-        for (f in agent_files) {
-          tryCatch({
-            t <- ns$btw_agent_tool(f)
-            chat$register_tool(t)
-          }, error = function(e) NULL)
-        }
-      }
-    }, error = function(e) NULL)
+                                  data_shield = NULL,
+                                  cwd = getwd(), parent_chat = NULL,
+                                  hooks = NULL) {
+  plain_upstream <- is.null(data_shield) && !isTRUE(async) &&
+                    !isTRUE(worktree_isolation) &&
+                    requireNamespace("btw", quietly = TRUE)
+  if (isTRUE(plain_upstream)) {
+    build_tools <- function()
+      withr::with_dir(cwd, btw::btw_tools("agent"))
+    tools <- tryCatch(
+      if (inherits(parent_chat, "Chat"))
+        withr::with_options(list(btw.client = parent_chat), build_tools())
+      else
+        build_tools(),
+      error = function(e) list())
+    if (length(tools)) {
+      for (tool in tools) chat$register_tool(tool)
+      return(invisible(chat))
+    }
   }
 
+  # Shield, async, and worktree modes have codeagent-specific invariants. Never
+  # register raw btw/custom delegators alongside this owned Agent path.
+  chat$register_tool(agent_tool(model, mode, rules, max_turns,
+                                worktree_isolation, hooks = hooks,
+                                ask_fn = ask_fn, async = async,
+                                data_shield = data_shield,
+                                parent_chat = parent_chat))
   invisible(chat)
 }
 
@@ -313,41 +358,49 @@ install_codeagent_cli <- function(destdir = NULL) {
   invisible(result)
 }
 #'
-#' Exposes codeagent's tool set as an MCP server. By default uses btw's
-#' `btw_mcp_server()` over stdio (for Claude Desktop / VS Code MCP config). With
-#' `transport = "http"` it serves over HTTP via `mcptools::mcp_server()` (>= 0.2.1),
-#' enabling remote MCP clients. The server runs in a blocking loop.
+#' Exposes codeagent's tool set as an MCP server via
+#' `mcptools::mcp_server()`. Session tools are disabled by default because they
+#' expose a separate R-session control surface that does not pass through
+#' codeagent's Chat permission gate or Data Shield.
 #'
 #' @param tools Character vector of btw tool groups to expose, or a list of
 #'   `ellmer::tool()` objects. Defaults to all btw tools.
 #' @param transport Character. `"stdio"` (default) or `"http"`.
 #' @param host Character. Host to bind when `transport = "http"`.
 #' @param port Integer. Port to bind when `transport = "http"`.
+#' @param session_tools Logical. Expose mcptools R-session controls. Defaults to
+#'   `FALSE`; may only be enabled for stdio or a loopback HTTP listener.
 #' @param ... Additional arguments passed to the underlying server function.
 #' @return Does not return (blocking).
+#' @examples
+#' \dontrun{
+#' # Session controls are disabled unless explicitly requested.
+#' codeagent_mcp_server(session_tools = FALSE)
+#' }
 #' @export
 codeagent_mcp_server <- function(tools = NULL,
                                  transport = c("stdio", "http"),
-                                 host = "127.0.0.1", port = 8000L, ...) {
+                                 host = "127.0.0.1", port = 8000L,
+                                 session_tools = FALSE, ...) {
   transport <- match.arg(transport)
+  .mcptools_assert_server()
 
-  if (identical(transport, "http")) {
-    if (!requireNamespace("mcptools", quietly = TRUE) ||
-        utils::packageVersion("mcptools") < "0.2.1")
-      stop("HTTP MCP server requires mcptools (>= 0.2.1). ",
-           "Install with: install.packages('mcptools')", call. = FALSE)
-    if (is.null(tools) && requireNamespace("btw", quietly = TRUE))
-      tools <- btw::btw_tools()
-    return(mcptools::mcp_server(tools = tools, type = "http",
-                                host = host, port = port, ...))
+  if (identical(transport, "http") && isTRUE(session_tools) &&
+      !.mcp_loopback_host(host))
+    stop("MCP session tools may only be exposed on a loopback HTTP host.",
+         call. = FALSE)
+
+  if (is.null(tools)) {
+    if (!requireNamespace("btw", quietly = TRUE))
+      stop("btw is required when `tools` is NULL.", call. = FALSE)
+    tools <- btw::btw_tools()
   }
 
-  # Default: stdio via btw
-  if (!requireNamespace("btw", quietly = TRUE))
-    stop("btw package required for stdio MCP server. Install with: install.packages('btw')",
-         call. = FALSE)
-  if (is.null(tools)) tools <- btw::btw_tools()
-  btw::btw_mcp_server(tools = tools, ...)
+  args <- list(tools = tools, type = transport,
+               session_tools = isTRUE(session_tools))
+  if (identical(transport, "http"))
+    args <- c(args, list(host = host, port = port))
+  do.call(mcptools::mcp_server, c(args, list(...)))
 }
 
 # ---------------------------------------------------------------------------
@@ -366,16 +419,19 @@ codeagent_mcp_server <- function(tools = NULL,
 #' @param persist Logical. Save the sub-agent session to disk.
 #' @param cwd Character. Project dir for session storage.
 #' @param description Character. Used as the sidechain session title.
+#' @param data_shield Optional [DataShield]. Replies are gated before hooks,
+#'   return, or persistence. Shielded sidechains are not persisted.
 #' @return Character. The sub-agent's text response.
 #' @keywords internal
 .run_subagent_loop <- function(sub_chat, prompt, max_turns = 30L,
                                 persist = FALSE, cwd = getwd(),
-                                description = NULL) {
+                                description = NULL, data_shield = NULL) {
   response <- tryCatch(
     sub_chat$chat(prompt),
     error = function(e) paste0("[Error in sub-agent] ", conditionMessage(e))
   )
-  if (isTRUE(persist)) {
+  response <- .subagent_safe_response(response, data_shield, sub_chat)
+  if (isTRUE(persist) && !inherits(data_shield, "DataShield")) {
     sid <- paste0("subagent-", substr(tryCatch(.generate_uuid_v4(),
                   error = function(e) "x"), 1L, 8L))
     tryCatch(save_session(sub_chat, cwd, sid,

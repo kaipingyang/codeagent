@@ -11,7 +11,10 @@
   icon = NULL,
   title = NULL,
   payload = list(),
-  markdown = NULL
+  markdown = NULL,
+  footer = NULL,
+  label = NULL,
+  value_preview = NULL
 )
 }
 \arguments{
@@ -29,6 +32,12 @@
 \item{payload}{List. Kind-specific data (see file docs).}
 
 \item{markdown}{Character. In-chat card body + two-phase fallback.}
+
+\item{footer}{Optional official shinychat footer content.}
+
+\item{label}{Optional compact activity label.}
+
+\item{value_preview}{Optional compact result preview.}
 }
 \value{
 An \code{ellmer::ContentToolResult}.

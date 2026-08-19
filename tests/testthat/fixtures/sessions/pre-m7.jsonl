@@ -1,0 +1,3 @@
+{"type":"session-start","sessionId":"pre-m7-fixture","cwd":"FIXTURE_CWD","timestamp":"2026-01-01T00:00:00Z","format_version":1}
+{"type":"user","uuid":"u1","sessionId":"pre-m7-fixture","message":{"role":"user","content":"legacy question"}}
+{"type":"assistant","uuid":"a1","sessionId":"pre-m7-fixture","message":{"role":"assistant","content":"legacy answer"}}

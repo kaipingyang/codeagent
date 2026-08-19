@@ -206,6 +206,20 @@ left_sidebar_ui_default <- left_sidebar_ui
 # Chat sidebar -- chat_ui with skill picker + file/voice footer
 # ---------------------------------------------------------------------------
 
+.codeagent_chat_greeting <- function() {
+  shinychat::chat_greeting(
+    paste0(
+      "**codeagent** -- an R-native coding agent on ellmer + btw. ",
+      "Ask anything about this project, or start here:\n\n",
+      "- <span class=\"suggestion\">List the R files in the R/ directory</span>\n",
+      "- <span class=\"suggestion\">Read DESCRIPTION and summarize this package</span>\n",
+      "- <span class=\"suggestion\">Run the test suite and report failures</span>\n",
+      "- <span class=\"suggestion\" title=\"Plan\">/plan add a new feature</span>\n"
+    ),
+    persistent = TRUE
+  )
+}
+
 chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
   shinychat::chat_ui(
     "chat",
@@ -219,19 +233,13 @@ chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
     tool_grouping    = "tool",
     placeholder      = "Ask codeagent... (/ for skills, ESC to interrupt)",
     allow_attachments = TRUE,
+    # Citation links are user-click only. Disable shinychat's default external
+    # favicon lookup so rendering a source never creates a browser prefetch.
+    `aside-favicon` = "false",
     # Greeting + clickable suggestion cards for a fresh session. shinychat
     # renders a markdown list whose items are <span class="suggestion"> as a
     # grid of clickable cards; clicking submits the card's text.
-    messages = list(
-      paste0(
-        "**codeagent** -- an R-native coding agent on ellmer + btw. ",
-        "Ask anything about this project, or start here:\n\n",
-        "- <span class=\"suggestion\">List the R files in the R/ directory</span>\n",
-        "- <span class=\"suggestion\">Read DESCRIPTION and summarize this package</span>\n",
-        "- <span class=\"suggestion\">Run the test suite and report failures</span>\n",
-        "- <span class=\"suggestion\" title=\"Plan\">/plan add a new feature</span>\n"
-      )
-    ),
+    greeting = .codeagent_chat_greeting(),
     footer           = htmltools::tagList(
       # Phase 3 interaction bar (approval / question) sits just above the
       # skill picker + input area; rendered on demand by server_interaction().

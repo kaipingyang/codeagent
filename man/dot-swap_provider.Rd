@@ -2,24 +2,21 @@
 % Please edit documentation in R/model_switch.R
 \name{.swap_provider}
 \alias{.swap_provider}
-\title{Swap a Chat's provider in place (Route A)}
+\title{Swap only a Chat's model name in place (strict Route A)}
 \usage{
 .swap_provider(chat, new_chat)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} to mutate.}
 
-\item{new_chat}{An \code{ellmer::Chat} whose provider to adopt.}
+\item{new_chat}{An \code{ellmer::Chat} describing the requested target.}
 }
 \value{
-Logical. TRUE if swapped in place.
+Logical. \code{TRUE} only after the post-switch state is verified.
 }
 \description{
-When the new model uses the same provider class (e.g. both OpenAI-compatible),
-uses the public \code{set_model()} API added in ellmer 0.4.2. For cross-provider
-switches (e.g. OpenAI-compat -> Anthropic) falls back to replacing the private
-R6 \code{private$provider} field -- still necessary until ellmer adds
-\code{set_provider()} (see https://github.com/tidyverse/ellmer/issues/1042).
-Returns TRUE on success, FALSE if inaccessible.
+Route A is allowed only when provider configuration is unchanged and the
+target Model differs solely by name. Cross-provider, endpoint, credentials,
+params, and extra-argument changes return \code{FALSE} without mutation.
 }
 \keyword{internal}

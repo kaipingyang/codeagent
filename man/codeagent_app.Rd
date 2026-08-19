@@ -19,7 +19,9 @@ codeagent_app(
   permission_mode = "default",
   cwd = getwd(),
   btw_groups = NULL,
-  chat = NULL
+  chat = NULL,
+  web_citations = c("off", "shiny_aside"),
+  web_allow_private = FALSE
 )
 }
 \arguments{
@@ -71,6 +73,16 @@ long multi-line prompts). Set at launch; not switchable live.}
 
 \item{chat}{An \code{ellmer::Chat} template cloned inside each Shiny session;
 convenient multi-user entry point.}
+
+\item{web_citations}{Citation presentation mode: \code{"off"} (default) or
+\code{"shiny_aside"} for the deterministic current-turn
+\verb{[[cite:SOURCE_ID|claim]]} bridge. Logical \code{TRUE}/\code{FALSE} remains accepted
+for compatibility. Enabled replies are buffered and validated before any
+\verb{<shiny-aside>} markup is built server-side.}
+
+\item{web_allow_private}{Logical. Reserved opt-in for local development.
+Private-network fetching remains disabled in this release; \code{TRUE} fails
+closed rather than weakening SSRF protection.}
 }
 \value{
 A \code{shiny.appobj}.

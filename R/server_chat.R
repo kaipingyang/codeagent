@@ -4,11 +4,26 @@
 #' @keywords internal
 NULL
 
+# Finalize the last assistant reply after a Shiny stream closes. This is pure
+# server-side work: map reason, append a static note, then run the output gate.
+.finalize_server_reply <- function(chat, settings, citation_registry = NULL) {
+  turn <- tryCatch(chat$last_turn(role = "assistant"), error = function(e) NULL)
+  text <- tryCatch(turn@text, error = function(e) "")
+  finish <- .map_finish_reason(.last_finish_reason(chat))
+  text <- .append_finish_note(text, finish$note)
+  if (.web_citations_enabled(settings$web_citations))
+    text <- .render_citation_markers(text, citation_registry, settings, chat)
+  gated <- .output_gate_guarded(text, settings, chat)
+  list(text = gated$text %||% text, finish = finish)
+}
+
 server_chat <- function(input, output, session, chat, settings,
                          state, cwd, chat_server_mod = NULL) {
 
-  # Tool result store (button_id -> ContentToolResult)
+  # Tool result store (button_id -> ContentToolResult) and a source registry
+  # scoped to exactly one user turn.
   tool_results <- new.env(hash = TRUE, parent = emptyenv())
+  citation_registry <- .new_citation_registry()
 
   # Stream controller for cancellation (ESC / stop button)
   stream_ctrl <- tryCatch(ellmer::stream_controller(), error = function(e) NULL)
@@ -16,7 +31,10 @@ server_chat <- function(input, output, session, chat, settings,
   # Register slash commands via shinychat's native $slash_command() API.
   # This replaces the old ca_slash_commands / agent.js dropdown.
   if (!is.null(chat_server_mod)) {
-    .register_slash_commands(chat_server_mod, chat, settings, state, session, cwd)
+    .register_slash_commands(
+      chat_server_mod, chat, settings, state, session, cwd,
+      is_running = function() identical(
+        tryCatch(stream_task$status(), error = function(e) ""), "running"))
   }
 
   # Push a tool result into the right Output panel via the typed dispatcher.
@@ -47,6 +65,8 @@ server_chat <- function(input, output, session, chat, settings,
   # Adapts any result (raw btw included) into the typed contract, then pushes.
   chat$on_tool_result(function(result) {
     result <- tryCatch(.adapt_tool_result(result), error = function(e) result)
+    .citation_registry_add(
+      citation_registry, .citation_sources_from_result(result))
 
     button_id <- tryCatch(result@extra$display$button_id, error = function(e) NULL)
     if (is.null(button_id)) {
@@ -123,13 +143,12 @@ server_chat <- function(input, output, session, chat, settings,
     # do.call() treats it as a single positional arg.
     stream_contents <- if (is.list(actual_input)) actual_input else list(actual_input)
 
-    # Output-gate buffering (edge 3, kiro round-2 #2, user decision: buffer-then-
-    # show). When a shield is active, streaming tokens straight to the browser
-    # leaves no interception point -- the plaintext is already on screen. So we
-    # BUFFER: consume the full stream server-side (no live chat_append), run
-    # .output_gate_scan, then chat_append the (possibly redacted) reply once.
-    # No shield => stream live as before (zero cost, keeps the typewriter effect).
+    # Shield and citation modes both require buffer-then-show. Citation mode must
+    # never send model-authored custom-element markup or unresolved markers to
+    # the browser; only the server-side deterministic bridge may build an aside.
     .shield_active <- !is.null(.input_gate_shield(settings, chat))
+    .citation_active <- .web_citations_enabled(settings$web_citations)
+    .buffer_output <- isTRUE(.shield_active) || isTRUE(.citation_active)
 
     coro::async(function() {
       # stream_controller resets automatically when passed to a new stream call
@@ -138,32 +157,35 @@ server_chat <- function(input, output, session, chat, settings,
       # error surfaces as a visible message and the task leaves the "running"
       # state (which re-enables the input) instead of leaving the user staring
       # at a stuck streaming spinner.
+      finalized <- NULL
       tryCatch(
         {
           stream <- do.call(
             chat$stream_async,
             c(stream_contents, list(stream = "content", controller = stream_ctrl))
           )
-          if (isTRUE(.shield_active)) {
-            # Buffer: drain the stream WITHOUT rendering, so nothing reaches the
-            # browser until the output gate has scanned it.
-            for (chunk in await_each(stream)) { NULL }
-            lt   <- tryCatch(chat$last_turn(role = "assistant"), error = function(e) NULL)
-            txt  <- tryCatch(lt@text, error = function(e) "")
-            og   <- .output_gate_guarded(txt, settings, chat)
-            shown <- og$text %||% txt
-            if (nzchar(shown %||% ""))
-              await(shinychat::chat_append("chat", shown, session = session))
+          if (isTRUE(.buffer_output)) {
+            # Buffer: drain without rendering; marker bridge and gate run first.
+            for (chunk in coro::await_each(stream)) { NULL }
+            finalized <- .finalize_server_reply(
+              chat, settings, citation_registry)
+            if (nzchar(finalized$text %||% ""))
+              await(shinychat::chat_append("chat", finalized$text, session = session))
           } else {
             await(shinychat::chat_append("chat", stream, session = session))
+            finalized <- .finalize_server_reply(
+              chat, settings, citation_registry)
+            if (!is.null(finalized$finish$note))
+              await(shinychat::chat_append(
+                "chat", paste0("\n\n", finalized$finish$note), session = session))
           }
         },
         error = function(e) {
           # Fail-closed error message (kiro round-4 #1): when a shield is active,
           # conditionMessage(e) may embed a protected value (mid-stream error),
           # so withhold the raw error from the chat; show a fixed safe message.
-          emsg <- if (isTRUE(.shield_active))
-            "**Request failed.** Details withheld (data_shield fail-closed). Check the model endpoint / credentials and try again."
+          emsg <- if (isTRUE(.buffer_output))
+            "**Request failed.** Details withheld by the buffered safety renderer. Check the model endpoint / credentials and try again."
           else
             paste0("**Request failed.** ", conditionMessage(e),
                    "\n\nCheck the model endpoint / credentials and try again.")
@@ -174,7 +196,11 @@ server_chat <- function(input, output, session, chat, settings,
         }
       )
 
-      n_tokens    <- token_count_with_estimation(chat)
+      hooks <- tryCatch(settings$hooks_registry, error = function(e) NULL)
+      if (!is.null(finalized) && !is.null(hooks)) tryCatch(
+        hooks$run_assistant_message(finalized$text), error = function(e) NULL)
+
+      n_tokens <- token_count_with_estimation(chat, allow_network = FALSE)
       model_limit <- settings$model_limit %||% 200000L
       # Context-left indicator: computed in a plain helper because coro::async
       # cannot assign the result of an `if` expression inside this body.
@@ -185,7 +211,17 @@ server_chat <- function(input, output, session, chat, settings,
 
       # Auto-save every turn (session_id is always set from startup).
       sid <- shiny::isolate(state$session_id)
-      tryCatch(save_session(chat, cwd, sid), error = function(e) NULL)
+      presentation_text <- NULL
+      if (!is.null(finalized)) presentation_text <- finalized$text
+      tryCatch(save_session(
+        chat, cwd, sid,
+        assistant_text_override = presentation_text),
+        error = function(e) NULL)
+      if (!is.null(finalized) && !is.null(hooks)) tryCatch(
+        hooks$run_stop(finalized$finish$stop_reason,
+          list(session_id = sid,
+               finish_reason = finalized$finish$finish_reason)),
+        error = function(e) NULL)
       # Signal the Sessions list to refresh (bump AFTER the save, so the newly
       # written session is on disk when session_list_ui re-renders).
       shiny::isolate(state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L)
@@ -213,7 +249,7 @@ server_chat <- function(input, output, session, chat, settings,
     raw_input  <- input$chat_user_input
     user_contents <-
       if (is.list(raw_input) && !is.null(raw_input[["text"]])) {
-        tryCatch(shinychat:::user_input_contents(raw_input),
+        tryCatch(utils::getFromNamespace("user_input_contents", "shinychat")(raw_input),
                  error = function(e) raw_input)
       } else {
         raw_input
@@ -230,7 +266,9 @@ server_chat <- function(input, output, session, chat, settings,
       return()
     }
 
-    # Pass full contents (text + any attachments) to the stream task
+    # Pass full contents (text + any attachments) to the stream task. Source IDs
+    # are valid for this turn only.
+    .citation_registry_clear(citation_registry)
     stream_task$invoke(user_contents)
   })
 
@@ -294,16 +332,14 @@ server_chat <- function(input, output, session, chat, settings,
     shiny::removeModal()
     new_spec <- input$ca_model_pick %||% ""
     if (!nzchar(new_spec)) return()
-    new_chat <- tryCatch(
-      .resolve_model_chat(new_spec, cwd),
-      error = function(e) NULL)
-    if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
-      new_model <- tryCatch(chat$get_model(), error = function(e) new_spec)
+    running <- identical(tryCatch(stream_task$status(), error = function(e) ""),
+                         "running")
+    result <- .shiny_switch_model(chat, settings, new_spec, cwd, running)
+    if (isTRUE(result$ok)) {
+      settings$model <<- result$model
       state$settings_changed <- state$settings_changed + 1L
-      .ui_toast(sprintf("Switched to %s -- history preserved.", new_model), "success")
-    } else {
-      .ui_toast(paste0("Could not switch to ", new_spec), "warning")
     }
+    .ui_toast(result$message, result$type)
   })
 
   invisible(stream_task)
@@ -367,14 +403,15 @@ server_chat <- function(input, output, session, chat, settings,
     },
 
     model_switch = {
-      new_chat <- tryCatch(.resolve_model_chat(res$args, cwd), error = function(e) NULL)
-      if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
-        new_model <- tryCatch(chat$get_model(), error = function(e) res$args)
+      result <- .shiny_switch_model(
+        chat, settings, res$args, cwd,
+        running = isTRUE(tryCatch(state$busy, error = function(e) FALSE)))
+      if (isTRUE(result$ok)) {
+        settings$model <- result$model
         state$settings_changed <- state$settings_changed + 1L
-        feedback <- paste0("OK Switched to `", new_model, "`")
+        feedback <- paste0("OK Switched to `", result$model, "`")
       } else {
-        feedback <- paste0("ERR Could not switch to `", res$args,
-                           "` -- check the model spec.")
+        feedback <- paste0("ERR ", result$message)
       }
     },
 
@@ -433,8 +470,10 @@ server_chat <- function(input, output, session, chat, settings,
 # Register all slash commands on a chat_server() module via $slash_command().
 # Called once from server_chat() when chat_server_mod is available.
 # Replaces the old ca_slash_commands sendCustomMessage + agent.js dropdown.
-.register_slash_commands <- function(mod, chat, settings, state, session, cwd) {
+.register_slash_commands <- function(mod, chat, settings, state, session, cwd,
+                                     is_running = function() FALSE) {
   force(mod); force(chat); force(settings); force(state); force(session); force(cwd)
+  force(is_running)
 
   # /model -- open model picker modal (no args) or switch directly (with args)
   mod$slash_command("model", "Switch model", function(content) {
@@ -461,13 +500,15 @@ server_chat <- function(input, output, session, chat, settings,
       mod$append(sprintf("**/model** -- pick a model in the popup to switch."),
                  role = "assistant")
     } else {
-      new_chat <- tryCatch(.resolve_model_chat(args, cwd), error = function(e) NULL)
-      if (!is.null(new_chat) && .swap_provider(chat, new_chat)) {
-        new_model <- tryCatch(chat$get_model(), error = function(e) args)
+      result <- .shiny_switch_model(
+        chat, settings, args, cwd,
+        running = isTRUE(tryCatch(is_running(), error = function(e) FALSE)))
+      if (isTRUE(result$ok)) {
+        settings$model <- result$model
         state$settings_changed <- state$settings_changed + 1L
-        mod$append(paste0("OK Switched to `", new_model, "`"), role = "assistant")
+        mod$append(paste0("OK Switched to `", result$model, "`"), role = "assistant")
       } else {
-        mod$append(paste0("ERR Could not switch to `", args, "`"), role = "assistant")
+        mod$append(paste0("ERR ", result$message), role = "assistant")
       }
     }
   })

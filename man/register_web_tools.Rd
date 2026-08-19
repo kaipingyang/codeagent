@@ -4,10 +4,12 @@
 \alias{register_web_tools}
 \title{Register web tools to an ellmer Chat object}
 \usage{
-register_web_tools(chat)
+register_web_tools(chat, citations = FALSE)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
+
+\item{citations}{Logical. Enable marker-protocol instructions in tool output.}
 }
 \value{
 Invisibly returns \code{chat}.

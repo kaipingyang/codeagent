@@ -43,7 +43,7 @@ injection and memory recall on iteration 1).}
 \item{resource_state}{A \code{ContentReplacementState} or NULL.}
 }
 \value{
-Invisibly, \code{list(text, usage, stop_reason)}.
+Invisibly, \code{list(text, usage, stop_reason, finish_reason)}.
 }
 \description{
 A synchronous wrapper around \code{\link[=codeagent_stream_async]{codeagent_stream_async()}} that pumps the

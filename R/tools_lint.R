@@ -118,6 +118,8 @@ verify_r_lints <- function(path = "R") {
     if (!requireNamespace("lintr", quietly = TRUE)) return(list(passed = TRUE))
     tryCatch({
       target <- file.path(cwd, path)
+      if (!file.exists(target) && !dir.exists(target))
+        return(list(passed = TRUE))
       lints  <- if (dir.exists(target)) lintr::lint_dir(target) else lintr::lint(target)
       n <- length(lints)
       list(

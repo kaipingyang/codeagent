@@ -1,0 +1,9 @@
+{
+  "display": {
+    "title": "Legacy",
+    "right_output": "old panel",
+    "toolcard": {"kind":"text","status":"success","payload":{"text":"visible"}}
+  },
+  "value": "provider value",
+  "request_id": "req-legacy"
+}

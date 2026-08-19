@@ -59,7 +59,7 @@ BudgetTracker <- R6::R6Class(
     #' @param iteration Integer. Current loop iteration (1-indexed).
     #' @param is_subagent Logical. If TRUE, budget limits are not applied.
     #' @param current_cost_usd Numeric or NA. Current session spend in US
-    #'   dollars (e.g. from [.current_cost_usd()]); NA when unknown/unpriced.
+    #'   dollars (e.g. from `.current_cost_usd()`); NA when unknown/unpriced.
     #' @param max_budget_usd Numeric or NULL. Hard dollar cap; NULL disables
     #'   the check. When set and `current_cost_usd` is known, this fires
     #'   immediately (bypassing `iteration`/`.BUDGET_MIN_ITERATIONS`) -- a

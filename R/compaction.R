@@ -95,9 +95,12 @@ estimate_tokens <- function(chat) {
   if (is.null(tk) || !is.data.frame(tk) || nrow(tk) == 0L) return(NA_integer_)
   inp <- suppressWarnings(as.numeric(tk$input))
   out <- suppressWarnings(as.numeric(tk$output))
-  last_in  <- inp[length(inp)];  if (is.na(last_in))  last_in  <- 0
-  last_out <- out[length(out)];  if (is.na(last_out)) last_out <- 0
-  v <- last_in + last_out
+  cached <- if ("cached_input" %in% names(tk))
+    suppressWarnings(as.numeric(tk$cached_input)) else rep(0, nrow(tk))
+  last_in <- inp[length(inp)]; if (is.na(last_in)) last_in <- 0
+  last_out <- out[length(out)]; if (is.na(last_out)) last_out <- 0
+  last_cached <- cached[length(cached)]; if (is.na(last_cached)) last_cached <- 0
+  v <- last_in + last_out + last_cached
   if (v > 0) as.integer(v) else NA_integer_
 }
 
@@ -109,9 +112,19 @@ estimate_tokens <- function(chat) {
 #' actual model token counts rather than a rough character approximation.
 #'
 #' @param chat An `ellmer::Chat` object.
+#' @param allow_network Logical. If `TRUE`, explicitly call
+#'   `chat$token_count(include = "complete")`; defaults to `FALSE` so UI and
+#'   compaction paths never perform implicit token-count HTTP requests.
 #' @return Integer token count.
 #' @keywords internal
-token_count_with_estimation <- function(chat) {
+token_count_with_estimation <- function(chat, allow_network = FALSE) {
+  if (isTRUE(allow_network) && !is.null(chat) &&
+      is.function(tryCatch(chat$token_count, error = function(e) NULL))) {
+    exact <- tryCatch(chat$token_count(include = "complete"),
+                      error = function(e) NA_real_)
+    exact <- suppressWarnings(as.numeric(exact)[1L])
+    if (length(exact) && !is.na(exact) && exact >= 0) return(as.integer(exact))
+  }
   real <- tryCatch(.last_usage_tokens(chat), error = function(e) NA_integer_)
   if (!is.na(real) && real > 0L) return(real)
   estimate_tokens(chat)
@@ -284,7 +297,7 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L,
 .midloop_compact_step <- function(chat, settings = list(), ctrl = NULL,
                                    model = "", compact_model = .HAIKU_MODEL) {
   if (!.midloop_enabled(settings)) return(invisible(FALSE))
-  n <- tryCatch(token_count_with_estimation(chat), error = function(e) 0L)
+  n <- tryCatch(token_count_with_estimation(chat, allow_network = FALSE), error = function(e) 0L)
   if (n < .midloop_trigger(settings, model)) return(invisible(FALSE))
 
   # Opt-in full two-level compact (blocking LLM call, like CC autoCompactIfNeeded).
@@ -815,7 +828,7 @@ CompactionController <- R6::R6Class(
       if (private$failures >= .MAX_CONSECUTIVE_COMPACT_FAILS) return(invisible(NULL))
 
       threshold <- model_limit - .COMPACT_TRIGGER_MARGIN  # e.g. 167K for 200K model
-      n         <- token_count_with_estimation(chat)
+      n         <- token_count_with_estimation(chat, allow_network = FALSE)
       if (n < threshold) return(invisible(NULL))
 
       self$compact_now(chat, compact_model)

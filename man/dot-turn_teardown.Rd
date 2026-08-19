@@ -4,7 +4,7 @@
 \alias{.turn_teardown}
 \title{Run per-turn teardown: save session and return usage + cost.}
 \usage{
-.turn_teardown(client, cwd = NULL, session_id = NULL)
+.turn_teardown(client, cwd = NULL, session_id = NULL, presentation_text = NULL)
 }
 \arguments{
 \item{client}{A \code{CodeagentClient} or bare \code{ellmer::Chat}.}
@@ -12,6 +12,9 @@
 \item{cwd}{Character or NULL.}
 
 \item{session_id}{Character or NULL.}
+
+\item{presentation_text}{Character or NULL. Safe finalized assistant text for
+the session's presentation record.}
 }
 \value{
 Named list with elements:

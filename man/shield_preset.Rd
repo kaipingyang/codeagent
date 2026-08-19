@@ -37,6 +37,6 @@ These are starting points, not a certification -- read the vignette's
 "Combination safety" matrix before deploying any of them as-is.
 }
 \examples{
-client <- codeagent_client(chat, data_shield = shield_preset_strict())
-client <- codeagent_client(chat, data_shield = shield_preset_balanced())
+strict <- shield_preset_strict()
+balanced <- shield_preset_balanced()
 }

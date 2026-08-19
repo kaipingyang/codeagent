@@ -43,6 +43,7 @@ server_sessions <- function(input, output, session, chat, cwd,
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .reset_session_state(state)
     shinychat::chat_clear("chat", session = session)
+    shinychat::chat_set_greeting("chat", .codeagent_chat_greeting(), session = session)
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
   })
 
@@ -56,6 +57,7 @@ server_sessions <- function(input, output, session, chat, cwd,
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .reset_session_state(state)
     shinychat::chat_clear("chat", session = session)
+    shinychat::chat_set_greeting("chat", .codeagent_chat_greeting(), session = session)
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
     .ui_toast("Session deleted.", "message")
   })
@@ -77,13 +79,14 @@ server_sessions <- function(input, output, session, chat, cwd,
     }
     state$session_id <- sid
     shinychat::chat_clear("chat", session = session)
+    shinychat::chat_set_greeting("chat", .codeagent_chat_greeting(), session = session)
     # Replay via contents_shinychat -- native tool card rendering.
-    .replay_turns_to_ui(chat, session)
+    .replay_turns_to_ui(chat, session, settings)
     # Refresh the CONTEXT token meter for the restored conversation (the stream
     # task only updates it on new turns, so a freshly restored session would
     # otherwise read 0 tokens).
     tryCatch({
-      n_tokens    <- token_count_with_estimation(chat)
+      n_tokens    <- token_count_with_estimation(chat, allow_network = FALSE)
       model_limit <- settings$model_limit %||% 200000L
       session$sendCustomMessage("update_budget",
         .budget_payload(n_tokens, model_limit, settings$model %||% ""))
@@ -115,8 +118,46 @@ server_sessions <- function(input, output, session, chat, cwd,
 }
 
 # ---------------------------------------------------------------------------
+
+.migrate_replay_turns <- function(turns) {
+  lapply(turns %||% list(), function(turn) {
+    contents <- tryCatch(turn@contents, error = function(e) NULL)
+    if (is.null(contents) || !length(contents)) return(turn)
+    migrated <- lapply(contents, function(content) {
+      if (inherits(content, "ellmer::ContentToolResult"))
+        tryCatch(.adapt_tool_result(content), error = function(e) content) else content
+    })
+    copy <- turn
+    tryCatch(copy@contents <- migrated, error = function(e) NULL)
+    copy
+  })
+}
+
+.presentation_chat_for_replay <- function(chat) {
+  if (is.null(chat)) return(chat)
+  turns <- tryCatch(chat$get_turns(), error = function(e) NULL)
+  if (is.null(turns)) return(chat)
+  copy <- tryCatch(chat$clone(deep = FALSE), error = function(e) NULL)
+  if (is.null(copy)) return(chat)
+  ok <- tryCatch({ copy$set_turns(.migrate_replay_turns(turns)); TRUE },
+                 error = function(e) FALSE)
+  if (isTRUE(ok)) copy else chat
+}
+
 # Turn-based UI replay via contents_shinychat (native tool card rendering)
 # ---------------------------------------------------------------------------
+
+# Finalize restored assistant text through the same security order as a live
+# buffered reply: deterministic citation rebuild, then the full response gate.
+# Lossless chat-state intentionally retains provider-facing turns, so replay
+# must never send their raw text directly to the browser.
+.finalize_replay_assistant_text <- function(text, citation_registry,
+                                            settings = list(), chat = NULL) {
+  if (.web_citations_enabled(settings$web_citations))
+    text <- .render_citation_markers(text, citation_registry, settings, chat)
+  gated <- .output_gate_guarded(text, settings, chat)
+  gated$text %||% text
+}
 
 # Replay an ellmer Chat into the shinychat UI using shinychat's own
 # contents_shinychat() S7 generic. This handles all content types natively:
@@ -128,9 +169,11 @@ server_sessions <- function(input, output, session, chat, cwd,
 # For assistant turns with mixed content (text + tool cards), we send each
 # block using the chunk="start" / chunk=TRUE / chunk="end" protocol so
 # shinychat groups them into a single message bubble.
-.replay_turns_to_ui <- function(chat, session) {
+.replay_turns_to_ui <- function(chat, session, settings = list()) {
+  replay_chat <- .presentation_chat_for_replay(chat)
+  turns <- tryCatch(replay_chat$get_turns(), error = function(e) list())
   items <- tryCatch(
-    shinychat::contents_shinychat(chat),
+    shinychat::contents_shinychat(replay_chat),
     error = function(e) list())
   if (!length(items)) return(invisible(NULL))
 
@@ -143,14 +186,28 @@ server_sessions <- function(input, output, session, chat, cwd,
     is.character(b) && !nzchar(trimws(paste(b, collapse = "")))
   }
 
-  for (item in items) {
-    role    <- item$role %||% "assistant"
+  citation_registry <- .new_citation_registry()
+  for (i in seq_along(items)) {
+    item <- items[[i]]
+    turn <- if (i <= length(turns)) turns[[i]] else NULL
+    role <- item$role %||% "assistant"
     content <- item$content
+    turn_contents <- tryCatch(turn@contents, error = function(e) list())
+    result_idx <- vapply(turn_contents, function(x)
+      inherits(x, "ellmer::ContentToolResult"), logical(1L))
+    if (identical(role, "user") && !any(result_idx))
+      .citation_registry_clear(citation_registry)
+    if (any(result_idx)) for (result in turn_contents[result_idx])
+      .citation_registry_add(
+        citation_registry, .citation_sources_from_result(result))
     if (!role %in% c("user", "assistant")) next
 
     # Scalar content (single text block)
     if (!is.list(content)) {
       disp <- if (identical(role, "user")) .strip_system_reminder(content) else content
+      if (identical(role, "assistant"))
+        disp <- .finalize_replay_assistant_text(
+          disp, citation_registry, settings, chat)
       if (.is_empty_block(disp)) next   # no empty "..." bubble on restore
       tryCatch(
         shinychat::chat_append_message("chat",
@@ -163,7 +220,12 @@ server_sessions <- function(input, output, session, chat, cwd,
     # List content (multiple blocks: text + tool cards mixed). Strip reminders
     # from user text, drop empty blocks, then group with the chunk protocol.
     blocks <- lapply(content, function(b) {
-      if (identical(role, "user") && is.character(b)) .strip_system_reminder(b) else b
+      if (identical(role, "user") && is.character(b))
+        return(.strip_system_reminder(b))
+      if (identical(role, "assistant") && is.character(b))
+        return(.finalize_replay_assistant_text(
+          b, citation_registry, settings, chat))
+      b
     })
     blocks <- Filter(function(b) !.is_empty_block(b), blocks)
     n <- length(blocks)

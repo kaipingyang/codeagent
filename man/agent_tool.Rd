@@ -13,7 +13,8 @@ agent_tool(
   hooks = NULL,
   ask_fn = NULL,
   async = FALSE,
-  data_shield = NULL
+  data_shield = NULL,
+  parent_chat = NULL
 )
 }
 \arguments{
@@ -42,6 +43,9 @@ sub-agents otherwise. Default \code{FALSE}.}
 
 \item{data_shield}{Optional \link{DataShield} inherited from the parent. When set,
 the sub-agent's own tools are wrapped before its first LLM request.}
+
+\item{parent_chat}{Optional parent \code{ellmer::Chat}. The owned Agent path clones
+this Chat, clears history/tools, and verifies provider + Model inheritance.}
 }
 \value{
 An \code{ellmer::tool()} object.

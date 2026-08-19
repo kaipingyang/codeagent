@@ -4,12 +4,8 @@
 \alias{tools_web}
 \title{Web Tools}
 \description{
-WebFetch and WebSearch tools for codeagent.
-
-WebSearch: DuckDuckGo HTML scraping (no key, general queries) with
-DDG Instant Answer fallback for entity queries.
-
-WebFetch: Jina Reader (r.jina.ai, no key, returns clean Markdown) as
-primary; httr2 direct fetch as fallback.
+WebFetch and WebSearch tools for codeagent. Every successful
+result carries validated source records under \code{extra$codeagent$sources}.
+Network requests use the shared URL policy and DNS pinning layer.
 }
 \keyword{internal}

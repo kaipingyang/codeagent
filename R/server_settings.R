@@ -1,3 +1,8 @@
+.stream_is_running <- function(stream_task) {
+  !is.null(stream_task) &&
+    identical(tryCatch(stream_task$status(), error = function(e) ""), "running")
+}
+
 #' @title Settings Server Logic
 #' @name server_settings
 #' @keywords internal
@@ -54,6 +59,10 @@ server_settings <- function(input, output, session, chat, settings, cwd,
   }
 
   shiny::observeEvent(input$perm_mode, {
+    if (.stream_is_running(stream_task)) {
+      .ui_toast("Permission mode cannot change while a response is running.", "warning")
+      return()
+    }
     settings$permission_mode <<- input$perm_mode
     ok <- tryCatch({ .register_all_tools(chat, settings); TRUE }, error = function(e) FALSE)
     if (!isTRUE(ok))
@@ -62,13 +71,21 @@ server_settings <- function(input, output, session, chat, settings, cwd,
   }, ignoreInit = TRUE)
 
   shiny::observeEvent(input$btw_groups_input, {
-    ok <- tryCatch({ register_r_tools(chat, groups = input$btw_groups_input); TRUE },
-                   error = function(e) FALSE)
-    if (!isTRUE(ok))
-      .ui_toast("btw tool-group update failed.", "warning")
-    reinstall_shield()
-  }, ignoreInit = TRUE)
-
+    if (.stream_is_running(stream_task)) {
+      .ui_toast("Tool groups cannot change while a response is running.", "warning")
+      return()
+    }
+    result <- .replace_btw_tool_groups(chat, input$btw_groups_input, settings)
+    if (isTRUE(result$ok)) {
+      settings$btw_groups <<- input$btw_groups_input
+      .ui_toast("btw tool groups updated.", "message")
+      return()
+    }
+    .ui_toast(result$message %||% "btw tool-group update failed.",
+              if (isTRUE(result$fatal)) "error" else "warning")
+    if (isTRUE(result$fatal))
+      session$sendCustomMessage("ca_input_busy", list(busy = TRUE))
+  }, ignoreInit = TRUE, ignoreNULL = FALSE)
   # Model switch -- Route A (in-place provider swap) keeps the SAME Chat object,
   # so the chat captured by every other server module stays valid. We swap the
   # provider directly rather than calling switch_model() (which may return a NEW
@@ -78,25 +95,10 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     if (is.null(new_spec) || !nzchar(new_spec)) return()
     if (identical(new_spec, settings$model)) return()
 
-    if (!is.null(stream_task) && stream_task$status() == "running") {
-      .ui_toast("Streaming in progress -- cannot switch model now.", "warning")
-      return()
-    }
-
-    ok <- tryCatch({
-      new_chat <- .resolve_model_chat(new_spec, cwd)
-      if (!.swap_provider(chat, new_chat))
-        stop("in-place provider swap unavailable")
-      settings$model <<- tryCatch(new_chat$get_model(), error = function(e) new_spec)
-      TRUE
-    }, error = function(e) {
-      .ui_toast(paste0("Model switch failed: ", conditionMessage(e)), "error")
-      FALSE
-    })
-
-    if (ok) {
-      .ui_toast(sprintf("Switched to %s -- history preserved.", settings$model),
-                "success")
-    }
+    running <- !is.null(stream_task) &&
+      identical(tryCatch(stream_task$status(), error = function(e) ""), "running")
+    result <- .shiny_switch_model(chat, settings, new_spec, cwd, running)
+    if (isTRUE(result$ok)) settings$model <<- result$model
+    .ui_toast(result$message, result$type)
   })
 }
