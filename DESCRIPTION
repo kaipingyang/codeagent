@@ -1,6 +1,6 @@
 Package: codeagent
 Title: An R-Native Coding Agent Powered by Large Language Models
-Version: 0.1.0
+Version: 0.2.0
 Authors@R:
     person("Kaiping", "Yang", email = "1260146556@qq.com",
            role = c("aut", "cre"))
@@ -15,7 +15,7 @@ Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 VignetteBuilder: knitr
 Imports:
-    ellmer (>= 0.4.2),
+    ellmer (>= 0.4.2.9000),
     R6,
     jsonlite,
     httr2,
@@ -23,7 +23,7 @@ Imports:
     cli,
     shiny,
     bslib (>= 0.11.0),
-    shinychat,
+    shinychat (>= 0.4.0.9000),
     htmltools,
     coro,
     jsTreeR,
@@ -74,9 +74,9 @@ Suggests:
     pkgload
 Config/testthat/edition: 3
 Remotes:
-    tidyverse/ellmer,
-    posit-dev/btw,
-    posit-dev/shinychat/pkg-r,
+    tidyverse/ellmer@19be478ebf1a2e5d2db96a8aeaca71592c8d3f26,
+    posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44,
+    posit-dev/shinychat/pkg-r@c1654aa2e13c979e52a16edace094d30680fa4dd,
     r-lib/Rapp
 URL: https://kaipingyang.github.io/codeagent, https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues

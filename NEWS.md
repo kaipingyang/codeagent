@@ -1,4 +1,4 @@
-# codeagent (development version)
+# codeagent 0.2.0
 
 * **Data Shield security hardening (second-round audit): 16 boundary fixes,
   all fail-closed.** A follow-up security review found several paths where the
