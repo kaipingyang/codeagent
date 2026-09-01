@@ -1,5 +1,8 @@
 # codeagent
 
+**Language:** English \|
+[简体中文文档](https://kaipingyang.github.io/codeagent/articles/getting-started-cn.html)
+
 An R-native agentic coding assistant built on
 [ellmer](https://ellmer.tidyverse.org) and [btw](https://btw.posit.co).
 It reimplements a coding-agent **harness** in R: the agent loop,

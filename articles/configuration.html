@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,106 +93,419 @@
 
     
     
+<p><strong>Language:</strong> English | <a href="configuration-cn.html">简体中文</a></p>
+<p>This article describes the configuration that the current source
+actually consumes. All chunks are non-evaluating because examples may
+require local credentials, providers, or files.</p>
 <div class="section level2">
-<h2 id="precedence">Precedence<a class="anchor" aria-label="anchor" href="#precedence"></a>
+<h2 id="configuration-locations">Configuration locations<a class="anchor" aria-label="anchor" href="#configuration-locations"></a>
 </h2>
-<p>Settings resolve from lowest to highest priority:</p>
-<pre><code>package defaults  &lt;  ~/.codeagent/settings.json  &lt;  .codeagent/settings.json  &lt;  environment variables</code></pre>
-<p>Scaffold a settings file:</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/use_codeagent_settings.html">use_codeagent_settings</a></span><span class="op">(</span>scope <span class="op">=</span> <span class="st">"user"</span><span class="op">)</span>     <span class="co"># ~/.codeagent/settings.json</span></span></code></pre></div>
+<p>Create a user or project file with:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/use_codeagent_settings.html">use_codeagent_settings</a></span><span class="op">(</span>scope <span class="op">=</span> <span class="st">"user"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/use_codeagent_settings.html">use_codeagent_settings</a></span><span class="op">(</span>scope <span class="op">=</span> <span class="st">"project"</span><span class="op">)</span></span></code></pre></div>
+<p>User scope is <code>&lt;config-dir&gt;/settings.json</code>, where
+<code>&lt;config-dir&gt;</code> is:</p>
+<ol style="list-style-type: decimal">
+<li>
+<code>CODEAGENT_HOME</code>, when set;</li>
+<li>
+<code>rappdirs::user_config_dir("codeagent")</code>, when
+<code>rappdirs</code> is installed; or</li>
+<li>legacy <code>~/.codeagent</code> as a fallback.</li>
+</ol>
+<p>On first use, codeagent attempts a one-time copy from legacy
+<code>~/.codeagent</code> to the OS-standard directory. If migration
+cannot be completed, the existing legacy directory remains usable.
+Project scope is always <code>.codeagent/settings.json</code> under the
+current working directory.</p>
 </div>
 <div class="section level2">
-<h2 id="settings-json">settings.json<a class="anchor" aria-label="anchor" href="#settings-json"></a>
+<h2 id="resolution-order">Resolution order<a class="anchor" aria-label="anchor" href="#resolution-order"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span> <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span> <span class="fu">},</span></span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">},</span></span>
-<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span></span>
-<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
-<p>The <code>env</code> block is applied before environment variables
-are read, so it works even under <code>Rscript --vanilla</code>.</p>
+<p>The effective sequence is:</p>
+<ol style="list-style-type: decimal">
+<li>start with package defaults;</li>
+<li>deep-merge user <code>settings.json</code>;</li>
+<li>deep-merge project <code>.codeagent/settings.json</code>;</li>
+<li>export the merged JSON <code>env</code> block with
+<code><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv()</a></code>;</li>
+<li>read recognized environment-variable overrides;</li>
+<li>derive permission rules and load project instruction files.</li>
+</ol>
+<p>The project JSON therefore wins over user JSON. An <code>env</code>
+entry is exported before the environment layer is read and overwrites an
+already-set variable of the same name in the current process. A process
+environment variable wins over top-level JSON only when the merged
+<code>env</code> block does not replace it.</p>
+<p>Under <code>--vanilla</code>, <code><a href="../reference/load_settings.html">load_settings()</a></code> also
+imports previously unset <code>CODEAGENT_*</code> values from
+<code>~/.Renviron</code>. That fallback occurs after model and endpoint
+fields have already been resolved for the current load, so put
+<code>CODEAGENT_BASE_URL</code> and <code>CODEAGENT_MODEL</code> in the
+JSON <code>env</code> block when relying on automatic CLI construction.
+Credentials are read lazily and can remain in <code>~/.Renviron</code>
+or another secret-injection mechanism.</p>
 </div>
 <div class="section level2">
-<h2 id="environment-variables">Environment variables<a class="anchor" aria-label="anchor" href="#environment-variables"></a>
+<h2 id="a-functional-settings-example">A functional settings example<a class="anchor" aria-label="anchor" href="#a-functional-settings-example"></a>
 </h2>
+<div class="sourceCode" id="cb2"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb2-4"><a href="#cb2-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb2-7"><a href="#cb2-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint-name"</span><span class="fu">,</span></span>
+<span id="cb2-8"><a href="#cb2-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint-name"</span></span>
+<span id="cb2-9"><a href="#cb2-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb2-10"><a href="#cb2-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-11"><a href="#cb2-11" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Read"</span><span class="ot">,</span> <span class="st">"Bash(R CMD check *)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb2-12"><a href="#cb2-12" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(rm -rf *)"</span><span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb2-13"><a href="#cb2-13" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Write"</span><span class="ot">]</span></span>
+<span id="cb2-14"><a href="#cb2-14" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb2-15"><a href="#cb2-15" tabindex="-1"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb2-16"><a href="#cb2-16" tabindex="-1"></a>    <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb2-17"><a href="#cb2-17" tabindex="-1"></a>    <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb2-18"><a href="#cb2-18" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb2-19"><a href="#cb2-19" tabindex="-1"></a>  <span class="dt">"effort_level"</span><span class="fu">:</span> <span class="st">"high"</span><span class="fu">,</span></span>
+<span id="cb2-20"><a href="#cb2-20" tabindex="-1"></a>  <span class="dt">"file_tools"</span><span class="fu">:</span> <span class="st">"core"</span><span class="fu">,</span></span>
+<span id="cb2-21"><a href="#cb2-21" tabindex="-1"></a>  <span class="dt">"midloop_compact"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb2-22"><a href="#cb2-22" tabindex="-1"></a>  <span class="dt">"midloop_full_compact"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb2-23"><a href="#cb2-23" tabindex="-1"></a>  <span class="dt">"explore_data"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb2-24"><a href="#cb2-24" tabindex="-1"></a>  <span class="dt">"auto_continue"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb2-25"><a href="#cb2-25" tabindex="-1"></a>  <span class="dt">"web_citations"</span><span class="fu">:</span> <span class="st">"off"</span><span class="fu">,</span></span>
+<span id="cb2-26"><a href="#cb2-26" tabindex="-1"></a>  <span class="dt">"max_budget_usd"</span><span class="fu">:</span> <span class="kw">null</span></span>
+<span id="cb2-27"><a href="#cb2-27" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Use snake_case for fields consumed directly by the R implementation.
+In particular, <code>effort_level</code> is passed to
+<code>ellmer::params(reasoning_effort = ...)</code>; camelCase
+<code>effortLevel</code> may be retained in the loaded list but is not
+used by the automatic Chat factory.</p>
+<p>Important defaults include:</p>
 <table class="table">
 <colgroup>
-<col width="52%">
-<col width="47%">
+<col width="33%">
+<col width="33%">
+<col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th>Variable</th>
-<th>Purpose</th>
+<th>Setting</th>
+<th>Default</th>
+<th>Meaning</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td><code>CODEAGENT_BASE_URL</code></td>
-<td>OpenAI-compatible endpoint</td>
+<td><code>provider</code></td>
+<td><code>NULL</code></td>
+<td>Use <code>openai_compatible</code> when <code>base_url</code>
+exists; otherwise use <code>anthropic</code>.</td>
 </tr>
 <tr class="even">
-<td><code>CODEAGENT_MODEL</code></td>
-<td>Default model (the <code>"main"</code> tier)</td>
+<td><code>model</code></td>
+<td><code>NULL</code></td>
+<td>Provider-dependent: native ellmer providers may choose their own
+default; OpenAI-compatible endpoints normally need JSON,
+<code>CODEAGENT_MODEL</code>, or an explicit Chat.</td>
 </tr>
 <tr class="odd">
-<td><code>CODEAGENT_HEAVY_MODEL</code></td>
-<td>
-<code>"heavy"</code> tier — most capable model</td>
+<td><code>max_turns</code></td>
+<td><code>100L</code></td>
+<td>Loop limit; normally choose it with a constructor/config
+argument.</td>
 </tr>
 <tr class="even">
-<td><code>CODEAGENT_FAST_MODEL</code></td>
-<td>
-<code>"fast"</code> tier — compaction / classification model</td>
+<td><code>model_limit</code></td>
+<td>dynamic, fallback 200,000</td>
+<td>Context window derived from model/provider unless overridden.</td>
 </tr>
 <tr class="odd">
-<td><code>CODEAGENT_API_KEY</code></td>
-<td>API key (never put this in <code>settings.json</code>)</td>
+<td><code>max_output_tokens</code></td>
+<td><code>8192L</code></td>
+<td>Stored output-token setting.</td>
 </tr>
 <tr class="even">
-<td><code>CODEAGENT_MAX_CONTEXT_TOKENS</code></td>
-<td>Override the context window</td>
+<td><code>max_budget_usd</code></td>
+<td><code>NULL</code></td>
+<td>No dollar cap.</td>
 </tr>
 <tr class="odd">
-<td><code>CODEAGENT_DISABLE_COMPACT</code></td>
-<td>Disable auto-compaction</td>
+<td><code>permission_mode</code></td>
+<td><code>"default"</code></td>
+<td>Base loader value; see constructor precedence below.</td>
 </tr>
 <tr class="even">
-<td><code>CODEAGENT_PERMISSION_MODE</code></td>
-<td>Default permission mode</td>
+<td><code>sandbox</code></td>
+<td>disabled, network allowed</td>
+<td>Best-effort Bash/RunR defense in depth.</td>
+</tr>
+<tr class="odd">
+<td><code>file_tools</code></td>
+<td><code>"core"</code></td>
+<td>Core tools; alternatives are <code>"btw"</code> and
+<code>"both"</code>.</td>
+</tr>
+<tr class="even">
+<td><code>midloop_compact</code></td>
+<td><code>TRUE</code></td>
+<td>Cheap near-limit tool-result snipping between rounds.</td>
+</tr>
+<tr class="odd">
+<td><code>midloop_full_compact</code></td>
+<td><code>FALSE</code></td>
+<td>Do not make a blocking full compaction call mid-stream.</td>
+</tr>
+<tr class="even">
+<td><code>explore_data</code></td>
+<td><code>TRUE</code></td>
+<td>Register the read-only <code>ExploreData</code> tool.</td>
+</tr>
+<tr class="odd">
+<td><code>rag</code></td>
+<td><code>FALSE</code></td>
+<td>Do not build/use codebase RAG.</td>
+</tr>
+<tr class="even">
+<td><code>inject_r_env</code></td>
+<td><code>FALSE</code></td>
+<td>Do not inject <code>.GlobalEnv</code> object summaries.</td>
+</tr>
+<tr class="odd">
+<td><code>auto_continue</code></td>
+<td><code>FALSE</code></td>
+<td>Start a fresh Shiny conversation.</td>
+</tr>
+<tr class="even">
+<td><code>web_citations</code></td>
+<td><code>"off"</code></td>
+<td>Deterministic Shiny citation presentation is opt-in.</td>
 </tr>
 </tbody>
 </table>
 </div>
 <div class="section level2">
-<h2 id="api-keys">API keys<a class="anchor" aria-label="anchor" href="#api-keys"></a>
+<h2 id="constructor-arguments-override-loaded-values">Constructor arguments override loaded values<a class="anchor" aria-label="anchor" href="#constructor-arguments-override-loaded-values"></a>
 </h2>
-<p>Keep API keys in <code>~/.Renviron</code> as
-<code>CODEAGENT_API_KEY</code>, or use the OS keyring (offered by
-<code><a href="../reference/use_codeagent_setup.html">use_codeagent_setup()</a></code>). Never store keys in
-<code>settings.json</code>.</p>
+<p><code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> always writes its
+<code>permission_mode</code>, <code>max_turns</code>,
+<code>btw_groups</code>, <code>worktree_isolation</code>,
+<code>verify_fn</code>, and <code>mcp_config</code> arguments into the
+live settings. Because those arguments have defaults, use the
+constructor to choose these values rather than relying on similarly
+named JSON or environment entries:</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span></span>
+<span>  permission_mode <span class="op">=</span> <span class="st">"accept_edits"</span>,</span>
+<span>  max_turns <span class="op">=</span> <span class="fl">50L</span>,</span>
+<span>  btw_groups <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"docs"</span>, <span class="st">"git"</span>, <span class="st">"pkg"</span><span class="op">)</span>,</span>
+<span>  worktree_isolation <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  max_budget_usd <span class="op">=</span> <span class="fl">2.50</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><code>max_budget_usd = NULL</code> is the exception: it preserves a
+positive value loaded from <code>max_budget_usd</code> or
+<code>CODEAGENT_MAX_BUDGET_USD</code>. The cap is checked through
+<code>chat$get_cost()</code> and can trigger only when ellmer has
+pricing for the active provider/model.</p>
+<p><code>permissions.defaultMode</code> is not mapped to the
+constructor’s mode. The <code>permissions.allow</code>,
+<code>deny</code>, and <code>ask</code> arrays are functional: they are
+converted to ordered <code>PermissionRule</code> objects, and
+caller-supplied <code>rules</code> are prepended.</p>
 </div>
 <div class="section level2">
-<h2 id="per-project-multi-client-config">Per-project multi-client config<a class="anchor" aria-label="anchor" href="#per-project-multi-client-config"></a>
+<h2 id="environment-variables">Environment variables<a class="anchor" aria-label="anchor" href="#environment-variables"></a>
 </h2>
-<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co"># codeagent.md</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="pp">---</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="fu">client</span><span class="kw">:</span></span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="at">  </span><span class="fu">gpt41</span><span class="kw">:</span><span class="at">    openai/gpt-4.1</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="at">  </span><span class="fu">deepseek</span><span class="kw">:</span><span class="at"> openai/deepseek-r1</span></span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="fu">btw_groups</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">docs</span><span class="kw">,</span><span class="at"> git</span><span class="kw">,</span><span class="at"> pkg</span><span class="kw">]</span></span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="fu">permission_mode</span><span class="kw">:</span><span class="at"> bypass</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a><span class="pp">---</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a><span class="at">Follow tidyverse style.</span></span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p>The current implementation uses these variables directly:</p>
+<table class="table">
+<colgroup>
+<col width="43%">
+<col width="56%">
+</colgroup>
+<thead><tr class="header">
+<th>Variable</th>
+<th>Current use</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>CODEAGENT_HOME</code></td>
+<td>Override the user configuration directory.</td>
+</tr>
+<tr class="even">
+<td><code>CODEAGENT_BASE_URL</code></td>
+<td>OpenAI-compatible endpoint and compact-model backend selection.</td>
+</tr>
+<tr class="odd">
+<td><code>CODEAGENT_MODEL</code></td>
+<td>Active/default model and the <code>main</code> tier.</td>
+</tr>
+<tr class="even">
+<td><code>CODEAGENT_HEAVY_MODEL</code></td>
+<td>
+<code>heavy</code> model alias; not selected automatically.</td>
+</tr>
+<tr class="odd">
+<td><code>CODEAGENT_FAST_MODEL</code></td>
+<td>
+<code>fast</code> alias and preferred
+compaction/classification/reviewer model.</td>
+</tr>
+<tr class="even">
+<td><code>CODEAGENT_API_KEY</code></td>
+<td>Default credential read by OpenAI-compatible and several
+hosted-provider factories.</td>
+</tr>
+<tr class="odd">
+<td><code>CODEAGENT_MAX_BUDGET_USD</code></td>
+<td>Positive dollar-cost cap.</td>
+</tr>
+<tr class="even">
+<td><code>CODEAGENT_MODEL_LIMIT</code></td>
+<td>Value loaded into <code>settings$model_limit</code>; dynamic context
+logic may use its own resolution.</td>
+</tr>
+<tr class="odd">
+<td><code>CODEAGENT_MAX_CONTEXT_TOKENS</code></td>
+<td>Highest-priority raw context-window override.</td>
+</tr>
+<tr class="even">
+<td><code>CODEAGENT_AUTO_COMPACT_WINDOW</code></td>
+<td>Cap the window used to calculate compaction thresholds.</td>
+</tr>
+<tr class="odd">
+<td><code>CODEAGENT_DISABLE_COMPACT</code></td>
+<td>Any non-empty value disables automatic threshold compaction.</td>
+</tr>
+<tr class="even">
+<td><code>CODEAGENT_EMBED_MODEL</code></td>
+<td>Embedding model for opt-in RAG.</td>
+</tr>
+</tbody>
+</table>
+<p><code>CODEAGENT_PERMISSION_MODE</code> and
+<code>CODEAGENT_MAX_TURNS</code> are read by
+<code><a href="../reference/load_settings.html">load_settings()</a></code>, but the default arguments of
+<code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> overwrite them. Pass
+<code>permission_mode</code> and <code>max_turns</code> explicitly for a
+client. Provider-native <code>ellmer</code> constructors may also use
+their own variables, such as <code>ANTHROPIC_API_KEY</code>, AWS
+credentials, or OAuth state.</p>
+</div>
+<div class="section level2">
+<h2 id="api-keys-and-setup">API keys and setup<a class="anchor" aria-label="anchor" href="#api-keys-and-setup"></a>
+</h2>
+<p>Do not put API keys in <code>settings.json</code> or a tracked
+project file. Prefer a deployment secret or <code>~/.Renviron</code>. A
+keyring entry is not read automatically by the current Chat factory; use
+an <code>apiKeyHelper</code> or host integration that retrieves it and
+supplies the environment variable:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="dt">CODEAGENT_API_KEY</span><span class="ot">=</span><span class="st">your-token</span></span></code></pre></div>
+<p><code>apiKeyHelper</code> or <code>api_key_helper</code> may name a
+command whose first output line is used as
+<code>CODEAGENT_API_KEY</code> when that variable is absent:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a>  <span class="dt">"apiKeyHelper"</span><span class="fu">:</span> <span class="st">"secret-tool lookup service codeagent"</span></span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><code><a href="../reference/use_codeagent_setup.html">use_codeagent_setup()</a></code> is interactive, but its current
+implementation includes a detected or newly supplied provider key in the
+generated JSON <code>env</code> block before it offers
+keyring/<code>~/.Renviron</code> persistence choices. Storing a value in
+the keyring does not by itself wire retrieval into the automatic Chat
+factory; configure an <code>apiKeyHelper</code>/host integration for
+that path. For keyed providers, prefer
+<code><a href="../reference/use_codeagent_settings.html">use_codeagent_settings()</a></code> and add the credential separately.
+If you use the wizard, inspect and remove any credential from the
+generated JSON immediately.</p>
+</div>
+<div class="section level2">
+<h2 id="permission-rules">Permission rules<a class="anchor" aria-label="anchor" href="#permission-rules"></a>
+</h2>
+<p>Patterns without parentheses match a whole tool. Parenthesized
+content matches the tool’s primary argument with <code>*</code>
+wildcards:</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>      <span class="st">"Read"</span><span class="ot">,</span></span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>      <span class="st">"Bash(R CMD check *)"</span></span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>      <span class="st">"Bash(rm -rf *)"</span></span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    <span class="ot">]</span><span class="fu">,</span></span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[</span></span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>      <span class="st">"Write(/shared/*)"</span></span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>    <span class="ot">]</span></span>
+<span id="cb6-13"><a href="#cb6-13" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb6-14"><a href="#cb6-14" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Content matching is implemented for <code>Bash</code>,
+<code>Read</code>, <code>Write</code>, <code>Edit</code>,
+<code>MultiEdit</code>, <code>Glob</code>, and <code>Grep</code>. Rules
+are case-sensitive and first match wins. In <code>plan</code> mode,
+non-read tools are denied before rules are considered.</p>
+</div>
+<div class="section level2">
+<h2 id="sandbox-settings">Sandbox settings<a class="anchor" aria-label="anchor" href="#sandbox-settings"></a>
+</h2>
+<div class="sourceCode" id="cb7"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>    <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span></span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>    <span class="dt">"keep_env"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"PATH"</span><span class="ot">,</span> <span class="st">"HOME"</span><span class="ot">,</span> <span class="st">"LANG"</span><span class="ot">,</span> <span class="st">"TMPDIR"</span><span class="ot">]</span></span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>When enabled, Bash receives only <code>keep_env</code>. Network
+denial uses an OS network namespace where available and otherwise
+degrades, with a warning, to command pattern blocking. <code>RunR</code>
+uses a scrubbed <code>callr</code> child and timeout when
+<code>callr</code> is installed; without it, execution remains
+in-process after pattern checks. This is not a complete filesystem
+sandbox.</p>
+</div>
+<div class="section level2">
+<h2 id="project-codeagent-md">Project <code>codeagent.md</code><a class="anchor" aria-label="anchor" href="#project-codeagent-md"></a>
+</h2>
+<p><code><a href="../reference/codeagent_client_config.html">codeagent_client_config()</a></code> searches, in order,
+<code>.codeagent/config.md</code> and <code>codeagent.md</code> in
+<code>cwd</code>, then the literal user fallback
+<code>~/.codeagent/config.md</code>. (This fallback does not follow
+<code>CODEAGENT_HOME</code> or the OS-standard settings directory.) The
+YAML front matter supports <code>client</code>, <code>btw_groups</code>,
+<code>permission_mode</code>, and <code>max_turns</code>. The Markdown
+body is appended to the system prompt.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a><span class="fu">client</span><span class="kw">:</span></span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a><span class="at">  </span><span class="fu">gpt41</span><span class="kw">:</span><span class="at">    openai/gpt-4.1</span></span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a><span class="at">  </span><span class="fu">local</span><span class="kw">:</span><span class="at">    ollama/llama3.2</span></span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a><span class="at">  </span><span class="fu">sonnet</span><span class="kw">:</span><span class="at">   anthropic/claude-sonnet-4-6</span></span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a><span class="fu">btw_groups</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">docs</span><span class="kw">,</span><span class="at"> git</span><span class="kw">,</span><span class="at"> pkg</span><span class="kw">]</span></span>
+<span id="cb8-7"><a href="#cb8-7" tabindex="-1"></a><span class="fu">permission_mode</span><span class="kw">:</span><span class="at"> default</span></span>
+<span id="cb8-8"><a href="#cb8-8" tabindex="-1"></a><span class="fu">max_turns</span><span class="kw">:</span><span class="at"> </span><span class="dv">50</span></span>
+<span id="cb8-9"><a href="#cb8-9" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb8-10"><a href="#cb8-10" tabindex="-1"></a><span class="at">Follow tidyverse style and run focused tests before the full suite.</span></span></code></pre></div>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client_config.html">codeagent_client_config</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"gpt41"</span><span class="op">)</span></span></code></pre></div>
+<p>Recognized prefixed client specs are
+<code>openai/&lt;model&gt;</code>, <code>anthropic/&lt;model&gt;</code>,
+and <code>ollama/&lt;model&gt;</code>. <code>openai/&lt;model&gt;</code>
+uses <code>chat_openai_compatible()</code> when
+<code>CODEAGENT_BASE_URL</code> is set; without a base URL it falls
+through to the normal automatic provider path. A plain model name uses
+<code><a href="../reference/load_settings.html">load_settings()</a></code> and <code><a href="../reference/dot-make_chat.html">.make_chat()</a></code>. In a
+non-interactive session, omitting <code>alias</code> selects the first
+alias; in an interactive session it opens a menu.</p>
+<p>Create a template with:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/use_codeagent_md.html">use_codeagent_md</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="project-instructions">Project instructions<a class="anchor" aria-label="anchor" href="#project-instructions"></a>
+</h2>
+<p>In addition to settings, codeagent loads instruction files from the
+user and up to five directory levels from <code>cwd</code>:
+<code>CLAUDE.md</code>, <code>btw.md</code>, <code>AGENTS.md</code>, and
+<code>llms.txt</code>. Outer files are included before more specific
+inner files. A line consisting only of <code>@path/to/file</code>
+imports that file, with cycle detection and a maximum import depth of
+five.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

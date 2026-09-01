@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,260 +93,277 @@
 
     
     
-<p><code>codeagent</code> is an R-native coding agent: it wraps any
-<code>ellmer</code> chat with a full agent harness (tools, permissions,
-compaction, hooks, skills) and drives it from the R console, a terminal
-REPL, or a Shiny app. This vignette walks from a first query to
-configuration and sandboxing.</p>
-<p>All code chunks below require a configured model endpoint and are
-therefore not evaluated when the vignette is built.</p>
-<div class="section level2">
-<h2 id="how-it-works">How it works<a class="anchor" aria-label="anchor" href="#how-it-works"></a>
-</h2>
-<pre><code>codeagent_client(chat)   builds the harness once:
-  - injects tools (built mode="bypass") + system prompt
-  - register_midloop_compaction()  -&gt; chat$on_tool_result
-  - .install_permission_gate()     -&gt; chat$on_tool_request   (sole authority)
-
-One user turn = agent_loop(input, client, iteration)
-
-  iteration &gt; max_turns? ---- yes ---&gt; stop "max_turns"
-    | no
-  SessionStart hook (first turn)
-  inject system-reminder into the USER message (preserves prompt cache)
-  budget check ---- over ---&gt; stop "budget_exceeded"
-  TURN-BOUNDARY compaction   (if tokens &gt;= window - margin)
-  UserMessage hook
-    |
-    v
-  chat$chat(input)  -- ellmer runs the multi-round tool loop in-process --+
-    |   per tool round:                                                   |
-    |     on_tool_request -&gt; PERMISSION GATE -&gt; allow / deny / ask         |
-    |     tool executes                                                    |
-    |     on_tool_result  -&gt; MID-LOOP compaction + PostToolUse hook        |
-    +-- loops until the model stops requesting tools --------------------&gt;+
-    |
-    v
-  final assistant turn
-  finish_reason == "length"? -&gt; append truncation note
-  AssistantMessage hook
-  verify_fn?  -- fail --&gt; re-enter chat$chat(re-prompt) once
-  save_session()
-  Stop hook "completed"  -&gt;  return {response, session_id, stop_reason}</code></pre>
-</div>
+<p><strong>Language:</strong> English | <a href="getting-started-cn.html">简体中文</a></p>
+<p><code>codeagent</code> is an R-native coding-agent harness built on
+<code>ellmer</code> and <code>btw</code>. It does not shell out to
+another coding-agent CLI. It supplies tools, permissions, context
+compaction, hooks, skills, sessions, and multi-agent coordination, and
+exposes them through R, a terminal REPL, and a Shiny app.</p>
+<p>All code chunks in this article require a configured model and are
+not evaluated when the vignette is built.</p>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
+<p>Install the package and its pinned dependencies from GitHub:</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"kaipingyang/codeagent"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Recommended to ensure the verified development build of the optional btw tools</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44"</span><span class="op">)</span></span></code></pre></div>
+<p>The command-line launcher requires the optional <code>Rapp</code>
+package and is a separate, one-time installation step:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Install from GitHub (pak handles all dependencies including Rapp)</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"tidyverse/ellmer"</span>, <span class="st">"kaipingyang/codeagent"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="configuration-recommended--codeagentsettings-json">Configuration (recommended:
-<code>~/.codeagent/settings.json</code>)<a class="anchor" aria-label="anchor" href="#configuration-recommended--codeagentsettings-json"></a>
-</h3>
-<p>The recommended way to configure codeagent is a user-level settings
-file. Create it with:</p>
+<code class="sourceCode R"><span><span class="co"># Needed only if Rapp was not installed with optional dependencies</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"r-lib/Rapp@489655f24945042791ddb083d0d5518c4a905d9f"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/install_codeagent_cli.html">install_codeagent_cli</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="configure-an-endpoint">Configure an endpoint<a class="anchor" aria-label="anchor" href="#configure-an-endpoint"></a>
+</h2>
+<p>The safest scaffold is <code><a href="../reference/use_codeagent_settings.html">use_codeagent_settings()</a></code>.
+User-scope settings are written to codeagent’s OS-standard configuration
+directory (or <code>CODEAGENT_HOME</code> when set); legacy
+<code>~/.codeagent</code> content is migrated or used as a fallback.
+Project settings are written to
+<code>.codeagent/settings.json</code>.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/use_codeagent_settings.html">use_codeagent_settings</a></span><span class="op">(</span><span class="op">)</span>   <span class="co"># creates ~/.codeagent/settings.json from template</span></span></code></pre></div>
-<p>Edit the file to add your endpoint and credentials:</p>
+<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/use_codeagent_settings.html">use_codeagent_settings</a></span><span class="op">(</span>scope <span class="op">=</span> <span class="st">"user"</span><span class="op">)</span></span></code></pre></div>
+<p>For an OpenAI-compatible endpoint, keep endpoint and model names in
+the <code>env</code> block, but keep credentials out of JSON:</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
 <span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
 <span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
 <span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint"</span><span class="fu">,</span></span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint"</span><span class="fu">,</span></span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>    <span class="dt">"CODEAGENT_API_KEY"</span><span class="fu">:</span> <span class="st">"your-token"</span></span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
-<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>  <span class="fu">}</span></span>
-<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span> <span class="st">"your-fast-endpoint"</span></span>
+<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span> <span class="ot">[]</span></span>
+<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Store the credential in <code>~/.Renviron</code> or another mechanism
+that injects it into the process environment:</p>
 <blockquote>
-<p><strong>Note:</strong> <code>CODEAGENT_API_KEY</code> in the
-<code>env</code> block is loaded at startup, so you do not need to set
-it separately in <code>.Renviron</code>.</p>
+<p>A keyring entry is not read automatically by the current Chat
+factory. To use a keyring, configure an <code>apiKeyHelper</code> (see
+the configuration article) or a host integration that retrieves the
+secret and supplies <code>CODEAGENT_API_KEY</code>.</p>
 </blockquote>
-<div class="section level4">
-<h4 id="alternative--renviron">Alternative: <code>~/.Renviron</code><a class="anchor" aria-label="anchor" href="#alternative--renviron"></a>
-</h4>
-<p>Set the minimum required variables and restart R:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="dt">CODEAGENT_BASE_URL</span><span class="ot">=</span><span class="st">https://YOUR-WORKSPACE.cloud.databricks.net/serving-endpoints</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="dt">CODEAGENT_MODEL</span><span class="ot">=</span><span class="st">your-main-endpoint</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="dt">CODEAGENT_API_KEY</span><span class="ot">=</span><span class="st">your-token</span></span></code></pre></div>
-<p>All <code>CODEAGENT_*</code> variables in <code>~/.Renviron</code>
-are loaded automatically, even when running under <code>--vanilla</code>
-(e.g. via the CLI).</p>
-</div>
-</div>
-<div class="section level3">
-<h3 id="cli">CLI<a class="anchor" aria-label="anchor" href="#cli"></a>
-</h3>
-<p>Installing codeagent does <strong>not</strong> automatically put a
-<code>codeagent</code> command on your PATH. Run this once after
-installation:</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="dt">CODEAGENT_API_KEY</span><span class="ot">=</span><span class="st">your-token</span></span></code></pre></div>
+<p>The merged settings <code>env</code> block is applied with
+<code><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv()</a></code> before recognized model settings are read.
+This makes endpoint and model configuration work in the
+<code>--vanilla</code> CLI launcher. A <code>CODEAGENT_API_KEY</code>
+line in <code>~/.Renviron</code> is also imported as a fallback before
+credentials are used. Never commit either file when it contains real
+infrastructure details or credentials.</p>
+<p>You can bypass automatic construction and supply any configured
+<code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> directly. This is often the clearest route for
+provider-native authentication:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/install_codeagent_cli.html">install_codeagent_cli</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>Then use from any terminal:</p>
-<div class="sourceCode" id="cb7"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="ex">codeagent</span>           <span class="co"># interactive REPL (default permission mode)</span></span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-y</span>        <span class="co"># bypass mode (skip all permission prompts)</span></span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="ex">codeagent</span> <span class="st">"query"</span>   <span class="co"># one-shot query</span></span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-p</span> <span class="st">"query"</span>  <span class="co"># one-shot, non-interactive output</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="build-a-client">1. Build a client<a class="anchor" aria-label="anchor" href="#build-a-client"></a>
-</h2>
-<p>A <code>codeagent</code> client wraps an <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code>.
-With <code>settings.json</code> configured, the simplest form is:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://kaipingyang.github.io/codeagent">codeagent</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Auto-build from ~/.codeagent/settings.json</span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>Or provide an explicit <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code>:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_openai_compatible.html" class="external-link">chat_openai_compatible</a></span><span class="op">(</span></span>
-<span>  base_url    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_BASE_URL"</span><span class="op">)</span>,</span>
-<span>  model       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_MODEL"</span><span class="op">)</span>,</span>
+<span>  base_url <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_BASE_URL"</span><span class="op">)</span>,</span>
+<span>  model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_MODEL"</span><span class="op">)</span>,</span>
 <span>  credentials <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_API_KEY"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> injects the tool set (Bash, Read,
-Write, Edit, Glob, Grep, LS, plus <code>btw</code> tool groups) and
-builds the system prompt. The <code>permission_mode</code> controls how
-tool calls are gated – see section 5.</p>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="one-shot-queries">2. One-shot queries<a class="anchor" aria-label="anchor" href="#one-shot-queries"></a>
+<h2 id="build-a-client">Build a client<a class="anchor" aria-label="anchor" href="#build-a-client"></a>
 </h2>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/codeagent.html">codeagent</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"List the .R files in R/ and summarise what each does"</span><span class="op">)</span></span></code></pre></div>
-<p>The agent plans, calls tools, and returns a final answer. History
-accumulates on the client, so follow-up calls keep context.</p>
+<p>With settings configured, build the harness automatically:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://kaipingyang.github.io/codeagent">codeagent</a></span><span class="op">)</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>Or wrap the explicit Chat created above:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span></span>
+<span>  <span class="va">chat</span>,</span>
+<span>  permission_mode <span class="op">=</span> <span class="st">"default"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> rebuilds the system prompt and, by
+default, registers the core file and shell tools, web tools,
+<code>RunR</code>, memory, linting, tasks, notebooks, data exploration,
+skills, an agent tool, and the selected <code>btw</code> groups. Tool
+availability can depend on optional packages. All tools pass through one
+central permission gate. Set <code>register_tools = FALSE</code> only
+when a host will register them later, as the Shiny lazy-start path
+does.</p>
 </div>
 <div class="section level2">
-<h2 id="interactive-repl">3. Interactive REPL<a class="anchor" aria-label="anchor" href="#interactive-repl"></a>
+<h2 id="run-a-one-shot-query">Run a one-shot query<a class="anchor" aria-label="anchor" href="#run-a-one-shot-query"></a>
+</h2>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/codeagent.html">codeagent</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"List the .R files in R/ and summarize their roles"</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/codeagent.html">codeagent()</a></code> submits one prompt to the client’s Chat.
+<code>ellmer</code> runs any multi-round tool calls, and codeagent
+applies its input/output Data Shield gates and optional deterministic
+citation transform. The Chat retains history, so a second call is a
+follow-up. This lightweight one-shot path is not the complete REPL/Shiny
+turn pipeline: automatic session saving, per-turn compaction, reminders,
+and lifecycle handling live in <code><a href="../reference/codeagent_console.html">codeagent_console()</a></code>,
+<code>codeagent_stream*()</code>, and <code><a href="../reference/agent_loop.html">agent_loop()</a></code>.</p>
+</div>
+<div class="section level2">
+<h2 id="use-the-terminal-repl">Use the terminal REPL<a class="anchor" aria-label="anchor" href="#use-the-terminal-repl"></a>
 </h2>
 <p>From R:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/codeagent_console.html">codeagent_console</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span></code></pre></div>
-<p>Or from a terminal (after running
-<code><a href="../reference/install_codeagent_cli.html">install_codeagent_cli()</a></code> once):</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="ex">codeagent</span>           <span class="co"># interactive REPL (default permission mode)</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-y</span>        <span class="co"># bypass mode (skip all permission prompts)</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="ex">codeagent</span> <span class="st">"query"</span>   <span class="co"># one-shot query</span></span></code></pre></div>
-<p>Inside the REPL, slash commands include <code>/model</code>,
-<code>/compact</code>, <code>/clear</code>, <code>/rewind</code>,
-<code>/sessions</code>, and <code>/budget</code>; <code>/name</code>
-invokes a skill.</p>
+<p>Or, after <code><a href="../reference/install_codeagent_cli.html">install_codeagent_cli()</a></code>:</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode bash"><code class="sourceCode bash"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="ex">codeagent</span>             <span class="co"># interactive REPL, default permission mode</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-y</span>          <span class="co"># interactive REPL, bypass permission mode</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a><span class="ex">codeagent</span> <span class="st">"query"</span>     <span class="co"># one-shot query</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-p</span> <span class="st">"query"</span>  <span class="co"># explicit non-interactive print mode</span></span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="ex">codeagent</span> <span class="at">-p</span> <span class="st">"query"</span> <span class="at">-o</span> json</span></code></pre></div>
+<p>The REPL reuses one client, streams by default when launched from R,
+compacts long conversations, and saves sessions. Current built-in
+commands include <code>/model</code>, <code>/compact</code>,
+<code>/clear</code>, <code>/rewind</code>, <code>/sessions</code>,
+<code>/budget</code>, <code>/cost</code>, <code>/copy</code>,
+<code>/export</code>, <code>/context</code>, <code>/help</code>, and
+<code>/exit</code>; any other <code>/&lt;name&gt;</code> is handled as a
+skill invocation. The launcher also provides <code>app</code>,
+<code>sessions</code>, <code>skills</code>, <code>mcp</code>, and
+<code>info</code> subcommands.</p>
 </div>
 <div class="section level2">
-<h2 id="shiny-app">4. Shiny app<a class="anchor" aria-label="anchor" href="#shiny-app"></a>
+<h2 id="launch-the-shiny-app">Launch the Shiny app<a class="anchor" aria-label="anchor" href="#launch-the-shiny-app"></a>
 </h2>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<p>For local, single-user use:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, theme <span class="op">=</span> <span class="st">"default"</span><span class="op">)</span></span></code></pre></div>
-<p>The app streams output, renders tool cards, and provides session
-management and a searchable skill panel.</p>
+<p>A bare Chat is treated as a template and cloned into a fresh client
+per Shiny session. For a multi-user deployment, create all mutable state
+in a factory:</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span>client_factory <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span></span>
+<span>    <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_openai_compatible.html" class="external-link">chat_openai_compatible</a></span><span class="op">(</span></span>
+<span>      base_url <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_BASE_URL"</span><span class="op">)</span>,</span>
+<span>      model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_MODEL"</span><span class="op">)</span>,</span>
+<span>      credentials <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_API_KEY"</span><span class="op">)</span></span>
+<span>    <span class="op">)</span>,</span>
+<span>    register_tools <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
+<p>The default <code>ui_layout = "classic"</code> provides chat plus the
+Output / Files / File workspace. <code>ui_layout = "page_chat"</code>
+opts into the full-window layout. Tools and skills initialize after the
+first UI flush; input remains disabled until they are ready. Type
+<code>/</code> for local commands and the skill typeahead.</p>
 </div>
 <div class="section level2">
-<h2 id="permissions">5. Permissions<a class="anchor" aria-label="anchor" href="#permissions"></a>
+<h2 id="choose-a-permission-mode">Choose a permission mode<a class="anchor" aria-label="anchor" href="#choose-a-permission-mode"></a>
 </h2>
-<p>Permission mode decides whether a tool call is allowed, denied, or
-requires confirmation:</p>
 <table class="table">
+<colgroup>
+<col width="25%">
+<col width="75%">
+</colgroup>
 <thead><tr class="header">
 <th>Mode</th>
-<th>Behaviour</th>
+<th>Current behavior</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>default</code></td>
-<td>reads auto-allow; writes and shell require confirmation</td>
+<td>Read-only tools and recognized read-only Bash commands auto-allow;
+other writes and execution ask.</td>
 </tr>
 <tr class="even">
 <td><code>plan</code></td>
-<td>read-only; all mutating tools denied</td>
+<td>Read-only tools allow; mutating tools deny.</td>
 </tr>
 <tr class="odd">
 <td><code>accept_edits</code></td>
-<td>file edits auto-allow; Bash still asks</td>
+<td>
+<code>Write</code>, <code>Edit</code>, and <code>MultiEdit</code>
+auto-allow; other non-read operations still ask.</td>
 </tr>
 <tr class="even">
 <td><code>bypass</code></td>
-<td>everything allowed</td>
+<td>Tool calls auto-allow. Use only in a trusted environment.</td>
 </tr>
 <tr class="odd">
 <td><code>dont_ask</code></td>
-<td>mutating tools auto-denied (CI)</td>
+<td>Read-only tools allow; calls that would ask are denied.</td>
 </tr>
 <tr class="even">
+<td><code>auto</code></td>
+<td>A model classifier returns allow or deny; failures fall back to
+ask.</td>
+</tr>
+<tr class="odd">
 <td><code>bubble</code></td>
-<td>sub-agent mode; decisions bubble to the parent</td>
+<td>Sub-agent decisions return ask so the parent can resolve them.</td>
 </tr>
 </tbody>
 </table>
-<p>Fine-grained rules match on tool arguments – for example, allow only
-a specific command:</p>
+<p>Constructor arguments are the reliable way to choose the mode:</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, permission_mode <span class="op">=</span> <span class="st">"accept_edits"</span><span class="op">)</span></span></code></pre></div>
+<p>Rules are evaluated in order before most mode defaults and can match
+a tool’s main argument:</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span></span>
 <span>  <span class="va">chat</span>,</span>
 <span>  permission_mode <span class="op">=</span> <span class="st">"default"</span>,</span>
-<span>  rules <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="../reference/PermissionRule.html">PermissionRule</a></span><span class="op">(</span><span class="st">"Bash"</span>, <span class="st">"allow"</span>, rule_content <span class="op">=</span> <span class="st">"R CMD build *"</span><span class="op">)</span><span class="op">)</span></span>
+<span>  rules <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    <span class="fu"><a href="../reference/PermissionRule.html">PermissionRule</a></span><span class="op">(</span><span class="st">"Bash"</span>, <span class="st">"allow"</span>, rule_content <span class="op">=</span> <span class="st">"R CMD build *"</span><span class="op">)</span>,</span>
+<span>    <span class="fu"><a href="../reference/PermissionRule.html">PermissionRule</a></span><span class="op">(</span><span class="st">"Bash"</span>, <span class="st">"deny"</span>, rule_content <span class="op">=</span> <span class="st">"rm -rf *"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>Equivalent JSON patterns belong in <code>permissions.allow</code>,
+<code>permissions.deny</code>, and <code>permissions.ask</code>, for
+example <code>"Bash(R CMD build *)"</code>.</p>
 </div>
 <div class="section level2">
-<h2 id="configuration-with-settings-json">6. Configuration with settings.json<a class="anchor" aria-label="anchor" href="#configuration-with-settings-json"></a>
+<h2 id="understand-sandboxing">Understand sandboxing<a class="anchor" aria-label="anchor" href="#understand-sandboxing"></a>
 </h2>
-<p>Scaffold a settings file:</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/use_codeagent_settings.html">use_codeagent_settings</a></span><span class="op">(</span>scope <span class="op">=</span> <span class="st">"user"</span><span class="op">)</span></span></code></pre></div>
-<p>It mirrors the schema of command-line coding agents (model tiers, an
-<code>env</code> block, permissions, hooks, MCP servers, sandbox, effort
-level). Precedence, low to high: package defaults, then
-<code>~/.codeagent/settings.json</code>, then
-<code>.codeagent/settings.json</code>, then environment variables.</p>
-<p>Keep API keys in <code>.Renviron</code> (as
-<code>CODEAGENT_API_KEY</code>), never in
-<code>settings.json</code>.</p>
+<p>The default is:</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">{</span> <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">false</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">true</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
+<p>When enabled, Bash receives a reduced environment and runs in the
+configured working directory. With <code>allow_network = false</code>,
+codeagent blocks known network commands and uses
+<code>unshare -Urn</code> for kernel-level network isolation when the
+host supports unprivileged namespaces. If <code>unshare</code> is
+unavailable, it warns and falls back to a bypassable command-name
+blacklist.</p>
+<p><code>RunR</code> uses a separate <code>callr</code> process with a
+scrubbed environment and a 30-second timeout when both sandboxing and
+<code>callr</code> are available. Otherwise it runs in-process after
+pattern checks. This sandbox is defense in depth, not a complete
+filesystem or process security boundary; use containers or another OS
+sandbox for untrusted workloads.</p>
 </div>
 <div class="section level2">
-<h2 id="sandboxed-r-execution">7. Sandboxed R execution<a class="anchor" aria-label="anchor" href="#sandboxed-r-execution"></a>
+<h2 id="run-multi-agent-work">Run multi-agent work<a class="anchor" aria-label="anchor" href="#run-multi-agent-work"></a>
 </h2>
-<p>The <code>RunR</code> tool executes R code behind the permission
-gate. Enable sandboxing to run each call in an isolated
-<code>callr</code> subprocess with a scrubbed environment (API keys are
-not visible), no <code>.Renviron</code> reload, and a wall-clock
-timeout:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="fu">{</span> <span class="dt">"sandbox"</span><span class="fu">:</span> <span class="fu">{</span> <span class="dt">"enabled"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span> <span class="dt">"allow_network"</span><span class="fu">:</span> <span class="kw">false</span> <span class="fu">}</span> <span class="fu">}</span></span></code></pre></div>
-<p>Sandboxing is opt-in because spawning a subprocess has a small cost.
-Turn it on when executing less-trusted code; leave it off for fast,
-local, trusted use.</p>
-</div>
-<div class="section level2">
-<h2 id="multi-agent-teams">8. Multi-agent teams<a class="anchor" aria-label="anchor" href="#multi-agent-teams"></a>
-</h2>
-<p>Run independent tasks in parallel, capped to the container’s CPU
-quota:</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Fixed fan-out</span></span>
 <span><span class="fu"><a href="../reference/team_run.html">team_run</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"review R/a.R"</span>, <span class="st">"review R/b.R"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Work-stealing over a shared board (balances uneven task sizes)</span></span>
-<span><span class="fu"><a href="../reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"task 1"</span>, <span class="st">"task 2"</span>, <span class="st">"task 3"</span>, <span class="st">"task 4"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># Work-stealing over a shared SQLite board</span></span>
+<span><span class="fu"><a href="../reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"task 1"</span>, <span class="st">"task 2"</span>, <span class="st">"task 3"</span>, <span class="st">"task 4"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># LLM-led decomposition and replanning</span></span>
+<span><span class="fu"><a href="../reference/team_lead.html">team_lead</a></span><span class="op">(</span><span class="st">"Refactor the parser and add tests"</span>, max_rounds <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="where-to-go-next">Where to go next<a class="anchor" aria-label="anchor" href="#where-to-go-next"></a>
 </h2>
 <ul>
-<li>
-<code><a href="../reference/codeagent_client.html">?codeagent_client</a></code> – all client options (tool groups,
-verification, MCP).</li>
-<li>
-<code><a href="../reference/codeagent_app.html">?codeagent_app</a></code> – Shiny app themes and panels.</li>
-<li>README – feature overview and provider reference.</li>
+<li>Read <code><a href="../articles/configuration.html">vignette("configuration", package = "codeagent")</a></code>
+for settings, environment variables, and project configuration.</li>
+<li>Read <code><a href="../articles/models.html">vignette("models", package = "codeagent")</a></code> for
+providers, model tiers, switching, reasoning, and pricing.</li>
+<li>See <code><a href="../reference/codeagent_client.html">?codeagent_client</a></code>, <code><a href="../reference/codeagent_console.html">?codeagent_console</a></code>,
+and <code><a href="../reference/codeagent_app.html">?codeagent_app</a></code> for the public API.</li>
 </ul>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

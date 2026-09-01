@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,23 +93,27 @@
 
     
     
+<blockquote>
+<p><strong>Language:</strong> English | <a href="data-exploration-cn.html">简体中文</a></p>
+</blockquote>
 <div class="section level2">
-<h2 id="two-modes-standard-vs-wear">Two modes: standard vs WEAR<a class="anchor" aria-label="anchor" href="#two-modes-standard-vs-wear"></a>
+<h2 id="standard-wear-and-protected-data-paths">Standard, WEAR, and protected-data paths<a class="anchor" aria-label="anchor" href="#standard-wear-and-protected-data-paths"></a>
 </h2>
-<p>codeagent offers two ways to explore data. Choosing the right one
-depends on whether you want a focused, stateful exploration session or
-just an occasional data query inside a general-purpose agent
-conversation.</p>
+<p>codeagent has two general data-exploration experiences and a separate
+safe metadata path for protected data:</p>
 <table class="table">
 <colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
 </colgroup>
 <thead><tr class="header">
 <th></th>
 <th>Standard session</th>
 <th>WEAR session (<code><a href="../reference/wear_explore.html">wear_explore()</a></code>)</th>
+<th>Data Shield <code>DescribeData</code>
+</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
@@ -106,42 +122,48 @@ conversation.</p>
 <code><a href="../reference/codeagent_app.html">codeagent_app()</a></code> / <code><a href="../reference/codeagent_console.html">codeagent_console()</a></code>
 </td>
 <td><code>wear_explore(data = ...)</code></td>
+<td><code>codeagent_client(data_shield = ...)</code></td>
 </tr>
 <tr class="even">
+<td>Tool</td>
 <td>
-<code>ExploreData</code> tool</td>
-<td>Not registered by default</td>
-<td>Automatically registered</td>
+<code>ExploreData</code> is registered by default</td>
+<td>Re-registers <code>ExploreData</code> for <code>data</code>, adds
+<code>GenerateReport</code>
+</td>
+<td>
+<code>DescribeData</code> for registered protected datasets</td>
 </tr>
 <tr class="odd">
-<td>
-<code>/report</code> command</td>
-<td>Not available</td>
-<td>Exports session to <code>.qmd</code>
-</td>
+<td>Model behavior</td>
+<td>General-purpose agent</td>
+<td>WEAR prompt requires a <strong>Next steps</strong> section</td>
+<td>Filtered schema/metadata only; no arbitrary query code</td>
 </tr>
 <tr class="even">
-<td>WEAR system prompt</td>
-<td>Not injected</td>
-<td>Injected: agent ends each turn with <strong>Next steps</strong>
-</td>
-</tr>
-<tr class="odd">
 <td>Typical use</td>
-<td>Occasional data questions amid coding tasks</td>
-<td>Dedicated analysis / EDA session</td>
+<td>Data questions among coding tasks</td>
+<td>Focused, stateful EDA</td>
+<td>Discovering protected schema without exposing rows</td>
 </tr>
 </tbody>
 </table>
 <p><strong>Rule of thumb:</strong> use <code><a href="../reference/wear_explore.html">wear_explore()</a></code> when
-data exploration <em>is</em> the task. Use a standard session when data
-questions are one of many things you need.</p>
-<hr>
+exploration is the task. Use a standard session when data questions are
+one part of broader work. For protected data, use Data Shield and
+<code>DescribeData</code>; <code>ExploreData</code> is not a security
+boundary.</p>
 </div>
 <div class="section level2">
-<h2 id="standard-session-exploredata-on-demand">Standard session: ExploreData on demand<a class="anchor" aria-label="anchor" href="#standard-session-exploredata-on-demand"></a>
+<h2 id="standard-sessions-exploredata-is-on-by-default">Standard sessions: <code>ExploreData</code> is on by default<a class="anchor" aria-label="anchor" href="#standard-sessions-exploredata-is-on-by-default"></a>
 </h2>
-<p>You can register <code>ExploreData</code> manually on any client:</p>
+<p>A normally constructed client registers <code>ExploreData</code>
+unless <code>explore_data</code> is explicitly set to <code>false</code>
+in settings. It reads named data.frames from <code>.GlobalEnv</code> by
+default. Calling
+<code>register_explore_data_tool(chat, envir = ...)</code> explicitly
+remains useful to install it on a bare chat or bind it to another
+environment.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://kaipingyang.github.io/codeagent">codeagent</a></span><span class="op">)</span></span>
 <span></span>
@@ -150,49 +172,74 @@ questions are one of many things you need.</p>
 <span></span>
 <span><span class="fu"><a href="../reference/codeagent.html">codeagent</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"How many rows are in mtcars and what are the columns?"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/codeagent.html">codeagent</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"What is the average mpg per cylinder count?"</span><span class="op">)</span></span></code></pre></div>
-<p><code>ExploreData</code> is read-only (sandboxed sub-environment of
-<code>.GlobalEnv</code>) and is allowed automatically in
-<code>default</code> permission mode.</p>
-<hr>
+<p>To opt out globally or per project:</p>
+<div class="sourceCode" id="cb2"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>  <span class="dt">"explore_data"</span><span class="fu">:</span> <span class="kw">false</span></span>
+<span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><code>explore_data_tool(envir = .GlobalEnv)</code> exposes three
+model arguments: <code>data_name</code> (required),
+<code>question</code> (optional), and <code>code</code> (optional).
+Without <code>code</code>, it returns
+<code>ellmer::df_schema(df)</code>. With <code>code</code>, it parses
+and evaluates the expression and returns a table artifact for a
+data.frame or text for other results.</p>
+<p>The tool is annotated as read-only and is currently classified as a
+read tool by the central permission gate, so it is allowed without
+prompting unless a host adds a tool override. That classification
+describes intended use; it is not an R sandbox guarantee. See <a href="#security-and-execution-limits">Security and execution
+limits</a>.</p>
 </div>
 <div class="section level2">
-<h2 id="wear-session-dedicated-exploration">WEAR session: dedicated exploration<a class="anchor" aria-label="anchor" href="#wear-session-dedicated-exploration"></a>
+<h2 id="wear-sessions-dedicated-exploration">WEAR sessions: dedicated exploration<a class="anchor" aria-label="anchor" href="#wear-sessions-dedicated-exploration"></a>
 </h2>
-<p><code><a href="../reference/wear_explore.html">wear_explore()</a></code> starts a full exploration session with
-the Write/Execute/Analyze/Regroup loop. On every turn the agent:</p>
+<p><code>wear_explore(data = NULL, client = NULL, mode = c("repl", "shiny"), ...)</code>
+starts a Write/Execute/Analyze/Regroup session. The default mode is
+<code>"repl"</code>. When <code>client</code> is <code>NULL</code>, it
+creates one with <code>permission_mode = "bypass"</code>.
+<code>data = NULL</code> uses <code>.GlobalEnv</code>; an environment is
+used directly; another list-like value is converted with
+<code>list2env(as.list(data), parent = .GlobalEnv)</code>. Use a named
+list so every data.frame has a stable tool-visible name.</p>
+<p>The function then:</p>
+<ol style="list-style-type: decimal">
+<li>registers <code>ExploreData</code> against that environment;</li>
+<li>registers the model-callable <code>GenerateReport</code> tool;</li>
+<li>appends the WEAR system prompt if it is not already present;
+and</li>
+<li>enters <code><a href="../reference/codeagent_console.html">codeagent_console()</a></code> or
+<code><a href="../reference/codeagent_app.html">codeagent_app()</a></code>.</li>
+</ol>
+<p>For each user question the prompt instructs the model to:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>W</strong> — writes dplyr/base R code to answer your
-question</li>
+<strong>W — Write:</strong> generate dplyr/base R code;</li>
 <li>
-<strong>E</strong> — runs it via <code>ExploreData</code>
-</li>
+<strong>E — Execute:</strong> call <code>ExploreData</code>;</li>
 <li>
-<strong>A</strong> — interprets results, flags patterns and
-outliers</li>
+<strong>A — Analyze:</strong> interpret patterns, outliers, and
+unexpected findings; and</li>
 <li>
-<strong>R</strong> — proposes 3-5 follow-up questions</li>
+<strong>R — Regroup:</strong> end every response with exactly three
+numbered suggestions under <strong>Next steps</strong>.</li>
 </ol>
 <pre><code>wear_explore(data = ...)
   - resolve data into an environment
-  - register ExploreData tool (read-only, sandboxed child env)
-  - register /report (GenerateReport) tool
-  - inject the WEAR system prompt
-  - enter codeagent_console()  or  codeagent_app()
+  - register ExploreData for that environment
+  - register GenerateReport
+  - append the WEAR system prompt
+  - enter codeagent_console() or codeagent_app()
 
-Each turn the agent runs the W-E-A-R cycle:
-  W  Write     model writes dplyr / base R code
-  E  Execute   ExploreData: eval in new.env(parent = data env)
-               (read-only: your source data is never mutated)
-                 - code given -&gt; returns table / printed value
-                 - no code    -&gt; returns ellmer::df_schema(df) to plan next step
-  A  Analyze   model interprets the result, flags patterns / outliers
-  R  Regroup   model ends the turn with a "Next steps" list (3-5 items)
+Each turn is prompted to follow W-E-A-R:
+  W  Write     model writes dplyr/base R code
+  E  Execute   ExploreData evaluates code in a new child environment
+                 - code supplied -&gt; table artifact or printed value
+                 - no code       -&gt; ellmer::df_schema(df)
+  A  Analyze   model interprets the result
+  R  Regroup   model ends with "Next steps" and exactly 3 suggestions
        |
-       v  (repeat until you stop)
-  /report -&gt; generate_wear_report(): turns -&gt; Quarto .qmd
-             user Q = "##" heading, tool code -&gt; an {r} chunk, analysis = prose</code></pre>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+       v  repeat until the user stops
+  /report -&gt; model is instructed to call GenerateReport</code></pre>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># CLI session (blocks until you type /exit or Ctrl+C)</span></span>
 <span><span class="fu"><a href="../reference/wear_explore.html">wear_explore</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mtcars <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -201,15 +248,19 @@ Each turn the agent runs the W-E-A-R cycle:
 <span>  data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sales <span class="op">=</span> <span class="va">sales_df</span>, products <span class="op">=</span> <span class="va">products_df</span><span class="op">)</span>,</span>
 <span>  mode <span class="op">=</span> <span class="st">"shiny"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/wear_explore.html">wear_explore()</a></code> invisibly returns the client after the
+interactive frontend ends.</p>
 <div class="section level3">
 <h3 id="exporting-to-quarto">Exporting to Quarto<a class="anchor" aria-label="anchor" href="#exporting-to-quarto"></a>
 </h3>
-<p>Type <code>/report</code> in the chat (or say “export my analysis”)
-to save the session as a reproducible <code>.qmd</code> file. The
-<code>/report</code> command is <strong>only available inside a
-<code><a href="../reference/wear_explore.html">wear_explore()</a></code> session</strong> — it is not registered in
-standard sessions.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<p>In a WEAR session, <code>/report</code> is locally recognized as the
+built-in <code>report</code> skill. The REPL/Shiny skill path expands
+that skill into a model prompt, which instructs the model to call the
+registered <code>GenerateReport</code> tool; it does not invoke the
+exporter directly in local command dispatch. Asking to save or export
+the analysis should invoke the same tool. You can also call
+<code><a href="../reference/generate_wear_report.html">generate_wear_report()</a></code> directly.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Capture the client to generate the report after the session ends</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/wear_explore.html">wear_explore</a></span><span class="op">(</span>data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mtcars <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -221,43 +272,110 @@ standard sessions.</p>
 <span></span>
 <span><span class="co"># Render with the quarto CLI</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/system.html" class="external-link">system</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"quarto render"</span>, <span class="va">path</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>The generated <code>.qmd</code> contains:</p>
-<ul>
-<li>Each user question as a <code>##</code> section heading</li>
-<li>Agent code as <code>```{r}</code> chunks (<code>eval: false</code>
-by default)</li>
-<li>Agent analysis as prose</li>
-<li>YAML front-matter with <code>code-fold: true</code> and
-<code>toc: true</code>
-</li>
-</ul>
-<hr>
+<p><code>generate_wear_report(client, path = ..., title = "Data Exploration Report")</code>
+reads the chat turns and writes YAML with <code>code-fold: true</code>,
+<code>toc: true</code>, and
+<code>execute: {echo: true, eval: false}</code>. User text becomes
+<code>##</code> headings and assistant text becomes prose. Tool-result
+text that does not begin with <code>[</code> is written as a
+blockquote.</p>
+<p>The exporter writes an R code chunk only when a
+<code>ContentToolResult</code> contains <code>extra$code</code>. The
+current <code>ExploreData</code> implementation returns typed artifacts
+but does <strong>not</strong> attach <code>extra$code</code>, so
+ordinary WEAR sessions do not currently preserve the generated query
+code in the <code>.qmd</code>. Consequently, treat the export as a
+conversation report, not a fully reproducible analysis script, unless
+the recorded tool results were produced by a tool that supplies
+<code>extra$code</code>.</p>
 </div>
+</div>
+<div class="section level2">
+<h2 id="describedata-for-protected-datasets">
+<code>DescribeData</code> for protected datasets<a class="anchor" aria-label="anchor" href="#describedata-for-protected-datasets"></a>
+</h2>
+<p><code>DescribeData</code> is distinct from <code>ExploreData</code>.
+It is installed by an active Data Shield when the describe strategy is
+enabled, and it only describes data.frames registered on that shield. It
+accepts an optional <code>data_name</code>; omission is allowed when
+exactly one protected dataset is registered.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">shield</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/DataShield.html">DataShield</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span>strategies <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>max_rows <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="../reference/shield_regex.html">shield_regex</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"redact"</span><span class="op">)</span></span>
+<span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">shield</span><span class="op">$</span><span class="fu">register_data</span><span class="op">(</span><span class="va">mtcars</span>, name <span class="op">=</span> <span class="st">"cars"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span>data_shield <span class="op">=</span> <span class="va">shield</span><span class="op">)</span></span>
+<span><span class="co"># The model can call DescribeData(data_name = "cars").</span></span></code></pre></div>
+<p>With <code><a href="../reference/shield_describe.html">shield_describe()</a></code> defaults
+(<code>distributions = "off"</code>, <code>k_anon = 5</code>,
+<code>category_max = 20</code>, <code>category_ratio = 0.2</code>),
+<code>DescribeData</code> returns filtered schema information,
+sensitivity classes, missingness presence, safe numeric/date ranges, and
+sufficiently supported low-cardinality labels. It returns no rows,
+free-text examples, distributions, or category counts. Identifier and
+quasi-identifier values are suppressed and rare labels become
+<code>&lt;rare suppressed&gt;</code>.</p>
+<p><code>distributions = "on"</code> explicitly enables real
+per-category counts. <code>distributions = "dp"</code> emits
+Laplace-noised category counts and consumes the per-dataset budget
+(<code>dp_epsilon = 1</code>, <code>dp_budget = 5</code> by default),
+then silently degrades to labels-only output after exhaustion.
+Numeric/date summaries are unchanged by these distribution modes.</p>
+<p>When a shield is supplied to <code><a href="../reference/codeagent_client.html">codeagent_client()</a></code>,
+filtered schemas for datasets registered before client construction are
+also placed in the system prompt. Building that schema block uses the
+same DP describe path: in <code>"dp"</code> mode it consumes and
+persists <code>dp_epsilon</code> for each eligible categorical column.
+Consequently, initial prompt construction and repeated
+<code>refresh_data_shield_context(client)</code> calls can exhaust the
+dataset budget. After registering runtime uploads, call
+<code>refresh_data_shield_context(client)</code> to refresh that prompt
+context. <code>DescribeData</code> remains the live authoritative
+fallback.</p>
+<p>Do not register protected data only with <code>ExploreData</code>: it
+can execute arbitrary R and can return row-level values. Data Shield
+wraps tool egress and adds the protected-data metadata path, but the
+shield must be configured and the dataset must be registered before
+relying on those controls.</p>
 </div>
 <div class="section level2">
 <h2 id="environment-context-injection">Environment context injection<a class="anchor" aria-label="anchor" href="#environment-context-injection"></a>
 </h2>
-<p>Enable automatic schema injection so the agent always knows what
-data.frames are in <code>.GlobalEnv</code> without an explicit tool
-call:</p>
-<div class="sourceCode" id="cb5"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>  <span class="dt">"inject_r_env"</span><span class="fu">:</span> <span class="kw">true</span></span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
-<hr>
+<p>This independent setting adds <code>.GlobalEnv</code> object names
+and data.frame schemas to the first system reminder so the model knows
+what exists without first calling a tool:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="er">//</span> <span class="er">~/.codeagent/settings.json</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="dt">"inject_r_env"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>It does not register data with Data Shield and does not change
+<code>ExploreData</code> execution semantics.</p>
 </div>
 <div class="section level2">
-<h2 id="security">Security<a class="anchor" aria-label="anchor" href="#security"></a>
+<h2 id="security-and-execution-limits">Security and execution limits<a class="anchor" aria-label="anchor" href="#security-and-execution-limits"></a>
 </h2>
-<p><code>ExploreData</code> runs code in a
-<strong>sub-environment</strong> that shares bindings with
-<code>.GlobalEnv</code> but cannot assign back to it (copy-on-modify
-semantics). Mutations (<code>df$x &lt;- ...</code>) affect only the
-sandboxed copy, never your original data.</p>
-<p>The tool is marked <code>read_only_hint = TRUE</code> and does not
-have access to the file system or network. For full capabilities, use
-the standard <code>RunR</code> tool (subject to its own permission
-gate).</p>
+<p><code>ExploreData</code> evaluates model-generated R with
+<code>eval(parse(...))</code> in a new environment whose parent is the
+supplied data environment. It binds the selected data.frame in that
+child. Ordinary replacement such as <code>df$x &lt;- ...</code> uses the
+child binding/copy-on-modify and is tested not to change the source
+data.frame.</p>
+<p>However, this is namespace isolation, <strong>not a security
+sandbox</strong>. The evaluated code can resolve functions through
+parent environments and can potentially use explicit parent assignment,
+mutable/reference objects, filesystem functions, process execution, or
+network functions available in the R process. The
+<code>read_only_hint = TRUE</code> and
+<code>open_world_hint = FALSE</code> annotations are metadata, not
+enforcement. Use only with a trusted model and environment, add an
+explicit permission override if required by the host, and use Data
+Shield/ <code>DescribeData</code> rather than <code>ExploreData</code>
+for protected data. The general <code>RunR</code> tool remains
+separately classified as execution-capable and goes through its own
+permission decision.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

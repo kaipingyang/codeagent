@@ -1,5 +1,8 @@
 # Embedding codeagent as a backend (Contract v1)
 
+**Language:** English \|
+[简体中文](https://kaipingyang.github.io/codeagent/articles/backend-integration-cn.md)
+
 This vignette describes the **stable public interface** for embedding
 codeagent as the engine behind a host application (a Shiny app, an API
 service, another package). The host keeps full ownership of its **UI,
@@ -28,8 +31,9 @@ reference lives at
 Pass your own
 [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html) and
 set `register_tools = FALSE` so **none** of codeagent’s coding tools
-(Bash / Write / Edit / Glob / Grep / git / web) are attached — you get
-only the harness.
+(Bash / Write / Edit / Glob / Grep / git / web) are attached. You get
+the client state and harness pipeline without registered tools or an
+installed permission gate.
 
 ``` r
 
@@ -49,10 +53,12 @@ client <- codeagent::codeagent_client(
 
 [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
 returns a `CodeagentClient` with `$chat`, `$settings`, and
-`$data_shield` (`NULL` unless enabled). For multi-user Shiny apps,
-create the client inside the server session (for example via
-`codeagent_app(client_factory=)`), never share one mutable client across
-browser sessions.
+`$data_shield` (`NULL` unless enabled). If a Data Shield is enabled on a
+harness-only client, attach the host tools first and then install the
+returned shield on the chat. For multi-user Shiny apps, create the
+client inside the server session (for example via
+`codeagent_app(client_factory = )`); never share one mutable client
+across browser sessions.
 
 ## 2. Driving a turn + the callback contract
 
@@ -61,20 +67,21 @@ Use
 (blocking; pumps its own event loop) or
 [`codeagent_stream_async()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.md)
 (returns a promise). Rendering happens entirely through **typed
-callbacks** — codeagent does not touch your UI.
+callbacks** – codeagent does not touch your UI.
 
 ``` r
 
-codeagent::codeagent_stream(
+result <- codeagent::codeagent_stream(
   client, user_input,
-  on_delta        = function(text_chunk) { ... },  # incremental assistant text
-  on_thinking     = function(chunk)      { ... },  # reasoning / thinking content
-  on_tool_request = function(x)          { ... },  # list(id, name, arguments, intent)
-  on_tool_result  = function(x)          { ... },  # list(id, name, display, value, is_error, artifact)
-  on_usage        = function(usage)      { ... },  # token usage
-  on_tick         = function()           { ... }   # ~100 ms heartbeat (spinners)
+  on_delta        = function(text_chunk)       { ... }, # assistant text
+  on_thinking     = function(chunk)            { ... }, # thinking content
+  on_tool_request = function(x)                { ... }, # id, name, arguments, intent
+  on_tool_result  = function(x)                { ... }, # six fields; see below
+  on_error        = function(message, recovered) { ... },
+  on_usage        = function(usage)            { ... }, # end-of-turn usage
+  on_tick         = function()                 { ... }  # sync only; ~100 ms heartbeat
 )
-# returns invisibly: list(text, usage, stop_reason)
+# returns invisibly: list(text, usage, stop_reason, finish_reason)
 ```
 
 Callback payloads:
@@ -83,12 +90,17 @@ Callback payloads:
 |----|----|
 | `on_delta` | `text_chunk` (character) |
 | `on_thinking` | thinking chunk |
-| `on_tool_request` | `list(id, name, arguments, intent)` — fires **before** the gate |
-| `on_tool_result` | `list(id, name, display, value, is_error, artifact)` — `artifact` is appended after the five original fields |
-| `on_usage` | usage object |
-| `on_tick` | none |
+| `on_tool_request` | `list(id, name, arguments, intent)` – fires **before** the gate |
+| `on_tool_result` | `list(id, name, display, value, is_error, artifact)` in that exact order; `artifact` is appended after the five original fields |
+| `on_error` | `message, recovered` |
+| `on_usage` | usage object, including `n_tokens`, `model_limit`, `warning_state`, and `cost_last` |
+| `on_tick` | no arguments; available on synchronous [`codeagent_stream()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream.md) only |
 
-## 3. Rich tool results (text / table / image / error)
+The asynchronous function resolves to the same four-field result.
+Provider finish reasons are normalized into `stop_reason`; the original
+mapped provider value is retained as `finish_reason`.
+
+## 3. Rich tool results (text / table / image / code / diff / error)
 
 A tool’s `value` is the portable text the model sees and the final
 fallback for all UIs. To also expose a **rich, UI-neutral artifact**,
@@ -115,26 +127,32 @@ my_tool <- ellmer::tool(
       title   = "Summary"
     )
   },
-  name = "Summarise", description = "...", arguments = list(...)
+  name = "Summarise",
+  description = "Summarise a named dataset.",
+  arguments = list(
+    name = ellmer::type_string("Dataset name.")
+  )
 )
 ```
 
 The version-1 artifact is available as `extra$codeagent$artifact` on a
 result and as `artifact` on the stream event. Hosts should use
 `tool_result_artifact(event_or_result)` rather than reaching into either
-structure directly. It validates the supported version and returns
-`NULL` for unknown or malformed artifacts, allowing a safe fallback
-through `tool_result_value(event_or_result)`.
+structure directly. It validates the schema and outer shape and, by
+default, accepts version 1 only. It returns `NULL` for unknown or
+malformed artifacts, allowing a safe fallback through
+`tool_result_value(event_or_result)`.
 
-| `kind`  | `payload`                                         |
-|---------|---------------------------------------------------|
-| `text`  | `list(text=)`                                     |
-| `table` | `list(df = <data.frame>)`                         |
-| `image` | `list(images = list(list(mime=, b64=)), output=)` |
-| `code`  | `list(text=, lang=, filename=, output=)`          |
-| `error` | `list(message=, detail=)`                         |
+| `kind`  | Typical `payload`                                       |
+|---------|---------------------------------------------------------|
+| `text`  | `list(text = )`                                         |
+| `table` | `list(df = <data.frame>)`                               |
+| `image` | `list(images = list(list(mime = , b64 = )), output = )` |
+| `code`  | `list(text = , lang = , filename = , output = )`        |
+| `diff`  | `list(old = , new = , path = )`                         |
+| `error` | `list(message = , detail = )`                           |
 
-A non-Shiny host renders the artifact itself, e.g.:
+A non-Shiny host renders the artifact itself, for example:
 
 ``` r
 
@@ -148,6 +166,11 @@ on_tool_result <- function(event) {
 }
 ```
 
+See
+[`vignette("tool-artifacts")`](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.md)
+for version negotiation, failure behavior, and the browser trust
+boundary.
+
 ## 4. Host tools + the permission gate
 
 Register your tools the standard ellmer way, then **declare each tool’s
@@ -156,75 +179,92 @@ capability** so the central gate governs it like a native tool.
 ``` r
 
 chat$register_tool(my_tool)
-codeagent::register_tool_meta("RunAnalysis", capability = "exec")  # read|write|exec|net
+codeagent::register_tool_meta("Summarise", capability = "read") # read|write|exec|net
 ```
 
 On a harness-only client (`register_tools = FALSE`) the gate is **not**
-installed automatically — install it once, after attaching your tools,
-so they are governed and approvals route to your `ask_fn`:
+installed automatically. Install it after attaching your tools so
+approvals route to your `ask_fn`. The public `tools` argument is the
+standalone equivalent of `settings$tools`:
 
 ``` r
+
+tool_policy <- list(
+  overrides    = list(Summarise = "allow"),       # allow | ask | deny
+  capabilities = list(exec = "ask", net = "deny")
+)
 
 codeagent::install_permission_gate(
   chat,
   permission_mode = "default",
-  tool_meta = list(RunAnalysis = "exec"),      # optional: declare capabilities here
-  ask_fn = function(name, input, id = NULL) {   # `id` = tool-call id, matches on_tool_request
-    host_request_approval(id, name, input)       # return a logical or a promise<logical>
+  tools = tool_policy,
+  # Alternatively classify tools here instead of register_tool_meta():
+  tool_meta = list(Summarise = "read"),
+  ask_fn = function(name, input, id = NULL) {
+    host_request_approval(id, name, input) # logical or promise<logical>
   }
 )
 ```
 
+The optional `id` is the tool-call ID and matches `on_tool_request$id`.
+[`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
+is idempotent per chat: another call refreshes its live mode, approval
+callback, and policy rather than stacking another gate.
+
 > **Important:** an *undeclared* tool defaults to capability `"read"`
-> and is allowed **without gating**. If your tool executes code, writes
-> files, or hits the network, declare it (`"exec"`/`"write"`/`"net"`) so
-> the gate can `ask` or `deny` it. Built-in tool metadata stays
-> authoritative.
+> and is allowed without sensitive-operation gating. If your tool
+> executes code, writes files, or accesses the network, declare it as
+> `"exec"`, `"write"`, or `"net"` so the gate can ask or deny it.
+> Built-in metadata remains authoritative and cannot be downgraded by
+> host registration.
 
-Fine-grained control is available through `settings$tools`:
-
-``` r
-
-settings$tools <- list(
-  overrides    = list(RunAnalysis = "ask"),      # per-tool: allow | ask | deny
-  capabilities = list(exec = "ask", net = "deny")# per-capability policy
-)
-```
+Policy precedence is per-tool `overrides`, then per-capability policy,
+then the active permission mode and rules. The complete policy shape is
+`sets` / `capabilities` / `overrides`; pass it as `tools =` to the
+standalone installer or configure it as `settings$tools` on a full
+codeagent client.
 
 ## 5. Skills
 
-Point codeagent at your own `<name>/SKILL.md` directories (scanned under
-`cwd`). Skill *content* is yours; codeagent only loads and injects it.
+Place host skills in a supported project-local skill directory using the
+`<name>/SKILL.md` format (for example, `.btw/skills/my_skill/SKILL.md`).
+Skill *content* is yours; codeagent only discovers, loads, and injects
+it.
 
 ``` r
 
-codeagent::list_skills_meta(cwd = getwd())
-codeagent::load_skill_prompt("my_skill", cwd = getwd())
-codeagent::build_skill_hint(...)
+skills <- codeagent::list_skills_meta(cwd = getwd())
+prompt <- codeagent::load_skill_prompt(
+  "my_skill", args = "optional arguments", cwd = getwd()
+)
+hint <- codeagent::build_skill_hint(cwd = getwd(), max_tokens = 1000L)
 ```
 
 ## 6. Provider
 
-`chat` accepts any
+`codeagent_client(chat = )` accepts any
 [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
-(OpenAI-compatible, Databricks, Anthropic, Gemini, Bedrock, Azure, …) —
-or any object exposing `$stream_async()`. The host owns and supplies
-credentials; codeagent never reads them.
+(OpenAI-compatible, Databricks, Anthropic, Gemini, Bedrock, Azure, and
+others). The lower-level stream functions also accept a bare
+[`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html);
+list-based `$stream_async` duck typing exists for tests, not as the
+client-construction contract. The host owns and supplies credentials;
+codeagent uses the supplied Chat rather than owning those credentials.
 
 ## 7. Versioning
 
-Backend Contract **v1** = the symbols below, with the signatures
-documented above. Changes follow semantic versioning; breaking changes
-bump the major and are announced in `NEWS.md`. The guard test
-`test-backend-contract.R` fails if this surface drifts.
+Backend Contract **v1** is the surface below, with the signatures and
+behavior documented above. Changes follow semantic versioning; breaking
+changes bump the major and are announced in `NEWS.md`. The guard test
+`test-backend-contract.R` fails if the exported surface drifts.
 
-- `codeagent_client(register_tools = FALSE)` →
+- `codeagent_client(register_tools = FALSE)` -\>
   `{chat, settings, data_shield}`
 - `codeagent_app(client_factory = )` per-session client contract
 - [`codeagent_stream()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream.md)
   /
   [`codeagent_stream_async()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.md) +
-  callbacks + `list(text, usage, stop_reason)`
+  callbacks + `list(text, usage, stop_reason, finish_reason)`
 - [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md)
 - [`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md)
 - [`tool_result_artifact()`](https://kaipingyang.github.io/codeagent/reference/tool_result_artifact.md)

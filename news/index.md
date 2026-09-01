@@ -2,6 +2,15 @@
 
 ## codeagent (development version)
 
+### Documentation
+
+- Audited every pkgdown article against the current implementation,
+  corrected stale API/default/behavior descriptions, and added complete
+  Simplified Chinese counterparts with reciprocal language links and a
+  dedicated Chinese documentation group.
+- Fixed the WEAR report tool to register under the stable
+  `GenerateReport` name expected by the built-in `/report` skill.
+
 ### Upstream integration
 
 - Re-pinned ellmer to GitHub HEAD

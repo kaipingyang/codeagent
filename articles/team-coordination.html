@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,44 +93,79 @@
 
     
     
+<blockquote>
+<p><strong>Language:</strong> English | <a href="team-coordination-cn.html">简体中文</a></p>
+</blockquote>
 <div class="section level2">
 <h2 id="overview">Overview<a class="anchor" aria-label="anchor" href="#overview"></a>
 </h2>
-<p>codeagent supports running multiple independent sub-agents in
-parallel for tasks that can be divided and executed concurrently.</p>
+<p>codeagent provides several distinct ways to delegate work. Choose one
+according to whether tasks are independent, dependency-constrained,
+foreground, or truly non-blocking:</p>
+<ul>
+<li>
+<code><a href="../reference/team_run.html">team_run()</a></code> is fixed fan-out for independent tasks. It
+runs workers in parallel but waits for every result before
+returning.</li>
+<li>
+<code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> is a blocking work-stealing pool
+backed by a shared SQLite task board. It supports a dependency DAG and
+uneven task durations.</li>
+<li>
+<code><a href="../reference/team_lead.html">team_lead()</a></code> asks an LLM lead to decompose, review, and
+optionally re-plan a goal over several blocking
+<code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> rounds.</li>
+<li>The foreground <code>Agent</code> tool delegates one subtask. On an
+async parent turn, opt-in async sub-agents can run multiple
+<code>Agent</code> calls concurrently.</li>
+<li>
+<code>BackgroundAgent</code> and <code>/bg</code> are
+fire-and-forget paths whose results are surfaced on a later turn.</li>
+</ul>
+<p><code><a href="../reference/team_run.html">team_run()</a></code> and <code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> require
+<code>mirai</code>. Board operations require <code>DBI</code> and
+<code>RSQLite</code>. Their worker permission mode defaults to
+<code>"bypass"</code> because daemon processes cannot answer interactive
+approval prompts; use that default only for tasks and environments you
+trust.</p>
 </div>
 <div class="section level2">
 <h2 id="coordination-at-a-glance">Coordination at a glance<a class="anchor" aria-label="anchor" href="#coordination-at-a-glance"></a>
 </h2>
-<pre><code>team_run(tasks)                    FIXED FAN-OUT (worker i = task i)
-  crew / mirai: run_one(task) = codeagent_client() + codeagent(task)
-  -&gt; collect results in order
+<pre><code>team_run(tasks)                       FIXED FAN-OUT (blocking caller)
+  N mirai daemons; one codeagent query per task
+  -&gt; wait for all tasks -&gt; list of results in input order
 
-team_coordinate(tasks, blocked_by)   WORK-STEALING over a SQLite board
-  board_create(): tasks + deps (DAG) + messages tables
-  seed tasks (add, then wire blocked_by by index) + toposort (reject cycles)
-  N workers, each:  repeat {
-     board_claim()  -- BEGIN IMMEDIATE: lowest pending id whose blockers are done
-        | none claimable
-        +- pending == 0            -&gt; all done, break
-        +- board_reclaim_stale()   -&gt; reclaim a crashed worker's task
-        +- stalled (dead-end)      -&gt; break
-        +- else Sys.sleep(backoff) -&gt; retry   (a blocker still running)
-     run codeagent(task) -&gt; board_complete(result) -&gt; board_send_message()
+team_coordinate(tasks, blocked_by)   WORK-STEALING (blocking caller)
+  board_create(): tasks + deps + messages tables in SQLite
+  seed all tasks -&gt; wire blocked_by indices -&gt; reject dependency cycles
+  N workers, each: repeat {
+    board_claim() -- atomic claim of lowest-id eligible pending task
+      | none claimable
+      +- no unfinished tasks       -&gt; break
+      +- reclaim stale claims      -&gt; retry abandoned work
+      +- board is truly stalled    -&gt; break
+      +- blocker still running     -&gt; sleep(backoff), then retry
+    run codeagent(task)
+    board_complete(result)
+    board_send_message("completed task", recipient = "coordinator")
   }
-  -&gt; board_status() data.frame (id, prompt, owner, status, result)
+  -&gt; wait for workers -&gt; final board data.frame
 
-team_lead(goal, max_rounds)        LLM-LEAD loop
-  decompose (chat_structured -&gt; tasks + DAG)
-    -&gt; team_coordinate(...)              (runs the work-stealing board above)
-    -&gt; review (chat_structured: done? follow-up tasks?)
-    -&gt; replan -&gt; next round              (until done or max_rounds)</code></pre>
+team_lead(goal, max_rounds)           LLM-LEAD LOOP (blocking caller)
+  structured decomposition -&gt; tasks + dependency DAG
+  -&gt; team_coordinate(...)
+  -&gt; structured review: done or follow-up tasks
+  -&gt; repeat with a new board until done, no tasks, or max_rounds</code></pre>
 </div>
 <div class="section level2">
-<h2 id="fixed-fan-out-team_run">Fixed fan-out: team_run()<a class="anchor" aria-label="anchor" href="#fixed-fan-out-team_run"></a>
+<h2 id="fixed-fan-out-team_run">Fixed fan-out: <code>team_run()</code><a class="anchor" aria-label="anchor" href="#fixed-fan-out-team_run"></a>
 </h2>
-<p><code><a href="../reference/team_run.html">team_run()</a></code> assigns one task per worker and collects all
-results:</p>
+<p><code>team_run(tasks, model = NULL, n_workers = NULL, permission_mode = "bypass", cwd = getwd())</code>
+creates a fresh client for every task and returns a list in the same
+order as <code>tasks</code>. A failed task is represented by an
+<code>"[Error] ..."</code> string rather than aborting the whole result
+collection.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://kaipingyang.github.io/codeagent">codeagent</a></span><span class="op">)</span></span>
 <span></span>
@@ -132,15 +179,36 @@ results:</p>
 <span><span class="co"># Each element of results is the agent's response for that task</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">results</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
 <p>Worker count defaults to
-<code>min(#tasks, parallelly::availableCores())</code> to respect
-container CPU limits.</p>
+<code>min(length(tasks), parallelly::availableCores())</code>, with a
+conservative fallback when <code>parallelly</code> is unavailable. An
+explicit <code>n_workers</code> is capped at the same cgroup-aware
+limit. <code><a href="../reference/team_run.html">team_run()</a></code> has no worktree argument, so tasks that
+write to the same checkout can collide; reserve it for independent
+read-only work or otherwise isolated resources.</p>
 </div>
 <div class="section level2">
-<h2 id="work-stealing-team_coordinate">Work-stealing: team_coordinate()<a class="anchor" aria-label="anchor" href="#work-stealing-team_coordinate"></a>
+<h2 id="work-stealing-team_coordinate">Work-stealing: <code>team_coordinate()</code><a class="anchor" aria-label="anchor" href="#work-stealing-team_coordinate"></a>
 </h2>
-<p><code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> uses a shared SQLite task board where
-workers claim tasks dynamically – faster workers take more tasks:</p>
+<p>The current signature is:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span></span>
+<span>  <span class="va">tasks</span>,</span>
+<span>  model <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  n_workers <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  permission_mode <span class="op">=</span> <span class="st">"bypass"</span>,</span>
+<span>  cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  blocked_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  worktree <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  backoff <span class="op">=</span> <span class="fl">0.5</span>,</span>
+<span>  reclaim_timeout <span class="op">=</span> <span class="fl">300</span>,</span>
+<span>  db_path <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".sqlite"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Workers repeatedly claim work, so a faster worker can process more
+than one item. The function itself waits for all worker loops before
+returning the final board with columns <code>id</code>,
+<code>prompt</code>, <code>owner</code>, <code>status</code>, and
+<code>result</code>.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">results_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span></span>
 <span>  tasks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"task 1"</span>, <span class="st">"task 2"</span>, <span class="st">"task 3"</span>, <span class="st">"task 4"</span>, <span class="st">"task 5"</span><span class="op">)</span>,</span>
 <span>  n_workers <span class="op">=</span> <span class="fl">2</span></span>
@@ -148,10 +216,62 @@ workers claim tasks dynamically – faster workers take more tasks:</p>
 <span><span class="co"># Returns a data.frame with columns: id, prompt, owner, status, result</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">results_df</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"prompt"</span>, <span class="st">"status"</span>, <span class="st">"owner"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
+<h3 id="dependencies">Dependencies<a class="anchor" aria-label="anchor" href="#dependencies"></a>
+</h3>
+<p><code>blocked_by[[i]]</code> contains 1-based indices into
+<code>tasks</code>. A task is claimable only when every valid blocker is
+<code>done</code>. Cycles are rejected before workers launch;
+out-of-range indices and self-dependencies are ignored.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dag_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span></span>
+<span>  tasks <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span></span>
+<span>    <span class="st">"Create the schema"</span>,</span>
+<span>    <span class="st">"Implement against the schema"</span>,</span>
+<span>    <span class="st">"Run integration checks"</span></span>
+<span>  <span class="op">)</span>,</span>
+<span>  blocked_by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">integer</a></span><span class="op">(</span><span class="fl">0</span><span class="op">)</span>, <span class="fl">1L</span>, <span class="fl">2L</span><span class="op">)</span>,</span>
+<span>  n_workers <span class="op">=</span> <span class="fl">2</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Claims use a <code>BEGIN IMMEDIATE</code> SQLite transaction and
+select the lowest-id eligible task, so dependency-free boards are FIFO.
+If no task is claimable, workers distinguish a completed board, an
+in-progress blocker, and a true stall. Idle live workers reclaim claims
+older than <code>reclaim_timeout</code>; if every worker process has
+died, no process remains to perform that reclamation.</p>
+</div>
+<div class="section level3">
+<h3 id="worktree-isolation">Worktree isolation<a class="anchor" aria-label="anchor" href="#worktree-isolation"></a>
+</h3>
+<p>Set <code>worktree = TRUE</code> to request one temporary detached
+Git worktree per worker:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">review</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Inspect module A"</span>, <span class="st">"Inspect module B"</span><span class="op">)</span>,</span>
+<span>  n_workers <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  worktree <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>This is best-effort: when Git or a repository worktree is
+unavailable, the worker falls back to <code>cwd</code>. Temporary
+worktrees are force-removed when workers exit. codeagent does not merge
+or copy edits back, so use this mode for isolated analysis unless
+another explicit workflow preserves the changes.</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="the-shared-task-board">The shared task board<a class="anchor" aria-label="anchor" href="#the-shared-task-board"></a>
+</h2>
+<p><code>board_create(db_path = tempfile(fileext = ".sqlite"))</code>
+creates <code>tasks</code>, <code>deps</code>, and <code>messages</code>
+tables and invisibly returns the database path.
+<code><a href="../reference/board_claim.html">board_claim()</a></code> is atomic across processes.
+<code><a href="../reference/board_complete.html">board_complete()</a></code> records a result, and
+<code><a href="../reference/board_status.html">board_status()</a></code> returns the current task table.</p>
+<div class="section level3">
 <h3 id="inter-agent-messaging">Inter-agent messaging<a class="anchor" aria-label="anchor" href="#inter-agent-messaging"></a>
 </h3>
-<p>The shared board also supports messages between agents:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<p>The shared board also supports broadcast and directed message
+records:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/board_create.html">board_create</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/board_add_task.html">board_add_task</a></span><span class="op">(</span><span class="va">db</span>, <span class="st">"analyse the sales data"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/board_add_task.html">board_add_task</a></span><span class="op">(</span><span class="va">db</span>, <span class="st">"generate the summary report"</span><span class="op">)</span></span>
@@ -163,18 +283,86 @@ workers claim tasks dynamically – faster workers take more tasks:</p>
 <span></span>
 <span><span class="co"># Complete with result</span></span>
 <span><span class="fu"><a href="../reference/board_complete.html">board_complete</a></span><span class="op">(</span><span class="va">db</span>, <span class="va">task</span><span class="op">$</span><span class="va">id</span>, result <span class="op">=</span> <span class="st">"Analysis complete: 3 trends found"</span><span class="op">)</span></span></code></pre></div>
+<p><code>recipient = NULL</code> creates a broadcast.
+<code>board_messages(db, "coordinator")</code> returns broadcasts plus
+messages addressed to that recipient, while
+<code>board_messages(db)</code> returns the entire log. These messages
+are not automatically inserted into worker prompts: the built-in
+coordinator writes a completion notice but does not use the message
+table as an agent conversation channel.</p>
+</div>
+<div class="section level3">
+<h3 id="watching-and-displaying-a-board">Watching and displaying a board<a class="anchor" aria-label="anchor" href="#watching-and-displaying-a-board"></a>
+</h3>
+<p><code>board_watch(db, callback, latency = 0.3)</code> starts an
+event-driven file watcher when the optional <code>watcher</code> package
+is available and otherwise returns <code>NULL</code>.
+<code>team_dashboard(db_path, poll_ms = 1500L)</code> uses that watcher
+and falls back to polling. To observe a live
+<code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> run, pass a stable <code>db_path</code>
+and run the blocking coordinator in another process or background
+job.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempfile</a></span><span class="op">(</span>fileext <span class="op">=</span> <span class="st">".sqlite"</span><span class="op">)</span></span>
+<span><span class="co"># In another R process:</span></span>
+<span><span class="co"># team_coordinate(c("A", "B", "C"), db_path = db)</span></span>
+<span><span class="fu"><a href="../reference/team_dashboard.html">team_dashboard</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span></code></pre></div>
 </div>
 </div>
 <div class="section level2">
-<h2 id="sub-agents-in-the-shiny-app">Sub-agents in the Shiny app<a class="anchor" aria-label="anchor" href="#sub-agents-in-the-shiny-app"></a>
+<h2 id="llm-led-rounds-team_lead">LLM-led rounds: <code>team_lead()</code><a class="anchor" aria-label="anchor" href="#llm-led-rounds-team_lead"></a>
 </h2>
-<p>The agent can invoke sub-agents via the <code>Agent</code> tool
-directly from the chat. Enable it by registering the agent tool:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<p><code>team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "bypass", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)</code>
+first asks the lead model for structured tasks and dependencies. The
+three callback arguments are injectable seams primarily used for testing
+or custom orchestration. After each coordinated round it asks whether
+the goal is complete and, if needed, runs only the follow-up plan.
+Non-empty executed boards are row-bound with a <code>round</code>
+column; if decomposition produces no tasks before any round, the empty
+return has only the base board columns. <code>max_rounds</code> is
+coerced to at least one. A review error is handled as “done,” so it
+stops rather than retrying indefinitely.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lead_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/team_lead.html">team_lead</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Review the parser, fix confirmed defects, and verify the focused tests"</span>,</span>
+<span>  max_rounds <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  n_workers <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  worktree <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="foreground-concurrent-and-background-sub-agents">Foreground, concurrent, and background sub-agents<a class="anchor" aria-label="anchor" href="#foreground-concurrent-and-background-sub-agents"></a>
+</h2>
+<p>The agent can invoke the foreground <code>Agent</code> tool from
+chat. The normal path is synchronous. Worktree isolation is configured
+on the client and forces codeagent’s owned Agent implementation, which
+creates and cleans a temporary worktree:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>,</span>
 <span>  permission_mode <span class="op">=</span> <span class="st">"bypass"</span>,</span>
 <span>  worktree_isolation <span class="op">=</span> <span class="cn">TRUE</span>   <span class="co"># each sub-agent in its own git worktree</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>As with team worktrees, this is best-effort and does not merge edits
+into the main checkout.</p>
+<p><code><a href="../reference/team_run.html">team_run()</a></code> and <code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> use
+parallel workers internally but remain blocking APIs. A different opt-in
+setting, <code>async_subagents</code>, lets multiple foreground
+<code>Agent</code> tool calls return promises and execute concurrently
+only when the parent is already running through an async streaming turn.
+Sync one-shot/console turns fall back to the synchronous Agent path.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a>  <span class="dt">"async_subagents"</span><span class="fu">:</span> <span class="kw">true</span><span class="fu">,</span></span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>  <span class="dt">"background_agents"</span><span class="fu">:</span> <span class="kw">true</span></span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p><code>background_agents = true</code> registers the model-facing
+<code>BackgroundAgent</code> tool. It returns a task id immediately; an
+in-memory registry polls the dedicated <code>mirai</code> compute
+profile and injects each completed result into a later system reminder
+once. The <code>/bg &lt;task&gt;</code> and <code>/bgstatus</code> local
+commands expose the same background registry. Background agents are
+disabled while Data Shield is active because a separate process cannot
+safely inherit the live protected-data index; use the foreground
+<code>Agent</code> tool in that case.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

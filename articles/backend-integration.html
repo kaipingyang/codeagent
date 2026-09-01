@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,6 +93,7 @@
 
     
     
+<p><strong>Language:</strong> English | <a href="backend-integration-cn.html">简体中文</a></p>
 <p>This vignette describes the <strong>stable public interface</strong>
 for embedding codeagent as the engine behind a host application (a Shiny
 app, an API service, another package). The host keeps full ownership of
@@ -138,7 +151,8 @@ runnable reference lives at
 <p>Pass your own <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> and set
 <code>register_tools = FALSE</code> so <strong>none</strong> of
 codeagent’s coding tools (Bash / Write / Edit / Glob / Grep / git / web)
-are attached — you get only the harness.</p>
+are attached. You get the client state and harness pipeline without
+registered tools or an installed permission gate.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_openai_compatible.html" class="external-link">chat_openai_compatible</a></span><span class="op">(</span></span>
 <span>  base_url    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"MY_BASE_URL"</span><span class="op">)</span>,</span>
@@ -155,29 +169,31 @@ are attached — you get only the harness.</p>
 <p><code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> returns a
 <code>CodeagentClient</code> with <code>$chat</code>,
 <code>$settings</code>, and <code>$data_shield</code> (<code>NULL</code>
-unless enabled). For multi-user Shiny apps, create the client inside the
-server session (for example via
-<code>codeagent_app(client_factory=)</code>), never share one mutable
-client across browser sessions.</p>
+unless enabled). If a Data Shield is enabled on a harness-only client,
+attach the host tools first and then install the returned shield on the
+chat. For multi-user Shiny apps, create the client inside the server
+session (for example via <code>codeagent_app(client_factory = )</code>);
+never share one mutable client across browser sessions.</p>
 </div>
 <div class="section level2">
 <h2 id="driving-a-turn-the-callback-contract">2. Driving a turn + the callback contract<a class="anchor" aria-label="anchor" href="#driving-a-turn-the-callback-contract"></a>
 </h2>
 <p>Use <code><a href="../reference/codeagent_stream.html">codeagent_stream()</a></code> (blocking; pumps its own event
 loop) or <code><a href="../reference/codeagent_stream_async.html">codeagent_stream_async()</a></code> (returns a promise).
-Rendering happens entirely through <strong>typed callbacks</strong> —
+Rendering happens entirely through <strong>typed callbacks</strong> –
 codeagent does not touch your UI.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/codeagent_stream.html">codeagent_stream</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/codeagent_stream.html">codeagent_stream</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>, <span class="va">user_input</span>,</span>
-<span>  on_delta        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">text_chunk</span><span class="op">)</span> <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># incremental assistant text</span></span>
-<span>  on_thinking     <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">chunk</span><span class="op">)</span>      <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># reasoning / thinking content</span></span>
-<span>  on_tool_request <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>          <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># list(id, name, arguments, intent)</span></span>
-<span>  on_tool_result  <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>          <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># list(id, name, display, value, is_error, artifact)</span></span>
-<span>  on_usage        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">usage</span><span class="op">)</span>      <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># token usage</span></span>
-<span>  on_tick         <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span>           <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>   <span class="co"># ~100 ms heartbeat (spinners)</span></span>
+<span>  on_delta        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">text_chunk</span><span class="op">)</span>       <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>, <span class="co"># assistant text</span></span>
+<span>  on_thinking     <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">chunk</span><span class="op">)</span>            <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>, <span class="co"># thinking content</span></span>
+<span>  on_tool_request <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>                <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>, <span class="co"># id, name, arguments, intent</span></span>
+<span>  on_tool_result  <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>                <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>, <span class="co"># six fields; see below</span></span>
+<span>  on_error        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">message</span>, <span class="va">recovered</span><span class="op">)</span> <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,</span>
+<span>  on_usage        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">usage</span><span class="op">)</span>            <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>, <span class="co"># end-of-turn usage</span></span>
+<span>  on_tick         <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span>                 <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>  <span class="co"># sync only; ~100 ms heartbeat</span></span>
 <span><span class="op">)</span></span>
-<span><span class="co"># returns invisibly: list(text, usage, stop_reason)</span></span></code></pre></div>
+<span><span class="co"># returns invisibly: list(text, usage, stop_reason, finish_reason)</span></span></code></pre></div>
 <p>Callback payloads:</p>
 <table class="table">
 <colgroup>
@@ -201,28 +217,42 @@ codeagent does not touch your UI.</p>
 <tr class="odd">
 <td><code>on_tool_request</code></td>
 <td>
-<code>list(id, name, arguments, intent)</code> — fires
+<code>list(id, name, arguments, intent)</code> – fires
 <strong>before</strong> the gate</td>
 </tr>
 <tr class="even">
 <td><code>on_tool_result</code></td>
 <td>
-<code>list(id, name, display, value, is_error, artifact)</code> —
-<code>artifact</code> is appended after the five original fields</td>
+<code>list(id, name, display, value, is_error, artifact)</code> in
+that exact order; <code>artifact</code> is appended after the five
+original fields</td>
 </tr>
 <tr class="odd">
-<td><code>on_usage</code></td>
-<td>usage object</td>
+<td><code>on_error</code></td>
+<td><code>message, recovered</code></td>
 </tr>
 <tr class="even">
+<td><code>on_usage</code></td>
+<td>usage object, including <code>n_tokens</code>,
+<code>model_limit</code>, <code>warning_state</code>, and
+<code>cost_last</code>
+</td>
+</tr>
+<tr class="odd">
 <td><code>on_tick</code></td>
-<td>none</td>
+<td>no arguments; available on synchronous
+<code><a href="../reference/codeagent_stream.html">codeagent_stream()</a></code> only</td>
 </tr>
 </tbody>
 </table>
+<p>The asynchronous function resolves to the same four-field result.
+Provider finish reasons are normalized into <code>stop_reason</code>;
+the original mapped provider value is retained as
+<code>finish_reason</code>.</p>
 </div>
 <div class="section level2">
-<h2 id="rich-tool-results-text-table-image-error">3. Rich tool results (text / table / image / error)<a class="anchor" aria-label="anchor" href="#rich-tool-results-text-table-image-error"></a>
+<h2 id="rich-tool-results-text-table-image-code-diff-error">3. Rich tool results (text / table / image / code / diff /
+error)<a class="anchor" aria-label="anchor" href="#rich-tool-results-text-table-image-code-diff-error"></a>
 </h2>
 <p>A tool’s <code>value</code> is the portable text the model sees and
 the final fallback for all UIs. To also expose a <strong>rich,
@@ -252,25 +282,30 @@ unsupported/malformed artifacts.</li>
 <span>      title   <span class="op">=</span> <span class="st">"Summary"</span></span>
 <span>    <span class="op">)</span></span>
 <span>  <span class="op">}</span>,</span>
-<span>  name <span class="op">=</span> <span class="st">"Summarise"</span>, description <span class="op">=</span> <span class="st">"..."</span>, arguments <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
+<span>  name <span class="op">=</span> <span class="st">"Summarise"</span>,</span>
+<span>  description <span class="op">=</span> <span class="st">"Summarise a named dataset."</span>,</span>
+<span>  arguments <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>    name <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/type_boolean.html" class="external-link">type_string</a></span><span class="op">(</span><span class="st">"Dataset name."</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The version-1 artifact is available as
 <code>extra$codeagent$artifact</code> on a result and as
 <code>artifact</code> on the stream event. Hosts should use
 <code>tool_result_artifact(event_or_result)</code> rather than reaching
-into either structure directly. It validates the supported version and
-returns <code>NULL</code> for unknown or malformed artifacts, allowing a
-safe fallback through
+into either structure directly. It validates the schema and outer shape
+and, by default, accepts version 1 only. It returns <code>NULL</code>
+for unknown or malformed artifacts, allowing a safe fallback through
 <code>tool_result_value(event_or_result)</code>.</p>
 <table class="table">
 <thead><tr class="header">
 <th><code>kind</code></th>
-<th><code>payload</code></th>
+<th>Typical <code>payload</code>
+</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>text</code></td>
-<td><code>list(text=)</code></td>
+<td><code>list(text = )</code></td>
 </tr>
 <tr class="even">
 <td><code>table</code></td>
@@ -278,19 +313,23 @@ safe fallback through
 </tr>
 <tr class="odd">
 <td><code>image</code></td>
-<td><code>list(images = list(list(mime=, b64=)), output=)</code></td>
+<td><code>list(images = list(list(mime = , b64 = )), output = )</code></td>
 </tr>
 <tr class="even">
 <td><code>code</code></td>
-<td><code>list(text=, lang=, filename=, output=)</code></td>
+<td><code>list(text = , lang = , filename = , output = )</code></td>
 </tr>
 <tr class="odd">
+<td><code>diff</code></td>
+<td><code>list(old = , new = , path = )</code></td>
+</tr>
+<tr class="even">
 <td><code>error</code></td>
-<td><code>list(message=, detail=)</code></td>
+<td><code>list(message = , detail = )</code></td>
 </tr>
 </tbody>
 </table>
-<p>A non-Shiny host renders the artifact itself, e.g.:</p>
+<p>A non-Shiny host renders the artifact itself, for example:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">on_tool_result</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">artifact</span> <span class="op">&lt;-</span> <span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/tool_result_artifact.html">tool_result_artifact</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span>
@@ -300,6 +339,8 @@ safe fallback through
 <span>    <span class="fu">render_plain_text</span><span class="op">(</span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/tool_result_value.html">tool_result_value</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">}</span></span></code></pre></div>
+<p>See <code><a href="../articles/tool-artifacts.html">vignette("tool-artifacts")</a></code> for version negotiation,
+failure behavior, and the browser trust boundary.</p>
 </div>
 <div class="section level2">
 <h2 id="host-tools-the-permission-gate">4. Host tools + the permission gate<a class="anchor" aria-label="anchor" href="#host-tools-the-permission-gate"></a>
@@ -309,67 +350,86 @@ each tool’s capability</strong> so the central gate governs it like a
 native tool.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">chat</span><span class="op">$</span><span class="fu">register_tool</span><span class="op">(</span><span class="va">my_tool</span><span class="op">)</span></span>
-<span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/register_tool_meta.html">register_tool_meta</a></span><span class="op">(</span><span class="st">"RunAnalysis"</span>, capability <span class="op">=</span> <span class="st">"exec"</span><span class="op">)</span>  <span class="co"># read|write|exec|net</span></span></code></pre></div>
+<span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/register_tool_meta.html">register_tool_meta</a></span><span class="op">(</span><span class="st">"Summarise"</span>, capability <span class="op">=</span> <span class="st">"read"</span><span class="op">)</span> <span class="co"># read|write|exec|net</span></span></code></pre></div>
 <p>On a harness-only client (<code>register_tools = FALSE</code>) the
-gate is <strong>not</strong> installed automatically — install it once,
-after attaching your tools, so they are governed and approvals route to
-your <code>ask_fn</code>:</p>
+gate is <strong>not</strong> installed automatically. Install it after
+attaching your tools so approvals route to your <code>ask_fn</code>. The
+public <code>tools</code> argument is the standalone equivalent of
+<code>settings$tools</code>:</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/install_permission_gate.html">install_permission_gate</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">tool_policy</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  overrides    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Summarise <span class="op">=</span> <span class="st">"allow"</span><span class="op">)</span>,       <span class="co"># allow | ask | deny</span></span>
+<span>  capabilities <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>exec <span class="op">=</span> <span class="st">"ask"</span>, net <span class="op">=</span> <span class="st">"deny"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/install_permission_gate.html">install_permission_gate</a></span><span class="op">(</span></span>
 <span>  <span class="va">chat</span>,</span>
 <span>  permission_mode <span class="op">=</span> <span class="st">"default"</span>,</span>
-<span>  tool_meta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>RunAnalysis <span class="op">=</span> <span class="st">"exec"</span><span class="op">)</span>,      <span class="co"># optional: declare capabilities here</span></span>
-<span>  ask_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">name</span>, <span class="va">input</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span>   <span class="co"># `id` = tool-call id, matches on_tool_request</span></span>
-<span>    <span class="fu">host_request_approval</span><span class="op">(</span><span class="va">id</span>, <span class="va">name</span>, <span class="va">input</span><span class="op">)</span>       <span class="co"># return a logical or a promise&lt;logical&gt;</span></span>
+<span>  tools <span class="op">=</span> <span class="va">tool_policy</span>,</span>
+<span>  <span class="co"># Alternatively classify tools here instead of register_tool_meta():</span></span>
+<span>  tool_meta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Summarise <span class="op">=</span> <span class="st">"read"</span><span class="op">)</span>,</span>
+<span>  ask_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">name</span>, <span class="va">input</span>, <span class="va">id</span> <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">host_request_approval</span><span class="op">(</span><span class="va">id</span>, <span class="va">name</span>, <span class="va">input</span><span class="op">)</span> <span class="co"># logical or promise&lt;logical&gt;</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>The optional <code>id</code> is the tool-call ID and matches
+<code>on_tool_request$id</code>. <code><a href="../reference/install_permission_gate.html">install_permission_gate()</a></code>
+is idempotent per chat: another call refreshes its live mode, approval
+callback, and policy rather than stacking another gate.</p>
 <blockquote>
 <p><strong>Important:</strong> an <em>undeclared</em> tool defaults to
-capability <code>"read"</code> and is allowed <strong>without
-gating</strong>. If your tool executes code, writes files, or hits the
-network, declare it
-(<code>"exec"</code>/<code>"write"</code>/<code>"net"</code>) so the
-gate can <code>ask</code> or <code>deny</code> it. Built-in tool
-metadata stays authoritative.</p>
+capability <code>"read"</code> and is allowed without
+sensitive-operation gating. If your tool executes code, writes files, or
+accesses the network, declare it as <code>"exec"</code>,
+<code>"write"</code>, or <code>"net"</code> so the gate can ask or deny
+it. Built-in metadata remains authoritative and cannot be downgraded by
+host registration.</p>
 </blockquote>
-<p>Fine-grained control is available through
-<code>settings$tools</code>:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">settings</span><span class="op">$</span><span class="va">tools</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  overrides    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>RunAnalysis <span class="op">=</span> <span class="st">"ask"</span><span class="op">)</span>,      <span class="co"># per-tool: allow | ask | deny</span></span>
-<span>  capabilities <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>exec <span class="op">=</span> <span class="st">"ask"</span>, net <span class="op">=</span> <span class="st">"deny"</span><span class="op">)</span><span class="co"># per-capability policy</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<p>Policy precedence is per-tool <code>overrides</code>, then
+per-capability policy, then the active permission mode and rules. The
+complete policy shape is <code>sets</code> / <code>capabilities</code> /
+<code>overrides</code>; pass it as <code>tools =</code> to the
+standalone installer or configure it as <code>settings$tools</code> on a
+full codeagent client.</p>
 </div>
 <div class="section level2">
 <h2 id="skills">5. Skills<a class="anchor" aria-label="anchor" href="#skills"></a>
 </h2>
-<p>Point codeagent at your own <code>&lt;name&gt;/SKILL.md</code>
-directories (scanned under <code>cwd</code>). Skill <em>content</em> is
-yours; codeagent only loads and injects it.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/list_skills_meta.html">list_skills_meta</a></span><span class="op">(</span>cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/load_skill_prompt.html">load_skill_prompt</a></span><span class="op">(</span><span class="st">"my_skill"</span>, cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/build_skill_hint.html">build_skill_hint</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div>
+<p>Place host skills in a supported project-local skill directory using
+the <code>&lt;name&gt;/SKILL.md</code> format (for example,
+<code>.btw/skills/my_skill/SKILL.md</code>). Skill <em>content</em> is
+yours; codeagent only discovers, loads, and injects it.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">skills</span> <span class="op">&lt;-</span> <span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/list_skills_meta.html">list_skills_meta</a></span><span class="op">(</span>cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">prompt</span> <span class="op">&lt;-</span> <span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/load_skill_prompt.html">load_skill_prompt</a></span><span class="op">(</span></span>
+<span>  <span class="st">"my_skill"</span>, args <span class="op">=</span> <span class="st">"optional arguments"</span>, cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">hint</span> <span class="op">&lt;-</span> <span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/build_skill_hint.html">build_skill_hint</a></span><span class="op">(</span>cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, max_tokens <span class="op">=</span> <span class="fl">1000L</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="provider">6. Provider<a class="anchor" aria-label="anchor" href="#provider"></a>
 </h2>
-<p><code>chat</code> accepts any <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code>
-(OpenAI-compatible, Databricks, Anthropic, Gemini, Bedrock, Azure, …) —
-or any object exposing <code>$stream_async()</code>. The host owns and
-supplies credentials; codeagent never reads them.</p>
+<p><code>codeagent_client(chat = )</code> accepts any
+<code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> (OpenAI-compatible, Databricks, Anthropic,
+Gemini, Bedrock, Azure, and others). The lower-level stream functions
+also accept a bare <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code>; list-based
+<code>$stream_async</code> duck typing exists for tests, not as the
+client-construction contract. The host owns and supplies credentials;
+codeagent uses the supplied Chat rather than owning those
+credentials.</p>
 </div>
 <div class="section level2">
 <h2 id="versioning">7. Versioning<a class="anchor" aria-label="anchor" href="#versioning"></a>
 </h2>
-<p>Backend Contract <strong>v1</strong> = the symbols below, with the
-signatures documented above. Changes follow semantic versioning;
-breaking changes bump the major and are announced in
+<p>Backend Contract <strong>v1</strong> is the surface below, with the
+signatures and behavior documented above. Changes follow semantic
+versioning; breaking changes bump the major and are announced in
 <code>NEWS.md</code>. The guard test
-<code>test-backend-contract.R</code> fails if this surface drifts.</p>
+<code>test-backend-contract.R</code> fails if the exported surface
+drifts.</p>
 <ul>
 <li>
-<code>codeagent_client(register_tools = FALSE)</code> →
+<code>codeagent_client(register_tools = FALSE)</code> -&gt;
 <code>{chat, settings, data_shield}</code>
 </li>
 <li>
@@ -378,7 +438,7 @@ contract</li>
 <li>
 <code><a href="../reference/codeagent_stream.html">codeagent_stream()</a></code> /
 <code><a href="../reference/codeagent_stream_async.html">codeagent_stream_async()</a></code> + callbacks +
-<code>list(text, usage, stop_reason)</code>
+<code>list(text, usage, stop_reason, finish_reason)</code>
 </li>
 <li><code><a href="../reference/agent_loop.html">agent_loop()</a></code></li>
 <li><code><a href="../reference/tool_result.html">tool_result()</a></code></li>

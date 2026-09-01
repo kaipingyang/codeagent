@@ -2,19 +2,29 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
+  backend-integration-cn: backend-integration-cn.html
   backend-integration: backend-integration.html
+  compaction-cn: compaction-cn.html
   compaction: compaction.html
+  configuration-cn: configuration-cn.html
   configuration: configuration.html
+  data-exploration-cn: data-exploration-cn.html
   data-exploration: data-exploration.html
   data-shield-cn: data-shield-cn.html
   data-shield: data-shield.html
+  getting-started-cn: getting-started-cn.html
   getting-started: getting-started.html
+  models-cn: models-cn.html
   models: models.html
+  permissions-cn: permissions-cn.html
   permissions: permissions.html
+  skills-usage-cn: skills-usage-cn.html
   skills-usage: skills-usage.html
+  team-coordination-cn: team-coordination-cn.html
   team-coordination: team-coordination.html
+  tool-artifacts-cn: tool-artifacts-cn.html
   tool-artifacts: tool-artifacts.html
-last_built: 2026-09-01T06:17Z
+last_built: 2026-09-01T09:30Z
 urls:
   reference: https://kaipingyang.github.io/codeagent/reference
   article: https://kaipingyang.github.io/codeagent/articles

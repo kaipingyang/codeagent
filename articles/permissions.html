@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,84 +93,112 @@
 
     
     
-<p>Every tool call passes through a permission gate before it runs.</p>
+<p><strong>Language:</strong> English | <a href="permissions-cn.html">简体中文</a></p>
+<p>Every registered tool call passes through one central authorization
+gate before it runs. Native, btw, Format, and MCP tools are built in
+bypass mode; the gate installed on <code>chat$on_tool_request</code> is
+the sole permission authority. Gate installation fails closed if that
+callback cannot be registered.</p>
 <div class="section level2">
 <h2 id="how-the-gate-decides">How the gate decides<a class="anchor" aria-label="anchor" href="#how-the-gate-decides"></a>
 </h2>
 <pre><code>model requests a tool
     |
     v
-chat$on_tool_request  -&gt;  permission gate (.tool_gate_fn)
+chat$on_tool_request -&gt; central gate (.tool_gate_fn)
     |
-    +- PreToolUse hook (fires for every call)
+    +- Data Shield ingress scan (when a shield is active; every tool)
+    |     block/error -&gt; PermissionDenied -&gt; ellmer::tool_reject()
     |
-    +- read-only tool AND no override?  -- yes --&gt;  ALLOW (short-circuit)
+    +- capability == read AND no per-tool override AND no Shield ask?
+    |     yes -&gt; ALLOW at the gate (fast path)
     |
-    v  .gate_decide  (precedence, highest first)
+    v  .gate_decide() (highest precedence first)
   1. settings$tools$overrides[tool]      -&gt; allow / deny / ask
-  2. settings$tools$capabilities[class]  -&gt; read|write|exec|net -&gt; allow/deny/ask
+  2. settings$tools$capabilities[class]  -&gt; write|exec|net -&gt; allow/deny/ask
   3. fallback -&gt; check_permission(mode, rules):
-       plan          -&gt; deny (non-read)
-       user rules    -&gt; first glob match wins (allow/deny/ask)
+       plan          -&gt; deny non-read before checking rules
+       user rules    -&gt; first matching glob wins
        accept_edits  -&gt; edit tools allow
        bypass        -&gt; allow
-       bubble        -&gt; ask (bubbles to parent agent)
-       dont_ask      -&gt; read-only allow, else deny
-       auto          -&gt; small-model classifier -&gt; allow/deny/ask
-       default       -&gt; read-only (&amp; read-only Bash) allow, else ask
+       bubble        -&gt; ask (parent/host resolves it)
+       dont_ask      -&gt; read-only allow, otherwise deny
+       auto          -&gt; fast-model classifier -&gt; allow/deny/ask
+       default       -&gt; read-only and recognized read-only Bash allow;
+                        otherwise ask
     |
     v
-  decision --+-- allow --&gt; tool runs --&gt; on_tool_result --&gt; PostToolUse hook
-             +-- deny  --&gt; PermissionDenied hook --&gt; ellmer::tool_reject()
-             |                                       (loop gets an error result)
-             +-- ask   --&gt; ask_fn():  console prompt (CLI)
-                                    |  promise -&gt; Shiny Allow/Deny bar (async)
-                           approved -&gt; run   /   rejected -&gt; deny</code></pre>
+  decision --+-- deny -&gt; PermissionDenied -&gt; ellmer::tool_reject()
+             +-- ask  -&gt; ask_fn(): CLI console prompt or async Shiny bar
+             |            reject/error/no ask_fn -&gt; deny
+             |            approve -&gt; continue
+             +-- allow ---------------------------&gt; continue
+                                                    |
+                                                    v
+                         PreToolUse wrapper: deny or rewrite arguments;
+                         rewritten arguments are rechecked by gate/Shield
+                                                    |
+                                                    v
+                         tool runs -&gt; on_tool_result -&gt; PostToolUse hook</code></pre>
+<p>The read fast path is deliberate: a read-capability tool with no
+explicit per-tool override is allowed after the Shield scan, before
+capability policy, rules, or mode fallback. Use
+<code>settings$tools$overrides</code> when a read tool must be asked
+about or denied. Unknown host tools default to the <code>read</code>
+capability for compatibility, so hosts should declare them with
+<code><a href="../reference/register_tool_meta.html">register_tool_meta()</a></code> or <code>tool_meta</code> when
+installing the gate.</p>
 <p><code>settings$tools$sets</code> (<code>"A"</code> = codeagent core,
-<code>"B"</code> = btw) decides which tool <em>sets</em> get registered;
-it does not affect the per-call decision above.</p>
+<code>"B"</code> = btw) controls which tool sets are registered. It is
+registration policy, not a per-call decision.</p>
 </div>
 <div class="section level2">
 <h2 id="modes">Modes<a class="anchor" aria-label="anchor" href="#modes"></a>
 </h2>
+<p>These are fallback behaviors. A per-tool override or non-read
+capability policy can supersede them.</p>
 <table class="table">
 <colgroup>
-<col width="35%">
-<col width="64%">
+<col width="24%">
+<col width="76%">
 </colgroup>
 <thead><tr class="header">
 <th>Mode</th>
-<th>Behaviour</th>
+<th>Fallback behavior</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td><code>default</code></td>
-<td>Read-only tools auto-allowed; risky tools
-(Write/Edit/MultiEdit/Bash/RunR) prompt</td>
+<td>Read-only tools and recognized read-only Bash commands are allowed;
+other calls ask</td>
 </tr>
 <tr class="even">
 <td><code>plan</code></td>
-<td>All non-read operations denied (read-only planning)</td>
+<td>Non-read calls are denied before user rules; read tools are
+allowed</td>
 </tr>
 <tr class="odd">
 <td><code>accept_edits</code></td>
-<td>File edit tools auto-allowed; other risky tools still prompt</td>
+<td>File edit tools are allowed; other non-read calls still ask</td>
 </tr>
 <tr class="even">
 <td><code>bypass</code></td>
-<td>Everything allowed (use with care)</td>
+<td>All calls are allowed (use with care)</td>
 </tr>
 <tr class="odd">
 <td><code>dont_ask</code></td>
-<td>Read-only allowed; anything that would prompt is denied (CI/CD)</td>
+<td>Read-only calls are allowed; non-read calls are denied, which suits
+unattended runs</td>
 </tr>
 <tr class="even">
 <td><code>auto</code></td>
-<td>A small model classifies each call</td>
+<td>The configured fast model classifies the call as allow, deny, or
+ask</td>
 </tr>
 <tr class="odd">
 <td><code>bubble</code></td>
-<td>Sub-agent mode: permission bubbles up to the parent agent</td>
+<td>Returns ask so a parent agent or host approval callback can
+decide</td>
 </tr>
 </tbody>
 </table>
@@ -168,8 +208,18 @@ it does not affect the per-call decision above.</p>
 <div class="section level2">
 <h2 id="fine-grained-rules">Fine-grained rules<a class="anchor" aria-label="anchor" href="#fine-grained-rules"></a>
 </h2>
-<p>Rules match tool arguments (mirroring Claude Code’s
-<code>Bash(git *)</code> syntax) and are evaluated first, in order:</p>
+<p>A <code>PermissionRule</code> first glob-matches the tool name, then
+optionally matches the relevant argument: <code>command</code> for Bash,
+<code>file_path</code> for Read/Write/Edit/MultiEdit, and
+<code>pattern</code> for Glob/Grep. Matching is case-sensitive and the
+first match wins. Rules supplied directly to
+<code>codeagent_client(rules=)</code> precede rules loaded from
+settings.</p>
+<p>Settings arrays are converted in <code>allow</code>, then
+<code>deny</code>, then <code>ask</code> order. Avoid overlapping
+patterns: a deny entry does not automatically outrank an earlier allow
+entry. Rules are reached only after per-tool and capability policy, and
+not by the read fast path described above.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[</span><span class="st">"Bash(git status)"</span><span class="ot">,</span> <span class="st">"Read(*)"</span><span class="ot">]</span><span class="fu">,</span></span>
@@ -180,129 +230,133 @@ it does not affect the per-call decision above.</p>
 <span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="interactive-approval-shiny">Interactive approval (Shiny)<a class="anchor" aria-label="anchor" href="#interactive-approval-shiny"></a>
+<h2 id="public-signatures-and-defaults">Public signatures and defaults<a class="anchor" aria-label="anchor" href="#public-signatures-and-defaults"></a>
 </h2>
-<p>In <code>default</code> mode the Shiny app shows an Allow/Deny bar
-above the input when a risky tool is requested; the agent loop resumes
-on your choice. <code>AskUserQuestion</code> similarly pauses to ask a
-clarifying question. Both use an async promise mechanism; the CLI path
-uses a console prompt instead.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/PermissionRule.html">PermissionRule</a></span><span class="op">(</span></span>
+<span>  <span class="va">tool_name</span>,</span>
+<span>  behavior <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"allow"</span>, <span class="st">"deny"</span>, <span class="st">"ask"</span><span class="op">)</span>,</span>
+<span>  source <span class="op">=</span> <span class="st">"session"</span>,</span>
+<span>  rule_content <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/check_permission.html">check_permission</a></span><span class="op">(</span></span>
+<span>  <span class="va">tool_name</span>,</span>
+<span>  mode <span class="op">=</span> <span class="st">"default"</span>,</span>
+<span>  rules <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  tool_input <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/install_permission_gate.html">install_permission_gate</a></span><span class="op">(</span></span>
+<span>  <span class="va">chat</span>,</span>
+<span>  permission_mode <span class="op">=</span> <span class="st">"default"</span>,</span>
+<span>  rules <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  ask_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tool_meta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span></span>
+<span>  chat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  permission_mode <span class="op">=</span> <span class="st">"default"</span>,</span>
+<span>  rules <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  max_turns <span class="op">=</span> <span class="fl">100L</span>,</span>
+<span>  btw_groups <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  worktree_isolation <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  verify_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  mcp_config <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  register_tools <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  data_shield <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max_budget_usd <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/install_permission_gate.html">install_permission_gate()</a></code> is for attaching the central
+gate to an existing <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code>. <code>tools</code> has
+the same <code>sets</code> / <code>capabilities</code> /
+<code>overrides</code> shape as <code>settings$tools</code>;
+<code>tool_meta</code> is a named tool-to-capability list. In normal
+codeagent use, <code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> loads settings and
+installs the gate.</p>
 </div>
 <div class="section level2">
-<h2 id="hooks">Hooks<a class="anchor" aria-label="anchor" href="#hooks"></a>
+<h2 id="interactive-approval">Interactive approval<a class="anchor" aria-label="anchor" href="#interactive-approval"></a>
 </h2>
-<p><code>PreToolUse</code> / <code>PermissionRequest</code> hooks (from
-<code>settings.json</code>) can return <code>"allow"</code>,
-<code>"deny"</code>, or fall through to the default gate — useful for
-policy-as-code.</p>
-<div class="section level3">
-<h3 id="what-happens-if-the-human-approves-something-dangerous-anyway">What happens if the human approves something dangerous anyway<a class="anchor" aria-label="anchor" href="#what-happens-if-the-human-approves-something-dangerous-anyway"></a>
-</h3>
-<p>The <code>ask</code> step exists so a human can decide — and a human
-can always say yes to something they shouldn’t. If the model requests
-<code>Bash: rm -rf ./data</code> and the operator clicks Allow,
-<strong>the gate itself has no opinion about whether that was a good
-idea</strong>; it already did its job by asking. If you want certain
-operations to be blocked <em>regardless of what gets clicked</em>, that
-veto has to live upstream of <code>ask_fn</code>, at one of these layers
-(weakest/simplest to strongest/most general):</p>
+<p>In <code>default</code> mode, the Shiny app displays an Allow/Deny
+bar above the composer when a call resolves to <code>ask</code>;
+execution resumes when the promise resolves. The CLI uses a synchronous
+console prompt. Failure, rejection, or a missing <code>ask_fn</code> is
+denial. <code>AskUserQuestion</code> uses a separate async question bar
+to pause for a clarifying answer.</p>
+</div>
+<div class="section level2">
+<h2 id="hooks-and-rewritten-input">Hooks and rewritten input<a class="anchor" aria-label="anchor" href="#hooks-and-rewritten-input"></a>
+</h2>
+<p><code>PreToolUse</code> does not make the gate’s initial decision. It
+runs once in the tool wrapper after gate authorization (and therefore
+after any human approval), but before execution. It may deny the call or
+return <code>updatedInput</code>; rewritten arguments are checked again
+against the live permission policy and Data Shield, and an
+<code>ask</code> result with no second approval path is denied.
+<code>PermissionDenied</code> fires on gate denial, and
+<code>PostToolUse</code> fires from <code>on_tool_result</code> after
+execution.</p>
+<p>This ordering means a <code>PreToolUse</code> veto still prevents
+execution, but it does not prevent an approval prompt from first being
+shown.</p>
+</div>
+<div class="section level2">
+<h2 id="dangerous-approvals-and-defense-in-depth">Dangerous approvals and defense in depth<a class="anchor" aria-label="anchor" href="#dangerous-approvals-and-defense-in-depth"></a>
+</h2>
+<p>If an operator approves <code>Bash: rm -rf ./data</code>, approval
+alone does not establish that the operation is safe. Available veto
+points have different timing:</p>
 <table class="table">
 <colgroup>
-<col width="33%">
-<col width="33%">
-<col width="33%">
+<col width="50%">
+<col width="50%">
 </colgroup>
 <thead><tr class="header">
 <th>Layer</th>
-<th>Where</th>
-<th>Blocks before a human ever sees a prompt?</th>
+<th>Timing and limitation</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td>
-<code>rules</code> deny glob</td>
-<td>
-<code>settings.json</code> / <code>codeagent_client(rules=)</code>,
-e.g. <code>Bash(rm -rf *)</code>
-</td>
-<td>Yes — matches in <code>.gate_decide</code>’s fallback step, so
-<code>ask_fn</code> is never called</td>
+<code>settings$tools$overrides</code> deny</td>
+<td>Denies before prompting; use this for unconditional per-tool policy,
+including read tools</td>
 </tr>
 <tr class="even">
-<td>Data Shield
-<code>shield_ingress(patterns=, on_fail="block")</code>
+<td>A deny <code>PermissionRule</code>
 </td>
-<td>Repurposing Data Shield’s ingress scanner for a non-confidentiality
-rule</td>
-<td>Yes — <code>block</code> rejects unconditionally</td>
+<td>Denies before prompting when fallback rule evaluation is reached; it
+is bypassed by stronger policy and the read fast path</td>
 </tr>
 <tr class="odd">
-<td>Data Shield
-<code>shield_tool_policy(rules=list(X=list(execution="deny")))</code>
-</td>
-<td>Same DataShield instance</td>
-<td>Yes — the whole tool is disabled</td>
+<td>Data Shield ingress/tool policy with a blocking result</td>
+<td>Runs before the read fast path and before prompting</td>
 </tr>
 <tr class="even">
 <td>
-<code>PreToolUse</code> hook returning
-<code>action="deny"</code>
-</td>
-<td>
-<code>HookRegistry$register_pre()</code> /
-<code>settings.json</code> hooks</td>
-<td>Yes — fires before <code>.gate_decide</code> resolves to
-<code>ask</code> at all</td>
+<code>PreToolUse</code> returning deny</td>
+<td>Runs after gate/human authorization but still before tool
+execution</td>
 </tr>
 </tbody>
 </table>
-<p>All four fire <em>before</em> the human is asked, so an operator’s
-later “yes” can never override them — that is the actual backstop this
-vignette’s diagram implies but doesn’t spell out.</p>
-</div>
-<div class="section level3">
-<h3 id="why-none-of-these-are-a-complete-answer">Why none of these are a complete answer<a class="anchor" aria-label="anchor" href="#why-none-of-these-are-a-complete-answer"></a>
-</h3>
-<p>Every one of the four is, underneath, a <strong>syntactic
-match</strong> — a glob, a regex, or whatever logic you put in the hook.
-That has the exact same blind spot as Data Shield’s own ingress scanner
-(see <code><a href="../articles/data-shield.html">vignette("data-shield")</a></code>): a rule written for
-<code>Bash(rm -rf *)</code> does not catch the model routing the same
-intent through <code>RunR</code>’s <code>system("rm -rf /x")</code> or
-R’s own <code>unlink(dir, recursive = TRUE)</code> (no literal “rm -rf”
-anywhere), a differently-destructive command
-(<code>git reset --hard</code>, <code>DROP TABLE</code>,
-<code>find . -delete</code>), a string built at runtime
-(<code>paste0("r","m ","-","r","f")</code>), or a script written to disk
-in one (innocuous-looking) step and executed in a second. Static rules
-are defense-in-depth, not a guarantee, for the same reason Data Shield’s
-own Honest Limits section gives.</p>
-<p>The two approaches that actually hold up against rewording are,
-symmetrically with Data Shield’s own design:</p>
-<ul>
-<li>
-<strong>A semantic reviewer</strong> (the same idea as
-<code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code>, applied to operation intent instead of
-data exfiltration) — classifies whether code <em>intends</em> something
-destructive regardless of syntax. Still an LLM, still evadable by a
-sufficiently adversarial prompt, but raises the bar past simple
-rewording.</li>
-<li>
-<strong>OS-level sandboxing</strong>
-(<code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code>’s full adapter, still roadmap) — a
-read-only or scoped-writable filesystem mount means the kernel refuses
-the underlying
-<code>unlink</code>/<code>rmdir</code>/<code>truncate</code> syscall no
-matter what language or obfuscation produced it. This is the only
-guarantee that does not depend on recognizing the command at all.</li>
-</ul>
-<p>Productizing this as a curated, cross-language rule set — rather than
-each host writing its own hook/rules from scratch — is an open design
-question, not yet implemented; the most consistent shape would reuse
-Data Shield’s own pipeline/audit-log/<code>install()</code> machinery
-(e.g. a <code>shield_destructive_ops()</code> strategy) rather than a
-second, competing “shield” concept.</p>
-</div>
+<p>These controls are syntactic or policy-based defense in depth. For
+example, <code>Bash(rm -rf *)</code> does not catch equivalent behavior
+routed through <code>RunR</code>,
+<code>unlink(..., recursive = TRUE)</code>, another destructive command,
+runtime string construction, or a script written in one call and
+executed in another.</p>
+<p>A semantic reviewer of operation intent could raise the bar but would
+remain model-based. A full OS-level sandbox with read-only or
+scoped-writable mounts would enforce the boundary independently of
+command spelling; the current portable <code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code>
+policy backend is not such a kernel-enforced adapter. A curated
+cross-language destructive-operation strategy remains an open design
+question, not an implemented guarantee.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

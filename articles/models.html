@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,53 +93,275 @@
 
     
     
-<p>codeagent wraps any <code>ellmer</code> Chat, so it is
-provider-agnostic.</p>
+<p><strong>Language:</strong> English | <a href="models-cn.html">简体中文</a></p>
+<p><code>codeagent</code> can wrap any configured
+<code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code>. Passing a Chat directly is the most general
+and least ambiguous provider interface; the settings-based factory is a
+convenience for common backends.</p>
 <div class="section level2">
-<h2 id="any-ellmer-backend">Any ellmer backend<a class="anchor" aria-label="anchor" href="#any-ellmer-backend"></a>
+<h2 id="pass-any-ellmer-chat">Pass any ellmer Chat<a class="anchor" aria-label="anchor" href="#pass-any-ellmer-chat"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_openai_compatible.html" class="external-link">chat_openai_compatible</a></span><span class="op">(</span>   <span class="co"># Databricks / Azure / vLLM / custom</span></span>
-<span>  base_url    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_BASE_URL"</span><span class="op">)</span>,</span>
-<span>  model       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_MODEL"</span><span class="op">)</span>,</span>
-<span>  credentials <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_API_KEY"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_openai_compatible.html" class="external-link">chat_openai_compatible</a></span><span class="op">(</span></span>
+<span>  base_url <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_BASE_URL"</span><span class="op">)</span>,</span>
+<span>  model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_MODEL"</span><span class="op">)</span>,</span>
+<span>  credentials <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_API_KEY"</span><span class="op">)</span>,</span>
+<span>  preserve_thinking <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, permission_mode <span class="op">=</span> <span class="st">"bypass"</span><span class="op">)</span></span></code></pre></div>
-<p>Supported <code>provider</code> values include
-<code>openai_compatible</code>, <code>anthropic</code>,
-<code>openai</code>, <code>google_gemini</code>, <code>deepseek</code>,
-<code>groq</code>, <code>github</code>, <code>ollama</code>,
-<code>posit</code>, <code>databricks</code>, <code>aws_bedrock</code>,
-and <code>azure_openai</code>.</p>
-</div>
-<div class="section level2">
-<h2 id="switching-models-mid-session">Switching models mid-session<a class="anchor" aria-label="anchor" href="#switching-models-mid-session"></a>
-</h2>
+<span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, permission_mode <span class="op">=</span> <span class="st">"default"</span><span class="op">)</span></span></code></pre></div>
+<p>Other examples use the provider’s native ellmer authentication:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/switch_model.html">switch_model</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"openai/deepseek-r1"</span><span class="op">)</span>   <span class="co"># CLI / one-shot</span></span>
-<span><span class="co"># In the Shiny app: the Settings panel model picker, or /model</span></span></code></pre></div>
-<p>The Shiny path swaps the provider in place (Route A) so the
-<code>Chat</code> object identity — and every callback/closure bound to
-it — stays valid.</p>
+<code class="sourceCode R"><span><span class="va">anthropic_client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span></span>
+<span>  <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_anthropic.html" class="external-link">chat_anthropic</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"claude-sonnet-4-6"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">ollama_client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span></span>
+<span>  <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_ollama.html" class="external-link">chat_ollama</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"llama3.2"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>When a Chat is supplied, codeagent replaces its system prompt with
+the harness prompt and records its current model name. It otherwise
+preserves the Chat’s provider configuration and model parameters.</p>
 </div>
 <div class="section level2">
-<h2 id="reasoning-thinking">Reasoning / thinking<a class="anchor" aria-label="anchor" href="#reasoning-thinking"></a>
+<h2 id="automatic-provider-selection">Automatic provider selection<a class="anchor" aria-label="anchor" href="#automatic-provider-selection"></a>
 </h2>
-<p>Models with extended thinking are controlled natively via ellmer:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># settings.json: "effortLevel": "high"  -&gt;  params(reasoning_effort = "high")</span></span></code></pre></div>
-<p>For OpenAI-compatible endpoints (Databricks Claude, DeepSeek),
-codeagent sets <code>preserve_thinking = TRUE</code>, so
-<code>reasoning_content</code> is parsed into ellmer
-<code>ContentThinking</code> and rendered distinctly (dimmed in the
-REPL, a collapsible block in the Shiny UI).</p>
+<p>With <code>chat = NULL</code>, <code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> calls
+the internal settings factory. Selection is:</p>
+<ol style="list-style-type: decimal">
+<li>an explicit <code>provider</code> setting, after removing an
+optional <code>chat_</code> prefix;</li>
+<li>
+<code>openai_compatible</code> when
+<code>base_url</code>/<code>CODEAGENT_BASE_URL</code> is present;
+or</li>
+<li>
+<code>anthropic</code> otherwise.</li>
+</ol>
+<p>The current factory has branches for:</p>
+<ul>
+<li>
+<code>openai_compatible</code>, <code>openai</code>,
+<code>vllm</code>, and <code>lmstudio</code>;</li>
+<li>
+<code>anthropic</code> and its <code>claude</code> alias;</li>
+<li>
+<code>ollama</code>;</li>
+<li>
+<code>databricks</code>, <code>deepseek</code>,
+<code>google_gemini</code>, <code>google_vertex</code>,
+<code>groq</code>, and <code>github</code>;</li>
+<li>
+<code>aws_bedrock</code>, <code>azure_openai</code>,
+<code>mistral</code>, <code>perplexity</code>, <code>portkey</code>,
+<code>posit</code>, <code>huggingface</code>, <code>cloudflare</code>,
+<code>snowflake</code>, and <code>openrouter</code>.</li>
+</ul>
+<p>Each value resolves to the corresponding
+<code>ellmer::chat_&lt;provider&gt;()</code> function, which must exist
+in the installed ellmer version. Authentication requirements are
+provider-specific. Factories that receive an explicit credential closure
+use the environment variable named by <code>api_key_env</code>,
+defaulting to <code>CODEAGENT_API_KEY</code>; Anthropic, Bedrock,
+Vertex, Posit, and other native flows can rely on ellmer’s own
+environment, IAM, or OAuth behavior.</p>
+<p>For an OpenAI-compatible gateway:</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span> <span class="st">"your-main-endpoint"</span></span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>  <span class="fu">}</span></span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>Keep the corresponding key outside JSON.</p>
 </div>
 <div class="section level2">
-<h2 id="smallfast-model">Small/fast model<a class="anchor" aria-label="anchor" href="#smallfast-model"></a>
+<h2 id="model-specs-and-aliases">Model specs and aliases<a class="anchor" aria-label="anchor" href="#model-specs-and-aliases"></a>
 </h2>
-<p>Compaction and permission classification use a cheaper model. Set it
-via <code>CODEAGENT_FAST_MODEL</code> (the <code>"fast"</code>
-tier).</p>
+<p><code><a href="../reference/codeagent_client_config.html">codeagent_client_config()</a></code> and
+<code><a href="../reference/switch_model.html">switch_model()</a></code> use the same smaller model-spec parser as
+their base. Its recognized prefixes are:</p>
+<table class="table">
+<colgroup>
+<col width="31%">
+<col width="68%">
+</colgroup>
+<thead><tr class="header">
+<th>Spec</th>
+<th>Constructor</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>openai/&lt;model&gt;</code></td>
+<td>
+<code>chat_openai_compatible()</code> when
+<code>CODEAGENT_BASE_URL</code> is set</td>
+</tr>
+<tr class="even">
+<td><code>anthropic/&lt;model&gt;</code></td>
+<td><code>chat_anthropic()</code></td>
+</tr>
+<tr class="odd">
+<td><code>ollama/&lt;model&gt;</code></td>
+<td><code>chat_ollama()</code></td>
+</tr>
+<tr class="even">
+<td>plain model name</td>
+<td>automatic settings factory with that model</td>
+</tr>
+</tbody>
+</table>
+<p>Aliases are defined in <code>codeagent.md</code>:</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="fu">client</span><span class="kw">:</span></span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="at">  </span><span class="fu">main-gateway</span><span class="kw">:</span><span class="at"> openai/gpt-4.1</span></span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="at">  </span><span class="fu">direct-claude</span><span class="kw">:</span><span class="at"> anthropic/claude-sonnet-4-6</span></span>
+<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a><span class="at">  </span><span class="fu">local</span><span class="kw">:</span><span class="at"> ollama/llama3.2</span></span>
+<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a><span class="pp">---</span></span>
+<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a><span class="at">Project instructions follow here.</span></span></code></pre></div>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client_config.html">codeagent_client_config</a></span><span class="op">(</span>alias <span class="op">=</span> <span class="st">"main-gateway"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level2">
+<h2 id="switch-models-without-losing-history">Switch models without losing history<a class="anchor" aria-label="anchor" href="#switch-models-without-losing-history"></a>
+</h2>
+<p>Always assign the result because a switch may return either the same
+client or a rebuilt one:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/switch_model.html">switch_model</a></span><span class="op">(</span><span class="va">client</span>, <span class="st">"anthropic/claude-haiku-4-5"</span><span class="op">)</span></span></code></pre></div>
+<p><code><a href="../reference/switch_model.html">switch_model()</a></code> first resolves the target into a fresh
+Chat and chooses one of two verified routes:</p>
+<ul>
+<li>
+<strong>Route A, name-only:</strong> if provider configuration,
+credentials, model parameters, and API arguments are unchanged,
+<code>set_model()</code> changes only the name. The same Chat/client
+identity, tools, callbacks, and history remain.</li>
+<li>
+<strong>Route B, rebuild:</strong> provider, endpoint, credential,
+parameter, or API-argument changes build a new Chat/client. Turns,
+system prompt, tools, live settings, hooks, MCP configuration, budget,
+and the live Data Shield are carried forward. If rebuilding fails, the
+original client remains unchanged.</li>
+</ul>
+<p>The CLI and direct R API accept both routes. Shiny modules capture
+Chat identity, so the Settings model control and <code>/model</code>
+allow only verified Route A switches and reject switches while a
+response is streaming. A target requiring Route B must start a new Shiny
+session/app with the desired configuration.</p>
+</div>
+<div class="section level2">
+<h2 id="reasoning-and-thinking-content">Reasoning and thinking content<a class="anchor" aria-label="anchor" href="#reasoning-and-thinking-content"></a>
+</h2>
+<p>For an automatically built Chat, set the snake_case
+<code>effort_level</code> field:</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="dt">"effort_level"</span><span class="fu">:</span> <span class="st">"high"</span></span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<p>When non-empty, it is passed as:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/params.html" class="external-link">params</a></span><span class="op">(</span>reasoning_effort <span class="op">=</span> <span class="st">"high"</span><span class="op">)</span></span></code></pre></div>
+<p>Use a value supported by the selected model/provider, commonly
+<code>low</code>, <code>medium</code>, <code>high</code>, or
+<code>xhigh</code>. codeagent does not validate the value before passing
+it through. The camelCase field <code>effortLevel</code> is not consumed
+by the automatic Chat factory. When passing an explicit Chat, configure
+its <code>params</code> yourself:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">chat</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_openai_compatible.html" class="external-link">chat_openai_compatible</a></span><span class="op">(</span></span>
+<span>  base_url <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_BASE_URL"</span><span class="op">)</span>,</span>
+<span>  model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_MODEL"</span><span class="op">)</span>,</span>
+<span>  credentials <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"CODEAGENT_API_KEY"</span><span class="op">)</span>,</span>
+<span>  params <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/params.html" class="external-link">params</a></span><span class="op">(</span>reasoning_effort <span class="op">=</span> <span class="st">"high"</span><span class="op">)</span>,</span>
+<span>  preserve_thinking <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The automatic <code>openai_compatible</code> branch sets
+<code>preserve_thinking = TRUE</code>. Providers that expose reasoning
+as <code><a href="https://ellmer.tidyverse.org/reference/Content.html" class="external-link">ellmer::ContentThinking</a></code> can stream it to the REPL’s
+dimmed thinking display and preserve it for Shiny/session replay. This
+does not enable reasoning on a model that does not support it.</p>
+</div>
+<div class="section level2">
+<h2 id="main-heavy-and-fast-tiers">Main, heavy, and fast tiers<a class="anchor" aria-label="anchor" href="#main-heavy-and-fast-tiers"></a>
+</h2>
+<p>The tier map is built from:</p>
+<table class="table">
+<colgroup>
+<col width="18%">
+<col width="31%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>Tier</th>
+<th>Variable</th>
+<th>Automatic role</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>main</code></td>
+<td><code>CODEAGENT_MODEL</code></td>
+<td>Default active model and <code>main</code> alias.</td>
+</tr>
+<tr class="even">
+<td><code>heavy</code></td>
+<td><code>CODEAGENT_HEAVY_MODEL</code></td>
+<td>Alias only; codeagent does not automatically escalate hard tasks to
+it.</td>
+</tr>
+<tr class="odd">
+<td><code>fast</code></td>
+<td><code>CODEAGENT_FAST_MODEL</code></td>
+<td>Preferred model for compaction, auto permission classification,
+memory relevance, and optional Data Shield review.</td>
+</tr>
+</tbody>
+</table>
+<div class="sourceCode" id="cb10"><pre class="sourceCode ini"><code class="sourceCode ini"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="dt">CODEAGENT_MODEL</span><span class="ot">=</span><span class="st">your-main-endpoint</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="dt">CODEAGENT_HEAVY_MODEL</span><span class="ot">=</span><span class="st">your-heavy-endpoint</span></span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="dt">CODEAGENT_FAST_MODEL</span><span class="ot">=</span><span class="st">your-fast-endpoint</span></span></code></pre></div>
+<p>Compaction prefers <code>CODEAGENT_FAST_MODEL</code>, then an option
+override, then the active Chat’s model, and finally an internal Haiku
+fallback. The <code>auto</code> permission mode similarly prefers the
+fast model and falls back to the main model before its internal default.
+Configure a valid fast endpoint when using a private OpenAI-compatible
+gateway.</p>
+</div>
+<div class="section level2">
+<h2 id="context-windows">Context windows<a class="anchor" aria-label="anchor" href="#context-windows"></a>
+</h2>
+<p>The raw context window resolves in this order:</p>
+<ol style="list-style-type: decimal">
+<li>positive <code>CODEAGENT_MAX_CONTEXT_TOKENS</code>;</li>
+<li>a <code>[1m]</code> suffix in the model name;</li>
+<li>a trusted provider-reported value or the built-in known-model table;
+and</li>
+<li>200,000 tokens.</li>
+</ol>
+<p>The effective auto-compaction window reserves output space. A
+positive <code>CODEAGENT_AUTO_COMPACT_WINDOW</code> can lower it, and
+any non-empty <code>CODEAGENT_DISABLE_COMPACT</code> disables automatic
+threshold compaction. Token counts use cached usage where available and
+otherwise estimate locally; normal compaction/status paths do not make
+an implicit token-count network request.</p>
+</div>
+<div class="section level2">
+<h2 id="cost-data-and-dollar-budgets">Cost data and dollar budgets<a class="anchor" aria-label="anchor" href="#cost-data-and-dollar-budgets"></a>
+</h2>
+<p>A client can enforce a positive dollar cap:</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span>max_budget_usd <span class="op">=</span> <span class="fl">2.50</span><span class="op">)</span></span></code></pre></div>
+<p>The same setting is available as <code>max_budget_usd</code> in JSON
+or <code>CODEAGENT_MAX_BUDGET_USD</code>. It relies on
+<code>chat$get_cost()</code>. If ellmer has no price for a
+custom/private model, cost may remain zero and the cap cannot fire.</p>
+<p>Pricing data is never refreshed automatically during startup or model
+requests. Refresh ellmer’s public snapshot explicitly when wanted:</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">price_update</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/update_model_prices.html">update_model_prices</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">price_update</span><span class="op">$</span><span class="va">message</span></span></code></pre></div>
+<p>A failed refresh keeps the existing cache. Public-price refreshes may
+still not add a match for a private endpoint.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

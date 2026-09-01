@@ -1,0 +1,191 @@
+# 技能与斜杠命令
+
+**语言：**
+[English](https://kaipingyang.github.io/codeagent/articles/skills-usage.md)
+\| 简体中文
+
+## 什么是技能？
+
+技能是存储为 `<name>/SKILL.md` 的可复用提示模板。用户可以输入
+`/name arguments`
+直接加载技能。模型也可以根据系统提示中的名称和描述做语义匹配， 然后调用
+`use_skill` 工具；完整正文只在需要时加载。
+
+本地斜杠命令优先于同名技能。特别是 `/compact [instructions]` 由 REPL 或
+Shiny
+服务器在本地处理并调用压缩控制器；它不会作为技能提示发送。包中也附带一个
+`compact/SKILL.md`，供模型通过工具进行语义调用。
+
+## codeagent 附带的技能
+
+当前安装包包含以下 17 个技能目录：
+
+| 技能 | 说明 |
+|----|----|
+| `/plan` | 在不编辑文件的情况下生成分析和逐步实施计划 |
+| `/verify` | 验证上一步操作的正确性与完整性 |
+| `/simplify` | 审查并简化最近的代码或输出 |
+| `/compact` | 请求结构化对话摘要；直接 `/compact` 语法使用上述本地命令 |
+| `/remember` | 把持久信息保存到跨会话记忆 |
+| `/loop` | 解释周期任务请求，例如 `/loop 5m /verify` |
+| `/document` | 运行包文档工作流，包括 [`devtools::document()`](https://devtools.r-lib.org/reference/document.html) |
+| `/roxygen` | 生成 roxygen2 文档骨架 |
+| `/testthat` | 创建 testthat 单元测试 |
+| `/style` | 一致地格式化和检查 R 代码 |
+| `/lint` | 使用 lintr 与 styler 检查和整理 R 代码 |
+| `/news` | 为发布更新 `NEWS.md` |
+| `/pkgdown` | 构建或更新 pkgdown 网站、参考索引和 vignette 文章 |
+| `/explore` | 用自然语言探索和分析 data frame |
+| `/report` | 把探索会话导出为 Quarto 文档 |
+| `/no-secrets` | 防止打印或提交密钥和具体基础设施标识 |
+| `/posit-dev-packages` | 更新项目锁定的核心开发包并报告版本 |
+
+实际列表可能更长，因为 btw、已安装包（包括
+Shiny）以及用户/项目目录都会贡献技能。 可用
+[`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md)
+检查实时列表，或在聊天中输入 `/` 打开斜杠命令提示。
+
+## 在聊天中使用技能
+
+    # 在 Shiny 应用或 REPL 中：
+    /plan add a new summarise_by_group() function
+    /roxygen summarise_by_group
+    /testthat summarise_by_group
+
+未知的 `/name` 会被解析为技能请求，但如果加载失败，REPL 与 Shiny
+路径会保留 原始斜杠文本，并把它作为普通提示发送。直接以编程方式调用
+[`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)
+时则会产生“Skill not found”错误，并列出当前可用名称。
+
+## 创建自定义技能
+
+请使用目录，而不是平铺的 Markdown 文件。支持以下用户级和项目级位置：
+
+    # 用户全局（btw 原生）：
+    ~/.btw/skills/my-skill/SKILL.md
+    ~/.config/btw/skills/my-skill/SKILL.md
+
+    # 项目本地：
+    .btw/skills/my-skill/SKILL.md          # btw 原生
+    .agents/skills/my-skill/SKILL.md       # btw agents 目录
+    .claude/skills/my-skill/SKILL.md       # Claude Code 兼容
+    .codex/skills/my-skill/SKILL.md        # Codex 兼容
+
+btw 还会提供其内置技能和发现到的包技能。codeagent 在此基础上补充已安装的
+codeagent 技能、已安装的 Shiny
+包技能，以及上述四个项目本地兼容路径。自定义 技能建议全局使用
+`~/.btw/skills`，项目内使用 `.btw/skills`。
+
+**SKILL.md 格式**：
+
+``` markdown
+---
+name: my-skill
+description: Short description shown in skill picker
+metadata:
+  argument-hint: "<what to type after /my-skill>"
+allowed-tools:
+  - Read
+  - Bash
+---
+
+Skill body — instructions for the agent.
+
+Use $ARGUMENTS to insert the user-supplied arguments.
+```
+
+`name` 和 `description` 是关键发现字段。当前 btw 兼容技能把
+`argument-hint` 放在 `metadata` 下；即使后端省略非核心
+frontmatter，codeagent 也会重新解析文件以保留 该提示。`allowed-tools`
+会保留为技能元数据，但不会绕过中央权限门。
+
+在正文中，`$ARGUMENTS` 展开为完整参数字符串；可用的 `$ARG1`、`$ARG2`
+及后续 占位符根据按空白分隔的 token 展开。
+
+## 架构与流程
+
+codeagent 使用 btw
+进行主要发现/加载，加入兼容路径，并采用渐进披露：元数据进入
+系统提示，正文按需加载。
+
+                        用户输入 /name args
+                                |
+                                v
+                       .preprocess_input()
+            +-------------------+--------------------+
+     识别出的本地命令                         否则 -> 技能请求
+     （例如 /compact）                            |
+            |                                      v
+     由 REPL/Shiny 处理                 load_skill_prompt(name, args, cwd)
+     （不作为技能提示发送）                       ^
+                                                    | use_skill 工具调用
+     系统提示 <- build_skill_hint()                 |
+     <available_skills> = 名称、描述、参数提示       |
+            |                                        |
+            v                                        |
+          模型 -- 语义匹配 --> use_skill ------------+  .make_skill_tool()
+                                                    |
+                                                    v
+                 可用时 btw:::find_skill() + frontmatter 正文
+                 否则读取发现路径并去掉 frontmatter
+                                                    |
+                                                    v
+                             替换 $ARGUMENTS 与 $ARG1 ...
+                                                    |
+                                                    v
+                             注入完整正文供代理遵循
+
+     发现与两级元数据缓存：list_skills_meta(cwd)
+
+       内存 .skill_cache，以规范化 cwd 为键
+            | 未命中或签名不匹配
+            v
+       磁盘 <codeagent-config>/cache/skills/<cwd-key>.rds
+            | 未命中、损坏或签名不匹配
+            v
+       btw:::btw_skills_list()
+         + btw 内置、包、用户和原生项目目录
+         + 已安装的 codeagent 与 Shiny 包技能
+         + cwd 下的 .btw、.agents、.claude、.codex 技能目录
+            |
+            v
+       命名 SkillMeta 列表 -> 尽力原子写入磁盘 + 内存缓存
+
+签名是对发现目录求和：每个目录中递归的 `SKILL.md`
+文件数加文件修改时间。它能 检测常规的新增、删除和编辑。缓存 I/O
+采用尽力而为方式：缓存缺失、损坏或不可写
+时会回退到发现流程，而不会破坏技能列表。
+
+## 公开签名与默认值
+
+``` r
+
+list_skills_meta(cwd = getwd())
+
+load_skill_prompt(name, args = "", cwd = getwd())
+
+build_skill_hint(cwd = getwd(), max_tokens = 1000L)
+
+install_ds_skills(
+  skill = NULL,
+  scope = c("user", "project"),
+  overwrite = FALSE
+)
+```
+
+[`build_skill_hint()`](https://kaipingyang.github.io/codeagent/reference/build_skill_hint.md)
+会把生成的元数据块截断到约 `max_tokens * 4` 个字符。
+[`install_ds_skills()`](https://kaipingyang.github.io/codeagent/reference/install_ds_skills.md)
+在 `skill = NULL` 时安装精选的 Posit R/数据科学集合，使用 `"all"`
+时安装全部上游技能，也可安装指定名称；默认作用域为用户全局。
+
+## 技能发现
+
+``` r
+
+# 列出所有可用技能
+list_skills_meta()
+
+# 以编程方式加载技能提示
+load_skill_prompt("plan", args = "add feature X", cwd = getwd())
+```

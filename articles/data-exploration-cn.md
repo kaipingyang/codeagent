@@ -1,0 +1,228 @@
+# 使用 codeagent 探索数据
+
+> **语言：**
+> [English](https://kaipingyang.github.io/codeagent/articles/data-exploration.md)
+> \| 简体中文
+
+## 标准模式、WEAR 模式和受保护数据路径
+
+codeagent
+提供两种常规数据探索体验，并为受保护数据提供一条独立的安全元数据路径：
+
+|  | 标准会话 | WEAR 会话（[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)） | Data Shield `DescribeData` |
+|----|----|----|----|
+| 入口 | [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md) / [`codeagent_console()`](https://kaipingyang.github.io/codeagent/reference/codeagent_console.md) | `wear_explore(data = ...)` | `codeagent_client(data_shield = ...)` |
+| 工具 | 默认注册 `ExploreData` | 针对 `data` 重新注册 `ExploreData`，并添加 `GenerateReport` | 面向已注册受保护数据集的 `DescribeData` |
+| 模型行为 | 通用智能体 | WEAR 提示词要求输出 **Next steps** | 仅提供过滤后的模式/元数据，不执行任意查询代码 |
+| 典型用途 | 编码任务中的数据问题 | 专注且有状态的 EDA | 在不暴露数据行的情况下了解受保护模式 |
+
+**经验法则：** 当数据探索本身就是任务时，使用
+[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)；当数据问题只是更广泛工作的一部分时，使用标准会话。对于受保护数据，应使用
+Data Shield 和 `DescribeData`；`ExploreData` 不是安全边界。
+
+## 标准会话：默认提供 `ExploreData`
+
+正常构造的客户端会注册 `ExploreData`，除非在设置中显式把 `explore_data`
+设为 `false`。默认情况下，它从 `.GlobalEnv` 读取具名
+data.frame。显式调用 `register_explore_data_tool(chat, envir = ...)`
+仍然有用，例如把工具安装到裸 Chat 上，或将其绑定到另一个环境。
+
+``` r
+
+library(codeagent)
+
+client <- codeagent_client(permission_mode = "bypass", btw_groups = NULL)
+register_explore_data_tool(client$chat)
+
+codeagent(client, "How many rows are in mtcars and what are the columns?")
+codeagent(client, "What is the average mpg per cylinder count?")
+```
+
+可在用户级或项目级设置中关闭：
+
+``` json
+{
+  "explore_data": false
+}
+```
+
+`explore_data_tool(envir = .GlobalEnv)` 向模型提供三个参数：必需的
+`data_name`、可选的 `question` 和可选的 `code`。未给出 `code` 时，它返回
+`ellmer::df_schema(df)`；给出 `code` 时，它会解析并求值表达式，对
+data.frame 返回表格 artifact，对其他结果返回文本。
+
+该工具被标注为只读，而且中央权限门当前把它归类为读取工具，因此除非宿主添加工具覆盖规则，否则无需提示即可执行。这种分类描述的是预期用途，并不等于
+R
+沙箱保证。详见[安全与执行限制](#%E5%AE%89%E5%85%A8%E4%B8%8E%E6%89%A7%E8%A1%8C%E9%99%90%E5%88%B6)。
+
+## WEAR 会话：专用探索模式
+
+`wear_explore(data = NULL, client = NULL, mode = c("repl", "shiny"), ...)`
+启动 Write/Execute/Analyze/Regroup 会话。默认模式是 `"repl"`。当
+`client` 为 `NULL` 时，它使用 `permission_mode = "bypass"`
+创建客户端。`data = NULL` 表示使用
+`.GlobalEnv`；环境对象会直接使用；其他类似列表的值会通过
+`list2env(as.list(data), parent = .GlobalEnv)`
+转换。应使用具名列表，以便每个 data.frame 都有稳定的工具可见名称。
+
+随后，该函数会：
+
+1.  针对这个环境注册 `ExploreData`；
+2.  注册可由模型调用的 `GenerateReport` 工具；
+3.  在尚未存在时追加 WEAR 系统提示词；
+4.  进入
+    [`codeagent_console()`](https://kaipingyang.github.io/codeagent/reference/codeagent_console.md)
+    或
+    [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)。
+
+对于每个用户问题，提示词要求模型：
+
+1.  **W — Write：** 生成 dplyr/base R 代码；
+2.  **E — Execute：** 调用 `ExploreData`；
+3.  **A — Analyze：** 解释模式、离群值和意外发现；
+4.  **R — Regroup：** 每次回复都以 **Next steps**
+    结束，并且恰好给出三条编号建议。
+
+&nbsp;
+
+    wear_explore(data = ...)
+      - 把 data 解析为环境
+      - 针对该环境注册 ExploreData
+      - 注册 GenerateReport
+      - 追加 WEAR 系统提示词
+      - 进入 codeagent_console() 或 codeagent_app()
+
+    每个轮次都被提示遵循 W-E-A-R：
+      W  Write     模型编写 dplyr/base R 代码
+      E  Execute   ExploreData 在新的子环境中求值代码
+                     - 提供 code -> 表格 artifact 或打印值
+                     - 未提供 code -> ellmer::df_schema(df)
+      A  Analyze   模型解释结果
+      R  Regroup   模型以 "Next steps" 和恰好 3 条建议结束
+           |
+           v  重复，直到用户停止
+      /report -> 提示模型调用 GenerateReport
+
+``` r
+
+# CLI 会话（阻塞，直到输入 /exit 或 Ctrl+C）
+wear_explore(data = list(mtcars = mtcars))
+
+# Shiny UI
+wear_explore(
+  data = list(sales = sales_df, products = products_df),
+  mode = "shiny"
+)
+```
+
+交互式前端结束后，[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+会以不可见形式返回客户端。
+
+### 导出到 Quarto
+
+在 WEAR 会话中，`/report` 会被本地识别为内置的 `report`
+skill。REPL/Shiny 的 skill
+路径会把它展开成模型提示，要求模型调用已注册的 `GenerateReport`
+工具；本地命令分发不会直接执行导出器。要求保存或导出分析也应触发同一个
+工具。也可以直接调用
+[`generate_wear_report()`](https://kaipingyang.github.io/codeagent/reference/generate_wear_report.md)。
+
+``` r
+
+# 会话结束后捕获客户端并生成报告
+client <- wear_explore(data = list(mtcars = mtcars))
+
+path <- generate_wear_report(
+  client,
+  path  = "mtcars-analysis.qmd",
+  title = "Motor Trend Car Analysis"
+)
+
+# 使用 quarto CLI 渲染
+system(paste("quarto render", path))
+```
+
+`generate_wear_report(client, path = ..., title = "Data Exploration Report")`
+读取聊天轮次，并写入包含 `code-fold: true`、`toc: true` 和
+`execute: {echo: true, eval: false}` 的 YAML。用户文本会成为 `##`
+标题，助手文本会成为正文。不以 `[` 开头的工具结果文本会写成引用块。
+
+只有当 `ContentToolResult` 包含 `extra$code` 时，导出器才会写入 R
+代码块。当前 `ExploreData` 实现会返回类型化 artifact，但**不会**附加
+`extra$code`，所以普通 WEAR 会话目前不会在 `.qmd`
+中保留所生成的查询代码。因此，除非记录中的工具结果来自提供 `extra$code`
+的工具，否则应把导出文件视为会话报告，而不是完全可复现的分析脚本。
+
+## 用于受保护数据集的 `DescribeData`
+
+`DescribeData` 与 `ExploreData` 不同。启用 describe 策略的 Data Shield
+会安装它，而且它只能描述已注册到该 shield 的 data.frame。它接受可选的
+`data_name`；当且仅当已注册一个受保护数据集时可以省略。
+
+``` r
+
+shield <- DataShield$new(strategies = list(
+  shield_describe(k_anon = 5),
+  shield_egress(max_rows = 0),
+  shield_regex(on_fail = "redact")
+))
+shield$register_data(mtcars, name = "cars")
+
+client <- codeagent_client(data_shield = shield)
+# 模型现在可以调用 DescribeData(data_name = "cars")。
+```
+
+采用
+[`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)
+默认值（`distributions = "off"`、`k_anon = 5`、`category_max = 20`、`category_ratio = 0.2`）时，`DescribeData`
+返回过滤后的模式信息、敏感度类别、是否存在缺失值、安全的数值/日期范围，以及支持度足够的低基数标签。它不返回数据行、自由文本示例、分布或类别计数。标识符和准标识符的值会被抑制，稀有标签会变成
+`<rare suppressed>`。
+
+`distributions = "on"`
+会显式启用真实的逐类别计数。`distributions = "dp"` 会输出加入 Laplace
+噪声的类别计数，并消耗每个数据集的预算（默认
+`dp_epsilon = 1`、`dp_budget = 5`）；预算耗尽后，会静默降级为仅标签输出。这些分布模式不会改变数值/日期摘要。
+
+把 shield 传给
+[`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
+时，在构造客户端之前注册的数据集，其过滤 模式也会进入系统提示词。构建该
+schema block 使用同一条 DP describe 路径： 在 `"dp"`
+模式下，每个符合条件的分类列都会消耗并持久化 `dp_epsilon`。
+因此，首次提示构建以及重复调用 `refresh_data_shield_context(client)`
+都可能 耗尽该数据集的预算。运行时注册上传数据后，应调用
+`refresh_data_shield_context(client)` 刷新该提示上下文。`DescribeData`
+仍是 实时且权威的回退工具。
+
+不要只用 `ExploreData` 注册受保护数据：它可以执行任意
+R，并可能返回行级值。Data Shield
+会包装工具的输出边界，并添加受保护数据元数据路径，但只有在正确配置
+shield 且注册数据集之后，才能依赖这些控制。
+
+## 环境上下文注入
+
+下面这个独立设置会在第一条 system reminder 中加入 `.GlobalEnv` 对象名和
+data.frame 模式，使模型无需先调用工具就能知道有哪些对象：
+
+``` json
+// ~/.codeagent/settings.json
+{
+  "inject_r_env": true
+}
+```
+
+它不会把数据注册到 Data Shield，也不会改变 `ExploreData` 的执行语义。
+
+## 安全与执行限制
+
+`ExploreData` 使用 `eval(parse(...))` 对模型生成的 R
+代码求值。求值发生在一个新环境中，其父环境是传入的数据环境；所选
+data.frame 会绑定到该子环境。像 `df$x <- ...`
+这样的普通替换会使用子环境绑定和 copy-on-modify，测试也确认它不会改变源
+data.frame。
+
+但是，这只是命名空间隔离，**不是安全沙箱**。被求值的代码可以通过父环境解析函数，并可能使用显式父环境赋值、可变/引用对象、文件系统函数、进程执行或当前
+R 进程可用的网络函数。`read_only_hint = TRUE` 和
+`open_world_hint = FALSE`
+只是元数据，不是强制机制。只应与可信模型和环境一起使用；如宿主有需要，应添加显式权限覆盖；受保护数据应使用
+Data Shield/`DescribeData` 而不是 `ExploreData`。通用 `RunR`
+工具仍被单独归类为可执行工具，并经过自己的权限决策。

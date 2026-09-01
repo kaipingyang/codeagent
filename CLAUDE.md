@@ -17,7 +17,10 @@ before touching a subsystem.
 | File | When to read |
 |----|----|
 | `ellmer-package.md` | Core Chat API, tool(), type\_\*(), ContentToolResult, S7 internals |
-| `ellmer-tool-calling.md` | tool(), type\_\*(), ContentToolResult extra\$display, tool_annotations(), on_tool_request/result, stream="content" \| \| \`btw-package.md\` \| btw 1.2.1 overview, client config, skill system \| \| \`btw-tools.md\` \| btw 工具组完整参考（10组 + skill系统 + btw_app设计）\| \| \`shinychat.md\` \| chat_append(), tool cards, \_intent display, ContentToolResult extra\$display |
+| `ellmer-tool-calling.md` | tool(), type\_\*(), `ContentToolResult` `extra$codeagent$artifact` / `extra$display`, tool_annotations(), on_tool_request/result, stream=“content” |
+| `btw-package.md` | btw 1.2.1 overview, client config, skill system |
+| `btw-tools.md` | btw 工具组完整参考（10组 + skill系统 + btw_app设计） |
+| `shinychat.md` | chat_append(), tool cards, \_intent display, `ContentToolResult` `extra$display` |
 | `bslib-shinychat-layout.md` | `chat_ui(fill=TRUE)`、`page_fillable()`、`layout_sidebar()`、`sidebar(fillable=TRUE)` 的真实约束；先读再改聊天布局 |
 | `bslib-toolbar-toast.md` | `toolbar()` / `toolbar_input_button()` / `toast()` 在本项目中的推荐用法 |
 | `bslib-toast-vs-notification.md` | [`bslib::show_toast()`](https://rstudio.github.io/bslib/reference/show_toast.html) 与 [`shiny::showNotification()`](https://rdrr.io/pkg/shiny/man/showNotification.html) 的选型结论 |

@@ -1,5 +1,9 @@
 # 数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）
 
+**语言：**
+[English](https://kaipingyang.github.io/codeagent/articles/data-shield.md)
+\| 简体中文
+
 > **本文是英文版
 > [`vignette("data-shield")`](https://kaipingyang.github.io/codeagent/articles/data-shield.md)
 > 的完整中文翻译**，供内部讨论使用。概念定义、参数默认值以本文为准；如与代码有出入，以代码为准（两版会同步更新，但请以英文版 +
@@ -21,46 +25,48 @@
 可以看到**元数据和描述性摘要**，但**绝不能看到原始行级数据**。数据盾是一个
 **默认关闭、可插拔**的安全阀（`data_shield = NULL`），开启时由若干独立策略组合而成。
 
-## 核心：两条边
+## 核心：三条边
 
-去掉 agent 的其他机制，数据只有**两条入边**能到达
-LLM。守住这两条，就等于守住了一切：
+去掉 agent
+的其他机制，数据会在**三条边**穿过模型边界。数据盾在每一条边上 都安装了
+gate：
 
-1.  **Prompt / system-prompt 内容**——包括框架自己的**ambient-context
-    自动注入** （codeagent 会把 R session 里对象的摘要注入进 system
-    reminder）。这部分是我们 自己控制的，必须保持**只给
-    schema**（列名/类型/维度），绝不给值。
-2.  **工具结果**——任何工具返回、并回灌给模型的内容。
+1.  **用户/模型输入**（边 1，input
+    gate）——用户输入的文本和含文本的附件在
+    模型看到之前先扫描。框架自行注入的受保护数据上下文则单独生成经过过滤的
+    schema-only
+    元数据（名称、类型、维度及策略允许的安全摘要），绝不包含原始行。
+2.  **工具流量**（边 2，tool
+    gate）——工具参数在执行前检查，工具结果在回灌 模型前过滤。
+3.  **模型最终回复**（边 3，output
+    gate）——完整回复在到达用户前扫描，因为
+    即使用户输入干净，模型也可能复述从边 2 聚合结果中推断出的受保护值。
 
-其余情况都能归约到这两条（RAG
-和错误信息都算其中一条；模型生成的内容是出边，
-不是入边）。这个保证**递归适用于子代理**——每个子代理都有自己的两条边。
+RAG 内容、附件和错误都必须经过其中一条边。相同策略会递归应用于框架拥有的
+前台子代理。
 
-> 需单独处理的盲区：**图片/多模态**工具结果（渲染出原始行数据的表格/图表）会绕过文本扫描。
+> **图片边界：** prompt 中的图片附件默认不扫描。宿主可以选择接入 OCR
+> hook
+> （[`data_shield_ocr_scanner()`](https://kaipingyang.github.io/codeagent/reference/data_shield_ocr_scanner.md)），扫描图片中烘焙的文字以保护边
+> 1。图片/多模态 **工具结果**仍会绕过文本 egress
+> 扫描，需要宿主另行提供图片结果控制。
 
 ### 技术架构一览
 
-                             codeagent 中央 gate（唯一权威，已有双钩子）
-     宿主/用户上传数据
+     宿主/用户注册受保护数据（只留在本地）
          │ shield$register_data(df, name, sensitivity)
-         ▼
-     ┌──────────────────┐   建 value 索引（敏感列去重高熵值，仅本地，不进模型）
-     │ 受保护数据注册     │────────────────────────────────┐
-     │ 绑 envir / 自动分类 │                                 │
-     └────────┬─────────┘                                  │
-              │ 唯一合法喂法                                 │
-              ▼                                             ▼
-       DescribeData(C6)                              value_match 查
-       硬化schema+统计+k匿名                          （小输出 × 预建索引 = 快）
-              │                                             │
-       ┌──────┴──────────── 模型上下文的两个入口（都要守）───┴──────────────┐
-       │  ① prompt 注入 ◄── ambient context ◄── 只喂安全画像                │
-       │  ② 工具结果：                                                       │
-       │       on_tool_request ─►[ ingress 管道：C2 黑名单 → C4 审核(exec) ]─► 执行 ─► 产出
-       │       产出 ─► on_tool_result ─►[ egress 管道：C3 row_cap → value_match → regex → C4 审核 ]─► 回灌模型
-       │                每策略 on_fail：pass|redact|block|ask；顺序执行 + fail_fast │
-       └────────────────────────────────────────────────────────────────────┘
-       （C5 沙箱：exec 无网/只读/独立用户；C1 收窄：可选删风险 tool —— 均为增强）
+         ├────────► 过滤后的 schema block / DescribeData ──────────────┐
+         └────────► 本地高熵值索引                                      │
+                                                                       ▼
+     用户文本 + 含文本附件 ─► [边 1 input gate] ─────────────────────► 模型
+                                                                       │
+     工具调用 ─► [边 2 ingress：策略 → 模式 → reviewer] ─► 执行
+                                                                       │
+     模型 ◄── [边 2 egress：row_cap → value_match → scanners] ◄── 结果
+       │
+       └──────── 最终回复 ─► [边 3 output gate] ─► 用户/浏览器
+
+     沙箱和工具收窄属于纵深防御。权限门保持独立，Shield bypass 永远不会绕过权限检查。
 
 ### 下面每个代码片段共用的起手式
 
@@ -122,8 +128,39 @@ client <- codeagent_client(chat, data_shield = list(
 | 值 | 效果 |
 |----|----|
 | `NULL` | 完全关闭；codeagent 现有行为不变 |
-| `list(shield_*())` | 策略按列表顺序执行；codeagent 为该 client 创建一个私有 `DataShield` R6 |
+| `list(shield_*())` | codeagent 为该 client 创建一个私有 `DataShield` R6；egress 扫描器按列表顺序运行，ingress/reviewer/sandbox/tool-policy 则在各自阶段运行 |
 | `DataShield$new(...)` | 显式生命周期，用于上传数据、在多个 chat 间有意共享 |
+
+### Input/output gate 与扫描器默认值
+
+Input gate 和最终回复 gate 属于 client setting，不是 `shield_*()`
+策略。安全默认值如下：
+
+| Setting | 默认值 | 效果 |
+|----|----|----|
+| `data_shield_prompt_on_fail` | `"redact"` | 脱敏用户文本中的命中片段；`"block"` 拒绝整轮输入 |
+| `data_shield_input_scanners` | `c("value_match", "regex")` | 扫描已注册受保护值和 PII/token 形状 |
+| `data_shield_response_on_fail` | `"redact"` | 脱敏最终模型回复；`"block"` 用 blocked 提示替换回复 |
+| `data_shield_output_scanners` | `c("value_match", "regex")` | 对最终回复应用相同的两个检测器 |
+| `data_shield_image_scanner` | `NULL` | 除非宿主提供 hook，否则不扫描图片 |
+
+未知扫描器名称和扫描器异常都会 fail closed。输入侧 `"ask"` 没有独立审批
+通道，会降级为脱敏。含文本附件会被扫描；如果无法提取其文本，本轮会被拦截，
+因为不可变附件无法安全地原地改写。盾开启时，CLI 和 Shiny
+流式路径会先缓冲
+完整模型回复、完成扫描，再一次性发送安全文本——不会先流出明文再告警。
+
+Prompt 图片可这样选择启用 OCR：
+
+``` r
+
+client$settings$data_shield_image_scanner <-
+  data_shield_ocr_scanner(client$data_shield)
+```
+
+`tesseract` 是可选依赖。没有安装时，现成的 scanner 会降级为
+pass（图片盲区 仍存在）。一旦 OCR 可用且 scanner 已配置，图片不可读、OCR
+出错、OCR 文本 扫描出错都会 block；检测到受保护文字时默认也会 block。
 
 ### `shield_egress()` —— 核心的工具结果边界
 
@@ -256,7 +293,7 @@ bypass egress； 而 `btw_tool_docs_*`
 | `scope` | exec/write/net | 只有这些工具能力才产生审查开销 |
 | `on_risk` | `"ask"` | 风险分类结果变成 ask 或 block |
 | `on_error` | `"ask"` | 模型缺失、超时、请求/JSON 错误都变成 ask 或 block；无审批通道则 block |
-| `backend` | `"remote_sanitized"` | 远程只看脱敏后的代码；raw egress 审查是仅本地的路线图项 |
+| `backend` | `"remote_sanitized"` | 远程只看 regex/value 脱敏后的代码；也支持 `"local_only"`，但必须显式提供本地 `client_factory`，缺失时 fail closed |
 | `timeout` | `30` | 异步审查超时秒数 |
 
 审查器不是一个工具，主模型无法跳过它。它没有工具、没有历史记录；代码被标记为
@@ -267,10 +304,12 @@ JSON（`risk`、`confidence`、`reason`）解析。确定性的 ingress
 ### `DataShield$new()` 直接生命周期管理
 
 `strategies = NULL` 时，构造函数直接参数（`max_rows`、`distributions`、
-`k_anon`、`category_max`、`category_ratio`、`audit_max`）会创建默认的
-DescribeData + 核心 egress 配置。`audit_max` 默认 1000
-条非敏感决策事件； 设为 `0` 禁用记录。传 `strategies = list(...)`
-只会启用**列出的**策略， 并保持列表顺序。动态/session 拥有的工作流用
+`k_anon`、`category_max`、`category_ratio`、`audit_max`、`dp_epsilon`、
+`dp_budget`）会创建默认的 DescribeData + 核心 egress 配置。`audit_max`
+默认 1000 条非敏感决策事件； 设为 `0` 禁用记录。传
+`strategies = list(...)` 只会启用**列出的**策略。 列表顺序控制 egress
+扫描器 pipeline；ingress、reviewer、sandbox 和 tool-policy
+策略在各自独立阶段运行。动态/session 拥有的工作流用
 `shield$register_data()`、
 `$install()`、`$describe()`、`$audit()`、`$clear_audit()`、`$clear()`、`$close()`。
 
@@ -301,10 +340,10 @@ DescribeData + 核心 egress 配置。`audit_max` 默认 1000
 | 字段 | 含义 |
 |----|----|
 | `timestamp` | UTC 事件时间 |
-| `edge` | `ingress`（工具执行前）或 `egress`（进 LLM 前） |
+| `edge` | 策略边界，包括 `prompt`、`ingress`、`egress`、`response` 或 `describe` |
 | `tool_name`, `tool_call_id` | 非敏感的关联标识符 |
-| `strategy` | `row_cap`、`value_match`、`regex`、`ingress`，或自定义 scanner 名 |
-| `action`, `reason` | `redact`/`block`/`ask` 和一个规则/原因标签 |
+| `strategy` | 包括 `row_cap`、`value_match`、`regex`、`ingress`、`dp_budget`、`tool_policy`、`asset_policy`、`sandbox`，或自定义 scanner 名 |
+| `action`, `reason` | 如 `redact`、`block`、`ask`、`consume`、`exhausted`、`bypass`、`deny` 等策略动作及规则/原因标签 |
 | `match_count`, `score` | 命中数量和归一化风险分数 |
 
 它**绝不存储**原始工具输入/输出、命中的值、数据行、span 文本、或哈希值。
@@ -391,10 +430,17 @@ shield$register_data(
   k-匿名抑制）， 这样模型才能写出正确的过滤条件。
 - `egress = "raw"` 把该列从 value-match 索引中移除，所以它的值不会从工具
   输出中被扣留。
-- 缺少 `reason` 的 override
-  **会被丢弃并发出警告**，该列退回到它的敏感度档位——
-  一个标错的列会安全降级，绝不会静默泄漏。`coverage()$raw_access_columns`
-  统计当前生效的 override 数量。
+- 缺少 `reason` 的 raw override **是硬错误**（`register_data()` 拒绝整个
+  dataset），因此标错的 raw
+  授权不会被忽略。`coverage()$raw_access_columns` 统计当前生效的
+  override 数量。
+
+> **egress 分档注意事项：** 仅在 EGRESS 侧，`none`（任何该列值命中时拒绝
+> 整个工具结果）和 `raw`（从 value-match
+> 索引移除）目前有独立行为；`schema` 与 `scan` 都走普通 value-match
+> 扫描，尚没有结构化的 schema/scan egress 差异。列级 `scan_secrets`
+> 控制的是 PROMPT 侧的 raw `DescribeData` 路径， 不是 egress。完整的列级
+> egress 分档需要结果到列的 provenance；PROMPT 侧已经实现全部四个级别。
 
 ### 宿主模式：一个自带来源标记的 spec 工具
 
@@ -548,6 +594,29 @@ factor 类型不代表自动安全：一个被 factor 化的受试者 ID 仍然�
 PII、且每个暴露的水平都满足 k-匿名阈值时，
 才会给出分类标签。自由文本在严格模式下永远不给真实示例。
 
+### System prompt 中的受保护 schema
+
+如果受保护数据在构建
+[`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
+**之前**已经注册，经过过滤的 `DescribeData` 风格 schema 会进入 system
+prompt 的 `<protected-data>` 区块。 模型因此能知道真实的 dataset
+名、维度和允许使用的列，但看不到标识符值或稀有 类别。`DescribeData`
+仍是权威的实时查询后备。
+
+`register_data()` 会更新实时引擎和值索引，但刻意不会重写已有 Chat 的
+prompt。 运行时上传后要显式刷新：
+
+``` r
+
+shield$register_data(df, name = "uploaded")
+client <- refresh_data_shield_context(client)
+```
+
+刷新会重建 prompt，同时保留历史、工具、预算、hooks 和同一个实时
+`DataShield`； 代价是一次 prompt cache miss。在 `distributions = "dp"`
+下，生成 schema block 和调用 `DescribeData` 都会消耗配置的每 dataset
+隐私预算。
+
 ## P1.5 有序 egress 扫描器
 
 策略列表的顺序就是执行顺序。即使没有注册任何
@@ -617,6 +686,24 @@ cwd/options/环境变量。 因此数据盾对 native、btw、MCP
 可以提供本地或专用的审查器。缺失/失败/非法的审查器结果都按 `on_error`
 处理；无审批通道时 ask 会退化为 block。
 
+## 相关数据工具及其边界
+
+- **`DescribeData`** 只在启用
+  [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)
+  时注册（或直接构造函数使用
+  默认策略时注册）。它返回上面的过滤后元数据契约，也能看到之后注册的数据集。
+- **`ExploreData`** 是通用的只读数据查询工具，不是保密边界，也不是 OS
+  沙箱。 它在子环境中执行传入的 R 代码；数据盾开启时，其参数仍经过中央
+  ingress gate， 面向模型的结果仍经过 egress 过滤。data.frame
+  结果只向模型给出 shape 字符串， 丰富的行数据留在 UI artifact
+  中；标量文本仍可被 `value_match`/regex 命中。
+- **`audit_code_tool(shield, project_root)`** 是宿主可在执行 R
+  代码前选择注册的 `AuditCode` 工具。它解析静态引用，只读取
+  `project_root` 内扩展名获准的普通 source
+  文件，从不执行提交的代码，并返回风险/引用元数据而不是文件内容。盾
+  开启时，白名单内的 source 文本还会经过 reviewer rail。`AuditCode`
+  不向主模型 授予 read/write/shell 能力。
+
 ## 路线图
 
 - **P0.5 —— `value_match`（已实现）**：通过对照用
@@ -647,10 +734,13 @@ cwd/options/环境变量。 因此数据盾对 native、btw、MCP
 
 ## 子代理边界
 
-前台子代理（`Agent`）在其任何工具能把内容返回给子模型之前，会继承**完全
-同一个** `DataShield` R6。这对同步和并发异步的 Agent
-调用都适用。当盾激活 时，codeagent 会刻意跳过那些无法接受策略引擎的
-btw/自定义 agent 委派路径。
+前台子代理（`Agent`）继承**完全同一个实时** `DataShield`
+R6；在第一次子模型 请求之前，其工具已经安装在同一套中央权限门和 Shield
+gate 后面。这对同步和 并发异步 Agent
+调用都适用。盾激活时，不会暴露无法接收该引擎的原始
+`btw_tool_agent_*`/自定义委派路径。子代理回复会在进入 `SubagentStop`
+hook、 callback 或父级工具结果之前先经过 output gate，且受盾保护的
+sidechain 不持久化。
 
 `BackgroundAgent` 和 `/bg` 在数据盾开启时目前会 **fail closed**：它们的
 mirai worker 是一个独立的 R 进程，无法安全地共享 session 的 R6 状态或
@@ -766,20 +856,24 @@ strength”
   CDISC-ADaM 格式示例数据上做过
   benchmark（`inst/bench/value_match_benchmark.R`）： 索引 100
   万个高熵值约需 130 MB 内存、约 10 秒构建时间，对普通临床文本
-  零误报，pharmaverse 格式的 `USUBJID`/`SUBJID` 均能命中。由于内存线性且
-  无界增长，`register_data(max_index_values=)` 给索引设了上限（默认 50
-  万， 约 65 MB）；超限时会发出警告，未被索引的部分依赖其他 egress
-  层兜底。 `min_len`/`min_card` 阈值在这些 ID 上表现良好，未做调整。
-- **图片/多模态和完整 OS 隔离仍是路线图项**（见文首状态横幅）：渲染出
-  原始行数据的表格/图表会绕过文本扫描，便携式沙箱是路径/能力策略，
-  不是内核级隔离。
-- **`shinychat` 文件附件会完全绕过数据盾。** codeagent 主 UI 启用了
-  `chat_ui(allow_attachments = TRUE)`；用户手动拖入的附件直接进入 prompt
-  边（`user_contents`），目前**不经过任何 egress 层扫描**。这是一个
-  已知、尚未修复的缺口——与 `fileInput()` → `register_data()`
-  那条**受控、
-  会扫描**的路径完全不同。在盾开启的情况下依赖附件功能前，请留意这条
-  缺口。
+  零误报，pharmaverse 格式的 `USUBJID`/`SUBJID`
+  均能命中。由于内存线性增长， `register_data(max_index_values=)`
+  给索引设了上限（默认 50 万，约 65 MB）。
+  如果该上限会截断索引，注册会报错并拒绝这个部分索引的数据集；应提高上限、
+  拆分数据，或显式使用 `NULL`/`Inf`。`min_len`/`min_card` 阈值在这些 ID
+  上 表现良好，未做调整。
+- **图片工具结果和完整 OS
+  隔离仍是路线图项**（见文首状态横幅）：工具返回的
+  原始行渲染表格/图表会绕过文本 egress 扫描，便携式沙箱是路径/能力策略，
+  不是内核级隔离。Prompt 图片 OCR 是上文所述、单独选择启用的边 1 控制；
+  可选依赖缺失时的 pass 降级是一个明确记录的盲区。
+- **`shinychat` 含文本附件会在边 1 扫描。** codeagent 主 UI 启用了
+  `chat_ui(allow_attachments = TRUE)`；input gate 会提取并扫描含文本附件
+  （例如 `ContentPDF`），无法验证内容时 fail closed 到 block（不可变
+  Content 不能原地脱敏）。图片附件仍是盲区，除非接入 OCR scanner
+  ([`data_shield_ocr_scanner()`](https://kaipingyang.github.io/codeagent/reference/data_shield_ocr_scanner.md))；scanner
+  已配置时，OCR 或扫描失败会 fail closed 到 block。`fileInput()` →
+  `register_data()` 仍是表格上传的受控、建索引路径。
 - **数据盾不管破坏性操作**（`rm -rf`、删表、强制推送）——这是另一个维度
   （操作安全，不是数据保密），由权限门和 hooks 管，不归本文档任何
   `shield_*()`

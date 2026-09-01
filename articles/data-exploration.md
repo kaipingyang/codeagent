@@ -1,30 +1,33 @@
 # Data exploration with codeagent
 
-## Two modes: standard vs WEAR
+> **Language:** English \|
+> [简体中文](https://kaipingyang.github.io/codeagent/articles/data-exploration-cn.md)
 
-codeagent offers two ways to explore data. Choosing the right one
-depends on whether you want a focused, stateful exploration session or
-just an occasional data query inside a general-purpose agent
-conversation.
+## Standard, WEAR, and protected-data paths
 
-|  | Standard session | WEAR session ([`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)) |
-|----|----|----|
-| Entry point | [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md) / [`codeagent_console()`](https://kaipingyang.github.io/codeagent/reference/codeagent_console.md) | `wear_explore(data = ...)` |
-| `ExploreData` tool | Not registered by default | Automatically registered |
-| `/report` command | Not available | Exports session to `.qmd` |
-| WEAR system prompt | Not injected | Injected: agent ends each turn with **Next steps** |
-| Typical use | Occasional data questions amid coding tasks | Dedicated analysis / EDA session |
+codeagent has two general data-exploration experiences and a separate
+safe metadata path for protected data:
+
+|  | Standard session | WEAR session ([`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)) | Data Shield `DescribeData` |
+|----|----|----|----|
+| Entry point | [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md) / [`codeagent_console()`](https://kaipingyang.github.io/codeagent/reference/codeagent_console.md) | `wear_explore(data = ...)` | `codeagent_client(data_shield = ...)` |
+| Tool | `ExploreData` is registered by default | Re-registers `ExploreData` for `data`, adds `GenerateReport` | `DescribeData` for registered protected datasets |
+| Model behavior | General-purpose agent | WEAR prompt requires a **Next steps** section | Filtered schema/metadata only; no arbitrary query code |
+| Typical use | Data questions among coding tasks | Focused, stateful EDA | Discovering protected schema without exposing rows |
 
 **Rule of thumb:** use
 [`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
-when data exploration *is* the task. Use a standard session when data
-questions are one of many things you need.
+when exploration is the task. Use a standard session when data questions
+are one part of broader work. For protected data, use Data Shield and
+`DescribeData`; `ExploreData` is not a security boundary.
 
-------------------------------------------------------------------------
+## Standard sessions: `ExploreData` is on by default
 
-## Standard session: ExploreData on demand
-
-You can register `ExploreData` manually on any client:
+A normally constructed client registers `ExploreData` unless
+`explore_data` is explicitly set to `false` in settings. It reads named
+data.frames from `.GlobalEnv` by default. Calling
+`register_explore_data_tool(chat, envir = ...)` explicitly remains
+useful to install it on a bare chat or bind it to another environment.
 
 ``` r
 
@@ -37,43 +40,74 @@ codeagent(client, "How many rows are in mtcars and what are the columns?")
 codeagent(client, "What is the average mpg per cylinder count?")
 ```
 
-`ExploreData` is read-only (sandboxed sub-environment of `.GlobalEnv`)
-and is allowed automatically in `default` permission mode.
+To opt out globally or per project:
 
-------------------------------------------------------------------------
+``` json
+{
+  "explore_data": false
+}
+```
 
-## WEAR session: dedicated exploration
+`explore_data_tool(envir = .GlobalEnv)` exposes three model arguments:
+`data_name` (required), `question` (optional), and `code` (optional).
+Without `code`, it returns `ellmer::df_schema(df)`. With `code`, it
+parses and evaluates the expression and returns a table artifact for a
+data.frame or text for other results.
 
-[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
-starts a full exploration session with the Write/Execute/Analyze/Regroup
-loop. On every turn the agent:
+The tool is annotated as read-only and is currently classified as a read
+tool by the central permission gate, so it is allowed without prompting
+unless a host adds a tool override. That classification describes
+intended use; it is not an R sandbox guarantee. See [Security and
+execution limits](#security-and-execution-limits).
 
-1.  **W** — writes dplyr/base R code to answer your question
-2.  **E** — runs it via `ExploreData`
-3.  **A** — interprets results, flags patterns and outliers
-4.  **R** — proposes 3-5 follow-up questions
+## WEAR sessions: dedicated exploration
+
+`wear_explore(data = NULL, client = NULL, mode = c("repl", "shiny"), ...)`
+starts a Write/Execute/Analyze/Regroup session. The default mode is
+`"repl"`. When `client` is `NULL`, it creates one with
+`permission_mode = "bypass"`. `data = NULL` uses `.GlobalEnv`; an
+environment is used directly; another list-like value is converted with
+`list2env(as.list(data), parent = .GlobalEnv)`. Use a named list so
+every data.frame has a stable tool-visible name.
+
+The function then:
+
+1.  registers `ExploreData` against that environment;
+2.  registers the model-callable `GenerateReport` tool;
+3.  appends the WEAR system prompt if it is not already present; and
+4.  enters
+    [`codeagent_console()`](https://kaipingyang.github.io/codeagent/reference/codeagent_console.md)
+    or
+    [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md).
+
+For each user question the prompt instructs the model to:
+
+1.  **W — Write:** generate dplyr/base R code;
+2.  **E — Execute:** call `ExploreData`;
+3.  **A — Analyze:** interpret patterns, outliers, and unexpected
+    findings; and
+4.  **R — Regroup:** end every response with exactly three numbered
+    suggestions under **Next steps**.
 
 &nbsp;
 
     wear_explore(data = ...)
       - resolve data into an environment
-      - register ExploreData tool (read-only, sandboxed child env)
-      - register /report (GenerateReport) tool
-      - inject the WEAR system prompt
-      - enter codeagent_console()  or  codeagent_app()
+      - register ExploreData for that environment
+      - register GenerateReport
+      - append the WEAR system prompt
+      - enter codeagent_console() or codeagent_app()
 
-    Each turn the agent runs the W-E-A-R cycle:
-      W  Write     model writes dplyr / base R code
-      E  Execute   ExploreData: eval in new.env(parent = data env)
-                   (read-only: your source data is never mutated)
-                     - code given -> returns table / printed value
-                     - no code    -> returns ellmer::df_schema(df) to plan next step
-      A  Analyze   model interprets the result, flags patterns / outliers
-      R  Regroup   model ends the turn with a "Next steps" list (3-5 items)
+    Each turn is prompted to follow W-E-A-R:
+      W  Write     model writes dplyr/base R code
+      E  Execute   ExploreData evaluates code in a new child environment
+                     - code supplied -> table artifact or printed value
+                     - no code       -> ellmer::df_schema(df)
+      A  Analyze   model interprets the result
+      R  Regroup   model ends with "Next steps" and exactly 3 suggestions
            |
-           v  (repeat until you stop)
-      /report -> generate_wear_report(): turns -> Quarto .qmd
-                 user Q = "##" heading, tool code -> an {r} chunk, analysis = prose
+           v  repeat until the user stops
+      /report -> model is instructed to call GenerateReport
 
 ``` r
 
@@ -87,13 +121,19 @@ wear_explore(
 )
 ```
 
+[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
+invisibly returns the client after the interactive frontend ends.
+
 ### Exporting to Quarto
 
-Type `/report` in the chat (or say “export my analysis”) to save the
-session as a reproducible `.qmd` file. The `/report` command is **only
-available inside a
-[`wear_explore()`](https://kaipingyang.github.io/codeagent/reference/wear_explore.md)
-session** — it is not registered in standard sessions.
+In a WEAR session, `/report` is locally recognized as the built-in
+`report` skill. The REPL/Shiny skill path expands that skill into a
+model prompt, which instructs the model to call the registered
+`GenerateReport` tool; it does not invoke the exporter directly in local
+command dispatch. Asking to save or export the analysis should invoke
+the same tool. You can also call
+[`generate_wear_report()`](https://kaipingyang.github.io/codeagent/reference/generate_wear_report.md)
+directly.
 
 ``` r
 
@@ -110,19 +150,79 @@ path <- generate_wear_report(
 system(paste("quarto render", path))
 ```
 
-The generated `.qmd` contains:
+`generate_wear_report(client, path = ..., title = "Data Exploration Report")`
+reads the chat turns and writes YAML with `code-fold: true`,
+`toc: true`, and `execute: {echo: true, eval: false}`. User text becomes
+`##` headings and assistant text becomes prose. Tool-result text that
+does not begin with `[` is written as a blockquote.
 
-- Each user question as a `##` section heading
-- Agent code as ```` ```{r} ```` chunks (`eval: false` by default)
-- Agent analysis as prose
-- YAML front-matter with `code-fold: true` and `toc: true`
+The exporter writes an R code chunk only when a `ContentToolResult`
+contains `extra$code`. The current `ExploreData` implementation returns
+typed artifacts but does **not** attach `extra$code`, so ordinary WEAR
+sessions do not currently preserve the generated query code in the
+`.qmd`. Consequently, treat the export as a conversation report, not a
+fully reproducible analysis script, unless the recorded tool results
+were produced by a tool that supplies `extra$code`.
 
-------------------------------------------------------------------------
+## `DescribeData` for protected datasets
+
+`DescribeData` is distinct from `ExploreData`. It is installed by an
+active Data Shield when the describe strategy is enabled, and it only
+describes data.frames registered on that shield. It accepts an optional
+`data_name`; omission is allowed when exactly one protected dataset is
+registered.
+
+``` r
+
+shield <- DataShield$new(strategies = list(
+  shield_describe(k_anon = 5),
+  shield_egress(max_rows = 0),
+  shield_regex(on_fail = "redact")
+))
+shield$register_data(mtcars, name = "cars")
+
+client <- codeagent_client(data_shield = shield)
+# The model can call DescribeData(data_name = "cars").
+```
+
+With
+[`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)
+defaults (`distributions = "off"`, `k_anon = 5`, `category_max = 20`,
+`category_ratio = 0.2`), `DescribeData` returns filtered schema
+information, sensitivity classes, missingness presence, safe
+numeric/date ranges, and sufficiently supported low-cardinality labels.
+It returns no rows, free-text examples, distributions, or category
+counts. Identifier and quasi-identifier values are suppressed and rare
+labels become `<rare suppressed>`.
+
+`distributions = "on"` explicitly enables real per-category counts.
+`distributions = "dp"` emits Laplace-noised category counts and consumes
+the per-dataset budget (`dp_epsilon = 1`, `dp_budget = 5` by default),
+then silently degrades to labels-only output after exhaustion.
+Numeric/date summaries are unchanged by these distribution modes.
+
+When a shield is supplied to
+[`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md),
+filtered schemas for datasets registered before client construction are
+also placed in the system prompt. Building that schema block uses the
+same DP describe path: in `"dp"` mode it consumes and persists
+`dp_epsilon` for each eligible categorical column. Consequently, initial
+prompt construction and repeated `refresh_data_shield_context(client)`
+calls can exhaust the dataset budget. After registering runtime uploads,
+call `refresh_data_shield_context(client)` to refresh that prompt
+context. `DescribeData` remains the live authoritative fallback.
+
+Do not register protected data only with `ExploreData`: it can execute
+arbitrary R and can return row-level values. Data Shield wraps tool
+egress and adds the protected-data metadata path, but the shield must be
+configured and the dataset must be registered before relying on those
+controls.
 
 ## Environment context injection
 
-Enable automatic schema injection so the agent always knows what
-data.frames are in `.GlobalEnv` without an explicit tool call:
+This independent setting adds `.GlobalEnv` object names and data.frame
+schemas to the first system reminder so the model knows what exists
+without first calling a tool:
 
 ``` json
 // ~/.codeagent/settings.json
@@ -131,15 +231,25 @@ data.frames are in `.GlobalEnv` without an explicit tool call:
 }
 ```
 
-------------------------------------------------------------------------
+It does not register data with Data Shield and does not change
+`ExploreData` execution semantics.
 
-## Security
+## Security and execution limits
 
-`ExploreData` runs code in a **sub-environment** that shares bindings
-with `.GlobalEnv` but cannot assign back to it (copy-on-modify
-semantics). Mutations (`df$x <- ...`) affect only the sandboxed copy,
-never your original data.
+`ExploreData` evaluates model-generated R with `eval(parse(...))` in a
+new environment whose parent is the supplied data environment. It binds
+the selected data.frame in that child. Ordinary replacement such as
+`df$x <- ...` uses the child binding/copy-on-modify and is tested not to
+change the source data.frame.
 
-The tool is marked `read_only_hint = TRUE` and does not have access to
-the file system or network. For full capabilities, use the standard
-`RunR` tool (subject to its own permission gate).
+However, this is namespace isolation, **not a security sandbox**. The
+evaluated code can resolve functions through parent environments and can
+potentially use explicit parent assignment, mutable/reference objects,
+filesystem functions, process execution, or network functions available
+in the R process. The `read_only_hint = TRUE` and
+`open_world_hint = FALSE` annotations are metadata, not enforcement. Use
+only with a trusted model and environment, add an explicit permission
+override if required by the host, and use Data Shield/ `DescribeData`
+rather than `ExploreData` for protected data. The general `RunR` tool
+remains separately classified as execution-capable and goes through its
+own permission decision.

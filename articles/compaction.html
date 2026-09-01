@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,97 +93,185 @@
 
     
     
+<p><strong>Language:</strong> English | <a href="compaction-cn.html">简体中文</a></p>
 <p>codeagent keeps long conversations within the model’s context window
-using an automatic, Claude Code-aligned compaction strategy.</p>
+with turn-boundary compaction, default-on mid-loop tool-result snipping,
+and reactive prompt-too-long recovery. None of these accounting paths
+performs an implicit remote token-count request.</p>
 <div class="section level2">
 <h2 id="dynamic-context-window">Dynamic context window<a class="anchor" aria-label="anchor" href="#dynamic-context-window"></a>
 </h2>
-<p>The context window is resolved from the model rather than hard-coded.
-Resolution order (highest priority first):</p>
+<p>The raw context window is resolved in this order:</p>
 <ol style="list-style-type: decimal">
-<li>
-<code>CODEAGENT_MAX_CONTEXT_TOKENS</code> environment variable.</li>
-<li>A <code>[1m]</code> suffix in the model name (forces a
-1,000,000-token window).</li>
-<li>A built-in capability table (claude / gpt / gemini / deepseek / …),
-or a provider-reported window when available.</li>
-<li>A 200,000-token default.</li>
+<li>A valid positive <code>CODEAGENT_MAX_CONTEXT_TOKENS</code>
+value.</li>
+<li>A <code>[1m]</code> suffix in the model name, which selects
+1,000,000 tokens.</li>
+<li>A best-effort provider-reported capability when present, otherwise a
+built-in longest-substring table for Claude, GPT, Gemini, DeepSeek,
+Llama, Qwen, and Mistral models. The resulting capability is accepted
+only when it is at least 100,000 tokens; otherwise resolution uses the
+default.</li>
+<li>The 200,000-token default.</li>
 </ol>
+<p><code>CODEAGENT_MODEL_LIMIT</code>, when set, directly replaces
+<code>settings$model_limit</code> after settings are loaded. This is the
+value passed to turn-boundary and the usual mid-loop trigger
+calculation.</p>
+<p>For context-left status and the dynamic auto threshold, the effective
+window is <code>raw window - output reserve</code>; the reserve is
+model-specific and capped at 20,000 tokens.
+<code>CODEAGENT_AUTO_COMPACT_WINDOW</code> can cap the raw window used
+by that effective-window calculation. The dynamic threshold then
+subtracts a further 13,000-token buffer.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># The effective window reserves output tokens; the auto-compaction threshold</span></span>
-<span><span class="co"># sits one buffer below that (e.g. ~167K for a 200K Claude model).</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># Turn-boundary compaction uses settings$model_limit - 33,000 directly.</span></span>
+<span><span class="co"># With the default 200,000-token model_limit, it triggers at about 167,000.</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="when-compaction-triggers">When compaction triggers<a class="anchor" aria-label="anchor" href="#when-compaction-triggers"></a>
+<h2 id="token-accounting">Token accounting<a class="anchor" aria-label="anchor" href="#token-accounting"></a>
 </h2>
-<p>Compaction runs when the estimated token usage crosses the
-auto-compaction threshold
-(<code>effective window - output reserve - buffer</code>). Token usage
-prefers the <em>real</em> usage from the last API exchange
-(<code>Chat$get_tokens()</code>), falling back to a character
-estimate.</p>
+<p><code>token_count_with_estimation(chat, allow_network = FALSE)</code>
+first uses the last recorded API usage, including cached input when
+reported. If no positive usage is available, it estimates from local
+conversation text at roughly 3.5 characters per token. Only an explicit
+call with <code>allow_network = TRUE</code> may use
+<code>chat$token_count(include = "complete")</code>.</p>
 </div>
 <div class="section level2">
-<h2 id="two-level-flow">Two-level flow<a class="anchor" aria-label="anchor" href="#two-level-flow"></a>
+<h2 id="five-mechanisms-and-the-automatic-summary-flow">Five mechanisms and the automatic summary flow<a class="anchor" aria-label="anchor" href="#five-mechanisms-and-the-automatic-summary-flow"></a>
 </h2>
+<p>The implementation has five mechanisms:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>Snip</strong> old tool results (cheap pre-step).</li>
+<strong>L1 <code><a href="../reference/snip_old_tools.html">snip_old_tools()</a></code></strong> replaces eligible
+old tool results with a small placeholder, without an LLM call.</li>
 <li>
-<strong>Session-memory compaction</strong> — an incremental summary
-of the earliest turns.</li>
+<strong>L2 <code><a href="../reference/session_memory_compact.html">session_memory_compact()</a></code></strong>
+incrementally summarizes early turns.</li>
 <li>
-<strong>Full compaction</strong> — a single 9-section structured
-summary (verbatim Claude Code prompt) replacing the conversation, used
-when session-memory can’t run.</li>
+<strong>L3 <code><a href="../reference/full_compact.html">full_compact()</a></code></strong> creates one
+structured nine-section summary and replaces history with that summary,
+retaining the latest plain user turn when safe.</li>
+<li>
+<strong>L4 <code><a href="../reference/ptl_fallback.html">ptl_fallback()</a></code></strong> drops oldest turns
+after a 413/prompt-too-long error.</li>
+<li>
+<strong>L5 <code><a href="../reference/context_collapse.html">context_collapse()</a></code></strong> is a utility
+that truncates large tool-result values in place; it is not part of the
+normal automatic summary chain.</li>
 </ol>
-<p>A circuit breaker stops auto-compaction after repeated failures, and
-a 413 / prompt-too-long error triggers a reactive fallback that drops
-the oldest turns (parsing the real context limit from the error when
-present).</p>
+<p><code>CompactionController$compact_now()</code> runs L1, then tries
+L2. It runs L3 only when L2 could not run, such as when there are too
+few suitable turns. Three consecutive failed compactions open the
+circuit breaker; a successful compact resets its failure count.</p>
 </div>
 <div class="section level2">
-<h2 id="compaction-flow">Compaction flow<a class="anchor" aria-label="anchor" href="#compaction-flow"></a>
+<h2 id="exact-timing-and-defaults">Exact timing and defaults<a class="anchor" aria-label="anchor" href="#exact-timing-and-defaults"></a>
 </h2>
-<pre><code>token count = Chat$get_tokens() (real usage)  else char/3.5 estimate
+<pre><code>token count = last recorded API usage (including cached input)
+              else local char/3.5 estimate
 
-TIER 1 -- turn boundary, before each chat$chat()   [maybe_compact()]
-  tokens &gt;= model_limit - 33K margin ?
-    | yes           (circuit breaker: stop after 3 consecutive failures)
-    v  compact_now()
-  snip_old_tools()               clear old tool results (cheap, no LLM)
-    v
-  session_memory_compact()   L1: incremental summary of the earliest turns
-    | did not run (too few turns)
-    v
-  full_compact()             L2: one 9-section structured summary replaces history
+TURN BOUNDARY -- .turn_setup(), before each chat$chat()
+  CompactionController$maybe_compact(
+    model_limit = settings$model_limit, compact_model = resolved fast model)
 
-TIER 2 -- between tool rounds, on ellmer on_tool_result  [.midloop_compact_step()]
-  settings$midloop_compact (default ON) AND tokens &gt;= midloop_trigger ?
-    +- default:  snip_old_tools(target_tokens)   budget-aware micro-snip (no LLM)
-    +- opt-in (settings$midloop_full_compact):    compact_now()  (same L1 -&gt; L2)
+  enabled AND failures &lt; 3 AND tokens &gt;= model_limit - 33,000 ?
+    yes -&gt; compact_now()
+             L1 snip_old_tools()
+             L2 session_memory_compact()
+                or, only if L2 did not run, L3 full_compact()
 
-REACTIVE -- on send error 413 / prompt_too_long   [ptl_fallback()]
-    drop oldest turns until under the parsed real limit, then retry chat$chat() once</code></pre>
-<p>The mid-loop step currently rides ellmer’s
-<code>on_tool_result</code> (fires between tool rounds); the cleaner
-upstream target is <code>on_turn_start</code> (ellmer PR #1052).</p>
+BETWEEN TOOL ROUNDS -- ellmer on_tool_result callback
+  settings$midloop_compact = TRUE (default)
+  AND tokens &gt;= midloop trigger ?
+
+    default path:
+      snip_old_tools(keep_recent_turns = 10,
+                     target_tokens = dynamic auto threshold / 2)
+      # budget-aware micro-snip; no LLM call
+
+    settings$midloop_full_compact = TRUE (opt-in) path:
+      compact_now()
+      # blocking L1 -&gt; L2-or-L3 path; used instead of the micro-snip path
+
+REACTIVE -- provider reports 413 / prompt too long
+  ptl_fallback(chat, drop_turns = 3L, error_msg = message)
+    parsed real limit available -&gt; drop oldest turns until the local estimate
+                                   is at most 90% of that limit
+    no parsed limit             -&gt; drop the oldest 3 turns
+  error recovery then retries the request</code></pre>
+<p>The default mid-loop trigger is
+<code>settings$model_limit - 33,000</code>. It can be replaced by
+positive <code>settings$midloop_threshold</code> or
+<code>options(codeagent.midloop_threshold=)</code>. The micro-snip
+target and number of recent turns can similarly be replaced by
+<code>settings$midloop_snip_target</code> /
+<code>options(codeagent.midloop_snip_target=)</code> and
+<code>settings$midloop_keep_recent</code> /
+<code>options(codeagent.midloop_keep_recent=)</code>. Options can also
+opt in when the corresponding setting is false:
+<code>codeagent.midloop_compact</code> and
+<code>codeagent.midloop_full_compact</code>.</p>
+<p>Mid-loop work currently rides <code>on_tool_result</code>, so it runs
+after a tool result and before a subsequent model round. It does not run
+before every provider request. <code>on_tool_request</code> cannot close
+that timing gap because it fires after the model request, inside tool
+invocation; an upstream <code>on_turn_start</code> hook would provide
+the cleaner timing.</p>
 </div>
 <div class="section level2">
 <h2 id="context-left-indicator">Context-left indicator<a class="anchor" aria-label="anchor" href="#context-left-indicator"></a>
 </h2>
-<p>Both the REPL banner and the Shiny status bar show “N% context left”,
-turning yellow near the warning line and red near the error/blocking
-line (<code><a href="../reference/calculate_token_warning_state.html">calculate_token_warning_state()</a></code>).</p>
+<p>The REPL and Shiny show “N% context left” using
+<code><a href="../reference/calculate_token_warning_state.html">calculate_token_warning_state()</a></code>. With automatic compaction
+enabled, the percentage is relative to the dynamic auto threshold, not
+the full raw window. Warning, error, compact, and blocking states use
+separate buffers, and the UI changes level as those boundaries are
+crossed.</p>
+</div>
+<div class="section level2">
+<h2 id="relevant-signatures-and-defaults">Relevant signatures and defaults<a class="anchor" aria-label="anchor" href="#relevant-signatures-and-defaults"></a>
+</h2>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Exported R6 controller</span></span>
+<span><span class="va">ctrl</span> <span class="op">&lt;-</span> <span class="va"><a href="../reference/CompactionController.html">CompactionController</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">ctrl</span><span class="op">$</span><span class="fu">maybe_compact</span><span class="op">(</span></span>
+<span>  <span class="va">chat</span>,</span>
+<span>  model_limit <span class="op">=</span> <span class="fl">200000L</span>,</span>
+<span>  compact_model <span class="op">=</span> <span class="fu">codeagent</span><span class="fu">:::</span><span class="va">.HAIKU_MODEL</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">ctrl</span><span class="op">$</span><span class="fu">compact_now</span><span class="op">(</span></span>
+<span>  <span class="va">chat</span>,</span>
+<span>  compact_model <span class="op">=</span> <span class="fu">codeagent</span><span class="fu">:::</span><span class="va">.HAIKU_MODEL</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">ctrl</span><span class="op">$</span><span class="fu">handle_ptl_error</span><span class="op">(</span><span class="va">chat</span>, error <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="va">ctrl</span><span class="op">$</span><span class="fu">reset_failures</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">ctrl</span><span class="op">$</span><span class="fu">failure_count</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Internal helpers shown here to make their operational defaults explicit</span></span>
+<span><span class="fu">codeagent</span><span class="fu">:::</span><span class="fu"><a href="../reference/token_count_with_estimation.html">token_count_with_estimation</a></span><span class="op">(</span><span class="va">chat</span>, allow_network <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span><span class="fu">codeagent</span><span class="fu">:::</span><span class="fu"><a href="../reference/ptl_fallback.html">ptl_fallback</a></span><span class="op">(</span><span class="va">chat</span>, drop_turns <span class="op">=</span> <span class="fl">3L</span>, error_msg <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span>
+<span><span class="fu">codeagent</span><span class="fu">:::</span><span class="fu"><a href="../reference/context_collapse.html">context_collapse</a></span><span class="op">(</span><span class="va">chat</span>, max_chars <span class="op">=</span> <span class="fl">200L</span><span class="op">)</span></span></code></pre></div>
+<p>The actual compaction model is normally selected by the client from
+<code>settings$compact_model</code>, then
+<code>settings$small_fast_model</code>, and finally the package
+fallback; callers do not need to reference the internal fallback
+constant.</p>
 </div>
 <div class="section level2">
 <h2 id="controls">Controls<a class="anchor" aria-label="anchor" href="#controls"></a>
 </h2>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>CODEAGENT_DISABLE_COMPACT <span class="op">=</span> <span class="st">"1"</span><span class="op">)</span>     <span class="co"># disable auto-compaction</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>CODEAGENT_MAX_CONTEXT_TOKENS <span class="op">=</span> <span class="st">"500000"</span><span class="op">)</span>  <span class="co"># override the window</span></span>
-<span><span class="co"># Manual compaction from the REPL / Shiny:</span></span>
-<span><span class="co"># /compact</span></span></code></pre></div>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>CODEAGENT_DISABLE_COMPACT <span class="op">=</span> <span class="st">"1"</span><span class="op">)</span>     <span class="co"># disable automatic compaction</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>CODEAGENT_MAX_CONTEXT_TOKENS <span class="op">=</span> <span class="st">"500000"</span><span class="op">)</span>  <span class="co"># override raw window</span></span>
+<span><span class="co"># Manual compaction from the REPL / Shiny, with optional focus instructions:</span></span>
+<span><span class="co"># /compact</span></span>
+<span><span class="co"># /compact preserve debugging details and exact file paths</span></span></code></pre></div>
+<p>Automatic compaction is enabled only when
+<code>CODEAGENT_DISABLE_COMPACT</code> is unset or empty; any non-empty
+value disables it. <code>/compact</code> is a local slash command, not a
+model request, and can carry optional focus instructions.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

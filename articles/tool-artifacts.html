@@ -52,6 +52,18 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
+    <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
+    <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
+    <li><a class="dropdown-item" href="../articles/skills-usage-cn.html">技能与斜杠命令</a></li>
+    <li><a class="dropdown-item" href="../articles/team-coordination-cn.html">多智能体团队协调</a></li>
+    <li><a class="dropdown-item" href="../articles/data-exploration-cn.html">使用 codeagent 探索数据</a></li>
+    <li><a class="dropdown-item" href="../articles/backend-integration-cn.html">将 codeagent 嵌入为后端（契约 v1，简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts-cn.html">可移植的工具结果工件（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/data-shield-cn.html">数据盾（Data Shield）：严格数据安全模式（设计预览，中文版）</a></li>
   </ul>
 </li>
@@ -81,6 +93,7 @@
 
     
     
+<p><strong>Language:</strong> English | <a href="tool-artifacts-cn.html">简体中文</a></p>
 <p>Tool results serve three different audiences: the model needs
 portable text, custom UIs need structured data, and shinychat needs its
 official presentation object. codeagent keeps those concerns separate
@@ -96,10 +109,12 @@ channels:</p>
 ├── extra$codeagent$artifact      versioned, UI-neutral structured data
 └── extra$display                 optional shinychat presentation adapter</code></pre>
 <p>The artifact is the primary integration point for a non-shinychat UI.
-The <code>display</code> field is produced with
-<code><a href="https://posit-dev.github.io/shinychat/r/reference/tool_result_display.html" class="external-link">shinychat::tool_result_display()</a></code> and may use
-shinychat-specific HTML and framed-card behavior. A third-party host
-should not parse that presentation HTML.</p>
+codeagent projects <code>display</code> through
+<code><a href="https://posit-dev.github.io/shinychat/r/reference/tool_result_display.html" class="external-link">shinychat::tool_result_display()</a></code> when that official
+constructor is available; a compatibility fallback exists only for older
+installed shinychat versions. The adapter may contain shinychat-specific
+HTML and framed-card behavior, so a third-party host should not parse
+its presentation HTML.</p>
 <p>The <code>value</code> remains useful even when an artifact is
 absent, malformed, from a future version, or has a kind that the host
 does not render.</p>
@@ -107,7 +122,7 @@ does not render.</p>
 <div class="section level2">
 <h2 id="artifact-v1">Artifact v1<a class="anchor" aria-label="anchor" href="#artifact-v1"></a>
 </h2>
-<p>A version-1 artifact has this stable outer shape:</p>
+<p>A version-1 artifact has this stable outer shape and field order:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  schema  <span class="op">=</span> <span class="st">"codeagent.tool-artifact"</span>,</span>
@@ -135,38 +150,70 @@ protocol.</td>
 </tr>
 <tr class="even">
 <td><code>version</code></td>
-<td>Positive whole-number protocol version.</td>
+<td>A finite positive whole-number protocol version; v1 is
+<code>1L</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>kind</code></td>
-<td>Rendering category: <code>text</code>, <code>table</code>,
-<code>image</code>, <code>code</code>, <code>diff</code>, or
-<code>error</code>.</td>
+<td>Rendering category produced by v1: <code>text</code>,
+<code>table</code>, <code>image</code>, <code>code</code>,
+<code>diff</code>, or <code>error</code>.</td>
 </tr>
 <tr class="even">
 <td><code>status</code></td>
-<td>Result state, normally <code>success</code> or
-<code>error</code>.</td>
+<td>Non-empty result state; v1 producers normally use
+<code>success</code> or <code>error</code>.</td>
 </tr>
 <tr class="odd">
 <td><code>icon</code></td>
-<td>Optional portable icon name.</td>
+<td>Optional portable character icon name.</td>
 </tr>
 <tr class="even">
 <td><code>title</code></td>
-<td>Optional plain-text title.</td>
+<td>Optional plain-text character title.</td>
 </tr>
 <tr class="odd">
 <td><code>payload</code></td>
-<td>Kind-specific structured data.</td>
+<td>Kind-specific list of structured data.</td>
 </tr>
 </tbody>
 </table>
-<p>Common payloads include <code>list(text=)</code> for text/code,
-<code>list(df=)</code> for tables,
-<code>list(images=list(list(mime=, b64=)), output=)</code> for images,
-and <code>list(message=, detail=)</code> for errors. A host should still
-tolerate additional payload fields.</p>
+<p>Typical payloads are:</p>
+<table class="table">
+<thead><tr class="header">
+<th><code>kind</code></th>
+<th>Typical <code>payload</code>
+</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>text</code></td>
+<td><code>list(text = )</code></td>
+</tr>
+<tr class="even">
+<td><code>table</code></td>
+<td><code>list(df = &lt;data.frame&gt;)</code></td>
+</tr>
+<tr class="odd">
+<td><code>image</code></td>
+<td><code>list(images = list(list(mime = , b64 = )), output = )</code></td>
+</tr>
+<tr class="even">
+<td><code>code</code></td>
+<td><code>list(text = , lang = , filename = , output = )</code></td>
+</tr>
+<tr class="odd">
+<td><code>diff</code></td>
+<td><code>list(old = , new = , path = )</code></td>
+</tr>
+<tr class="even">
+<td><code>error</code></td>
+<td><code>list(message = , detail = )</code></td>
+</tr>
+</tbody>
+</table>
+<p>A host should tolerate additional payload fields and render only
+combinations it explicitly supports.</p>
 </div>
 <div class="section level2">
 <h2 id="producing-a-result">Producing a result<a class="anchor" aria-label="anchor" href="#producing-a-result"></a>
@@ -193,8 +240,8 @@ argument is always the portable value; rich fields are additive.</p>
 <p>codeagent stores the portable artifact in
 <code>extra$codeagent$artifact</code> and builds the optional shinychat
 adapter separately in <code>extra$display</code>. Rich shinychat results
-use the official framed presentation; this does not change the cross-UI
-artifact.</p>
+request the official framed presentation when the installed shinychat
+supports it; this does not change the cross-UI artifact.</p>
 </div>
 <div class="section level2">
 <h2 id="consuming-results-safely">Consuming results safely<a class="anchor" aria-label="anchor" href="#consuming-results-safely"></a>
@@ -220,17 +267,19 @@ parse display HTML.</p>
 <span>    <span class="fu">render_text</span><span class="op">(</span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/tool_result_value.html">tool_result_value</a></span><span class="op">(</span><span class="va">event_or_result</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p><code><a href="../reference/tool_result_artifact.html">tool_result_artifact()</a></code> validates schema, shape, and
-supported version. Its default is <code>version = 1L</code>; it returns
-<code>NULL</code> when a v1 consumer should fall back to text.
-<code><a href="../reference/tool_result_value.html">tool_result_value()</a></code> always extracts the portable text when
-possible.</p>
+<p><code><a href="../reference/tool_result_artifact.html">tool_result_artifact()</a></code> validates the protocol schema and
+outer shape. Its default is <code>version = 1L</code>; it returns
+<code>NULL</code> when a v1 consumer should fall back to text. The
+<code>version</code> argument may contain one or more supported positive
+whole numbers. <code><a href="../reference/tool_result_value.html">tool_result_value()</a></code> extracts the portable
+text when possible.</p>
 </div>
 <div class="section level2">
 <h2 id="streaming-callback">Streaming callback<a class="anchor" aria-label="anchor" href="#streaming-callback"></a>
 </h2>
 <p><code><a href="../reference/codeagent_stream.html">codeagent_stream()</a></code> and
-<code><a href="../reference/codeagent_stream_async.html">codeagent_stream_async()</a></code> emit this tool-result event:</p>
+<code><a href="../reference/codeagent_stream_async.html">codeagent_stream_async()</a></code> emit this tool-result event with
+an exact, compatibility-preserving field order:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="va">id</span>,</span>
@@ -262,29 +311,39 @@ data.</p>
 <div class="section level2">
 <h2 id="version-negotiation">Version negotiation<a class="anchor" aria-label="anchor" href="#version-negotiation"></a>
 </h2>
-<p>Future artifacts are transported unchanged through adaptation and
-streaming, but the default v1 accessor rejects them:</p>
+<p>Valid future artifacts are transported unchanged through adaptation
+and streaming, but the default v1 accessor rejects them:</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Safe v1 rendering decision</span></span>
 <span><span class="va">artifact_v1</span> <span class="op">&lt;-</span> <span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/tool_result_artifact.html">tool_result_artifact</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Protocol inspection or forwarding only; do not render unknown versions</span></span>
 <span><span class="va">artifact_any</span> <span class="op">&lt;-</span> <span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/tool_result_artifact.html">tool_result_artifact</a></span><span class="op">(</span><span class="va">event</span>, version <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
-<p>This lets middleware forward a future artifact without destroying it
-while an older UI reliably falls back to
-<code>tool_result_value(event)</code>. A UI should opt in to a new
-version only after implementing that version’s contract.</p>
+<p>A consumer supporting several known versions may pass them
+explicitly, for example <code>version = c(1L, 2L)</code>. Passing
+<code>NULL</code> disables only the consumer-version filter; schema and
+outer-shape validation still apply. This lets middleware forward a valid
+future artifact without destroying it while an older UI reliably falls
+back to <code>tool_result_value(event)</code>. A UI should opt in to a
+new version only after implementing that version’s contract.</p>
+<p>Unversioned legacy artifacts can be upgraded to v1 during adaptation.
+Malformed metadata is never treated as a valid future protocol: direct
+accessor use returns <code>NULL</code>, while adaptation may synthesize
+a valid value-backed v1 artifact so the portable text remains
+usable.</p>
 </div>
 <div class="section level2">
 <h2 id="trust-boundary-and-failure-behavior">Trust boundary and failure behavior<a class="anchor" aria-label="anchor" href="#trust-boundary-and-failure-behavior"></a>
 </h2>
-<p>Artifact data and restored session metadata are untrusted input.
-codeagent therefore follows these rules:</p>
+<p>Artifact data, external display metadata, and restored session
+metadata are untrusted input. codeagent therefore follows these
+rules:</p>
 <ul>
-<li>malformed or unsupported artifacts fail softly to
+<li>malformed or unsupported artifacts fail softly to the portable
 <code>value</code>;</li>
-<li>plain titles, text, Markdown, and character HTML are escaped before
-browser rendering;</li>
+<li>plain titles, payload text, Markdown input, and character HTML are
+escaped or placed in escaping tag constructors before browser
+rendering;</li>
 <li>only explicit <code><a href="https://rstudio.github.io/htmltools/reference/HTML.html" class="external-link">htmltools::HTML</a></code>, <code>shiny.tag</code>,
 or <code>shiny.tag.list</code> objects may cross the trusted-HTML
 boundary;</li>
@@ -294,13 +353,15 @@ and tool/provider error metadata forces error status even when a rich
 image or diff kind is retained;</li>
 <li>unrelated request, error, source-provenance, and provider metadata
 survive adaptation;</li>
+<li>malformed display options fall back to a valid artifact-based
+official presentation;</li>
 <li>legacy session cards are promoted on a presentation copy without
 changing the provider-facing value or tool request/result
 identifiers.</li>
 </ul>
 <p>These rules apply to the built-in Shiny UI as well as custom
-consumers: the UI may enhance a valid artifact, but it must always have
-the portable value as a safe final fallback.</p>
+consumers: the UI may enhance a valid artifact, but it must always
+retain the portable value as a safe final fallback.</p>
 </div>
 <div class="section level2">
 <h2 id="migration-checklist">Migration checklist<a class="anchor" aria-label="anchor" href="#migration-checklist"></a>
