@@ -1,5 +1,10 @@
 # codeagent (development version)
 
+## Documentation
+
+* Audited every pkgdown article against the current implementation, corrected stale API/default/behavior descriptions, and added complete Simplified Chinese counterparts with reciprocal language links and a dedicated Chinese documentation group.
+* Fixed the WEAR report tool to register under the stable `GenerateReport` name expected by the built-in `/report` skill.
+
 ## Upstream integration
 
 * Re-pinned ellmer to GitHub HEAD `a64f94e644718c0598b01b0cd50a3c21c2646435`, including the refreshed bundled model/pricing data and Bedrock API mappings, without upgrading unrelated CRAN packages.

@@ -7,86 +7,170 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, purl=FALSE, include = FALSE}
+```{r, purl=FALSE, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
-codeagent keeps long conversations within the model's context window using an
-automatic, Claude Code-aligned compaction strategy.
+**Language:** English | [简体中文](compaction-cn.html)
+
+codeagent keeps long conversations within the model's context window with
+turn-boundary compaction, default-on mid-loop tool-result snipping, and reactive
+prompt-too-long recovery. None of these accounting paths performs an implicit
+remote token-count request.
 
 ## Dynamic context window
 
-The context window is resolved from the model rather than hard-coded. Resolution
-order (highest priority first):
+The raw context window is resolved in this order:
 
-1. `CODEAGENT_MAX_CONTEXT_TOKENS` environment variable.
-2. A `[1m]` suffix in the model name (forces a 1,000,000-token window).
-3. A built-in capability table (claude / gpt / gemini / deepseek / ...), or a
-   provider-reported window when available.
-4. A 200,000-token default.
+1. A valid positive `CODEAGENT_MAX_CONTEXT_TOKENS` value.
+2. A `[1m]` suffix in the model name, which selects 1,000,000 tokens.
+3. A best-effort provider-reported capability when present, otherwise a built-in
+   longest-substring table for Claude, GPT, Gemini, DeepSeek, Llama, Qwen, and
+   Mistral models. The resulting capability is accepted only when it is at least
+   100,000 tokens; otherwise resolution uses the default.
+4. The 200,000-token default.
 
-```{r, purl=FALSE, purl=FALSE}
-# The effective window reserves output tokens; the auto-compaction threshold
-# sits one buffer below that (e.g. ~167K for a 200K Claude model).
+`CODEAGENT_MODEL_LIMIT`, when set, directly replaces `settings$model_limit`
+after settings are loaded. This is the value passed to turn-boundary and the
+usual mid-loop trigger calculation.
+
+For context-left status and the dynamic auto threshold, the effective window is
+`raw window - output reserve`; the reserve is model-specific and capped at
+20,000 tokens. `CODEAGENT_AUTO_COMPACT_WINDOW` can cap the raw window used by
+that effective-window calculation. The dynamic threshold then subtracts a
+further 13,000-token buffer.
+
+```{r, purl=FALSE}
+# Turn-boundary compaction uses settings$model_limit - 33,000 directly.
+# With the default 200,000-token model_limit, it triggers at about 167,000.
 ```
 
-## When compaction triggers
+## Token accounting
 
-Compaction runs when the estimated token usage crosses the auto-compaction
-threshold (`effective window - output reserve - buffer`). Token usage prefers
-the *real* usage from the last API exchange (`Chat$get_tokens()`), falling back
-to a character estimate.
+`token_count_with_estimation(chat, allow_network = FALSE)` first uses the last
+recorded API usage, including cached input when reported. If no positive usage
+is available, it estimates from local conversation text at roughly 3.5
+characters per token. Only an explicit call with `allow_network = TRUE` may use
+`chat$token_count(include = "complete")`.
 
-## Two-level flow
+## Five mechanisms and the automatic summary flow
 
-1. **Snip** old tool results (cheap pre-step).
-2. **Session-memory compaction** — an incremental summary of the earliest turns.
-3. **Full compaction** — a single 9-section structured summary (verbatim Claude
-   Code prompt) replacing the conversation, used when session-memory can't run.
+The implementation has five mechanisms:
 
-A circuit breaker stops auto-compaction after repeated failures, and a 413 /
-prompt-too-long error triggers a reactive fallback that drops the oldest turns
-(parsing the real context limit from the error when present).
+1. **L1 `snip_old_tools()`** replaces eligible old tool results with a small
+   placeholder, without an LLM call.
+2. **L2 `session_memory_compact()`** incrementally summarizes early turns.
+3. **L3 `full_compact()`** creates one structured nine-section summary and
+   replaces history with that summary, retaining the latest plain user turn
+   when safe.
+4. **L4 `ptl_fallback()`** drops oldest turns after a 413/prompt-too-long error.
+5. **L5 `context_collapse()`** is a utility that truncates large tool-result
+   values in place; it is not part of the normal automatic summary chain.
 
-## Compaction flow
+`CompactionController$compact_now()` runs L1, then tries L2. It runs L3 only
+when L2 could not run, such as when there are too few suitable turns. Three
+consecutive failed compactions open the circuit breaker; a successful compact
+resets its failure count.
+
+## Exact timing and defaults
 
 ```
-token count = Chat$get_tokens() (real usage)  else char/3.5 estimate
+token count = last recorded API usage (including cached input)
+              else local char/3.5 estimate
 
-TIER 1 -- turn boundary, before each chat$chat()   [maybe_compact()]
-  tokens >= model_limit - 33K margin ?
-    | yes           (circuit breaker: stop after 3 consecutive failures)
-    v  compact_now()
-  snip_old_tools()               clear old tool results (cheap, no LLM)
-    v
-  session_memory_compact()   L1: incremental summary of the earliest turns
-    | did not run (too few turns)
-    v
-  full_compact()             L2: one 9-section structured summary replaces history
+TURN BOUNDARY -- .turn_setup(), before each chat$chat()
+  CompactionController$maybe_compact(
+    model_limit = settings$model_limit, compact_model = resolved fast model)
 
-TIER 2 -- between tool rounds, on ellmer on_tool_result  [.midloop_compact_step()]
-  settings$midloop_compact (default ON) AND tokens >= midloop_trigger ?
-    +- default:  snip_old_tools(target_tokens)   budget-aware micro-snip (no LLM)
-    +- opt-in (settings$midloop_full_compact):    compact_now()  (same L1 -> L2)
+  enabled AND failures < 3 AND tokens >= model_limit - 33,000 ?
+    yes -> compact_now()
+             L1 snip_old_tools()
+             L2 session_memory_compact()
+                or, only if L2 did not run, L3 full_compact()
 
-REACTIVE -- on send error 413 / prompt_too_long   [ptl_fallback()]
-    drop oldest turns until under the parsed real limit, then retry chat$chat() once
+BETWEEN TOOL ROUNDS -- ellmer on_tool_result callback
+  settings$midloop_compact = TRUE (default)
+  AND tokens >= midloop trigger ?
+
+    default path:
+      snip_old_tools(keep_recent_turns = 10,
+                     target_tokens = dynamic auto threshold / 2)
+      # budget-aware micro-snip; no LLM call
+
+    settings$midloop_full_compact = TRUE (opt-in) path:
+      compact_now()
+      # blocking L1 -> L2-or-L3 path; used instead of the micro-snip path
+
+REACTIVE -- provider reports 413 / prompt too long
+  ptl_fallback(chat, drop_turns = 3L, error_msg = message)
+    parsed real limit available -> drop oldest turns until the local estimate
+                                   is at most 90% of that limit
+    no parsed limit             -> drop the oldest 3 turns
+  error recovery then retries the request
 ```
 
-The mid-loop step currently rides ellmer's `on_tool_result` (fires between tool
-rounds); the cleaner upstream target is `on_turn_start` (ellmer PR #1052).
+The default mid-loop trigger is `settings$model_limit - 33,000`. It can be
+replaced by positive `settings$midloop_threshold` or
+`options(codeagent.midloop_threshold=)`. The micro-snip target and number of
+recent turns can similarly be replaced by `settings$midloop_snip_target` /
+`options(codeagent.midloop_snip_target=)` and
+`settings$midloop_keep_recent` / `options(codeagent.midloop_keep_recent=)`.
+Options can also opt in when the corresponding setting is false:
+`codeagent.midloop_compact` and `codeagent.midloop_full_compact`.
+
+Mid-loop work currently rides `on_tool_result`, so it runs after a tool result
+and before a subsequent model round. It does not run before every provider
+request. `on_tool_request` cannot close that timing gap because it fires after
+the model request, inside tool invocation; an upstream `on_turn_start` hook
+would provide the cleaner timing.
 
 ## Context-left indicator
 
-Both the REPL banner and the Shiny status bar show "N% context left", turning
-yellow near the warning line and red near the error/blocking line
-(`calculate_token_warning_state()`).
+The REPL and Shiny show "N% context left" using
+`calculate_token_warning_state()`. With automatic compaction enabled, the
+percentage is relative to the dynamic auto threshold, not the full raw window.
+Warning, error, compact, and blocking states use separate buffers, and the UI
+changes level as those boundaries are crossed.
+
+## Relevant signatures and defaults
+
+```{r, purl=FALSE}
+# Exported R6 controller
+ctrl <- CompactionController$new()
+ctrl$maybe_compact(
+  chat,
+  model_limit = 200000L,
+  compact_model = codeagent:::.HAIKU_MODEL
+)
+ctrl$compact_now(
+  chat,
+  compact_model = codeagent:::.HAIKU_MODEL
+)
+ctrl$handle_ptl_error(chat, error = NULL)
+ctrl$reset_failures()
+ctrl$failure_count()
+
+# Internal helpers shown here to make their operational defaults explicit
+codeagent:::token_count_with_estimation(chat, allow_network = FALSE)
+codeagent:::ptl_fallback(chat, drop_turns = 3L, error_msg = NULL)
+codeagent:::context_collapse(chat, max_chars = 200L)
+```
+
+The actual compaction model is normally selected by the client from
+`settings$compact_model`, then `settings$small_fast_model`, and finally the
+package fallback; callers do not need to reference the internal fallback
+constant.
 
 ## Controls
 
-```{r, purl=FALSE, purl=FALSE}
-Sys.setenv(CODEAGENT_DISABLE_COMPACT = "1")     # disable auto-compaction
-Sys.setenv(CODEAGENT_MAX_CONTEXT_TOKENS = "500000")  # override the window
-# Manual compaction from the REPL / Shiny:
+```{r, purl=FALSE}
+Sys.setenv(CODEAGENT_DISABLE_COMPACT = "1")     # disable automatic compaction
+Sys.setenv(CODEAGENT_MAX_CONTEXT_TOKENS = "500000")  # override raw window
+# Manual compaction from the REPL / Shiny, with optional focus instructions:
 # /compact
+# /compact preserve debugging details and exact file paths
 ```
+
+Automatic compaction is enabled only when `CODEAGENT_DISABLE_COMPACT` is unset
+or empty; any non-empty value disables it. `/compact` is a local slash command,
+not a model request, and can carry optional focus instructions.

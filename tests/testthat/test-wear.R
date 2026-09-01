@@ -32,12 +32,20 @@ test_that("generate_wear_report writes a valid .qmd with headings and code chunk
   txt <- paste(readLines(path), collapse = "\n")
   # YAML front-matter with title
   expect_true(grepl('title: "MT Analysis"', txt, fixed = TRUE))
+
   # user message -> ## heading
   expect_true(grepl("## What is the mean mpg?", txt, fixed = TRUE))
   # tool code -> {r} chunk
   expect_true(grepl("```{r}", txt, fixed = TRUE))
   expect_true(grepl("mean(mtcars$mpg)", txt, fixed = TRUE))
   unlink(path)
+})
+
+test_that("register_wear_report_tool uses the stable GenerateReport name", {
+  chat <- ellmer::chat_openai_compatible(
+    base_url = "http://x", model = "m", credentials = function() "k")
+  codeagent:::register_wear_report_tool(chat)
+  expect_true("GenerateReport" %in% names(chat$get_tools()))
 })
 
 test_that("wear_explore validates the mode argument before doing anything", {

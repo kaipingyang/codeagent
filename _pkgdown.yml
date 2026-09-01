@@ -266,4 +266,18 @@ articles:
     navbar: "Data Shield"
     contents:
       - data-shield
+
+  - title: "中文文档"
+    navbar: "中文"
+    contents:
+      - getting-started-cn
+      - configuration-cn
+      - permissions-cn
+      - models-cn
+      - compaction-cn
+      - skills-usage-cn
+      - team-coordination-cn
+      - data-exploration-cn
+      - backend-integration-cn
+      - tool-artifacts-cn
       - data-shield-cn

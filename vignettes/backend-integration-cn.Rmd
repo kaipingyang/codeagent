@@ -1,0 +1,235 @@
+---
+title: "将 codeagent 嵌入为后端（契约 v1，简体中文）"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{将 codeagent 嵌入为后端（契约 v1，简体中文）}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+**语言：** [English](backend-integration.html) | 简体中文
+
+本文介绍将 codeagent 作为宿主应用（Shiny 应用、API 服务或其他 R 包）后端引擎时所使用的
+**稳定公开接口**。宿主完整拥有自己的 **UI、工具、技能内容、数据和提供商凭据**；codeagent
+提供**智能体循环、流式处理、上下文压缩、权限门和技能加载**。
+
+本文记录的全部内容都属于 **Backend Contract v1（后端契约 v1）**。稳定性承诺见
+[版本管理](#versioning)。可运行的参考示例位于
+`system.file("examples/backend_integration_demo.R", package = "codeagent")`。
+
+## 边界
+
+| codeagent 提供 | 宿主拥有 |
+|---|---|
+| 智能体循环、多轮工具调用 | 自己的 UI |
+| 提供商抽象（任意 ellmer `Chat`） | 自己的 `Chat`（提供商 / 模型 / 密钥） |
+| 流式处理 + 类型化回调 | 渲染 |
+| 上下文压缩 | 领域工具 |
+| 中央权限门 | 技能内容 + 数据 |
+| 技能加载 | 会话存储（可选） |
+
+## 1. 入口：仅含运行框架的客户端
+
+传入自己的 `ellmer::Chat` 并设置 `register_tools = FALSE`，这样 codeagent 的编码工具
+（Bash / Write / Edit / Glob / Grep / git / web）将**一个也不会**被附加。你会得到客户端状态和
+运行框架管道，但不会注册工具，也不会安装权限门。
+
+```{r}
+chat <- ellmer::chat_openai_compatible(
+  base_url    = Sys.getenv("MY_BASE_URL"),
+  model       = Sys.getenv("MY_MODEL"),
+  credentials = function() Sys.getenv("MY_API_KEY")
+)
+
+client <- codeagent::codeagent_client(
+  chat            = chat,
+  register_tools  = FALSE,
+  permission_mode = "default",   # default | plan | accept_edits | bypass | ...
+  cwd             = getwd()
+)
+```
+
+`codeagent_client()` 返回一个 `CodeagentClient`，其中包含 `$chat`、`$settings` 和
+`$data_shield`（未启用时为 `NULL`）。如果在仅含运行框架的客户端上启用了 Data Shield，
+应先附加宿主工具，再把返回的数据盾安装到 Chat 上。对于多用户 Shiny 应用，应在服务器会话内部
+创建客户端（例如通过 `codeagent_app(client_factory = )`）；绝不要在多个浏览器会话之间共享同一个
+可变客户端。
+
+## 2. 驱动一轮交互 + 回调契约
+
+使用 `codeagent_stream()`（阻塞式；自行推进事件循环）或 `codeagent_stream_async()`
+（返回 promise）。所有渲染都通过**类型化回调**完成——codeagent 不会操作你的 UI。
+
+```{r}
+result <- codeagent::codeagent_stream(
+  client, user_input,
+  on_delta        = function(text_chunk)       { ... }, # 助手文本
+  on_thinking     = function(chunk)            { ... }, # 思考内容
+  on_tool_request = function(x)                { ... }, # id、name、arguments、intent
+  on_tool_result  = function(x)                { ... }, # 六个字段，见下文
+  on_error        = function(message, recovered) { ... },
+  on_usage        = function(usage)            { ... }, # 轮次结束时的用量
+  on_tick         = function()                 { ... }  # 仅同步；约 100 ms 心跳
+)
+# 不可见返回：list(text, usage, stop_reason, finish_reason)
+```
+
+回调载荷：
+
+| 回调 | 参数 |
+|---|---|
+| `on_delta` | `text_chunk`（字符） |
+| `on_thinking` | 思考内容块 |
+| `on_tool_request` | `list(id, name, arguments, intent)`——在权限门**之前**触发 |
+| `on_tool_result` | 严格按此顺序的 `list(id, name, display, value, is_error, artifact)`；`artifact` 追加在原有五个字段之后 |
+| `on_error` | `message, recovered` |
+| `on_usage` | 用量对象，包括 `n_tokens`、`model_limit`、`warning_state` 和 `cost_last` |
+| `on_tick` | 无参数；仅同步函数 `codeagent_stream()` 提供 |
+
+异步函数最终解析为同样的四字段结果。提供商的结束原因会被规范化为 `stop_reason`，映射后的原始提供商值
+保留在 `finish_reason` 中。
+
+## 3. 丰富工具结果（text / table / image / code / diff / error）
+
+工具的 `value` 是模型看到的可移植文本，也是所有 UI 的最终后备。若还要公开一个
+**丰富且与 UI 无关的工件**，请返回 `tool_result()`。结果刻意分为三个独立通道：
+
+- `artifact`：主要的跨 UI 协议（`schema`、`version`、`kind`、`status`、`icon`、
+  `title`、`payload`）；
+- `display`：可选的官方 shinychat 适配器；非 shinychat 宿主不应解析或依赖它；
+- `value`：供模型使用的可移植文本，也是工件不受支持或格式错误时的后备。
+
+```{r}
+my_tool <- ellmer::tool(
+  function(name) {
+    df <- summarise_something(name)
+    codeagent::tool_result(
+      sprintf("%d x %d summary", nrow(df), ncol(df)),
+      kind    = "table",
+      payload = list(df = df),
+      title   = "Summary"
+    )
+  },
+  name = "Summarise",
+  description = "Summarise a named dataset.",
+  arguments = list(
+    name = ellmer::type_string("Dataset name.")
+  )
+)
+```
+
+版本 1 工件在结果中位于 `extra$codeagent$artifact`，在流式事件中位于 `artifact`。
+宿主应调用 `tool_result_artifact(event_or_result)`，而不是直接访问任一内部结构。该函数会验证
+schema 和外层结构，且默认只接受版本 1。对于未知或格式错误的工件，它返回 `NULL`，从而可以通过
+`tool_result_value(event_or_result)` 安全回退。
+
+| `kind` | 典型 `payload` |
+|---|---|
+| `text` | `list(text = )` |
+| `table` | `list(df = <data.frame>)` |
+| `image` | `list(images = list(list(mime = , b64 = )), output = )` |
+| `code` | `list(text = , lang = , filename = , output = )` |
+| `diff` | `list(old = , new = , path = )` |
+| `error` | `list(message = , detail = )` |
+
+非 Shiny 宿主自行渲染工件，例如：
+
+```{r}
+on_tool_result <- function(event) {
+  artifact <- codeagent::tool_result_artifact(event)
+  if (!is.null(artifact) && identical(artifact$kind, "table")) {
+    my_render_table(artifact$payload$df)
+  } else {
+    render_plain_text(codeagent::tool_result_value(event))
+  }
+}
+```
+
+关于版本协商、失败行为和浏览器信任边界，见 `vignette("tool-artifacts")`。
+
+## 4. 宿主工具 + 权限门
+
+先按标准 ellmer 方式注册工具，再**声明每个工具的能力**，使中央权限门像治理原生工具一样治理它。
+
+```{r}
+chat$register_tool(my_tool)
+codeagent::register_tool_meta("Summarise", capability = "read") # read|write|exec|net
+```
+
+在仅含运行框架的客户端（`register_tools = FALSE`）上，权限门**不会**自动安装。请在附加工具后安装，
+使审批请求能够传给你的 `ask_fn`。公开参数 `tools` 等同于独立安装场景中的 `settings$tools`：
+
+```{r}
+tool_policy <- list(
+  overrides    = list(Summarise = "allow"),       # allow | ask | deny
+  capabilities = list(exec = "ask", net = "deny")
+)
+
+codeagent::install_permission_gate(
+  chat,
+  permission_mode = "default",
+  tools = tool_policy,
+  # 也可以在这里分类，而不调用 register_tool_meta()：
+  tool_meta = list(Summarise = "read"),
+  ask_fn = function(name, input, id = NULL) {
+    host_request_approval(id, name, input) # logical 或 promise<logical>
+  }
+)
+```
+
+可选的 `id` 是工具调用 ID，与 `on_tool_request$id` 相同。`install_permission_gate()` 对每个 Chat
+都是幂等的：再次调用会刷新实时模式、审批回调和策略，而不会叠加另一个权限门。
+
+> **重要：** *未声明*的工具默认能力为 `"read"`，无需敏感操作门控即可放行。如果工具会执行代码、
+> 写文件或访问网络，请将其声明为 `"exec"`、`"write"` 或 `"net"`，使权限门能够询问或拒绝。
+> 内置元数据始终具有权威性，宿主注册不能降低内置工具的能力等级。
+
+策略优先级依次为：逐工具 `overrides`、逐能力策略、当前权限模式与规则。完整策略结构为
+`sets` / `capabilities` / `overrides`；独立安装时通过 `tools =` 传入，完整 codeagent 客户端则可配置为
+`settings$tools`。
+
+## 5. 技能
+
+请把宿主技能按 `<name>/SKILL.md` 格式放入受支持的项目级技能目录（例如
+`.btw/skills/my_skill/SKILL.md`）。技能*内容*由宿主拥有；codeagent 只负责发现、加载和注入。
+
+```{r}
+skills <- codeagent::list_skills_meta(cwd = getwd())
+prompt <- codeagent::load_skill_prompt(
+  "my_skill", args = "optional arguments", cwd = getwd()
+)
+hint <- codeagent::build_skill_hint(cwd = getwd(), max_tokens = 1000L)
+```
+
+## 6. 提供商
+
+`codeagent_client(chat = )` 接受任意 `ellmer::Chat`（OpenAI-compatible、Databricks、Anthropic、
+Gemini、Bedrock、Azure 等）。底层流式函数也接受裸 `ellmer::Chat`；基于列表的 `$stream_async`
+鸭子类型仅用于测试，不属于客户端构造契约。宿主拥有并提供凭据；codeagent 使用传入的 Chat，
+而不拥有这些凭据。
+
+## 7. 版本管理 {#versioning}
+
+Backend Contract **v1** 是下面列出的公开表面，其签名和行为如上文所述。变更遵循语义化版本；
+破坏性变更会提升主版本号并在 `NEWS.md` 中公告。守卫测试 `test-backend-contract.R` 会在导出表面漂移时失败。
+
+- `codeagent_client(register_tools = FALSE)` -> `{chat, settings, data_shield}`
+- `codeagent_app(client_factory = )` 的逐会话客户端契约
+- `codeagent_stream()` / `codeagent_stream_async()` + 回调 +
+  `list(text, usage, stop_reason, finish_reason)`
+- `agent_loop()`
+- `tool_result()`
+- `tool_result_artifact()` / `tool_result_value()`
+- `register_tool_meta()`
+- `install_permission_gate()`（以及 `ask_fn(name, input, id = NULL)` 契约）
+- `DataShield` / `shield_describe()` / `shield_egress()` / `shield_regex()` /
+  `shield_ingress()` / `shield_tool_policy()` / `shield_sandbox()` /
+  `shield_reviewer()`
+- `list_skills_meta()` / `load_skill_prompt()` / `build_skill_hint()`
+- `CompactionController`（压缩会自动运行；这是可注入的控制器）
+- `switch_model()`
+- `settings$tools` 策略：`sets` / `capabilities` / `overrides`

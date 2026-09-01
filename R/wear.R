@@ -247,6 +247,7 @@ register_wear_report_tool <- function(chat) {
                              title = title %||% "Data Exploration Report"),
         error = function(e) paste0("[Error] Report failed: ", conditionMessage(e)))
     },
+    name = "GenerateReport",
     description = paste0(
       "Export the current data exploration session to a reproducible Quarto ",
       "document. Call this when the user types /report or asks to save/export ",

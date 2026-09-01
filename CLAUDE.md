@@ -11,10 +11,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | File | When to read |
 |------|-------------|
 | `ellmer-package.md` | Core Chat API, tool(), type_*(), ContentToolResult, S7 internals |
-| `ellmer-tool-calling.md` | tool(), type_*(), ContentToolResult extra$display, tool_annotations(), on_tool_request/result, stream="content" |
+| `ellmer-tool-calling.md` | tool(), type_*(), `ContentToolResult` `extra$codeagent$artifact` / `extra$display`, tool_annotations(), on_tool_request/result, stream="content" |
 | `btw-package.md` | btw 1.2.1 overview, client config, skill system |
 | `btw-tools.md` | btw 工具组完整参考（10组 + skill系统 + btw_app设计）|
-| `shinychat.md` | chat_append(), tool cards, _intent display, ContentToolResult extra$display |
+| `shinychat.md` | chat_append(), tool cards, _intent display, `ContentToolResult` `extra$display` |
 | `bslib-shinychat-layout.md` | `chat_ui(fill=TRUE)`、`page_fillable()`、`layout_sidebar()`、`sidebar(fillable=TRUE)` 的真实约束；先读再改聊天布局 |
 | `bslib-toolbar-toast.md` | `toolbar()` / `toolbar_input_button()` / `toast()` 在本项目中的推荐用法 |
 | `bslib-toast-vs-notification.md` | `bslib::show_toast()` 与 `shiny::showNotification()` 的选型结论 |

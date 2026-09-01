@@ -11,6 +11,8 @@ vignette: >
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
+**Language:** English | [简体中文](data-shield-cn.html)
+
 > **Status — P0/P0.5/P1/P1.5/C2/C5-policy available; fuller design in
 > progress.** The egress row-cap, protected-value matching, strict DescribeData,
 > ordered scanners, universal pre-tool ingress, per-tool policy, promise-backed
@@ -30,53 +32,44 @@ descriptive summaries**, but **never raw row-level data**. Data Shield is an
 ## The core: three edges
 
 Strip away the agent machinery and data crosses the model boundary at **three
-edges**. Guard all three and you have guarded everything:
+edges**. Data Shield installs a gate at each one:
 
-1. **Prompt / system-prompt content** (edge 1, input gate) — including the
-   framework's own **ambient-context auto-injection** (codeagent can inject a
-   summary of R session objects into the system reminder). This is the part we
-   control and must keep **schema-only** (names / types / dimensions), never values.
-2. **Tool results** (edge 2, tool gate) — whatever a tool returns and that is
-   fed back to the model.
-3. **The model's final reply** (edge 3, output gate) — scanned before it reaches
-   the user, since the model may reproduce a protected value it inferred from an
-   edge-2 aggregate even when the user's own input was clean.
+1. **User/model input** (edge 1, input gate) — typed text and text-bearing
+   attachments are scanned before the model sees them. Framework-owned protected
+   dataset context is separately generated as filtered schema-only metadata
+   (names, types, dimensions, and policy-safe summaries), never raw rows.
+2. **Tool traffic** (edge 2, tool gate) — tool arguments are checked before
+   execution and tool results are filtered before they are fed back to the model.
+3. **The model's final reply** (edge 3, output gate) — the complete reply is
+   scanned before it reaches the user, since the model may reproduce a protected
+   value inferred from an edge-2 aggregate even when the user's input was clean.
 
-Everything else reduces to these (RAG and errors arrive as one of them). The
-guarantee applies **recursively to sub-agents** — each has its own edges.
+RAG content, attachments, and errors must enter through one of these edges. The
+same policy applies recursively to owned foreground sub-agents.
 
-> Blind spot to handle separately: an **image/multimodal** tool result (a
-> rendered table/plot of raw rows) bypasses text scanning. An OCR image scanner
-> is available opt-in (`data_shield_ocr_scanner()`) to close edge 1 for text
-> baked into uploaded images.
+> **Image boundary:** image prompt attachments are not scanned by default. An
+> opt-in OCR hook (`data_shield_ocr_scanner()`) can scan text baked into those
+> images at edge 1. Image/multimodal **tool results** still bypass text egress
+> scanning and require a host-provided image-result control.
 
 ### Architecture at a glance
 
 ```
-                     codeagent's central gate (sole authority, existing dual hooks)
- Host/user uploads data
+ Host/user registers protected data (local only)
      │ shield$register_data(df, name, sensitivity)
-     ▼
- ┌────────────────────┐   builds a value index (deduped high-entropy values from
- │ Protected data      │   sensitive columns, LOCAL ONLY, never sent to the model)
- │ registration        │──────────────────────────────────────────┐
- │ bound to an envir / │                                          │
- │ auto-classified     │                                          │
- └──────────┬──────────┘                                          │
-            │ the only sanctioned way to feed the model            │
-            ▼                                                     ▼
-     DescribeData (C6)                                    value_match lookup
-     hardened schema + stats + k-anonymity          (small output × prebuilt index = fast)
-            │                                                     │
-     ┌──────┴──────── the two entry points into model context (both must be guarded) ────┴──────┐
-     │  ① prompt injection ◄── ambient context ◄── only a safe profile is fed                    │
-     │  ② tool results:                                                                          │
-     │       on_tool_request ─►[ ingress pipeline: C2 blacklist → C4 review (exec) ]─► execute ─► output
-     │       output ─► on_tool_result ─►[ egress pipeline: C3 row_cap → value_match → regex → C4 review ]─► fed back to the model
-     │                per-strategy on_fail: pass|redact|block|ask; sequential execution + fail_fast │
-     └───────────────────────────────────────────────────────────────────────────────────────────┘
-     (C5 sandbox: exec no-network/read-only/separate user; C1 narrowing: optionally remove risky
-      tools — both are enhancements, not the boundary)
+     ├────────► filtered schema block / DescribeData ───────────────┐
+     └────────► local high-entropy value index                      │
+                                                                   ▼
+ user text + text attachments ─► [edge 1 input gate] ───────────► model
+                                                                   │
+ tool call ─► [edge 2 ingress: policy → patterns → reviewer] ─► execute
+                                                                   │
+ model ◄── [edge 2 egress: row_cap → value_match → scanners] ◄── result
+   │
+   └──────── final reply ─► [edge 3 output gate] ─► user/browser
+
+ Sandbox and tool narrowing are defense-in-depth. The permission gate remains
+ independent, and a Shield bypass never bypasses permission checks.
 ```
 
 ### Setup used by every snippet below
@@ -138,8 +131,40 @@ reviewer, and tool narrowing are defense-in-depth, not the boundary.
 | Value | Effect |
 |---|---|
 | `NULL` | Shield completely off; existing codeagent behaviour unchanged |
-| `list(shield_*())` | Strategies run in list order; codeagent creates one private `DataShield` R6 for this client |
+| `list(shield_*())` | codeagent creates one private `DataShield` R6; egress scanners follow list order, while ingress/reviewer/sandbox/tool-policy strategies run at their own phases |
 | `DataShield$new(...)` | Explicit lifecycle for uploads and deliberate sharing among selected chats |
+
+### Input/output gates and scanner defaults
+
+The input and final-response gates are client settings rather than `shield_*()`
+strategies. Their secure defaults are:
+
+| Setting | Default | Effect |
+|---|---|---|
+| `data_shield_prompt_on_fail` | `"redact"` | Redact matched spans in user text; `"block"` rejects the turn |
+| `data_shield_input_scanners` | `c("value_match", "regex")` | Scan registered protected values and PII/token shapes |
+| `data_shield_response_on_fail` | `"redact"` | Redact the finalized model reply; `"block"` replaces it with a blocked notice |
+| `data_shield_output_scanners` | `c("value_match", "regex")` | Apply the same two detectors to the final reply |
+| `data_shield_image_scanner` | `NULL` | Images are not scanned unless the host supplies a hook |
+
+Unknown scanner names and scanner exceptions fail closed. Input `"ask"` has no
+separate approval path and degrades to redaction. Text-bearing attachments are
+scanned; if their text cannot be extracted, the turn is blocked because an
+immutable attachment cannot be safely rewritten. When a shield is active, CLI
+and Shiny streaming buffer the complete model reply, scan it, and only then emit
+the safe text once—there is no plaintext-first stream.
+
+To opt into OCR for prompt images:
+
+```r
+client$settings$data_shield_image_scanner <-
+  data_shield_ocr_scanner(client$data_shield)
+```
+
+`tesseract` is an optional dependency. If it is absent, the ready-made scanner
+degrades to pass (the image blind spot remains). Once OCR is available and the
+scanner is configured, unreadable images, OCR errors, and OCR-text scan errors
+block; detected protected text blocks by default.
 
 ### `shield_egress()` — core tool-result boundary
 
@@ -272,7 +297,7 @@ host filesystem. A future full adapter must move exec tools out of process.
 | `scope` | exec/write/net | Only these tool capabilities incur review cost |
 | `on_risk` | `"ask"` | Risk classification becomes ask or block |
 | `on_error` | `"ask"` | Missing model, timeout, request/JSON errors become ask or block; no approval→block |
-| `backend` | `"remote_sanitized"` | Remote sees only regex/value-sanitized code; raw egress review is local-only roadmap |
+| `backend` | `"remote_sanitized"` | Remote sees only regex/value-sanitized code; `"local_only"` is also supported but requires an explicit local `client_factory` and fails closed without one |
 | `timeout` | `30` | Async review timeout seconds |
 
 The reviewer is not a tool and cannot be skipped by the main model. It has no
@@ -283,11 +308,12 @@ already-blocked calls incur no model cost.
 ### `DataShield$new()` direct lifecycle
 
 Direct constructor parameters (`max_rows`, `distributions`, `k_anon`,
-`category_max`, `category_ratio`, `audit_max`) create the default DescribeData +
-core egress configuration when `strategies = NULL`. `audit_max` defaults to 1000
+`category_max`, `category_ratio`, `audit_max`, `dp_epsilon`, `dp_budget`) create
+the default DescribeData + core egress configuration when `strategies = NULL`. `audit_max` defaults to 1000
 non-sensitive decision events; `0` disables recording. Supplying
-`strategies = list(...)` enables **only** listed strategies and preserves list
-order. Use `shield$register_data()`, `$install()`, `$describe()`, `$audit()`,
+`strategies = list(...)` enables **only** listed strategies. List order controls
+the egress scanner pipeline; ingress, reviewer, sandbox, and tool-policy
+strategies run at their distinct phases. Use `shield$register_data()`, `$install()`, `$describe()`, `$audit()`,
 `$clear_audit()`, `$clear()`, and `$close()` for dynamic/session-owned workflows.
 
 ## Plain-language glossary
@@ -317,10 +343,10 @@ order. Use `shield$register_data()`, `$install()`, `$describe()`, `$audit()`,
 | Field | Meaning |
 |---|---|
 | `timestamp` | UTC event time |
-| `edge` | `ingress` (before tool) or `egress` (before LLM) |
+| `edge` | Policy boundary, including `prompt`, `ingress`, `egress`, `response`, or `describe` |
 | `tool_name`, `tool_call_id` | Non-sensitive correlation identifiers |
-| `strategy` | `row_cap`, `value_match`, `regex`, `ingress`, or custom scanner name |
-| `action`, `reason` | `redact`/`block`/`ask` and a rule/reason label |
+| `strategy` | Includes `row_cap`, `value_match`, `regex`, `ingress`, `dp_budget`, `tool_policy`, `asset_policy`, `sandbox`, or a custom scanner name |
+| `action`, `reason` | Policy action such as `redact`, `block`, `ask`, `consume`, `exhausted`, `bypass`, or `deny`, plus a rule/reason label |
 | `match_count`, `score` | Number of matches and normalized risk score |
 
 It **never stores** raw tool arguments/results, matched values, data rows, span
@@ -564,6 +590,27 @@ A factor is not automatically safe: a factorised subject ID remains an
 low-cardinality, low-uniqueness, non-PII, and every exposed level satisfies the
 k-anonymity threshold. Free text never receives real examples in strict mode.
 
+### Protected schema in the system prompt
+
+When protected data is registered **before** `codeagent_client()` is built, its
+filtered `DescribeData`-style schema is inserted into a `<protected-data>`
+system-prompt block. This tells the model the real dataset names, dimensions, and
+allowed columns without exposing identifiers or rare categories. `DescribeData`
+remains the authoritative live fallback.
+
+`register_data()` updates the live engine and value index but deliberately does
+not rewrite an existing Chat prompt. After a runtime upload, refresh explicitly:
+
+```r
+shield$register_data(df, name = "uploaded")
+client <- refresh_data_shield_context(client)
+```
+
+The refresh rebuilds the prompt while preserving history, tools, budgets, hooks,
+and the same live `DataShield`; expect a one-time prompt-cache miss. Under
+`distributions = "dp"`, both schema-block generation and `DescribeData` consume
+the configured per-dataset privacy budget.
+
 ## P1.5 ordered egress scanners
 
 Strategy-list order is the execution order. `shield_regex()` catches sensitive
@@ -630,6 +677,24 @@ provider plus `CODEAGENT_FAST_MODEL`; an explicit `client_factory` may provide a
 local or specialized reviewer. Missing/failed/invalid reviewers follow
 `on_error`; ask falls back to block when no approval channel exists.
 
+## Related data tools and their boundaries
+
+- **`DescribeData`** is registered only when `shield_describe()` is enabled (or
+  when the direct constructor uses its default strategies). It returns the
+  filtered metadata contract above and sees datasets registered later.
+- **`ExploreData`** is a general read-only data-query tool, not a confidentiality
+  boundary or OS sandbox. It evaluates supplied R code in a child environment;
+  under Data Shield its arguments still pass the central ingress gate and its
+  model-facing result still passes egress filtering. Data-frame results expose a
+  shape string to the model while rich rows remain a UI artifact; scalar text can
+  still be caught by `value_match`/regex.
+- **`audit_code_tool(shield, project_root)`** is an opt-in `AuditCode` tool that a
+  host may register before executing R code. It parses static references, reads
+  only regular source files with allowed extensions inside `project_root`, never
+  executes the submitted code, and returns risk/reference metadata rather than
+  file contents. With a shield, whitelisted source text goes through the reviewer
+  rail. `AuditCode` grants no read/write/shell capability to the main model.
+
 ## Roadmap
 
 - **P0.5 — `value_match` (available)**: deterministically catches *targeted*
@@ -658,11 +723,13 @@ local or specialized reviewer. Missing/failed/invalid reviewers follow
 
 ## Sub-agent boundary
 
-Foreground sub-agents (`Agent`) inherit the exact same `DataShield` R6 before
-any of their tools can return content to the child model. This applies to both
-synchronous and concurrent async Agent calls. While a shield is active,
-codeagent deliberately skips btw/custom-agent delegation paths that cannot
-accept the policy engine.
+Foreground sub-agents (`Agent`) inherit the exact same live `DataShield` R6;
+their tools are installed behind the same central permission and Shield gates
+before the first child request. This applies to synchronous and concurrent async
+Agent calls. While a shield is active, raw `btw_tool_agent_*`/custom delegation
+paths that cannot accept the engine are not exposed. The child reply is output-
+gated before `SubagentStop` hooks, callbacks, or the parent tool result, and
+shielded sidechains are not persisted.
 
 `BackgroundAgent` and `/bg` currently **fail closed** under Data Shield: their
 mirai worker is a separate R process and cannot safely share the session's R6
@@ -777,14 +844,18 @@ Specific residual risks to weigh before relying on it:
   (`inst/bench/value_match_benchmark.R`): ~130 MB of keys and ~10 s to
   index 1M high-entropy values, with zero false positives on ordinary clinical
   prose and pharmaverse-format `USUBJID`/`SUBJID` caught. Because memory grows
-  linearly and unbounded, `register_data(max_index_values=)` caps the index
-  (default 500 000, ~65 MB); on overflow it warns and the unindexed tail relies
-  on the other egress layers. The `min_len`/`min_card` thresholds performed
-  well on these ids and are unchanged.
-- **Images/multimodal and full OS isolation remain roadmap** (see the status
-  banner): a rendered table/plot of raw rows bypasses text scanning, and the
-  portable sandbox is a path/capability policy, not kernel isolation.
-- **`shinychat` text-bearing attachments ARE now scanned at edge 1.** codeagent's
+  linearly, `register_data(max_index_values=)` caps the index (default 500 000,
+  ~65 MB). If the cap would truncate the index, registration errors and refuses
+  the partially indexed dataset; raise the cap, split the data, or explicitly use
+  `NULL`/`Inf`. The `min_len`/`min_card` thresholds performed well on these ids
+  and are unchanged.
+- **Image tool results and full OS isolation remain roadmap** (see the status
+  banner): a tool-returned rendered table/plot of raw rows bypasses text egress
+  scanning, and the portable sandbox is a path/capability policy, not kernel
+  isolation. Prompt-image OCR is a separate opt-in edge-1 control described
+  above; its optional-dependency fallback is intentionally a documented blind
+  spot.
+- **`shinychat` text-bearing attachments ARE scanned at edge 1.** codeagent's
   main UI enables `chat_ui(allow_attachments = TRUE)`; the input gate extracts
   and scans text-bearing attachments (e.g. `ContentPDF`), failing **closed** to
   block when the content cannot be verified (immutable Content cannot be redacted

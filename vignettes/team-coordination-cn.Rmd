@@ -1,0 +1,209 @@
+---
+title: "多智能体团队协调"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{多智能体团队协调}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, purl=FALSE, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+> **语言：** [English](team-coordination.html) | 简体中文
+
+## 概述
+
+codeagent 提供了多种不同的任务委派方式。应根据任务是否相互独立、是否受依赖关系约束、是在前台运行还是需要真正的非阻塞执行来选择：
+
+- `team_run()` 是面向独立任务的固定扇出模式。工作进程并行运行，但函数会等待全部结果后才返回。
+- `team_coordinate()` 是由共享 SQLite 任务板支持的阻塞式工作窃取池，支持任务依赖 DAG，也适合耗时不均的任务。
+- `team_lead()` 让一个 LLM 负责人分解目标、复核结果，并可在多个阻塞式 `team_coordinate()` 轮次之间重新规划。
+- 前台 `Agent` 工具用于委派一个子任务。在异步父轮次中，选择启用异步子智能体后，可以并发执行多个 `Agent` 调用。
+- `BackgroundAgent` 和 `/bg` 是触发后立即返回的路径；结果会在后续轮次中显示。
+
+`team_run()` 和 `team_coordinate()` 需要 `mirai`；任务板操作需要 `DBI` 和 `RSQLite`。工作进程的权限模式默认为 `"bypass"`，因为守护进程无法响应交互式审批。只应对可信任务和可信环境使用这一默认值。
+
+## 协调方式速览
+
+```
+team_run(tasks)                       固定扇出（调用方阻塞）
+  N 个 mirai 守护进程；每个任务运行一次 codeagent 查询
+  -> 等待所有任务 -> 按输入顺序返回结果列表
+
+team_coordinate(tasks, blocked_by)   工作窃取（调用方阻塞）
+  board_create()：在 SQLite 中创建 tasks + deps + messages 表
+  写入全部任务 -> 连接 blocked_by 索引 -> 拒绝依赖环
+  N 个工作进程，各自重复：
+    board_claim() -- 原子领取 id 最小的合格 pending 任务
+      | 当前没有可领取任务
+      +- 没有未完成任务         -> 退出
+      +- 回收超时领取           -> 重试遗留任务
+      +- 任务板确实停滞         -> 退出
+      +- 阻塞任务仍在执行       -> sleep(backoff) 后重试
+    运行 codeagent(task)
+    board_complete(result)
+    board_send_message("completed task", recipient = "coordinator")
+  -> 等待工作进程 -> 返回最终任务板 data.frame
+
+team_lead(goal, max_rounds)           LLM 负责人循环（调用方阻塞）
+  结构化分解 -> 任务 + 依赖 DAG
+  -> team_coordinate(...)
+  -> 结构化复核：完成或生成后续任务
+  -> 使用新任务板重复，直到完成、无任务或达到 max_rounds
+```
+
+## 固定扇出：`team_run()`
+
+`team_run(tasks, model = NULL, n_workers = NULL, permission_mode = "bypass", cwd = getwd())` 会为每个任务创建一个新客户端，并按 `tasks` 的原始顺序返回列表。单个任务失败时，对应元素是 `"[Error] ..."` 字符串，而不会中止整个结果收集过程。
+
+```{r, purl=FALSE}
+library(codeagent)
+
+# 并行审查多个文件
+results <- team_run(c(
+  "Review R/tool_display.R for any issues",
+  "Review R/permissions.R for any issues",
+  "Review R/compaction.R for any issues"
+))
+
+# results 的每个元素都是对应任务的智能体回复
+cat(results[[1]])
+```
+
+工作进程数默认为 `min(length(tasks), parallelly::availableCores())`；如果 `parallelly` 不可用，则采用保守回退值。显式给出的 `n_workers` 也会被限制在同一个可感知 cgroup 的上限内。`team_run()` 没有 worktree 参数，因此同时写入同一检出目录的任务可能冲突；它更适合相互独立的只读工作，或由外部机制隔离的资源。
+
+## 工作窃取：`team_coordinate()`
+
+当前函数签名为：
+
+```r
+team_coordinate(
+  tasks,
+  model = NULL,
+  n_workers = NULL,
+  permission_mode = "bypass",
+  cwd = getwd(),
+  blocked_by = NULL,
+  worktree = FALSE,
+  backoff = 0.5,
+  reclaim_timeout = 300,
+  db_path = tempfile(fileext = ".sqlite")
+)
+```
+
+工作进程会不断领取新任务，因此较快的进程可以处理多个任务。函数本身会等待所有工作循环结束，然后返回包含 `id`、`prompt`、`owner`、`status` 和 `result` 列的最终任务板。
+
+```{r, purl=FALSE}
+results_df <- team_coordinate(
+  tasks = c("task 1", "task 2", "task 3", "task 4", "task 5"),
+  n_workers = 2
+)
+# 返回列为 id、prompt、owner、status、result 的 data.frame
+print(results_df[, c("prompt", "status", "owner")])
+```
+
+### 依赖关系
+
+`blocked_by[[i]]` 包含 `tasks` 中从 1 开始的索引。只有所有有效的前置任务均为 `done` 时，该任务才可被领取。系统会在启动工作进程之前拒绝依赖环；越界索引和自依赖会被忽略。
+
+```{r, purl=FALSE}
+dag_result <- team_coordinate(
+  tasks = c(
+    "Create the schema",
+    "Implement against the schema",
+    "Run integration checks"
+  ),
+  blocked_by = list(integer(0), 1L, 2L),
+  n_workers = 2
+)
+```
+
+领取操作使用 SQLite 的 `BEGIN IMMEDIATE` 事务，并选择 id 最小的合格任务，因此无依赖任务板保持 FIFO 顺序。没有任务可领取时，工作进程会区分“全部完成”“前置任务仍在执行”和“真正停滞”三种情况。仍存活但空闲的工作进程会回收领取时间超过 `reclaim_timeout` 的任务；如果所有工作进程都已退出，就没有进程能执行回收。
+
+### Worktree 隔离
+
+设置 `worktree = TRUE` 可为每个工作进程请求一个临时的 detached Git worktree：
+
+```{r, purl=FALSE}
+review <- team_coordinate(
+  c("Inspect module A", "Inspect module B"),
+  n_workers = 2,
+  worktree = TRUE
+)
+```
+
+这是尽力而为的机制：Git 或仓库 worktree 不可用时，工作进程会回退到 `cwd`。工作进程退出时，临时 worktree 会被强制删除。codeagent 不会自动合并或复制其中的修改，因此除非另有明确流程保存更改，否则此模式应主要用于隔离分析。
+
+## 共享任务板
+
+`board_create(db_path = tempfile(fileext = ".sqlite"))` 创建 `tasks`、`deps` 和 `messages` 表，并以不可见形式返回数据库路径。`board_claim()` 可跨进程原子领取任务，`board_complete()` 记录结果，`board_status()` 返回当前任务表。
+
+### 智能体间消息
+
+共享任务板还支持广播消息和定向消息记录：
+
+```{r, purl=FALSE}
+db <- board_create()
+board_add_task(db, "analyse the sales data")
+board_add_task(db, "generate the summary report")
+
+# 工作进程 1 领取任务
+task <- board_claim(db, worker_id = "w1")
+board_send_message(db, sender = "w1", body = "Starting analysis...",
+                   recipient = "coordinator")
+
+# 写入完成结果
+board_complete(db, task$id, result = "Analysis complete: 3 trends found")
+```
+
+`recipient = NULL` 表示广播。`board_messages(db, "coordinator")` 返回广播消息和发给该接收者的消息，`board_messages(db)` 则返回完整日志。这些消息不会自动插入工作进程的提示词：内置协调器会写入完成通知，但不会把消息表作为智能体之间的对话通道。
+
+### 监视和展示任务板
+
+可选的 `watcher` 包可用时，`board_watch(db, callback, latency = 0.3)` 会启动事件驱动的文件监视器；否则返回 `NULL`。`team_dashboard(db_path, poll_ms = 1500L)` 优先使用该监视器，并在不可用时回退到轮询。若要观察正在运行的 `team_coordinate()`，请传入固定的 `db_path`，并在另一个进程或后台作业中运行这个阻塞式协调器。
+
+```{r, purl=FALSE}
+db <- tempfile(fileext = ".sqlite")
+# 在另一个 R 进程中：
+# team_coordinate(c("A", "B", "C"), db_path = db)
+team_dashboard(db)
+```
+
+## LLM 负责人轮次：`team_lead()`
+
+`team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "bypass", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)` 首先要求负责人模型给出结构化任务和依赖关系。三个回调参数是可注入接口，主要用于测试或自定义编排。每个协调轮次结束后，它会判断目标是否完成；如未完成，仅运行后续计划。非空的已执行任务板会按行合并并添加 `round` 列；若首次分解就没有任务，空返回值只包含基础任务板列。`max_rounds` 至少会被转换为 1。复核过程报错时会按“已完成”处理，从而停止而不是无限重试。
+
+```{r, purl=FALSE}
+lead_result <- team_lead(
+  "Review the parser, fix confirmed defects, and verify the focused tests",
+  max_rounds = 3,
+  n_workers = 2,
+  worktree = TRUE
+)
+```
+
+## 前台、并发和后台子智能体
+
+智能体可以在聊天中调用前台 `Agent` 工具。常规路径是同步执行。客户端上的 worktree 隔离会强制使用 codeagent 自有的 Agent 实现，由它创建并清理临时 worktree：
+
+```{r, purl=FALSE}
+client <- codeagent_client(chat,
+  permission_mode = "bypass",
+  worktree_isolation = TRUE   # 每个子智能体使用独立 Git worktree
+)
+```
+
+与团队 worktree 一样，这也是尽力而为的隔离，不会把修改合并回主检出目录。
+
+`team_run()` 和 `team_coordinate()` 虽然在内部使用并行工作进程，但 API 本身仍然阻塞。另一个可选设置 `async_subagents` 允许多个前台 `Agent` 调用返回 promise 并并发执行，但仅在父轮次本来就通过异步流式路径运行时生效。同步的一次性调用或控制台轮次会回退到同步 Agent 路径。
+
+```json
+{
+  "async_subagents": true,
+  "background_agents": true
+}
+```
+
+`background_agents = true` 会注册供模型调用的 `BackgroundAgent` 工具。它立即返回任务 id；内存注册表通过专用 `mirai` compute profile 轮询，并在后续 system reminder 中仅注入一次每个完成结果。`/bg <task>` 和 `/bgstatus` 本地命令使用同一个后台注册表。Data Shield 启用时，后台智能体会被禁用，因为独立进程无法安全继承当前会话的受保护数据索引；此时请使用前台 `Agent` 工具。

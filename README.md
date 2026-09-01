@@ -1,5 +1,7 @@
 # codeagent
 
+**Language:** English | [简体中文文档](https://kaipingyang.github.io/codeagent/articles/getting-started-cn.html)
+
 An R-native agentic coding assistant built on [ellmer](https://ellmer.tidyverse.org) and [btw](https://btw.posit.co). It reimplements a coding-agent **harness** in R: the agent loop, permission system, context compaction, hook system, skill system, tool execution, session management, multi-agent coordination, a CLI REPL, and an interactive Shiny UI.
 
 > **Not a wrapper.** codeagent reimplements the harness from scratch rather than shelling out to an external CLI.

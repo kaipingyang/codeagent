@@ -1,0 +1,208 @@
+---
+title: "可移植的工具结果工件（简体中文）"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{可移植的工具结果工件（简体中文）}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+**语言：** [English](tool-artifacts.html) | 简体中文
+
+工具结果面向三类不同受众：模型需要可移植文本，自定义 UI 需要结构化数据，而 shinychat 需要其官方
+展示对象。codeagent 将这些关注点彼此分离，而不是要求一种格式同时服务三者。
+
+## 三通道契约
+
+由 `tool_result()` 创建的每个结果都是 `ellmer::ContentToolResult`，包含三个刻意分离的通道：
+
+```text
+ContentToolResult
+├── value                         可移植的模型/UI 文本后备
+├── extra$codeagent$artifact      有版本、与 UI 无关的结构化数据
+└── extra$display                 可选的 shinychat 展示适配器
+```
+
+工件是非 shinychat UI 的主要集成点。当官方构造函数可用时，codeagent 会通过
+`shinychat::tool_result_display()` 投影生成 `display`；兼容后备仅用于已安装的旧版 shinychat。
+该适配器可能包含 shinychat 特有的 HTML 和带框卡片行为，因此第三方宿主不应解析其中的展示 HTML。
+
+即使工件缺失、格式错误、来自未来版本，或其种类尚未被宿主渲染，`value` 仍然可用。
+
+## 工件 v1
+
+版本 1 工件具有以下稳定的外层结构和字段顺序：
+
+```r
+list(
+  schema  = "codeagent.tool-artifact",
+  version = 1L,
+  kind,
+  status,
+  icon,
+  title,
+  payload
+)
+```
+
+| 字段 | 含义 |
+|---|---|
+| `schema` | 此协议固定为 `"codeagent.tool-artifact"`。 |
+| `version` | 有限的正整数协议版本；v1 为 `1L`。 |
+| `kind` | v1 生成的渲染类别：`text`、`table`、`image`、`code`、`diff` 或 `error`。 |
+| `status` | 非空结果状态；v1 生成器通常使用 `success` 或 `error`。 |
+| `icon` | 可选的可移植字符图标名。 |
+| `title` | 可选的纯文本字符标题。 |
+| `payload` | 与种类有关的结构化数据列表。 |
+
+典型载荷如下：
+
+| `kind` | 典型 `payload` |
+|---|---|
+| `text` | `list(text = )` |
+| `table` | `list(df = <data.frame>)` |
+| `image` | `list(images = list(list(mime = , b64 = )), output = )` |
+| `code` | `list(text = , lang = , filename = , output = )` |
+| `diff` | `list(old = , new = , path = )` |
+| `error` | `list(message = , detail = )` |
+
+宿主应容忍额外载荷字段，并且只渲染自己明确支持的组合。
+
+## 生成结果
+
+从 ellmer 工具返回 `tool_result()`。它的第一个参数始终是可移植值；丰富字段只是附加信息。
+
+```r
+summarise_tool <- ellmer::tool(
+  function(group) {
+    result <- summarise_data(group)
+    codeagent::tool_result(
+      value = sprintf("Summary contains %d rows.", nrow(result)),
+      kind = "table",
+      title = "Grouped summary",
+      payload = list(df = result)
+    )
+  },
+  name = "Summarise",
+  description = "Summarise data by a group.",
+  arguments = list(
+    group = ellmer::type_string("Grouping variable.")
+  )
+)
+```
+
+codeagent 把可移植工件存入 `extra$codeagent$artifact`，并在 `extra$display` 中单独构造可选的
+shinychat 适配器。安装的 shinychat 支持时，丰富结果会请求官方带框展示；这不会改变跨 UI 工件。
+
+## 安全消费结果
+
+无论输入是 `ContentToolResult` 对象还是流式事件，都应使用公开访问器。不要直接访问私有嵌套结构，
+也不要解析 display HTML。
+
+```r
+render_result <- function(event_or_result) {
+  artifact <- codeagent::tool_result_artifact(event_or_result)
+
+  if (is.null(artifact)) {
+    return(render_text(codeagent::tool_result_value(event_or_result)))
+  }
+
+  switch(
+    artifact$kind,
+    table = render_table(artifact$payload$df),
+    image = render_images(artifact$payload$images),
+    code  = render_code(artifact$payload$text),
+    diff  = render_diff(artifact$payload),
+    error = render_error(artifact$payload$message),
+    render_text(codeagent::tool_result_value(event_or_result))
+  )
+}
+```
+
+`tool_result_artifact()` 验证协议 schema 和外层结构。其默认值为 `version = 1L`；当 v1 消费者应回退到
+文本时，它返回 `NULL`。`version` 参数可以包含一个或多个受支持的正整数版本。
+`tool_result_value()` 会尽可能提取可移植文本。
+
+## 流式回调
+
+`codeagent_stream()` 和 `codeagent_stream_async()` 按以下严格且保持兼容性的字段顺序发送工具结果事件：
+
+```r
+list(
+  id,
+  name,
+  display,
+  value,
+  is_error,
+  artifact
+)
+```
+
+`artifact` 追加在原有五个字段之后，从而保持位置兼容性。自定义 UI 通常只读取 `artifact`、`value` 和
+`is_error`。`display` 字段是可选的 shinychat 展示数据。
+
+```r
+codeagent::codeagent_stream(
+  client,
+  "Run the summary tool",
+  on_tool_result = function(event) {
+    artifact <- codeagent::tool_result_artifact(event)
+    if (!is.null(artifact) && identical(artifact$kind, "table")) {
+      render_table(artifact$payload$df)
+    } else {
+      render_text(codeagent::tool_result_value(event))
+    }
+  }
+)
+```
+
+## 版本协商
+
+有效的未来版本工件会在适配和流式传输中保持不变，但默认的 v1 访问器会拒绝它们：
+
+```r
+# 安全的 v1 渲染决策
+artifact_v1 <- codeagent::tool_result_artifact(event)
+
+# 仅用于协议检查或转发；不要渲染未知版本
+artifact_any <- codeagent::tool_result_artifact(event, version = NULL)
+```
+
+支持多个已知版本的消费者可以显式传入它们，例如 `version = c(1L, 2L)`。传入 `NULL` 只会关闭消费者版本
+过滤；schema 和外层结构验证仍然生效。这样，中间件可以在不破坏工件的前提下转发有效的未来版本，
+而旧 UI 仍能可靠地回退到 `tool_result_value(event)`。UI 只有在实现了新版本契约后才应选择接受该版本。
+
+适配期间，无版本的旧工件可以升级为 v1。格式错误的元数据绝不会被当作有效的未来协议：直接调用访问器会
+返回 `NULL`，而适配过程可以合成一个基于 `value` 的有效 v1 工件，使可移植文本保持可用。
+
+## 信任边界与失败行为
+
+工件数据、外部 display 元数据和恢复的会话元数据都属于不可信输入。因此 codeagent 遵循以下规则：
+
+- 格式错误或不受支持的工件会软失败到可移植的 `value`；
+- 普通标题、载荷文本、Markdown 输入和字符 HTML 在浏览器渲染前会被转义，或被放入会自动转义的标签构造器；
+- 只有显式的 `htmltools::HTML`、`shiny.tag` 或 `shiny.tag.list` 对象才能跨越可信 HTML 边界；
+- `kind = "error"` 必然意味着 `status = "error"`，工具/提供商错误元数据也会强制错误状态，即使保留了
+  image 或 diff 这类丰富种类；
+- 无关的 request、error、来源溯源和提供商元数据在适配后仍会保留；
+- 格式错误的 display 选项会回退到基于有效工件的官方展示；
+- 旧会话卡片只会在展示副本上升级，不会改变面向提供商的 value 或工具 request/result 标识符。
+
+这些规则既适用于内置 Shiny UI，也适用于自定义消费者：UI 可以增强有效工件，但必须始终保留可移植值作为
+安全的最终后备。
+
+## 迁移检查清单
+
+对于现有宿主集成：
+
+1. 继续把 `value` 视为面向模型和最终后备的文本通道。
+2. 用 `tool_result_artifact()` 替代对 `display$toolcard` 或 `display$right_output` 的读取。
+3. 只渲染宿主明确支持的工件版本和种类。
+4. 其他所有情况都通过 `tool_result_value()` 回退。
+5. 只有在明确集成 shinychat 时才消费 `display`。
+
+完整的后端回调契约见 `vignette("backend-integration")`。

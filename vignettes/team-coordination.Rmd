@@ -7,48 +7,72 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, purl=FALSE, include = FALSE}
+```{r, purl=FALSE, include=FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
+> **Language:** English | [简体中文](team-coordination-cn.html)
+
 ## Overview
 
-codeagent supports running multiple independent sub-agents in parallel for
-tasks that can be divided and executed concurrently.
+codeagent provides several distinct ways to delegate work. Choose one according
+to whether tasks are independent, dependency-constrained, foreground, or truly
+non-blocking:
+
+- `team_run()` is fixed fan-out for independent tasks. It runs workers in
+  parallel but waits for every result before returning.
+- `team_coordinate()` is a blocking work-stealing pool backed by a shared
+  SQLite task board. It supports a dependency DAG and uneven task durations.
+- `team_lead()` asks an LLM lead to decompose, review, and optionally re-plan a
+  goal over several blocking `team_coordinate()` rounds.
+- The foreground `Agent` tool delegates one subtask. On an async parent turn,
+  opt-in async sub-agents can run multiple `Agent` calls concurrently.
+- `BackgroundAgent` and `/bg` are fire-and-forget paths whose results are
+  surfaced on a later turn.
+
+`team_run()` and `team_coordinate()` require `mirai`. Board operations require
+`DBI` and `RSQLite`. Their worker permission mode defaults to `"bypass"`
+because daemon processes cannot answer interactive approval prompts; use that
+default only for tasks and environments you trust.
 
 ## Coordination at a glance
 
 ```
-team_run(tasks)                    FIXED FAN-OUT (worker i = task i)
-  crew / mirai: run_one(task) = codeagent_client() + codeagent(task)
-  -> collect results in order
+team_run(tasks)                       FIXED FAN-OUT (blocking caller)
+  N mirai daemons; one codeagent query per task
+  -> wait for all tasks -> list of results in input order
 
-team_coordinate(tasks, blocked_by)   WORK-STEALING over a SQLite board
-  board_create(): tasks + deps (DAG) + messages tables
-  seed tasks (add, then wire blocked_by by index) + toposort (reject cycles)
-  N workers, each:  repeat {
-     board_claim()  -- BEGIN IMMEDIATE: lowest pending id whose blockers are done
-        | none claimable
-        +- pending == 0            -> all done, break
-        +- board_reclaim_stale()   -> reclaim a crashed worker's task
-        +- stalled (dead-end)      -> break
-        +- else Sys.sleep(backoff) -> retry   (a blocker still running)
-     run codeagent(task) -> board_complete(result) -> board_send_message()
+team_coordinate(tasks, blocked_by)   WORK-STEALING (blocking caller)
+  board_create(): tasks + deps + messages tables in SQLite
+  seed all tasks -> wire blocked_by indices -> reject dependency cycles
+  N workers, each: repeat {
+    board_claim() -- atomic claim of lowest-id eligible pending task
+      | none claimable
+      +- no unfinished tasks       -> break
+      +- reclaim stale claims      -> retry abandoned work
+      +- board is truly stalled    -> break
+      +- blocker still running     -> sleep(backoff), then retry
+    run codeagent(task)
+    board_complete(result)
+    board_send_message("completed task", recipient = "coordinator")
   }
-  -> board_status() data.frame (id, prompt, owner, status, result)
+  -> wait for workers -> final board data.frame
 
-team_lead(goal, max_rounds)        LLM-LEAD loop
-  decompose (chat_structured -> tasks + DAG)
-    -> team_coordinate(...)              (runs the work-stealing board above)
-    -> review (chat_structured: done? follow-up tasks?)
-    -> replan -> next round              (until done or max_rounds)
+team_lead(goal, max_rounds)           LLM-LEAD LOOP (blocking caller)
+  structured decomposition -> tasks + dependency DAG
+  -> team_coordinate(...)
+  -> structured review: done or follow-up tasks
+  -> repeat with a new board until done, no tasks, or max_rounds
 ```
 
-## Fixed fan-out: team_run()
+## Fixed fan-out: `team_run()`
 
-`team_run()` assigns one task per worker and collects all results:
+`team_run(tasks, model = NULL, n_workers = NULL, permission_mode = "bypass",
+cwd = getwd())` creates a fresh client for every task and returns a list in the
+same order as `tasks`. A failed task is represented by an `"[Error] ..."`
+string rather than aborting the whole result collection.
 
-```{r, purl=FALSE, purl=FALSE}
+```{r, purl=FALSE}
 library(codeagent)
 
 # Review multiple files in parallel
@@ -62,15 +86,37 @@ results <- team_run(c(
 cat(results[[1]])
 ```
 
-Worker count defaults to `min(#tasks, parallelly::availableCores())`
-to respect container CPU limits.
+Worker count defaults to
+`min(length(tasks), parallelly::availableCores())`, with a conservative fallback
+when `parallelly` is unavailable. An explicit `n_workers` is capped at the same
+cgroup-aware limit. `team_run()` has no worktree argument, so tasks that write
+to the same checkout can collide; reserve it for independent read-only work or
+otherwise isolated resources.
 
-## Work-stealing: team_coordinate()
+## Work-stealing: `team_coordinate()`
 
-`team_coordinate()` uses a shared SQLite task board where workers
-claim tasks dynamically -- faster workers take more tasks:
+The current signature is:
 
-```{r, purl=FALSE, purl=FALSE}
+```r
+team_coordinate(
+  tasks,
+  model = NULL,
+  n_workers = NULL,
+  permission_mode = "bypass",
+  cwd = getwd(),
+  blocked_by = NULL,
+  worktree = FALSE,
+  backoff = 0.5,
+  reclaim_timeout = 300,
+  db_path = tempfile(fileext = ".sqlite")
+)
+```
+
+Workers repeatedly claim work, so a faster worker can process more than one
+item. The function itself waits for all worker loops before returning the final
+board with columns `id`, `prompt`, `owner`, `status`, and `result`.
+
+```{r, purl=FALSE}
 results_df <- team_coordinate(
   tasks = c("task 1", "task 2", "task 3", "task 4", "task 5"),
   n_workers = 2
@@ -79,11 +125,59 @@ results_df <- team_coordinate(
 print(results_df[, c("prompt", "status", "owner")])
 ```
 
+### Dependencies
+
+`blocked_by[[i]]` contains 1-based indices into `tasks`. A task is claimable only
+when every valid blocker is `done`. Cycles are rejected before workers launch;
+out-of-range indices and self-dependencies are ignored.
+
+```{r, purl=FALSE}
+dag_result <- team_coordinate(
+  tasks = c(
+    "Create the schema",
+    "Implement against the schema",
+    "Run integration checks"
+  ),
+  blocked_by = list(integer(0), 1L, 2L),
+  n_workers = 2
+)
+```
+
+Claims use a `BEGIN IMMEDIATE` SQLite transaction and select the lowest-id
+eligible task, so dependency-free boards are FIFO. If no task is claimable,
+workers distinguish a completed board, an in-progress blocker, and a true
+stall. Idle live workers reclaim claims older than `reclaim_timeout`; if every
+worker process has died, no process remains to perform that reclamation.
+
+### Worktree isolation
+
+Set `worktree = TRUE` to request one temporary detached Git worktree per worker:
+
+```{r, purl=FALSE}
+review <- team_coordinate(
+  c("Inspect module A", "Inspect module B"),
+  n_workers = 2,
+  worktree = TRUE
+)
+```
+
+This is best-effort: when Git or a repository worktree is unavailable, the
+worker falls back to `cwd`. Temporary worktrees are force-removed when workers
+exit. codeagent does not merge or copy edits back, so use this mode for isolated
+analysis unless another explicit workflow preserves the changes.
+
+## The shared task board
+
+`board_create(db_path = tempfile(fileext = ".sqlite"))` creates `tasks`, `deps`,
+and `messages` tables and invisibly returns the database path. `board_claim()`
+is atomic across processes. `board_complete()` records a result, and
+`board_status()` returns the current task table.
+
 ### Inter-agent messaging
 
-The shared board also supports messages between agents:
+The shared board also supports broadcast and directed message records:
 
-```{r, purl=FALSE, purl=FALSE}
+```{r, purl=FALSE}
 db <- board_create()
 board_add_task(db, "analyse the sales data")
 board_add_task(db, "generate the summary report")
@@ -97,14 +191,84 @@ board_send_message(db, sender = "w1", body = "Starting analysis...",
 board_complete(db, task$id, result = "Analysis complete: 3 trends found")
 ```
 
-## Sub-agents in the Shiny app
+`recipient = NULL` creates a broadcast. `board_messages(db, "coordinator")`
+returns broadcasts plus messages addressed to that recipient, while
+`board_messages(db)` returns the entire log. These messages are not
+automatically inserted into worker prompts: the built-in coordinator writes a
+completion notice but does not use the message table as an agent conversation
+channel.
 
-The agent can invoke sub-agents via the `Agent` tool directly from
-the chat. Enable it by registering the agent tool:
+### Watching and displaying a board
 
-```{r, purl=FALSE, purl=FALSE}
+`board_watch(db, callback, latency = 0.3)` starts an event-driven file watcher
+when the optional `watcher` package is available and otherwise returns `NULL`.
+`team_dashboard(db_path, poll_ms = 1500L)` uses that watcher and falls back to
+polling. To observe a live `team_coordinate()` run, pass a stable `db_path` and
+run the blocking coordinator in another process or background job.
+
+```{r, purl=FALSE}
+db <- tempfile(fileext = ".sqlite")
+# In another R process:
+# team_coordinate(c("A", "B", "C"), db_path = db)
+team_dashboard(db)
+```
+
+## LLM-led rounds: `team_lead()`
+
+`team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L,
+n_workers = NULL, permission_mode = "bypass", worktree = FALSE,
+decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)` first asks the
+lead model for structured tasks and dependencies. The three callback arguments
+are injectable seams primarily used for testing or custom orchestration. After each coordinated
+round it asks whether the goal is complete and, if needed, runs only the
+follow-up plan. Non-empty executed boards are row-bound with a `round` column;
+if decomposition produces no tasks before any round, the empty return has only
+the base board columns. `max_rounds` is coerced to at least one. A review error is handled as “done,” so
+it stops rather than retrying indefinitely.
+
+```{r, purl=FALSE}
+lead_result <- team_lead(
+  "Review the parser, fix confirmed defects, and verify the focused tests",
+  max_rounds = 3,
+  n_workers = 2,
+  worktree = TRUE
+)
+```
+
+## Foreground, concurrent, and background sub-agents
+
+The agent can invoke the foreground `Agent` tool from chat. The normal path is
+synchronous. Worktree isolation is configured on the client and forces
+codeagent's owned Agent implementation, which creates and cleans a temporary
+worktree:
+
+```{r, purl=FALSE}
 client <- codeagent_client(chat,
   permission_mode = "bypass",
   worktree_isolation = TRUE   # each sub-agent in its own git worktree
 )
 ```
+
+As with team worktrees, this is best-effort and does not merge edits into the
+main checkout.
+
+`team_run()` and `team_coordinate()` use parallel workers internally but remain
+blocking APIs. A different opt-in setting, `async_subagents`, lets multiple
+foreground `Agent` tool calls return promises and execute concurrently only
+when the parent is already running through an async streaming turn. Sync
+one-shot/console turns fall back to the synchronous Agent path.
+
+```json
+{
+  "async_subagents": true,
+  "background_agents": true
+}
+```
+
+`background_agents = true` registers the model-facing `BackgroundAgent` tool.
+It returns a task id immediately; an in-memory registry polls the dedicated
+`mirai` compute profile and injects each completed result into a later system
+reminder once. The `/bg <task>` and `/bgstatus` local commands expose the same
+background registry. Background agents are disabled while Data Shield is
+active because a separate process cannot safely inherit the live protected-data
+index; use the foreground `Agent` tool in that case.
