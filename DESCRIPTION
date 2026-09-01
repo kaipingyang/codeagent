@@ -1,6 +1,6 @@
 Package: codeagent
 Title: An R-Native Coding Agent Powered by Large Language Models
-Version: 0.2.0
+Version: 0.2.1
 Authors@R:
     person("Kaiping", "Yang", email = "1260146556@qq.com",
            role = c("aut", "cre"))

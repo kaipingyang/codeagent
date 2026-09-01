@@ -1,31 +1,32 @@
-# codeagent (development version)
+# codeagent 0.2.1
+
+This is a backward-compatible release focused on portable tool results, current
+upstream integrations, Shiny presentation, safety, and documentation.
+
+## Portable tool results
+
+* Added a versioned, UI-neutral tool-result artifact v1 contract (`codeagent.tool-artifact`) with public `tool_result_artifact()` and `tool_result_value()` accessors. Streaming callbacks now expose `artifact`, the optional official shinychat `display` adapter, and the portable `value` fallback, allowing non-shinychat hosts to render native components without parsing shinychat HTML.
+* Preserved the official shinychat presentation path, including framed rich cards, while making malformed or unsupported artifact metadata fail soft. See `vignette("tool-artifacts")` for the schema, version negotiation, security boundary, and migration guide.
+
+## Shiny and upstream integration
+
+* Added the opt-in full-window `page_chat` layout with a 100%-width main chat, official `page_chat_theme()` baseline, persistent dark-mode and Workspace toolbar, resizable Output / Files / File drawer, attachment staging, and official shinychat tool displays. The classic layout retains its embedded width and disables unused native drawer/history presentation.
+* Improved greeting, slash-command, tool-display, session replay, file preview, and atomic settings/tool-group behavior while preserving codeagent ownership of streaming, permissions, sessions, and Data Shield.
+* Added opt-in support for ellmer provider-native `ContentCitation` / `WebSource` content. Native citations are converted to opaque current-turn server references and rebuilt through the same fixed `<shiny-aside>` allowlist as custom WebSearch/WebFetch citations; provider and model markup is never trusted directly.
+* Citation claims, grounded spans, titles, quotes, and URLs pass through Data Shield and the public-URL policy. Citation mode remains buffer-then-show, rejects unsafe or prior-turn references, supports multiple sources per grounded span, and safely rebuilds lossless session replay.
+* Re-pinned ellmer to GitHub HEAD `a64f94e644718c0598b01b0cd50a3c21c2646435`, including refreshed bundled model/pricing data and Bedrock API mappings, without upgrading unrelated CRAN packages.
+* Unified the MCP client, server, child-process guard, tests, and documentation on `mcptools >= 1.0.2.9000`; the architecture documentation now reflects Streamable HTTP, static headers, and OAuth discovery, PKCE, and token-refresh support.
+
+## Safety and compatibility
+
+* Hardened Data Shield input, tool, and output boundaries, fail-closed handling, sandbox and network policy, reviewer isolation, audit metadata, and protected-data schema/context behavior.
+* Shiny Agents discovery now supports project and user `.btw/agents/*.md` directories alongside Claude and legacy `.btw/agent-*.md` locations, excludes `.btw/btw.md`, and honors YAML `name` metadata.
+* Fixed the WEAR report tool to register under the stable `GenerateReport` name expected by the built-in `/report` skill.
+* Updated CLI, session, and tooling behavior for compatibility with the pinned ellmer, btw, shinychat, bslib, and Shiny development builds.
 
 ## Documentation
 
-* Audited every pkgdown article against the current implementation, corrected stale API/default/behavior descriptions, and added complete Simplified Chinese counterparts with reciprocal language links and a dedicated Chinese documentation group.
-* Fixed the WEAR report tool to register under the stable `GenerateReport` name expected by the built-in `/report` skill.
-
-## Upstream integration
-
-* Re-pinned ellmer to GitHub HEAD `a64f94e644718c0598b01b0cd50a3c21c2646435`, including the refreshed bundled model/pricing data and Bedrock API mappings, without upgrading unrelated CRAN packages.
-* Unified the MCP client, server, child-process guard, tests, and documentation on `mcptools >= 1.0.2.9000`; the architecture documentation now reflects Streamable HTTP, static headers, and OAuth discovery/PKCE/token refresh support.
-
-## Shiny UI
-
-* Added the opt-in full-window `page_chat` layout with a 100%-width main chat, official `page_chat_theme()` baseline, persistent dark-mode and Workspace toolbar, resizable Output / Files / File drawer, attachment staging, and official shinychat tool displays. The classic layout explicitly retains its embedded width and disables unused native drawer/history presentation.
-* Improved greeting, slash-command, tool-display, session replay, file preview, and atomic settings/tool-group behavior while preserving codeagent ownership of streaming, permissions, sessions, and Data Shield.
-
-## Citations and safety
-
-* Added opt-in support for ellmer provider-native `ContentCitation` / `WebSource` content. Native citations are converted to opaque current-turn server references and rebuilt through the same fixed `<shiny-aside>` allowlist as custom WebSearch/WebFetch citations; provider/model markup is never trusted directly.
-* Citation claims, grounded spans, titles, quotes, and URLs pass through Data Shield and the public-URL policy. Citation mode remains buffer-then-show, rejects unsafe or prior-turn references, supports multiple sources per grounded span, and safely rebuilds lossless session replay.
-* Hardened Data Shield input, tool, and output boundaries, fail-closed handling, sandbox/network policy, reviewer isolation, audit metadata, and protected-data schema/context behavior.
-
-## Tools and customizations
-
-* Tool results now expose a versioned, UI-neutral artifact v1 contract (`codeagent.tool-artifact`) with public `tool_result_artifact()` / `tool_result_value()` accessors. Streaming callbacks carry `artifact`, the optional official shinychat `display` adapter, and portable `value` fallback, so non-shinychat hosts can render native components without parsing shinychat HTML. Rich shinychat cards continue to use the official framed style. See `vignette("tool-artifacts")` for the schema, version negotiation, security boundary, and migration guide.
-* Shiny Agents discovery now supports project and user `.btw/agents/*.md` directories alongside Claude and legacy `.btw/agent-*.md` locations, excludes `.btw/btw.md`, and honors YAML `name` metadata.
-* Updated CLI/session/tooling behavior and compatibility documentation for current ellmer, btw, shinychat, bslib, and Shiny development builds.
+* Audited every pkgdown article against the current implementation, corrected stale API, default, and behavior descriptions, and added complete Simplified Chinese counterparts with reciprocal language links and a dedicated Chinese documentation group.
 
 # codeagent 0.2.0
 
