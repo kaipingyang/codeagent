@@ -70,7 +70,7 @@ codeagent::codeagent_stream(
   on_delta        = function(text_chunk) { ... },  # incremental assistant text
   on_thinking     = function(chunk)      { ... },  # reasoning / thinking content
   on_tool_request = function(x)          { ... },  # list(id, name, arguments, intent)
-  on_tool_result  = function(x)          { ... },  # list(id, name, display, value, is_error)
+  on_tool_result  = function(x)          { ... },  # list(id, name, display, value, is_error, artifact)
   on_usage        = function(usage)      { ... },  # token usage
   on_tick         = function()           { ... }   # ~100 ms heartbeat (spinners)
 )
@@ -84,17 +84,24 @@ Callback payloads:
 | `on_delta` | `text_chunk` (character) |
 | `on_thinking` | thinking chunk |
 | `on_tool_request` | `list(id, name, arguments, intent)` — fires **before** the gate |
-| `on_tool_result` | `list(id, name, display, value, is_error)` |
+| `on_tool_result` | `list(id, name, display, value, is_error, artifact)` — `artifact` is appended after the five original fields |
 | `on_usage` | usage object |
 | `on_tick` | none |
 
 ## 3. Rich tool results (text / table / image / error)
 
-A tool’s `value` is the text the model sees. To also render a **rich
-artifact** in your UI, return
-[`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md),
-which attaches a typed display card delivered as
-`on_tool_result$display`.
+A tool’s `value` is the portable text the model sees and the final
+fallback for all UIs. To also expose a **rich, UI-neutral artifact**,
+return
+[`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md).
+The result carries three deliberately separate channels:
+
+- `artifact`: the primary cross-UI protocol (`schema`, `version`,
+  `kind`, `status`, `icon`, `title`, `payload`);
+- `display`: an optional official shinychat adapter; non-shinychat hosts
+  should not parse or depend on it;
+- `value`: portable text for the model and unsupported/malformed
+  artifacts.
 
 ``` r
 
@@ -112,10 +119,12 @@ my_tool <- ellmer::tool(
 )
 ```
 
-`display$toolcard$kind` + `display$toolcard$payload` carry the
-structured artifact for any host to render; codeagent’s own Shiny app
-additionally receives a pre-rendered `display$html` /
-`display$right_output`.
+The version-1 artifact is available as `extra$codeagent$artifact` on a
+result and as `artifact` on the stream event. Hosts should use
+`tool_result_artifact(event_or_result)` rather than reaching into either
+structure directly. It validates the supported version and returns
+`NULL` for unknown or malformed artifacts, allowing a safe fallback
+through `tool_result_value(event_or_result)`.
 
 | `kind`  | `payload`                                         |
 |---------|---------------------------------------------------|
@@ -129,9 +138,13 @@ A non-Shiny host renders the artifact itself, e.g.:
 
 ``` r
 
-on_tool_result <- function(x) {
-  if (identical(x$display$toolcard$kind, "table"))
-    my_render_table(x$display$toolcard$payload$df)
+on_tool_result <- function(event) {
+  artifact <- codeagent::tool_result_artifact(event)
+  if (!is.null(artifact) && identical(artifact$kind, "table")) {
+    my_render_table(artifact$payload$df)
+  } else {
+    render_plain_text(codeagent::tool_result_value(event))
+  }
 }
 ```
 
@@ -214,6 +227,9 @@ bump the major and are announced in `NEWS.md`. The guard test
   callbacks + `list(text, usage, stop_reason)`
 - [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md)
 - [`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md)
+- [`tool_result_artifact()`](https://kaipingyang.github.io/codeagent/reference/tool_result_artifact.md)
+  /
+  [`tool_result_value()`](https://kaipingyang.github.io/codeagent/reference/tool_result_value.md)
 - [`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
 - [`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
   (+ `ask_fn(name, input, id = NULL)` contract)

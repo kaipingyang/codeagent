@@ -427,10 +427,33 @@ Agent owner. Permission or tool-group changes are rejected while a
 response is streaming, and a failed refresh restores the previous tool
 snapshot before input is re-enabled.
 
-Tool results use shinychat’s official display constructor with compact
-labels and value previews; rich artifacts use the official framed open
-style. codeagent keeps artifact/source metadata outside the display
-contract. `ui_layout = "page_chat"` uses shinychat’s single-root page,
+Tool results have three deliberately separate channels: the model
+receives the portable text `value`; any UI can consume the versioned
+`extra$codeagent$artifact` (`schema = "codeagent.tool-artifact"`,
+`version = 1`); and shinychat receives its official
+`tool_result_display()` adapter in `extra$display`, including compact
+labels/value previews and framed rich cards. See the [tool-result
+artifact
+guide](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html)
+for the v1 schema, version negotiation, trust boundary, and migration
+checklist. The streaming `on_tool_result` event exposes all three as
+`artifact`, `display`, and `value`. A non-shinychat host should prefer
+the artifact, ignore the display adapter, and fall back to the value
+when it does not support that artifact version or kind:
+
+``` r
+
+on_tool_result <- function(event) {
+  artifact <- tool_result_artifact(event)  # NULL if v1 is unsupported/invalid
+  if (!is.null(artifact) && artifact$kind == "table") {
+    render_my_table(artifact$payload)
+  } else {
+    render_plain_text(tool_result_value(event))
+  }
+}
+```
+
+`ui_layout = "page_chat"` uses shinychat’s single-root page,
 `page_chat_theme()` baseline, a persistent global dark-mode/Workspace
 toolbar, and resizable drawer without transferring streaming,
 permission, session, or Data Shield ownership to
@@ -772,7 +795,11 @@ Tool factories and registration.
 - [`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
   : Declare a host tool's permission capability
 - [`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md)
-  : Build a rich tool result (typed display card) for a host tool
+  : Build a versioned cross-UI tool result
+- [`tool_result_artifact()`](https://kaipingyang.github.io/codeagent/reference/tool_result_artifact.md)
+  : Extract a versioned tool artifact
+- [`tool_result_value()`](https://kaipingyang.github.io/codeagent/reference/tool_result_value.md)
+  : Extract the portable text fallback from a tool result
 - [`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
   : Install codeagent's central permission gate on an existing Chat
 - [`DataShield`](https://kaipingyang.github.io/codeagent/reference/DataShield.md)
@@ -911,6 +938,8 @@ One-shot guided workflows (reuse btw tasks).
 
 - [Embedding codeagent as a backend (Contract
   v1)](https://kaipingyang.github.io/codeagent/articles/backend-integration.md):
+- [Portable tool-result
+  artifacts](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.md):
 
 ### Data Shield
 

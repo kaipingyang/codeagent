@@ -454,25 +454,27 @@ mode resolves to `"ask"` (user confirms each call), `plan`/`dont_ask` →
 `.runr_to_tool_result()` is a special case of the `tool_display.R`
 adapter.
 
-**`tool_display.R`** — **typed tool-artifact contract + official
-shinychat display**. The UI-neutral source stays under
-`extra$codeagent$artifact = {kind,status,icon,title,payload}` (and web
-provenance under `extra$codeagent$sources`).
-[`.tool_result2()`](https://kaipingyang.github.io/codeagent/reference/dot-tool_result2.md)
-feature-detects and uses
+**`tool_display.R`** — **versioned cross-UI artifact contract + official
+shinychat adapter**. The primary UI-neutral source is
+`extra$codeagent$artifact = {schema="codeagent.tool-artifact",version=1,kind,status,icon,title,payload}`
+(web provenance remains in `extra$codeagent$sources`). Public
+[`tool_result_artifact()`](https://kaipingyang.github.io/codeagent/reference/tool_result_artifact.md)
+and
+[`tool_result_value()`](https://kaipingyang.github.io/codeagent/reference/tool_result_value.md)
+let any UI consume supported artifacts and fall back to model-safe text;
+`codeagent_stream_async(on_tool_result=)` exposes both plus the optional
+shinychat `display`. `.artifact_tool_result()` projects artifacts
+through
 [`shinychat::tool_result_display()`](https://posit-dev.github.io/shinychat/r/reference/tool_result_display.html);
-rich artifacts request official `open_style = "framed"`, while the
-fallback accepts only fields supported by the installed constructor,
-including compact `label`/`value_preview` and footer. The right panel
-renders on demand from the artifact, so no `right_output` duplicate is
-stored.
+rich artifacts request official `open_style = "framed"`.
+[`.tool_result2()`](https://kaipingyang.github.io/codeagent/reference/dot-tool_result2.md)
+is compatibility-only and no longer defines a second protocol. The right
+panel renders on demand from the artifact, so no `right_output`
+duplicate is stored.
 [`.adapt_tool_result()`](https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.md)
-normalizes native/btw/MCP results without dropping `request`;
-unsupported complex values deterministically become a legal
-`ContentToolResult` or safe text error. Legacy
-`display$toolcard/right_output` migration is presentation-only during
-replay and never mutates provider-facing turns, IDs, values, or
-ordering.
+upgrades unversioned/legacy artifacts to v1, preserves future versions,
+normalizes native/btw/MCP results without dropping `request`, and keeps
+replay migration presentation-only.
 
 **`tools_agent.R`** — Dedicated Agent ownership prevents duplicate
 foreground subagent tools. Shielded foreground subagents inherit the

@@ -266,7 +266,11 @@ Tool factories and registration.
 - [`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
   : Declare a host tool's permission capability
 - [`tool_result()`](https://kaipingyang.github.io/codeagent/reference/tool_result.md)
-  : Build a rich tool result (typed display card) for a host tool
+  : Build a versioned cross-UI tool result
+- [`tool_result_artifact()`](https://kaipingyang.github.io/codeagent/reference/tool_result_artifact.md)
+  : Extract a versioned tool artifact
+- [`tool_result_value()`](https://kaipingyang.github.io/codeagent/reference/tool_result_value.md)
+  : Extract the portable text fallback from a tool result
 - [`install_permission_gate()`](https://kaipingyang.github.io/codeagent/reference/install_permission_gate.md)
   : Install codeagent's central permission gate on an existing Chat
 - [`DataShield`](https://kaipingyang.github.io/codeagent/reference/DataShield.md)

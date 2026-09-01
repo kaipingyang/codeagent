@@ -44,6 +44,19 @@
 
 ### Tools and customizations
 
+- Tool results now expose a versioned, UI-neutral artifact v1 contract
+  (`codeagent.tool-artifact`) with public
+  [`tool_result_artifact()`](https://kaipingyang.github.io/codeagent/reference/tool_result_artifact.md)
+  /
+  [`tool_result_value()`](https://kaipingyang.github.io/codeagent/reference/tool_result_value.md)
+  accessors. Streaming callbacks carry `artifact`, the optional official
+  shinychat `display` adapter, and portable `value` fallback, so
+  non-shinychat hosts can render native components without parsing
+  shinychat HTML. Rich shinychat cards continue to use the official
+  framed style. See
+  [`vignette("tool-artifacts")`](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.md)
+  for the schema, version negotiation, security boundary, and migration
+  guide.
 - Shiny Agents discovery now supports project and user
   `.btw/agents/*.md` directories alongside Claude and legacy
   `.btw/agent-*.md` locations, excludes `.btw/btw.md`, and honors YAML

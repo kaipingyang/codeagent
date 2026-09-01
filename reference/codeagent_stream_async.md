@@ -58,11 +58,12 @@ codeagent_stream_async(
 
 - on_tool_result:
 
-  Optional `function(list(id, name, display, value, is_error))`. Called
-  from the `ContentToolResult` stream chunk. `display` is a typed
-  toolcard contract from
-  [tool_display](https://kaipingyang.github.io/codeagent/reference/tool_display.md)
-  suitable for rich rendering.
+  Optional
+  `function(list(id, name, display, value, is_error, artifact))`. Called
+  from the `ContentToolResult` stream chunk. `artifact` is codeagent's
+  versioned, UI-neutral primary contract; `display` is the optional
+  shinychat adapter; `value` is the portable fallback for unsupported
+  artifact versions/kinds.
 
 - on_error:
 
@@ -122,8 +123,9 @@ errors and interrupts retain their harness stop reasons.
 - `on_tool_request` / `on_tool_result` parameters are called from the
   `ContentToolRequest` / `ContentToolResult` **stream chunks**.
   `on_tool_request` fires **before** the permission gate ("pre-gate
-  notification"). `on_tool_result` receives a typed `display` contract
-  from
+  notification"). `on_tool_result` receives the UI-neutral versioned
+  `artifact`, shinychat's optional `display` adapter, and portable
+  `value` fallback from
   [`.adapt_tool_result()`](https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.md).
 
 - `chat$on_tool_request` / `chat$on_tool_result` **callbacks**

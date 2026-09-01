@@ -1,11 +1,8 @@
 # Build a typed ContentToolResult
 
-Superset of the legacy `.tool_result()`: in addition to
-`title`/`markdown`, carries a typed `artifact` payload (on
-`extra$codeagent`) consumed by
-[`render_artifact()`](https://kaipingyang.github.io/codeagent/reference/render_artifact.md),
-and renders the panel view into `display$html` so the in-chat card is
-rich without a separate stored copy.
+Compatibility name for codeagent's original typed-result constructor.
+New internal code uses `.artifact_tool_result()`; this forwards without
+creating a second display protocol.
 
 ## Usage
 
@@ -40,23 +37,23 @@ rich without a separate stored copy.
 
 - icon:
 
-  bsicons name (character) for the in-chat card + right panel.
+  Icon name used by UI adapters.
 
 - title:
 
-  Character or HTML. Card title (HTML allowed for the in-chat card).
+  Character or HTML display title.
 
 - payload:
 
-  List. Kind-specific data (see file docs).
+  List of kind-specific artifact data.
 
 - markdown:
 
-  Character. In-chat card body + two-phase fallback.
+  Optional shinychat markdown body.
 
 - footer:
 
-  Optional official shinychat footer content.
+  Optional shinychat footer content.
 
 - label:
 

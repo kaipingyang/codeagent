@@ -1,19 +1,19 @@
-# Build a rich tool result (typed display card) for a host tool
+# Build a versioned cross-UI tool result
 
 Construct an
 [ellmer::ContentToolResult](https://ellmer.tidyverse.org/reference/Content.html)
-that carries a **typed display card**, so a tool's output renders as a
-table / image / code / error / rich text both in codeagent's Shiny app
-and in any host UI that consumes the `on_tool_result$display` callback
-of
-[`codeagent_stream()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream.md).
+with three independent channels: `value` is portable model-facing text;
+`extra$codeagent$artifact` is the versioned, UI-neutral structured
+result; and `extra$display` is shinychat's official presentation
+adapter. Return the result from your tool function.
 
-`value` is the text the model sees; `payload` carries the rich artifact
-for the UI. Return the result from your tool's function body.
-
-A host UI reads `extra$codeagent$artifact$kind` + `...$payload` (the
-structured artifact, e.g. `payload$df` for a table); codeagent's Shiny
-app additionally receives a pre-rendered `display$html`.
+Non-shinychat hosts should read the artifact with
+[`tool_result_artifact()`](https://kaipingyang.github.io/codeagent/reference/tool_result_artifact.md),
+render supported `kind`/`payload` combinations natively, and use
+[`tool_result_value()`](https://kaipingyang.github.io/codeagent/reference/tool_result_value.md)
+as the fallback. They never need to parse shinychat HTML. The streaming
+`on_tool_result` event exposes the same `artifact`, `display`, and
+`value` channels.
 
 ## Usage
 

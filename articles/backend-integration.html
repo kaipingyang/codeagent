@@ -48,6 +48,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Embedding</h6></li>
     <li><a class="dropdown-item" href="../articles/backend-integration.html">Embedding codeagent as a backend (Contract v1)</a></li>
+    <li><a class="dropdown-item" href="../articles/tool-artifacts.html">Portable tool-result artifacts</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data Shield</h6></li>
     <li><a class="dropdown-item" href="../articles/data-shield.html">Data Shield: strict data-safety mode (design preview)</a></li>
@@ -172,7 +173,7 @@ codeagent does not touch your UI.</p>
 <span>  on_delta        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">text_chunk</span><span class="op">)</span> <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># incremental assistant text</span></span>
 <span>  on_thinking     <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">chunk</span><span class="op">)</span>      <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># reasoning / thinking content</span></span>
 <span>  on_tool_request <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>          <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># list(id, name, arguments, intent)</span></span>
-<span>  on_tool_result  <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>          <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># list(id, name, display, value, is_error)</span></span>
+<span>  on_tool_result  <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span>          <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># list(id, name, display, value, is_error, artifact)</span></span>
 <span>  on_usage        <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">usage</span><span class="op">)</span>      <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>,  <span class="co"># token usage</span></span>
 <span>  on_tick         <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span>           <span class="op">{</span> <span class="va">...</span> <span class="op">}</span>   <span class="co"># ~100 ms heartbeat (spinners)</span></span>
 <span><span class="op">)</span></span>
@@ -205,7 +206,9 @@ codeagent does not touch your UI.</p>
 </tr>
 <tr class="even">
 <td><code>on_tool_result</code></td>
-<td><code>list(id, name, display, value, is_error)</code></td>
+<td>
+<code>list(id, name, display, value, is_error, artifact)</code> —
+<code>artifact</code> is appended after the five original fields</td>
 </tr>
 <tr class="odd">
 <td><code>on_usage</code></td>
@@ -221,10 +224,23 @@ codeagent does not touch your UI.</p>
 <div class="section level2">
 <h2 id="rich-tool-results-text-table-image-error">3. Rich tool results (text / table / image / error)<a class="anchor" aria-label="anchor" href="#rich-tool-results-text-table-image-error"></a>
 </h2>
-<p>A tool’s <code>value</code> is the text the model sees. To also
-render a <strong>rich artifact</strong> in your UI, return
-<code><a href="../reference/tool_result.html">tool_result()</a></code>, which attaches a typed display card
-delivered as <code>on_tool_result$display</code>.</p>
+<p>A tool’s <code>value</code> is the portable text the model sees and
+the final fallback for all UIs. To also expose a <strong>rich,
+UI-neutral artifact</strong>, return <code><a href="../reference/tool_result.html">tool_result()</a></code>. The
+result carries three deliberately separate channels:</p>
+<ul>
+<li>
+<code>artifact</code>: the primary cross-UI protocol
+(<code>schema</code>, <code>version</code>, <code>kind</code>,
+<code>status</code>, <code>icon</code>, <code>title</code>,
+<code>payload</code>);</li>
+<li>
+<code>display</code>: an optional official shinychat adapter;
+non-shinychat hosts should not parse or depend on it;</li>
+<li>
+<code>value</code>: portable text for the model and
+unsupported/malformed artifacts.</li>
+</ul>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">my_tool</span> <span class="op">&lt;-</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">tool</a></span><span class="op">(</span></span>
 <span>  <span class="kw">function</span><span class="op">(</span><span class="va">name</span><span class="op">)</span> <span class="op">{</span></span>
@@ -238,11 +254,14 @@ delivered as <code>on_tool_result$display</code>.</p>
 <span>  <span class="op">}</span>,</span>
 <span>  name <span class="op">=</span> <span class="st">"Summarise"</span>, description <span class="op">=</span> <span class="st">"..."</span>, arguments <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code>display$toolcard$kind</code> +
-<code>display$toolcard$payload</code> carry the structured artifact for
-any host to render; codeagent’s own Shiny app additionally receives a
-pre-rendered <code>display$html</code> /
-<code>display$right_output</code>.</p>
+<p>The version-1 artifact is available as
+<code>extra$codeagent$artifact</code> on a result and as
+<code>artifact</code> on the stream event. Hosts should use
+<code>tool_result_artifact(event_or_result)</code> rather than reaching
+into either structure directly. It validates the supported version and
+returns <code>NULL</code> for unknown or malformed artifacts, allowing a
+safe fallback through
+<code>tool_result_value(event_or_result)</code>.</p>
 <table class="table">
 <thead><tr class="header">
 <th><code>kind</code></th>
@@ -273,9 +292,13 @@ pre-rendered <code>display$html</code> /
 </table>
 <p>A non-Shiny host renders the artifact itself, e.g.:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">on_tool_result</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">display</span><span class="op">$</span><span class="va">toolcard</span><span class="op">$</span><span class="va">kind</span>, <span class="st">"table"</span><span class="op">)</span><span class="op">)</span></span>
-<span>    <span class="fu">my_render_table</span><span class="op">(</span><span class="va">x</span><span class="op">$</span><span class="va">display</span><span class="op">$</span><span class="va">toolcard</span><span class="op">$</span><span class="va">payload</span><span class="op">$</span><span class="va">df</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">on_tool_result</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">artifact</span> <span class="op">&lt;-</span> <span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/tool_result_artifact.html">tool_result_artifact</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span>
+<span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">artifact</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="fu"><a href="https://rdrr.io/r/base/identical.html" class="external-link">identical</a></span><span class="op">(</span><span class="va">artifact</span><span class="op">$</span><span class="va">kind</span>, <span class="st">"table"</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu">my_render_table</span><span class="op">(</span><span class="va">artifact</span><span class="op">$</span><span class="va">payload</span><span class="op">$</span><span class="va">df</span><span class="op">)</span></span>
+<span>  <span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>    <span class="fu">render_plain_text</span><span class="op">(</span><span class="fu">codeagent</span><span class="fu">::</span><span class="fu"><a href="../reference/tool_result_value.html">tool_result_value</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level2">
@@ -359,6 +382,10 @@ contract</li>
 </li>
 <li><code><a href="../reference/agent_loop.html">agent_loop()</a></code></li>
 <li><code><a href="../reference/tool_result.html">tool_result()</a></code></li>
+<li>
+<code><a href="../reference/tool_result_artifact.html">tool_result_artifact()</a></code> /
+<code><a href="../reference/tool_result_value.html">tool_result_value()</a></code>
+</li>
 <li><code><a href="../reference/register_tool_meta.html">register_tool_meta()</a></code></li>
 <li>
 <code><a href="../reference/install_permission_gate.html">install_permission_gate()</a></code> (+

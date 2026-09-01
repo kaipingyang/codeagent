@@ -15,6 +15,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/articles/permissions.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/skills-usage.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/team-coordination.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/authors.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/index.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/news/index.html</loc></url>
@@ -264,6 +265,8 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tool_display.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tool_input_hook.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tool_result.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/tool_result_artifact.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/tool_result_value.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tool_run_r.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tools_agent.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tools_ask_user.html</loc></url>

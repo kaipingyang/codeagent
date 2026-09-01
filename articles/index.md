@@ -27,6 +27,8 @@
 
 - [Embedding codeagent as a backend (Contract
   v1)](https://kaipingyang.github.io/codeagent/articles/backend-integration.md):
+- [Portable tool-result
+  artifacts](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.md):
 
 ### Data Shield
 
