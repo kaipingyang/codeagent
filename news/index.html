@@ -53,6 +53,30 @@
     </div>
 
     <div class="section level2">
+<h2 class="pkg-version" data-toc-text="development version" id="codeagent-development-version">codeagent (development version)<a class="anchor" aria-label="anchor" href="#codeagent-development-version"></a></h2>
+<div class="section level3">
+<h3 id="upstream-integration-development-version">Upstream integration<a class="anchor" aria-label="anchor" href="#upstream-integration-development-version"></a></h3>
+<ul><li>Re-pinned ellmer to GitHub HEAD <code>a64f94e644718c0598b01b0cd50a3c21c2646435</code>, including the refreshed bundled model/pricing data and Bedrock API mappings, without upgrading unrelated CRAN packages.</li>
+<li>Unified the MCP client, server, child-process guard, tests, and documentation on <code>mcptools &gt;= 1.0.2.9000</code>; the architecture documentation now reflects Streamable HTTP, static headers, and OAuth discovery/PKCE/token refresh support.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="shiny-ui-development-version">Shiny UI<a class="anchor" aria-label="anchor" href="#shiny-ui-development-version"></a></h3>
+<ul><li>Added the opt-in full-window <code>page_chat</code> layout with a 100%-width main chat, official <code>page_chat_theme()</code> baseline, persistent dark-mode and Workspace toolbar, resizable Output / Files / File drawer, attachment staging, and official shinychat tool displays. The classic layout explicitly retains its embedded width and disables unused native drawer/history presentation.</li>
+<li>Improved greeting, slash-command, tool-display, session replay, file preview, and atomic settings/tool-group behavior while preserving codeagent ownership of streaming, permissions, sessions, and Data Shield.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="citations-and-safety-development-version">Citations and safety<a class="anchor" aria-label="anchor" href="#citations-and-safety-development-version"></a></h3>
+<ul><li>Added opt-in support for ellmer provider-native <code>ContentCitation</code> / <code>WebSource</code> content. Native citations are converted to opaque current-turn server references and rebuilt through the same fixed <code>&lt;shiny-aside&gt;</code> allowlist as custom WebSearch/WebFetch citations; provider/model markup is never trusted directly.</li>
+<li>Citation claims, grounded spans, titles, quotes, and URLs pass through Data Shield and the public-URL policy. Citation mode remains buffer-then-show, rejects unsafe or prior-turn references, supports multiple sources per grounded span, and safely rebuilds lossless session replay.</li>
+<li>Hardened Data Shield input, tool, and output boundaries, fail-closed handling, sandbox/network policy, reviewer isolation, audit metadata, and protected-data schema/context behavior.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="tools-and-customizations-development-version">Tools and customizations<a class="anchor" aria-label="anchor" href="#tools-and-customizations-development-version"></a></h3>
+<ul><li>Shiny Agents discovery now supports project and user <code>.btw/agents/*.md</code> directories alongside Claude and legacy <code>.btw/agent-*.md</code> locations, excludes <code>.btw/btw.md</code>, and honors YAML <code>name</code> metadata.</li>
+<li>Updated CLI/session/tooling behavior and compatibility documentation for current ellmer, btw, shinychat, bslib, and Shiny development builds.</li>
+</ul></div>
+</div>
+    <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.0" id="codeagent-020">codeagent 0.2.0<a class="anchor" aria-label="anchor" href="#codeagent-020"></a></h2>
 <ul><li>
 <p><strong>Data Shield security hardening (second-round audit): 16 boundary fixes, all fail-closed.</strong> A follow-up security review found several paths where the shield could silently fail <em>open</em>; every one is now closed:</p>

@@ -80,11 +80,11 @@
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"tidyverse/ellmer"</span>, <span class="st">"kaipingyang/codeagent"</span><span class="op">)</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># DESCRIPTION pins the verified GitHub builds of all eight core packages.</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"kaipingyang/codeagent"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Recommended: btw adds R-environment tools (docs, git, pkg, file editing, etc.)</span></span>
-<span><span class="co"># Without btw the agent has minimal tooling for real R projects.</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"posit-dev/btw"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="co"># Recommended: install the pinned btw development build for R-environment tools.</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="configuration">Configuration<a class="anchor" aria-label="anchor" href="#configuration"></a>
@@ -282,7 +282,7 @@
 </h3>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, web_citations <span class="op">=</span> <span class="st">"shiny_aside"</span><span class="op">)</span></span></code></pre></div>
-<p><code>WebSearch</code> and <code>WebFetch</code> retain validated source records in <code>extra$codeagent$sources</code>. The model may cite only a current-turn ID with <code>[[cite:SOURCE_ID|visible claim]]</code>; citation mode buffers the complete reply, rejects unknown/conflicting/prior-turn IDs, scans claim/title/quote/URL, escapes model-authored markup, and builds the fixed <code>&lt;shiny-aside&gt;</code> allowlist on the server. Raw model <code>&lt;shiny-aside&gt;</code> tags never enter the browser in citation mode. Session replay repeats this deterministic presentation transform while the lossless tool-result metadata remains in chat state.</p>
+<p><code>WebSearch</code> and <code>WebFetch</code> retain validated source records in <code>extra$codeagent$sources</code>. The model may cite only a current-turn ID with <code>[[cite:SOURCE_ID|visible claim]]</code>. When an upstream provider supplies ellmer <code>ContentCitation</code> / <code>WebSource</code> content, codeagent converts it to an opaque, server-owned current-turn reference instead of accepting shinychat’s generated markup. Both paths validate public URLs, scan claim/grounded span/title/quote/URL, escape untrusted markup, and build the same fixed <code>&lt;shiny-aside&gt;</code> allowlist on the server. Citation mode buffers the complete reply before showing it and rejects unknown, conflicting, or prior-turn IDs/references. Raw model or provider <code>&lt;shiny-aside&gt;</code> tags never enter the browser in citation mode. Session replay repeats this deterministic presentation transform from the lossless original <code>ContentCitation</code> and tool-result metadata.</p>
 <p>Web fetching accepts only public <code>http</code>/<code>https</code> URLs without userinfo. It rejects private, loopback, link-local, reserved, mixed public/private DNS answers and unsafe redirects. Every redirect is re-authorized, and each request pins the validated DNS address for the connection to prevent DNS rebinding.</p>
 </div>
 <div class="section level3">
@@ -369,7 +369,7 @@
 <span><span class="co"># Claude Desktop config:</span></span>
 <span><span class="co"># {"mcpServers": {"codeagent": {"command": "Rscript",</span></span>
 <span><span class="co">#   "args": ["-e", "codeagent::codeagent_mcp_server(session_tools = FALSE)"]}}}</span></span></code></pre></div>
-<p>MCP client and server entry points require <code>mcptools &gt;= 1.0.1</code>. Session tools must be explicitly enabled and are rejected for non-loopback HTTP transports; stdio and the default loopback HTTP configuration keep them disabled.</p>
+<p>MCP client and server entry points require <code>mcptools &gt;= 1.0.2.9000</code>. Session tools must be explicitly enabled and are rejected for non-loopback HTTP transports; stdio and the default loopback HTTP configuration keep them disabled.</p>
 </div>
 <div class="section level3">
 <h3 id="shiny-app">Shiny app<a class="anchor" aria-label="anchor" href="#shiny-app"></a>
@@ -378,9 +378,16 @@
 <code class="sourceCode R"><span><span class="co"># Single-user / interactive convenience:</span></span>
 <span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>,</span>
+<span>  ui_layout     <span class="op">=</span> <span class="st">"classic"</span>,   <span class="co"># default; opt in with "page_chat"</span></span>
 <span>  theme         <span class="op">=</span> <span class="st">"default"</span>,   <span class="co"># "default" | "flatly" | "darkly" | "glass"</span></span>
 <span>  pinned_skills <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"plan"</span>, <span class="st">"compact"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Opt-in full-window chat with the existing Output/Files/File workspace drawer:</span></span>
+<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, ui_layout <span class="op">=</span> <span class="st">"page_chat"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Runnable example:</span></span>
+<span><span class="co"># Rscript inst/examples/run_page_chat.R</span></span>
 <span></span>
 <span><span class="co"># Multi-user deployment: create mutable client/chat state per Shiny session.</span></span>
 <span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span>client_factory <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">session</span><span class="op">)</span> <span class="op">{</span></span>
@@ -391,7 +398,7 @@
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>Shiny model controls only perform verified name-only switches that keep the captured Chat identity. A provider, endpoint, credentials, params, or API-args change is rejected with guidance to start a new session/app; the CLI/R <code><a href="reference/switch_model.html">switch_model()</a></code> API can safely take the rebuilding Route B.</p>
 <p>Tool-group changes in the Settings panel are atomic: deselected btw groups are actually removed while core, MCP, skill, and separately owned tools are retained; the Agent checkbox controls the single foreground Agent owner. Permission or tool-group changes are rejected while a response is streaming, and a failed refresh restores the previous tool snapshot before input is re-enabled.</p>
-<p>Tool results use shinychat’s official display constructor with compact labels and value previews while retaining codeagent artifacts/source metadata outside the display contract. Legacy session cards are migrated only on a presentation copy, so provider-facing values and tool request/result IDs remain unchanged. The fresh session greeting is persistent across New/Delete and is not duplicated when history is restored; <code>codeagent_app(greeting=)</code> remains a composer-prefill API.</p>
+<p>Tool results use shinychat’s official display constructor with compact labels and value previews; rich artifacts use the official framed open style. codeagent keeps artifact/source metadata outside the display contract. <code>ui_layout = "page_chat"</code> uses shinychat’s single-root page, <code>page_chat_theme()</code> baseline, a persistent global dark-mode/Workspace toolbar, and resizable drawer without transferring streaming, permission, session, or Data Shield ownership to <code><a href="https://posit-dev.github.io/shinychat/r/reference/chat_app.html" class="external-link">shinychat::chat_server()</a></code>. The main chat explicitly fills 100% of its available main column (which still shrinks for the sidebar/drawer), while classic keeps shinychat’s embedded-chat width and disables the unused native drawer/history presentation. Tool results and file selection open the page_chat drawer; its Workspace control uses the official <code>toolbar_input_button()</code> and drawer toggle API. Files can stage the selected file in the composer through <code>chat_attachment()</code> plus <code>update_chat_user_input()</code>. Skill turns use <code>ContentSlashCommand</code> after safety scanning and reminder injection, so the model receives the expanded skill prompt while replay shows the original <code>/skill args</code>. Legacy session cards are migrated only on a presentation copy, so provider-facing values and tool request/result IDs remain unchanged. The fresh session greeting is persistent across New/Delete, is reset with <code>chat_clear(greeting = TRUE)</code>, and is not duplicated when history is restored; <code>codeagent_app(greeting=)</code> remains a composer-prefill API.</p>
 </div>
 </div>
 <div class="section level2">

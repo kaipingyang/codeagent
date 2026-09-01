@@ -14,11 +14,11 @@ an interactive Shiny UI.
 
 ``` r
 
-pak::pak(c("tidyverse/ellmer", "kaipingyang/codeagent"))
+# DESCRIPTION pins the verified GitHub builds of all eight core packages.
+pak::pak("kaipingyang/codeagent")
 
-# Recommended: btw adds R-environment tools (docs, git, pkg, file editing, etc.)
-# Without btw the agent has minimal tooling for real R projects.
-pak::pak("posit-dev/btw")
+# Recommended: install the pinned btw development build for R-environment tools.
+pak::pak("posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44")
 ```
 
 ## Configuration
@@ -143,13 +143,17 @@ codeagent_app(client, web_citations = "shiny_aside")
 
 `WebSearch` and `WebFetch` retain validated source records in
 `extra$codeagent$sources`. The model may cite only a current-turn ID
-with `[[cite:SOURCE_ID|visible claim]]`; citation mode buffers the
-complete reply, rejects unknown/conflicting/prior-turn IDs, scans
-claim/title/quote/URL, escapes model-authored markup, and builds the
-fixed `<shiny-aside>` allowlist on the server. Raw model `<shiny-aside>`
-tags never enter the browser in citation mode. Session replay repeats
-this deterministic presentation transform while the lossless tool-result
-metadata remains in chat state.
+with `[[cite:SOURCE_ID|visible claim]]`. When an upstream provider
+supplies ellmer `ContentCitation` / `WebSource` content, codeagent
+converts it to an opaque, server-owned current-turn reference instead of
+accepting shinychat’s generated markup. Both paths validate public URLs,
+scan claim/grounded span/title/quote/URL, escape untrusted markup, and
+build the same fixed `<shiny-aside>` allowlist on the server. Citation
+mode buffers the complete reply before showing it and rejects unknown,
+conflicting, or prior-turn IDs/references. Raw model or provider
+`<shiny-aside>` tags never enter the browser in citation mode. Session
+replay repeats this deterministic presentation transform from the
+lossless original `ContentCitation` and tool-result metadata.
 
 Web fetching accepts only public `http`/`https` URLs without userinfo.
 It rejects private, loopback, link-local, reserved, mixed public/private
@@ -377,10 +381,10 @@ codeagent_mcp_server() # session_tools = FALSE by default
 #   "args": ["-e", "codeagent::codeagent_mcp_server(session_tools = FALSE)"]}}}
 ```
 
-MCP client and server entry points require `mcptools >= 1.0.1`. Session
-tools must be explicitly enabled and are rejected for non-loopback HTTP
-transports; stdio and the default loopback HTTP configuration keep them
-disabled.
+MCP client and server entry points require `mcptools >= 1.0.2.9000`.
+Session tools must be explicitly enabled and are rejected for
+non-loopback HTTP transports; stdio and the default loopback HTTP
+configuration keep them disabled.
 
 ### Shiny app
 
@@ -389,9 +393,16 @@ disabled.
 # Single-user / interactive convenience:
 codeagent_app(
   client,
+  ui_layout     = "classic",   # default; opt in with "page_chat"
   theme         = "default",   # "default" | "flatly" | "darkly" | "glass"
   pinned_skills = c("plan", "compact")
 )
+
+# Opt-in full-window chat with the existing Output/Files/File workspace drawer:
+codeagent_app(client, ui_layout = "page_chat")
+
+# Runnable example:
+# Rscript inst/examples/run_page_chat.R
 
 # Multi-user deployment: create mutable client/chat state per Shiny session.
 codeagent_app(client_factory = function(session) {
@@ -417,12 +428,28 @@ response is streaming, and a failed refresh restores the previous tool
 snapshot before input is re-enabled.
 
 Tool results use shinychat’s official display constructor with compact
-labels and value previews while retaining codeagent artifacts/source
-metadata outside the display contract. Legacy session cards are migrated
-only on a presentation copy, so provider-facing values and tool
-request/result IDs remain unchanged. The fresh session greeting is
-persistent across New/Delete and is not duplicated when history is
-restored; `codeagent_app(greeting=)` remains a composer-prefill API.
+labels and value previews; rich artifacts use the official framed open
+style. codeagent keeps artifact/source metadata outside the display
+contract. `ui_layout = "page_chat"` uses shinychat’s single-root page,
+`page_chat_theme()` baseline, a persistent global dark-mode/Workspace
+toolbar, and resizable drawer without transferring streaming,
+permission, session, or Data Shield ownership to
+[`shinychat::chat_server()`](https://posit-dev.github.io/shinychat/r/reference/chat_app.html).
+The main chat explicitly fills 100% of its available main column (which
+still shrinks for the sidebar/drawer), while classic keeps shinychat’s
+embedded-chat width and disables the unused native drawer/history
+presentation. Tool results and file selection open the page_chat drawer;
+its Workspace control uses the official `toolbar_input_button()` and
+drawer toggle API. Files can stage the selected file in the composer
+through `chat_attachment()` plus `update_chat_user_input()`. Skill turns
+use `ContentSlashCommand` after safety scanning and reminder injection,
+so the model receives the expanded skill prompt while replay shows the
+original `/skill args`. Legacy session cards are migrated only on a
+presentation copy, so provider-facing values and tool request/result IDs
+remain unchanged. The fresh session greeting is persistent across
+New/Delete, is reset with `chat_clear(greeting = TRUE)`, and is not
+duplicated when history is restored; `codeagent_app(greeting=)` remains
+a composer-prefill API.
 
 ## Configuration reference
 

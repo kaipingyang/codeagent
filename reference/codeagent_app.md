@@ -22,7 +22,8 @@ codeagent_app(
   btw_groups = NULL,
   chat = NULL,
   web_citations = c("off", "shiny_aside"),
-  web_allow_private = FALSE
+  web_allow_private = FALSE,
+  ui_layout = c("classic", "page_chat")
 )
 ```
 
@@ -125,6 +126,13 @@ codeagent_app(
   Logical. Reserved opt-in for local development. Private-network
   fetching remains disabled in this release; `TRUE` fails closed rather
   than weakening SSRF protection.
+
+- ui_layout:
+
+  UI shell. `"classic"` (default) preserves the existing three-column
+  layout. `"page_chat"` opts into shinychat's full-window page with
+  codeagent controls on the left and the Output/Files/File workspace in
+  the official resizable drawer on the right.
 
 ## Value
 

@@ -143,20 +143,44 @@ my_tool <- function(con, mode = "bypass") {
 
 ------------------------------------------------------------------------
 
-**冻结依赖基线（Plan 37，2026-08-19）：** - `ellmer` 0.4.2.9000 @
-`19be478ebf1a2e5d2db96a8aeaca71592c8d3f26`（`Remotes: tidyverse/ellmer`） -
-`btw` 1.4.0.9000 @ `d11591b09d9127b05d673e8c96569d2bbae2ec44` -
-`shinychat` 0.4.0.9000 @
-`aa35a0988319103c35637e6d467ebc02a3180e3c`（monorepo；必须安装
-`posit-dev/shinychat/pkg-r`） - `shiny` 1.14.0.9000 @
-`d19095f4b3dd`（冻结验证目标，含 \#4425 reconnect progress reset） -
-`bslib` 0.12.0.9000 @ `97aa1abc262b`（冻结验证目标，含 \#1342/#1346） -
-`mcptools` 1.0.1（CRAN；所有 MCP client/server 入口的最低安全版本） -
-`httr2` 1.3.0（CRAN；保持，不追无运行时变化的 dev HEAD）
+**codeagent 0.2.0 shared release 基线（2026-08-20）：**
 
-Shiny/bslib 是按冻结 SHA 验证兼容，不代表普通 CRAN
-安装自动包含对应修复；不要把瞬时 HEAD SHA 强锁进
-DESCRIPTION。价格数据也不在启动或模型请求时自动联网刷新。需要时由用户显式调用：
+共享发布库：`/usrfiles/shared-projects/users/kaiping_yang/Rlibs/codeagent/R-4.4`。发布与E2E必须让该库先于公共site
+library。
+
+- `codeagent` 0.2.0（`main@509835f` / tag `v0.2.0`）
+- `ellmer` 0.4.2.9000 @ `19be478ebf1a2e5d2db96a8aeaca71592c8d3f26`
+- `btw` 1.4.0.9000 @ `d11591b09d9127b05d673e8c96569d2bbae2ec44`
+- `shinychat` 0.4.0.9000 @
+  `c1654aa2e13c979e52a16edace094d30680fa4dd`（monorepo；安装源为
+  `posit-dev/shinychat/pkg-r`）
+- `shiny` 1.14.0（shared stable）
+- `bslib` 0.11.0（shared stable）
+- `mcptools` \>= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
+- `httr2` 1.3.0（保持稳定版）
+
+**当前个人默认开发环境（2026-08-31）：**
+
+个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
+
+- `ellmer` 0.4.2.9000 @ `a64f94e644718c0598b01b0cd50a3c21c2646435`
+- `btw` 1.4.0.9000 @ `d11591b09d9127b05d673e8c96569d2bbae2ec44`
+- `shinychat` 0.4.0.9000 @
+  `2b249764ce45b224224b7d185b3f34f14d0ad84f`（monorepo：`posit-dev/shinychat/pkg-r`）
+- `shiny` 1.14.0.9000 @ `81844600fc15f1952838546faa6699d0506ce7f9`
+- `bslib` 0.12.0.9000 @ `6935d9819fcb37e0b42ffa54f4e1cab0418ec2ce`
+- `mcptools` 1.0.2.9000 @ `079e011e6f2a515565f903dc8a5b7c4d793746f1`
+- `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
+- `httr2` 1.3.0.9000 @ `7ce699f813e662850ea21d9f87e242e0c699f9fe`
+
+普通R环境直接使用该个人库，不依赖`/tmp`
+candidate或硬编码[`.libPaths()`](https://rdrr.io/r/base/libPaths.html)。
+上方0.2.0 shared release保持不变，除非另行执行发布promote。当前工作树
+`DESCRIPTION`固定全部八个完整SHA；更换任一SHA后必须同步manifest并重新执行
+完整testthat、R CMD check以及classic/page_chat真实Chromium gate。
+
+开发版 `Version` 字符串不能唯一标识构建，必须同时核对完整 `RemoteSha`。
+价格数据不在启动或模型请求时自动联网刷新。需要时由用户显式调用：
 
 ``` r
 
@@ -437,9 +461,11 @@ provenance under `extra$codeagent$sources`).
 [`.tool_result2()`](https://kaipingyang.github.io/codeagent/reference/dot-tool_result2.md)
 feature-detects and uses
 [`shinychat::tool_result_display()`](https://posit-dev.github.io/shinychat/r/reference/tool_result_display.html);
-the fallback accepts only official fields, including compact
-`label`/`value_preview` and footer. The right panel renders on demand
-from the artifact, so no `right_output` duplicate is stored.
+rich artifacts request official `open_style = "framed"`, while the
+fallback accepts only fields supported by the installed constructor,
+including compact `label`/`value_preview` and footer. The right panel
+renders on demand from the artifact, so no `right_output` duplicate is
+stored.
 [`.adapt_tool_result()`](https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.md)
 normalizes native/btw/MCP results without dropping `request`;
 unsupported complex values deterministically become a legal
@@ -454,12 +480,12 @@ same live `DataShield`, gate the reply before hooks/callbacks/parent
 results, and do not persist raw sidechains; shielded background agents
 fail closed. `codeagent_mcp_server(..., session_tools=FALSE)` calls
 [`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
-directly, requires mcptools \>= 1.0.1, and rejects session tools on
+directly, requires mcptools \>= 1.0.2.9000, and rejects session tools on
 non-loopback HTTP because those controls bypass the Chat permission
 gate/Data Shield.
 
 **`mcp_client.R`** — External MCP registration and generated server
-subprocesses enforce mcptools \>= 1.0.1. An old client warns and
+subprocesses enforce mcptools \>= 1.0.2.9000. An old client warns and
 registers zero tools; an old server stops. stdio and loopback HTTP keep
 `session_tools=FALSE` unless explicitly enabled. Config remains a JSON
 path or inline `mcpServers` list; OS/container sandboxing is still host
@@ -501,14 +527,18 @@ projection (truncate all tool result values)
 **`tools_web.R` / `web_citations.R`** — WebSearch/WebFetch return legal
 `ContentToolResult`s plus validated source records in
 `extra$codeagent$sources`. Citation mode is opt-in
-(`"off" | "shiny_aside"`) and buffers the final answer; the model may
-emit only `[[cite:SOURCE_ID|visible claim]]`. codeagent accepts only
-current-turn IDs, scans fields, escapes untrusted values, and rebuilds a
-fixed `<shiny-aside>` allowlist before the browser sees anything. Web
-fetches allow only public http/https, reject
-userinfo/private/reserved/mixed DNS, re-authorize every redirect, and
-pin the validated address with curl resolve to prevent DNS rebinding.
-Provider-native web tools remain out of scope.
+(`"off" | "shiny_aside"`) and buffers the final answer. Custom tools use
+model markers (`[[cite:SOURCE_ID|visible claim]]`); ellmer
+provider-native `ContentCitation` / `WebSource` objects are converted to
+opaque server-owned refs whose grounded spans never enter marker syntax.
+Both paths accept only current-turn registry entries, scan
+claim/grounded span/title/quote/URL, escape untrusted values, revalidate
+URLs, and rebuild the same fixed `<shiny-aside>` allowlist before the
+browser sees anything. Replay rebuilds from the lossless original turn
+rather than trusting shinychat-generated provider markup. Web fetches
+allow only public http/https, reject userinfo/private/reserved/mixed
+DNS, re-authorize every redirect, and pin the validated address with
+curl resolve to prevent DNS rebinding.
 
 **`skills.R`** — **btw-compatible** skill system. Skill format:
 `<name>/SKILL.md` directories (not flat `.md` files). Uses
@@ -579,12 +609,29 @@ otherwise `chat_anthropic`.
 keeps instant startup: tool/skill registration is deferred behind the
 initialization overlay, and input remains disabled until ready. Citation
 mode is explicitly opt-in and buffer-then-show; ordinary streaming is
-unchanged. The greeting uses `chat_greeting(..., persistent=TRUE)` and
-is restored without duplication across New/Delete/session restore.
-Sidebar and the three static right-panel tabs (Output / Files / File)
-remain unchanged; do not reintroduce per-file dynamic tabs. Tool-group
-and permission mutation are rejected while streaming and applied
-atomically otherwise.
+unchanged. `ui_layout="page_chat"` uses one top-level `page_chat()`/one
+chat root, the official `page_chat_theme()` baseline, a persistent
+global dark-mode + Workspace toolbar (`toolbar_input_button()`), a
+supported
+[`bslib::sidebar()`](https://rstudio.github.io/bslib/reference/sidebar.html),
+and `chat_drawer()` for the Output / Files / File artifact workspace.
+Its chat width is explicitly `100%` of the available main column;
+sidebar/drawer sizing still constrains that column. Classic retains
+shinychat’s embedded-chat width and explicitly disables its unused
+native drawer/history presentation. The four official drawer server APIs
+are centralized in `.shinychat_drawer_action()`; tool/file events call
+show and the toolbar calls toggle. Files may stage the current file with
+`chat_attachment()` + `update_chat_user_input()`. Skill prompts are
+wrapped as `ContentSlashCommand` only after Data Shield and reminder
+injection, preserving provider text and `/skill args` replay.
+`chat_server()`/`chat_enable_history()` remain intentionally
+unregistered because codeagent owns streaming, permissions, hooks,
+sessions, and Data Shield. The greeting uses
+`chat_greeting(..., persistent=TRUE)` and resets via
+`chat_clear(greeting=TRUE)` before New/Delete/session restore. The three
+static workspace tabs remain unchanged; do not reintroduce per-file
+dynamic tabs. Tool-group and permission mutation are rejected while
+streaming and applied atomically otherwise.
 
 **`sessions.R / mutations.R`** — Sessions remain lossless JSONL
 (`contents_record` → gzip → base64) with text presentation lines for
