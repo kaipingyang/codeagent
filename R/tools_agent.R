@@ -4,8 +4,8 @@
 #'   own simple sub-agent loop.
 #'
 #'   Also discovers and registers custom agent definitions from:
-#'   - `.btw/agent-*.md` (project)
-#'   - `~/.btw/agent-*.md` (user)
+#'   - `.btw/agents/*.md` or legacy `.btw/agent-*.md` (project)
+#'   - `~/.btw/agents/*.md` or legacy `~/.btw/agent-*.md` (user)
 #'   - `.claude/agents/` (Claude Code compat)
 #' @name tools_agent
 #' @keywords internal

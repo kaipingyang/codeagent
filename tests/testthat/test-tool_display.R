@@ -240,3 +240,30 @@ test_that("official display survives shinychat contents conversion without warni
   items <- expect_no_warning(shinychat::contents_shinychat(chat))
   expect_length(items, 1L)
 })
+
+
+test_that("official tool displays request the framed open style", {
+  skip_if_not(
+    codeagent:::.shinychat_framed_tool_results_available(),
+    "installed shinychat does not provide framed tool results"
+  )
+  d <- codeagent:::.new_tool_result_display(
+    title = "Result", html = htmltools::tags$div("body"),
+    open_style = "framed")
+  expect_s3_class(d, "shinychat_tool_result_display")
+  expect_identical(d$open_style, "framed")
+
+  r <- codeagent:::.tool_result2(
+    "x", kind = "code", payload = list(text = "x <- 1", lang = "r"))
+  expect_identical(r@extra$display$open_style, "framed")
+})
+
+test_that("framed option degrades safely when the official constructor is absent", {
+  testthat::local_mocked_bindings(
+    .shinychat_tool_result_constructor = function() NULL
+  )
+  d <- codeagent:::.new_tool_result_display(
+    title = "Result", text = "body", open_style = "framed")
+  expect_type(d, "list")
+  expect_null(d$open_style)
+})

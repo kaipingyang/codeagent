@@ -386,7 +386,7 @@ codeagent <- function(client_or_prompt,
   # Citation markers are resolved only against source records from this round,
   # then the complete deterministic output passes through the response gate.
   if (.web_citations_enabled(settings$web_citations))
-    response <- .render_citation_markers(
+    response <- .render_turn_citations(
       response, .citation_registry_from_last_round(chat), settings, chat)
   og <- .output_gate_guarded(response, settings, chat)
   og$text %||% response
@@ -581,7 +581,7 @@ agent_loop <- function(user_input,
   finish <- .map_finish_reason(.last_finish_reason(chat))
   response <- .append_finish_note(response, finish$note)
   if (.web_citations_enabled(settings$web_citations))
-    response <- .render_citation_markers(
+    response <- .render_turn_citations(
       response, .citation_registry_from_last_round(chat), settings, chat)
   og <- .output_gate_guarded(response, settings, chat)
   if (!identical(og$action, "pass")) response <- og$text %||% response

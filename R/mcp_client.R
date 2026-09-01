@@ -4,11 +4,11 @@
 #'   client side (consuming external tools); `codeagent_mcp_server()` is the
 #'   server side (exposing codeagent's tools).
 #'
-#'   Transport: mcptools (>= 0.2.1) launches stdio MCP servers as child
-#'   processes (`command` + `args` + `env` per the config) on the **client**
-#'   side. Remote HTTP/SSE *client* connections are not yet supported upstream
-#'   (mcptools `mcp_tools()` is stdio-only); codeagent can however *serve* over
-#'   HTTP -- see [codeagent_mcp_server()] with `transport = "http"`.
+#'   Transport: mcptools (>= 1.0.2.9000) launches stdio MCP servers as child
+#'   processes (`command` + `args` + `env`) and connects directly to remote
+#'   Streamable HTTP servers configured with `url`. Static headers and MCP OAuth
+#'   discovery/PKCE/token refresh are handled upstream by `mcp_tools()`; codeagent
+#'   passes the config through without persisting credentials.
 #'
 #'   Config format (JSON file or inline list), e.g.:
 #'   ```json
@@ -25,7 +25,7 @@
 #' @keywords internal
 NULL
 
-.MCPTOOLS_MIN_VERSION <- base::package_version("1.0.1")
+.MCPTOOLS_MIN_VERSION <- base::package_version("1.0.2.9000")
 
 .mcptools_supported <- function(min_version = .MCPTOOLS_MIN_VERSION) {
   requireNamespace("mcptools", quietly = TRUE) &&
@@ -34,7 +34,7 @@ NULL
 
 .mcptools_assert_server <- function() {
   if (!.mcptools_supported())
-    stop("MCP server requires mcptools >= 1.0.1. Install or update mcptools, ",
+    stop("MCP server requires mcptools >= 1.0.2.9000. Install or update mcptools, ",
          "then restart all MCP and R sessions.", call. = FALSE)
   invisible(TRUE)
 }
@@ -52,7 +52,7 @@ NULL
 #' @keywords internal
 mcp_client_tools <- function(config = NULL) {
   if (!.mcptools_supported()) {
-    warning("[codeagent] MCP client requires mcptools >= 1.0.1; tools skipped. ",
+    warning("[codeagent] MCP client requires mcptools >= 1.0.2.9000; tools skipped. ",
             "Update mcptools and restart the R session.", call. = FALSE)
     return(list())
   }
@@ -175,8 +175,8 @@ r_mcp_server <- function(
   st_str <- if (isTRUE(session_tools)) "TRUE" else "FALSE"
   guard <- paste0(
     "if (!requireNamespace('mcptools', quietly=TRUE) || ",
-    "utils::packageVersion('mcptools') < package_version('1.0.1')) ",
-    "stop('MCP server requires mcptools >= 1.0.1'); ")
+    "utils::packageVersion('mcptools') < package_version('1.0.2.9000')) ",
+    "stop('MCP server requires mcptools >= 1.0.2.9000'); ")
   server_call <- if (is.null(tools_script)) {
     sprintf("mcptools::mcp_server(session_tools = %s)", st_str)
   } else {

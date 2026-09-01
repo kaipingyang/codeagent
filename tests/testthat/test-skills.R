@@ -322,3 +322,50 @@ test_that(".parse_skill_md reads argument-hint from metadata (btw-compatible) + 
   m3 <- codeagent:::.parse_skill_md(file.path(d3, "SKILL.md"))
   expect_identical(m3$argument_hint, "")
 })
+
+# ---------------------------------------------------------------------------
+# Package-provided skills that are not attached (Plan 38)
+# ---------------------------------------------------------------------------
+
+test_that("explicit package skills are discovered without attaching the package", {
+  shiny_skills <- withr::local_tempdir()
+  dir.create(file.path(shiny_skills, "shiny-for-r"), recursive = TRUE)
+  writeLines(c(
+    "---", "name: shiny-for-r", "description: Shiny skill", "---", "body"),
+    file.path(shiny_skills, "shiny-for-r", "SKILL.md"))
+
+  testthat::local_mocked_bindings(
+    .package_skill_path = function(package) {
+      if (identical(package, "shiny")) shiny_skills else ""
+    }
+  )
+
+  expect_identical(codeagent:::.package_skill_dirs("shiny"), shiny_skills)
+})
+
+test_that(".skill_dirs adds the explicit Shiny skill directory once", {
+  shiny_skills <- withr::local_tempdir()
+  testthat::local_mocked_bindings(
+    .package_skill_dirs = function(packages) c(shiny_skills, shiny_skills)
+  )
+
+  dirs <- codeagent:::.skill_dirs(withr::local_tempdir())
+  expect_identical(sum(dirs == shiny_skills), 1L)
+})
+
+
+test_that("Shiny built-in skill is listed without attaching shiny", {
+  shiny_skills <- system.file("skills", package = "shiny")
+  skip_if(!nzchar(shiny_skills) || !dir.exists(shiny_skills))
+  was_attached <- "package:shiny" %in% search()
+  if (was_attached) {
+    detach("package:shiny", unload = FALSE, character.only = TRUE)
+    withr::defer(suppressPackageStartupMessages(
+      library("shiny", character.only = TRUE)))
+  }
+  expect_false("package:shiny" %in% search())
+
+  metas <- list_skills_meta(withr::local_tempdir())
+  expect_true("shiny-for-r" %in% names(metas))
+  expect_match(metas[["shiny-for-r"]]$path, "shiny-for-r/SKILL.md", fixed = TRUE)
+})

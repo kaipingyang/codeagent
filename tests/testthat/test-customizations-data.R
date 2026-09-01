@@ -26,6 +26,32 @@ test_that(".load_agents discovers .md agents and parses front matter", {
   expect_equal(rev$model, "gpt-4o")
 })
 
+
+test_that(".load_agents follows btw project and user agent directories", {
+  home <- withr::local_tempdir()
+  withr::local_envvar(HOME = home)
+  cwd <- withr::local_tempdir()
+
+  project_agents <- file.path(cwd, ".btw", "agents")
+  user_agents <- file.path(home, ".btw", "agents")
+  dir.create(project_agents, recursive = TRUE, showWarnings = FALSE)
+  dir.create(user_agents, recursive = TRUE, showWarnings = FALSE)
+
+  writeLines(c("---", "name: project-reviewer", "description: Project review", "---"),
+             file.path(project_agents, "review.md"))
+  writeLines(c("---", "name: user-planner", "description: User planning", "---"),
+             file.path(user_agents, "plan.md"))
+  writeLines(c("---", "name: legacy-agent", "description: Legacy flat file", "---"),
+             file.path(cwd, ".btw", "agent-legacy.md"))
+  writeLines("client: anthropic", file.path(cwd, ".btw", "btw.md"))
+
+  agents <- codeagent:::.load_agents(cwd)
+  expect_setequal(
+    vapply(agents, function(agent) agent$name, character(1)),
+    c("project-reviewer", "user-planner", "legacy-agent")
+  )
+  expect_false(any(vapply(agents, function(agent) identical(agent$name, "btw"), logical(1))))
+})
 test_that(".load_agents returns empty when no agent dirs exist", {
   withr::local_envvar(HOME = withr::local_tempdir())   # isolate ~/.claude/agents
   cwd <- withr::local_tempdir()

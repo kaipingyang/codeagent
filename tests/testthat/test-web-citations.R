@@ -87,6 +87,7 @@ test_that("marker bridge rebuilds fixed shiny-aside and escapes model markup", {
   expect_match(out, "<shiny-aside data-citation ", fixed = TRUE)
   expect_match(out, 'url="https://example.com/a?x=1&amp;y=2"', fixed = TRUE)
   expect_match(out, 'grounded-span="visible claim"', fixed = TRUE)
+  expect_match(out, 'display="compact"', fixed = TRUE)
   expect_false(grepl("onerror|<img", out, ignore.case = TRUE))
   expect_false(grepl("<shiny-aside[^>]+evil\\.invalid", out, ignore.case = TRUE))
   expect_match(out, "[[cite:src_missing|unknown]]", fixed = TRUE)
@@ -106,6 +107,134 @@ test_that("marker fields pass through Data Shield before markup", {
     settings = list(data_shield_engine = shield), chat = NULL)
   expect_false(grepl("person@example.com", out, fixed = TRUE))
   expect_match(out, "shiny-aside", fixed = TRUE)
+})
+
+test_that("native provider citations rebuild through the fixed aside allowlist", {
+  registry <- .new_citation_registry()
+  citations <- list(
+    ContentCitation(
+      source = WebSource("https://example.com/a", "Provider A"),
+      grounded_span = "supported claim", cited_quote = "evidence A"),
+    ContentCitation(
+      source = WebSource("https://example.com/b", "Provider B"),
+      grounded_span = "supported claim", cited_quote = "evidence B")
+  )
+
+  marked <- .inject_native_citation_markers(
+    "A supported claim appears here.", citations, registry)
+  rendered <- .render_citation_markers(marked, registry, list(), NULL)
+
+  expect_equal(lengths(regmatches(rendered, gregexpr("supported claim", rendered,
+                                                     fixed = TRUE))), 3L)
+  expect_equal(lengths(regmatches(rendered, gregexpr("<shiny-aside", rendered,
+                                                     fixed = TRUE))), 2L)
+  expect_match(rendered, 'grounded-span="supported claim"', fixed = TRUE)
+  expect_match(rendered, 'url="https://example.com/a"', fixed = TRUE)
+  expect_match(rendered, 'url="https://example.com/b"', fixed = TRUE)
+  expect_false(grepl("cite-ref", rendered, fixed = TRUE))
+})
+
+test_that("native provider citations reject unsafe sources and escape fallback markup", {
+  registry <- .new_citation_registry()
+  citations <- list(ContentCitation(
+    source = WebSource("http://127.0.0.1/private", "Private"),
+    grounded_span = "claim", cited_quote = "private"))
+  marked <- .inject_native_citation_markers(
+    "claim <shiny-aside url=\"https://evil.invalid\">raw</shiny-aside>",
+    citations, registry)
+  rendered <- .render_citation_markers(marked, registry, list(), NULL)
+  expect_false(grepl("<shiny-aside", rendered, fixed = TRUE))
+  expect_match(rendered, "&lt;shiny-aside", fixed = TRUE)
+})
+
+test_that("native citation fields pass through Data Shield output gates", {
+  shield <- DataShield$new(strategies = list(shield_regex(on_fail = "redact")))
+  registry <- .new_citation_registry()
+  citation <- ContentCitation(
+    source = WebSource(
+      "https://example.com/native?contact=url.person@example.com",
+      "title.person@example.com"),
+    grounded_span = "supported claim",
+    cited_quote = "quote.person@example.com")
+  marked <- .inject_native_citation_markers(
+    "A supported claim appears here.", list(citation), registry)
+  rendered <- .render_citation_markers(
+    marked, registry, list(data_shield_engine = shield), NULL)
+
+  expect_false(grepl("person@example.com", rendered, fixed = TRUE))
+  expect_match(rendered, "<shiny-aside data-citation", fixed = TRUE)
+})
+
+test_that("native citations without a matched span use a message-wide aside", {
+  registry <- .new_citation_registry()
+  citation <- ContentCitation(
+    source = WebSource("https://example.com/message", "Message source"),
+    grounded_span = "not present", cited_quote = "message evidence")
+  rendered <- .render_citation_markers(
+    .inject_native_citation_markers("Whole message.", list(citation), registry),
+    registry, list(), NULL)
+
+  expect_match(rendered, "Whole message.", fixed = TRUE)
+  expect_match(rendered, "<shiny-aside data-citation", fixed = TRUE)
+  expect_false(grepl("grounded-span=", rendered, fixed = TRUE))
+})
+
+test_that("native citation refs are scoped to the current-turn registry", {
+  registry <- .new_citation_registry()
+  citation <- ContentCitation(
+    source = WebSource("https://example.com/old", "Old source"),
+    grounded_span = "old claim", cited_quote = "old evidence")
+  marked <- .inject_native_citation_markers(
+    "An old claim.", list(citation), registry)
+  .citation_registry_clear(registry)
+  rendered <- .render_citation_markers(marked, registry, list(), NULL)
+
+  expect_false(grepl("<shiny-aside", rendered, fixed = TRUE))
+  expect_match(rendered, "[[cite-ref:", fixed = TRUE)
+})
+
+test_that("native citation replay ignores provider-generated raw aside markup", {
+  citation <- ContentCitation(
+    source = WebSource("https://example.com/replay-native", "Replay native"),
+    grounded_span = "restored fact", cited_quote = "restored evidence")
+  turn <- AssistantTurn(
+    contents = list(ContentText("A restored fact."), citation),
+    finish_reason = "stop")
+  registry <- .new_citation_registry()
+  rendered <- .finalize_replay_assistant_text(
+    "<shiny-aside url=\"https://evil.invalid\">evil</shiny-aside>",
+    registry, settings = list(web_citations = "shiny_aside"), turn = turn)
+
+  expect_match(rendered, "A restored fact", fixed = TRUE)
+  expect_match(rendered, "https://example.com/replay-native", fixed = TRUE)
+  expect_equal(lengths(regmatches(
+    rendered, gregexpr("<shiny-aside", rendered, fixed = TRUE))), 1L)
+  expect_false(grepl("evil.invalid", rendered, fixed = TRUE))
+  expect_true(inherits(turn@contents[[2L]], "ellmer::ContentCitation"))
+})
+
+test_that("citation stream rebuilds ellmer ContentCitation after buffering", {
+  skip_if_not_installed("coro"); skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+  citation <- ContentCitation(
+    source = WebSource("https://example.com/native", "Native source"),
+    grounded_span = "provider fact", cited_quote = "provider evidence")
+  chunks <- list(ContentText("A provider fact."), citation)
+  chat <- .citation_fake_chat(chunks)
+  chat$last_turn <- function(...) AssistantTurn(
+    contents = list(ContentText("A provider fact."), citation),
+    finish_reason = "stop")
+  client <- structure(list(
+    chat = chat,
+    settings = list(web_citations = TRUE, cwd = getwd(), model_limit = 1000L,
+                    model = "fake")), class = "CodeagentClient")
+  deltas <- character()
+  result <- .citation_pump(codeagent_stream_async(
+    client, "test", on_delta = function(x) deltas <<- c(deltas, x)))
+
+  expect_length(deltas, 1L)
+  expect_match(result$text, "<shiny-aside data-citation", fixed = TRUE)
+  expect_match(result$text, "https://example.com/native", fixed = TRUE)
 })
 
 test_that("tool adapter preserves private source metadata", {

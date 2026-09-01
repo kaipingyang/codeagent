@@ -88,10 +88,15 @@
 
 .web_source_id <- function(...) {
   bytes <- as.integer(charToRaw(enc2utf8(paste(..., collapse = "\u001f"))))
-  h <- 2166136261
-  for (b in bytes) h <- (h * 16777619 + b) %% 4294967296
-  hi <- floor(h / 65536); lo <- h %% 65536
-  paste0("src_", sprintf("%04x%04x", as.integer(hi), as.integer(lo)))
+  # Two independent 16-bit modular accumulators avoid R integer overflow and
+  # the precision loss of multiplying a 32-bit hash in a double.
+  h1 <- 5381
+  h2 <- 52711
+  for (b in bytes) {
+    h1 <- (h1 * 251 + b + 1) %% 65521
+    h2 <- (h2 * 257 + b + h1) %% 65521
+  }
+  paste0("src_", sprintf("%04x%04x", as.integer(h1), as.integer(h2)))
 }
 
 .new_web_source <- function(url, title, cited_quote, tool, id = NULL) {
@@ -142,12 +147,16 @@
   reg$values <- new.env(hash = TRUE, parent = emptyenv())
   reg$urls <- new.env(hash = TRUE, parent = emptyenv())
   reg$conflicts <- new.env(hash = TRUE, parent = emptyenv())
+  # Native provider citations use opaque ref ids so untrusted grounded spans
+  # never enter marker syntax. The span is kept server-side in this registry.
+  reg$refs <- new.env(hash = TRUE, parent = emptyenv())
   class(reg) <- c("codeagent_citation_registry", "environment")
   reg
 }
 
 .citation_registry_clear <- function(registry) {
-  for (env in list(registry$values, registry$urls, registry$conflicts)) {
+  for (env in list(registry$values, registry$urls, registry$conflicts,
+                   registry$refs)) {
     keys <- ls(env, all.names = TRUE)
     if (length(keys)) rm(list = keys, envir = env)
   }
@@ -181,9 +190,109 @@
   get(id, registry$values, inherits = FALSE)
 }
 
+.citation_registry_add_ref <- function(registry, source_id,
+                                       grounded_span = "") {
+  grounded_span <- if (is.character(grounded_span) &&
+                       length(grounded_span) == 1L && !is.na(grounded_span))
+    grounded_span else ""
+  ref_id <- sub(
+    "^src_", "ref_",
+    .web_source_id(source_id, grounded_span), fixed = FALSE)
+  ref <- list(source_id = source_id, grounded_span = grounded_span)
+  if (exists(ref_id, registry$refs, inherits = FALSE)) {
+    if (!identical(get(ref_id, registry$refs, inherits = FALSE), ref))
+      return(NULL)
+    return(ref_id)
+  }
+  assign(ref_id, ref, envir = registry$refs)
+  ref_id
+}
+
+.citation_registry_get_ref <- function(registry, ref_id) {
+  if (is.null(registry) || !exists(ref_id, registry$refs, inherits = FALSE))
+    return(NULL)
+  get(ref_id, registry$refs, inherits = FALSE)
+}
+
 .citation_sources_from_result <- function(result) {
   sources <- tryCatch(result@extra$codeagent$sources, error = function(e) NULL)
   .dedupe_web_sources(sources %||% list())
+}
+
+.native_citations_from_turn <- function(turn) {
+  contents <- tryCatch(turn@contents, error = function(e) list())
+  Filter(function(content)
+    inherits(content, "ellmer::ContentCitation"), contents)
+}
+
+.native_citations_from_chat <- function(chat) {
+  turn <- tryCatch(chat$last_turn(role = "assistant"), error = function(e) NULL)
+  .native_citations_from_turn(turn)
+}
+
+.native_citation_source <- function(citation) {
+  source <- tryCatch(citation@source, error = function(e) NULL)
+  if (!inherits(source, "ellmer::WebSource")) return(NULL)
+  tryCatch(
+    .new_web_source(
+      url = source@url,
+      title = source@title %||% "",
+      cited_quote = tryCatch(citation@cited_quote, error = function(e) "") %||% "",
+      tool = "ProviderCitation"),
+    error = function(e) NULL)
+}
+
+# Convert trusted ellmer ContentCitation objects into opaque internal markers.
+# Provider fields remain server-side; only ref ids enter the text renderer.
+.inject_native_citation_markers <- function(text, citations, registry) {
+  text <- as.character(text %||% "")[1L]
+  insertions <- list()
+  for (citation in citations %||% list()) {
+    if (!inherits(citation, "ellmer::ContentCitation")) next
+    source <- .native_citation_source(citation)
+    if (is.null(source)) next
+    .citation_registry_add(registry, list(source))
+    source_id <- if (exists(source$url, registry$urls, inherits = FALSE))
+      get(source$url, registry$urls, inherits = FALSE) else NULL
+    if (is.null(source_id) ||
+        is.null(.citation_registry_get(registry, source_id))) next
+
+    span <- tryCatch(citation@grounded_span, error = function(e) "") %||% ""
+    if (!is.character(span) || length(span) != 1L || is.na(span)) span <- ""
+    positions <- if (nzchar(span)) gregexpr(span, text, fixed = TRUE)[[1L]] else -1L
+    matched <- length(positions) && !identical(positions[1L], -1L)
+    if (matched) {
+      position <- positions[length(positions)] +
+        nchar(span, type = "chars") - 1L
+    } else {
+      position <- nchar(text, type = "chars")
+      span <- ""
+    }
+    ref_id <- .citation_registry_add_ref(registry, source_id, span)
+    if (is.null(ref_id)) next
+    key <- as.character(position)
+    insertions[[key]] <- paste0(
+      insertions[[key]] %||% "", "[[cite-ref:", ref_id, "]]"
+    )
+  }
+  if (!length(insertions)) return(text)
+  positions <- sort(as.integer(names(insertions)), decreasing = TRUE)
+  for (position in positions) {
+    prefix <- if (position > 0L) substr(text, 1L, position) else ""
+    suffix <- if (position < nchar(text, type = "chars"))
+      substr(text, position + 1L, nchar(text, type = "chars")) else ""
+    text <- paste0(prefix, insertions[[as.character(position)]], suffix)
+  }
+  text
+}
+
+.render_turn_citations <- function(text, registry, settings, chat,
+                                   turn = NULL) {
+  if (is.null(turn))
+    turn <- tryCatch(chat$last_turn(role = "assistant"), error = function(e) NULL)
+  text <- .inject_native_citation_markers(
+    text, .native_citations_from_turn(turn), registry)
+  .render_citation_markers(text, registry, settings, chat)
 }
 
 .citation_scan_field <- function(value, settings, chat) {
@@ -196,20 +305,31 @@
   as.character(htmltools::htmlEscape(x %||% "", attribute = attribute))
 }
 
-.format_shiny_aside <- function(claim, source) {
+.format_shiny_aside_tag <- function(grounded_span, source) {
+  grounded_attr <- if (nzchar(grounded_span %||% "")) paste0(
+    "grounded-span=\"", .escape_html(grounded_span, TRUE), "\" ") else ""
   paste0(
-    .escape_html(claim),
     "<shiny-aside data-citation ",
     "url=\"", .escape_html(source$url, TRUE), "\" ",
-    "grounded-span=\"", .escape_html(claim, TRUE), "\" ",
+    "display=\"compact\" ",
+    grounded_attr,
     "cited-quote=\"", .escape_html(source$cited_quote, TRUE), "\">",
     "<a href=\"", .escape_html(source$url, TRUE), "\">",
     .escape_html(source$title), "</a></shiny-aside>")
 }
 
+.format_shiny_aside <- function(claim, source) {
+  paste0(
+    .escape_html(claim),
+    .format_shiny_aside_tag(claim, source)
+  )
+}
+
 .render_citation_markers <- function(text, registry, settings, chat) {
   text <- as.character(text %||% "")[1L]
-  pattern <- "\\[\\[cite:(src_[a-z0-9]{8})\\|([^]\\r\\n]+)\\]\\]"
+  cite_pattern <- "\\[\\[cite:(src_[a-z0-9]{8})\\|([^]\\r\\n]+)\\]\\]"
+  ref_pattern <- "\\[\\[cite-ref:(ref_[a-z0-9]{8})\\]\\]"
+  pattern <- paste0("(?:", cite_pattern, "|", ref_pattern, ")")
   matches <- gregexpr(pattern, text, perl = TRUE)[[1L]]
   if (identical(matches[1L], -1L)) return(.escape_html(text))
   lengths <- attr(matches, "match.length")
@@ -218,30 +338,62 @@
     start <- matches[i]; end <- start + lengths[i] - 1L
     if (start > cursor) out <- c(out, .escape_html(substr(text, cursor, start - 1L)))
     marker <- substr(text, start, end)
-    captures <- regmatches(marker, regexec(pattern, marker, perl = TRUE))[[1L]]
-    source <- .citation_registry_get(registry, captures[2L])
     rendered <- NULL
-    if (!is.null(source)) {
-      claim <- .sanitize_web_source_text(captures[3L], 500L)
-      fields <- list(
-        claim = .citation_scan_field(claim, settings, chat),
-        title = .citation_scan_field(source$title, settings, chat),
-        quote = .citation_scan_field(source$cited_quote, settings, chat),
-        url = .citation_scan_field(source$url, settings, chat))
-      if (all(vapply(fields, function(x) !is.null(x), logical(1L)))) {
-        safe_url <- tryCatch(.safe_web_source_url(fields$url), error = function(e) NULL)
-        if (!is.null(safe_url) && nzchar(fields$claim)) {
-          source$title <- .sanitize_web_source_text(fields$title, 300L)
-          source$cited_quote <- .sanitize_web_source_text(fields$quote, 1200L)
-          source$url <- safe_url
-          rendered <- .format_shiny_aside(fields$claim, source)
+
+    if (startsWith(marker, "[[cite-ref:")) {
+      captures <- regmatches(
+        marker, regexec(ref_pattern, marker, perl = TRUE))[[1L]]
+      ref <- .citation_registry_get_ref(registry, captures[2L])
+      source <- if (!is.null(ref))
+        .citation_registry_get(registry, ref$source_id) else NULL
+      if (!is.null(source)) {
+        fields <- list(
+          grounded_span = .citation_scan_field(
+            ref$grounded_span, settings, chat),
+          title = .citation_scan_field(source$title, settings, chat),
+          quote = .citation_scan_field(source$cited_quote, settings, chat),
+          url = .citation_scan_field(source$url, settings, chat))
+        if (all(vapply(fields, function(x) !is.null(x), logical(1L)))) {
+          safe_url <- tryCatch(
+            .safe_web_source_url(fields$url), error = function(e) NULL)
+          if (!is.null(safe_url)) {
+            source$title <- .sanitize_web_source_text(fields$title, 300L)
+            source$cited_quote <- .sanitize_web_source_text(fields$quote, 1200L)
+            source$url <- safe_url
+            grounded_span <- .sanitize_web_source_text(
+              fields$grounded_span, 500L)
+            rendered <- .format_shiny_aside_tag(grounded_span, source)
+          }
+        }
+      }
+    } else {
+      captures <- regmatches(
+        marker, regexec(cite_pattern, marker, perl = TRUE))[[1L]]
+      source <- .citation_registry_get(registry, captures[2L])
+      if (!is.null(source)) {
+        claim <- .sanitize_web_source_text(captures[3L], 500L)
+        fields <- list(
+          claim = .citation_scan_field(claim, settings, chat),
+          title = .citation_scan_field(source$title, settings, chat),
+          quote = .citation_scan_field(source$cited_quote, settings, chat),
+          url = .citation_scan_field(source$url, settings, chat))
+        if (all(vapply(fields, function(x) !is.null(x), logical(1L)))) {
+          safe_url <- tryCatch(
+            .safe_web_source_url(fields$url), error = function(e) NULL)
+          if (!is.null(safe_url) && nzchar(fields$claim)) {
+            source$title <- .sanitize_web_source_text(fields$title, 300L)
+            source$cited_quote <- .sanitize_web_source_text(fields$quote, 1200L)
+            source$url <- safe_url
+            rendered <- .format_shiny_aside(fields$claim, source)
+          }
         }
       }
     }
     out <- c(out, rendered %||% .escape_html(marker))
     cursor <- end + 1L
   }
-  if (cursor <= nchar(text)) out <- c(out, .escape_html(substr(text, cursor, nchar(text))))
+  if (cursor <= nchar(text))
+    out <- c(out, .escape_html(substr(text, cursor, nchar(text))))
   paste0(out, collapse = "")
 }
 

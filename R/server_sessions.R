@@ -3,6 +3,13 @@
 #' @keywords internal
 NULL
 
+.reset_chat_ui_greeting <- function(session, id = "chat") {
+  shinychat::chat_clear(id, greeting = TRUE, session = session)
+  shinychat::chat_set_greeting(
+    id, .codeagent_chat_greeting(), session = session)
+  invisible(NULL)
+}
+
 server_sessions <- function(input, output, session, chat, cwd,
                               state, stream_task, settings = list()) {
 
@@ -42,8 +49,7 @@ server_sessions <- function(input, output, session, chat, cwd,
     if (!is.null(stream_task) && stream_task$status() == "running") return()
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .reset_session_state(state)
-    shinychat::chat_clear("chat", session = session)
-    shinychat::chat_set_greeting("chat", .codeagent_chat_greeting(), session = session)
+    .reset_chat_ui_greeting(session)
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
   })
 
@@ -56,8 +62,7 @@ server_sessions <- function(input, output, session, chat, cwd,
     }
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .reset_session_state(state)
-    shinychat::chat_clear("chat", session = session)
-    shinychat::chat_set_greeting("chat", .codeagent_chat_greeting(), session = session)
+    .reset_chat_ui_greeting(session)
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
     .ui_toast("Session deleted.", "message")
   })
@@ -78,8 +83,7 @@ server_sessions <- function(input, output, session, chat, cwd,
       return()
     }
     state$session_id <- sid
-    shinychat::chat_clear("chat", session = session)
-    shinychat::chat_set_greeting("chat", .codeagent_chat_greeting(), session = session)
+    .reset_chat_ui_greeting(session)
     # Replay via contents_shinychat -- native tool card rendering.
     .replay_turns_to_ui(chat, session, settings)
     # Refresh the CONTEXT token meter for the restored conversation (the stream
@@ -152,9 +156,14 @@ server_sessions <- function(input, output, session, chat, cwd,
 # Lossless chat-state intentionally retains provider-facing turns, so replay
 # must never send their raw text directly to the browser.
 .finalize_replay_assistant_text <- function(text, citation_registry,
-                                            settings = list(), chat = NULL) {
-  if (.web_citations_enabled(settings$web_citations))
-    text <- .render_citation_markers(text, citation_registry, settings, chat)
+                                            settings = list(), chat = NULL,
+                                            turn = NULL) {
+  if (.web_citations_enabled(settings$web_citations)) {
+    if (length(.native_citations_from_turn(turn)))
+      text <- tryCatch(turn@text, error = function(e) text)
+    text <- .render_turn_citations(
+      text, citation_registry, settings, chat, turn = turn)
+  }
   gated <- .output_gate_guarded(text, settings, chat)
   gated$text %||% text
 }
@@ -207,7 +216,7 @@ server_sessions <- function(input, output, session, chat, cwd,
       disp <- if (identical(role, "user")) .strip_system_reminder(content) else content
       if (identical(role, "assistant"))
         disp <- .finalize_replay_assistant_text(
-          disp, citation_registry, settings, chat)
+          disp, citation_registry, settings, chat, turn = turn)
       if (.is_empty_block(disp)) next   # no empty "..." bubble on restore
       tryCatch(
         shinychat::chat_append_message("chat",
@@ -219,15 +228,21 @@ server_sessions <- function(input, output, session, chat, cwd,
 
     # List content (multiple blocks: text + tool cards mixed). Strip reminders
     # from user text, drop empty blocks, then group with the chunk protocol.
+    has_native_citations <- identical(role, "assistant") &&
+      length(.native_citations_from_turn(turn)) > 0L
+    native_text_added <- FALSE
     blocks <- lapply(content, function(b) {
       if (identical(role, "user") && is.character(b))
         return(.strip_system_reminder(b))
-      if (identical(role, "assistant") && is.character(b))
+      if (identical(role, "assistant") && is.character(b)) {
+        if (has_native_citations && native_text_added) return(NULL)
+        if (has_native_citations) native_text_added <<- TRUE
         return(.finalize_replay_assistant_text(
-          b, citation_registry, settings, chat))
+          b, citation_registry, settings, chat, turn = turn))
+      }
       b
     })
-    blocks <- Filter(function(b) !.is_empty_block(b), blocks)
+    blocks <- Filter(function(b) !is.null(b) && !.is_empty_block(b), blocks)
     n <- length(blocks)
     if (n == 0L) next   # whole turn was empty -> skip (no stuck "..." bubble)
 

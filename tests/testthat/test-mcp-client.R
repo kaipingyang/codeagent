@@ -35,19 +35,19 @@ test_that("MCP client refuses unsupported mcptools versions", {
     .package = "codeagent")
   expect_warning(
     out <- mcp_client_tools(list(mcpServers = list())),
-    "mcptools >= 1.0.1")
+    "mcptools >= 1.0.2.9000")
   expect_equal(out, list())
 })
 
 test_that("r_mcp_server child expression enforces version and safe default", {
   cfg <- r_mcp_server(rscript = Sys.which("Rscript"))
   code <- paste(cfg$args, collapse = " ")
-  expect_match(code, "1.0.1", fixed = TRUE)
+  expect_match(code, "1.0.2.9000", fixed = TRUE)
   expect_match(code, "session_tools = FALSE", fixed = TRUE)
 })
 
 
 test_that("mcp_client_tools accepts documented inline list config", {
-  skip_if_not_installed("mcptools", minimum_version = "1.0.1")
+  skip_if_not_installed("mcptools", minimum_version = "1.0.2.9000")
   expect_equal(mcp_client_tools(list(mcpServers = list())), list())
 })

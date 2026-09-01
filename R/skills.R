@@ -29,7 +29,22 @@ NULL
   ".codex/skills"      # Codex compat
 )
 
-# Build the full list of skill directories to scan, merging btw + codeagent paths
+# Resolve package-provided skills without requiring the package to be attached.
+# btw discovers attached packages; codeagent also opts into selected Imports whose
+# skills are useful even though codeagent calls them with qualified `pkg::fun()`.
+.package_skill_path <- function(package) {
+  system.file("skills", package = package)
+}
+
+.package_skill_dirs <- function(packages = "shiny") {
+  dirs <- vapply(packages, function(package) {
+    tryCatch(.package_skill_path(package), error = function(e) "")
+  }, character(1L), USE.NAMES = FALSE)
+  unique(dirs[nzchar(dirs) & dir.exists(dirs)])
+}
+
+# Build the full list of skill directories to scan, merging explicit package,
+# btw, codeagent, user, and project paths.
 .skill_dirs <- function(cwd = getwd()) {
   dirs <- character(0)
 
@@ -38,7 +53,10 @@ NULL
   if (nzchar(pkg_skills) && dir.exists(pkg_skills))
     dirs <- c(dirs, pkg_skills)
 
-  # 2+3+4+5. btw built-ins + attached packages + btw user dirs + btw project dirs
+  # 2. Skills shipped by Imports that are not attached (currently Shiny).
+  dirs <- c(dirs, .package_skill_dirs("shiny"))
+
+  # 3+4+5+6. btw built-ins + attached packages + user dirs + project dirs
   if (requireNamespace("btw", quietly = TRUE)) {
     tryCatch({
       dirs <- c(dirs, utils::getFromNamespace("btw_skills_directories", "btw")())
@@ -171,10 +189,10 @@ list_skills_meta <- function(cwd = getwd()) {
     }, error = function(e) NULL)
   }
 
-  # Supplement: codeagent-only paths not covered by btw.
-  # codeagent inst/skills/ is picked up via attached_package_skill_dirs() when installed.
-  # Extra: .claude/ and .codex/ project paths only.
+  # Supplement: explicit package and codeagent/project paths not covered by btw.
+  # This is what makes imported-but-unattached packages such as Shiny visible.
   extra_dirs <- c(
+    .package_skill_dirs("shiny"),
     system.file("skills", package = "codeagent"),
     vapply(.CODEAGENT_SKILL_SUBDIRS, function(s) file.path(cwd, s), character(1))
   )

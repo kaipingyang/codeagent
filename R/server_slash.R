@@ -119,6 +119,21 @@ NULL
 #'   `.handle_chat_command()`, skills/normal go through the shared `stream_task`
 #'   (which injects the skill prompt internally).
 #' @keywords internal
+.as_skill_slash_content <- function(input, parsed, redact_user_text = FALSE) {
+  constructor <- .shinychat_export("ContentSlashCommand")
+  if (!is.function(constructor) || !identical(parsed$type, "skill")) return(input)
+  user_text <- if (isTRUE(redact_user_text)) "[redacted]" else parsed$args %||% ""
+  wrap <- function(text) constructor(
+    text = text, command = parsed$name %||% "", user_text = user_text)
+  if (is.character(input) && length(input) == 1L) return(wrap(input))
+  if (is.list(input) && length(input) > 0L &&
+      is.character(input[[1L]]) && length(input[[1L]]) == 1L) {
+    input[[1L]] <- wrap(input[[1L]])
+  }
+  input
+}
+
+#' @keywords internal
 server_slash <- function(input, session, cwd = getwd(), id = "chat",
                          stream_task = NULL,
                          chat = NULL, settings = NULL, state = NULL) {

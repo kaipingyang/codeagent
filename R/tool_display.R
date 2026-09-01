@@ -66,9 +66,7 @@ NULL
 
 
 .shinychat_tool_result_constructor <- function() {
-  ns <- asNamespace("shinychat")
-  if ("tool_result_display" %in% getNamespaceExports("shinychat"))
-    get("tool_result_display", ns, inherits = FALSE) else NULL
+  .shinychat_export("tool_result_display")
 }
 
 .tool_display_preview <- function(value, max_chars = 160L) {
@@ -84,17 +82,27 @@ NULL
                                      markdown = NULL, text = NULL,
                                      show_request = TRUE, open = FALSE,
                                      full_screen = FALSE, footer = NULL,
-                                     label = NULL, value_preview = NULL) {
+                                     label = NULL, value_preview = NULL,
+                                     open_style = c("minimal", "framed")) {
+  open_style <- match.arg(open_style)
   args <- list(
     title = title, icon = icon, html = html, markdown = markdown, text = text,
     show_request = isTRUE(show_request), open = isTRUE(open),
     full_screen = isTRUE(full_screen), footer = footer,
-    label = label, value_preview = value_preview)
+    label = label, value_preview = value_preview, open_style = open_style)
   constructor <- .shinychat_tool_result_constructor()
-  if (is.function(constructor)) return(do.call(constructor, args))
+  if (is.function(constructor)) {
+    # The constructor predates open_style in the 0.2.0 release baseline. Omit the
+    # new argument there rather than making old installed packages fail.
+    constructor_args <- args
+    if (!.shinychat_framed_tool_results_available())
+      constructor_args$open_style <- NULL
+    return(do.call(constructor, constructor_args))
+  }
 
   # Compatibility fallback for an installed shinychat version predating the
   # constructor. Keep only its documented fields and validate scalar flags.
+  args$open_style <- NULL
   args <- args[!vapply(args, is.null, logical(1L))]
   args$show_request <- isTRUE(args$show_request)
   args$open <- isTRUE(args$open)
@@ -117,7 +125,9 @@ NULL
     full_screen = display$full_screen %||% !is.null(display$html),
     footer = display$footer,
     label = display$label %||% .tool_display_preview(title %||% "Tool", 60L),
-    value_preview = display$value_preview %||% .tool_display_preview(text, 160L))
+    value_preview = display$value_preview %||% .tool_display_preview(text, 160L),
+    open_style = display$open_style %||%
+      if (!is.null(display$html)) "framed" else "minimal")
 }
 
 # Typed contract constructor
@@ -181,7 +191,8 @@ NULL
     full_screen = !is.null(rendered),
     footer = footer,
     label = display_label,
-    value_preview = display_preview)
+    value_preview = display_preview,
+    open_style = if (!is.null(rendered)) "framed" else "minimal")
 
   ellmer::ContentToolResult(
     value = text,

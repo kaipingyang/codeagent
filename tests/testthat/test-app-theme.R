@@ -28,3 +28,21 @@ test_that("glass theme carries custom rules (distinct from default)", {
     utils::capture.output(str(default))
   ))
 })
+
+
+test_that("page_chat themes use shinychat's official page baseline", {
+  calls <- list()
+  testthat::local_mocked_bindings(
+    .shinychat_export = function(name) {
+      expect_identical(name, "page_chat_theme")
+      function(..., preset = "shiny") {
+        calls[[length(calls) + 1L]] <<- list(preset = preset, dots = list(...))
+        bslib::bs_theme(version = 5, bootswatch = if (preset == "shiny") NULL else preset)
+      }
+    }
+  )
+  expect_s3_class(codeagent:::.resolve_page_chat_theme("default"), "bs_theme")
+  expect_s3_class(codeagent:::.resolve_page_chat_theme("flatly"), "bs_theme")
+  expect_identical(calls[[1L]]$preset, "shiny")
+  expect_identical(calls[[2L]]$preset, "flatly")
+})

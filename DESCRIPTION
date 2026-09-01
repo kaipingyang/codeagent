@@ -18,11 +18,11 @@ Imports:
     ellmer (>= 0.4.2.9000),
     R6,
     jsonlite,
-    httr2,
+    httr2 (>= 1.3.0.9000),
     curl,
     cli,
-    shiny,
-    bslib (>= 0.11.0),
+    shiny (>= 1.14.0.9000),
+    bslib (>= 0.12.0.9000),
     shinychat (>= 0.4.0.9000),
     htmltools,
     coro,
@@ -44,9 +44,9 @@ Suggests:
     lintr,
     styler,
     prettycode,
-    btw,
-    mcptools (>= 1.0.1),
-    Rapp,
+    btw (>= 1.4.0.9000),
+    mcptools (>= 1.0.2.9000),
+    Rapp (>= 0.4.1.9000),
     promises,
     rappdirs,
     testthat (>= 3.0.0),
@@ -74,10 +74,15 @@ Suggests:
     pkgload
 Config/testthat/edition: 3
 Remotes:
-    tidyverse/ellmer@19be478ebf1a2e5d2db96a8aeaca71592c8d3f26,
+    tidyverse/ellmer@a64f94e644718c0598b01b0cd50a3c21c2646435,
     posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44,
-    posit-dev/shinychat/pkg-r@c1654aa2e13c979e52a16edace094d30680fa4dd,
-    r-lib/Rapp
+    posit-dev/shinychat/pkg-r@2b249764ce45b224224b7d185b3f34f14d0ad84f,
+    rstudio/shiny@81844600fc15f1952838546faa6699d0506ce7f9,
+    rstudio/bslib@6935d9819fcb37e0b42ffa54f4e1cab0418ec2ce,
+    posit-dev/mcptools@079e011e6f2a515565f903dc8a5b7c4d793746f1,
+    r-lib/Rapp@489655f24945042791ddb083d0d5518c4a905d9f,
+    r-lib/httr2@7ce699f813e662850ea21d9f87e242e0c699f9fe
 URL: https://kaipingyang.github.io/codeagent, https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues
 Config/roxygen2/version: 8.0.0
+RoxygenNote: 7.3.2

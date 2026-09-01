@@ -72,7 +72,7 @@ test_that("strategy list is the easy entry to one private R6 engine", {
       shield_describe(k_anon=3L),
       shield_egress(detectors=c("row_cap","value_match"), max_rows=0L,
                     on_fail="block")))
-  expect_r6_class(client$data_shield, "DataShield")
+  expect_true(inherits(client$data_shield, "DataShield"))
   expect_identical(client$data_shield$coverage()$config$k_anon, 3L)
   chat$register_tool(ellmer::tool(function() mtcars, name="Dump", description="d", arguments=list()))
   client$data_shield$install(chat)

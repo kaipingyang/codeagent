@@ -51,7 +51,7 @@ modal_agents_ui <- function(agent_list) {
     if (length(agent_list) == 0L) {
       htmltools::tags$p(
         class = "text-muted fst-italic",
-        "No agents defined. Agents live in .claude/agents/*.md or .btw/agent-*.md"
+        "No agents defined. Use .claude/agents/*.md, .btw/agents/*.md, or legacy .btw/agent-*.md"
       )
     } else {
       htmltools::tags$div(

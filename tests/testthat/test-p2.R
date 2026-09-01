@@ -345,7 +345,7 @@ test_that("codeagent_mcp_server refuses old mcptools", {
   testthat::local_mocked_bindings(
     .mcptools_supported = function(...) FALSE,
     .package = "codeagent")
-  expect_error(codeagent_mcp_server(tools = list()), "mcptools >= 1.0.1")
+  expect_error(codeagent_mcp_server(tools = list()), "mcptools >= 1.0.2.9000")
 })
 
 test_that("network MCP server cannot expose session tools", {

@@ -12,13 +12,14 @@ NULL
   finish <- .map_finish_reason(.last_finish_reason(chat))
   text <- .append_finish_note(text, finish$note)
   if (.web_citations_enabled(settings$web_citations))
-    text <- .render_citation_markers(text, citation_registry, settings, chat)
+    text <- .render_turn_citations(text, citation_registry, settings, chat)
   gated <- .output_gate_guarded(text, settings, chat)
   list(text = gated$text %||% text, finish = finish)
 }
 
 server_chat <- function(input, output, session, chat, settings,
-                         state, cwd, chat_server_mod = NULL) {
+                         state, cwd, chat_server_mod = NULL,
+                         drawer_id = NULL) {
 
   # Tool result store (button_id -> ContentToolResult) and a source registry
   # scoped to exactly one user turn.
@@ -58,6 +59,11 @@ server_chat <- function(input, output, session, chat, settings,
     }
     state$main_output <- list(title = title, content = content)
     shiny::updateTabsetPanel(session, "main_tab", selected = "output")
+    if (!is.null(drawer_id) && nzchar(drawer_id)) {
+      tryCatch(
+        shinychat::chat_drawer_show(drawer_id, title = "Workspace", session = session),
+        error = function(e) NULL)
+    }
     invisible(result)
   }
 
@@ -134,6 +140,12 @@ server_chat <- function(input, output, session, chat, settings,
     rs   <- shiny::isolate(state$resource_state)
     iter <- shiny::isolate(state$iteration %||% 1L)
     actual_input <- .turn_setup(chat, actual_input, iter, cwd, ctrl, rs)
+    if (identical(parsed$type, "skill")) {
+      actual_input <- .as_skill_slash_content(
+        actual_input, parsed,
+        redact_user_text = identical(ig$action, "redact")
+      )
+    }
 
     # Resolve the positional turn contents ONCE, out here -- not inside the
     # coro::async body. coro rewrites `if` as control flow and cannot assign the

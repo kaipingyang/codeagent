@@ -129,3 +129,26 @@ test_that(".truncate_desc shortens long descriptions with an ellipsis", {
   # newlines collapsed to single line
   expect_false(grepl("[\r\n]", .truncate_desc("a\nb\nc")))
 })
+
+
+test_that("skill prompt uses ContentSlashCommand for provider text and replay UI", {
+  parsed <- list(type = "skill", name = "plan", args = "add a tool")
+  content <- codeagent:::.as_skill_slash_content("EXPANDED PROMPT", parsed)
+  expect_true(S7::S7_inherits(content, shinychat::ContentSlashCommand))
+  expect_identical(content@text, "EXPANDED PROMPT")
+  expect_identical(content@command, "plan")
+  expect_identical(content@user_text, "add a tool")
+  expect_identical(as.character(shinychat::contents_shinychat(content)),
+                   "/plan add a tool")
+})
+
+test_that("skill slash content preserves attachment list shape and redacts display args", {
+  parsed <- list(type = "skill", name = "plan", args = "sensitive")
+  attachment <- ellmer::ContentText("attachment")
+  out <- codeagent:::.as_skill_slash_content(
+    list("EXPANDED", attachment), parsed, redact_user_text = TRUE)
+  expect_length(out, 2L)
+  expect_true(S7::S7_inherits(out[[1L]], shinychat::ContentSlashCommand))
+  expect_identical(out[[1L]]@user_text, "[redacted]")
+  expect_identical(out[[2L]], attachment)
+})

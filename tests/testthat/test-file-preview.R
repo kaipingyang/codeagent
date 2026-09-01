@@ -50,3 +50,25 @@ test_that(".build_file_preview degrades to an [Error] paragraph on unreadable in
   expect_true(inherits(ui, c("shiny.tag", "shiny.tag.list")))
   expect_type(html, "character")
 })
+
+
+test_that("selected files are staged through shinychat attachment APIs", {
+  f <- withr::local_tempfile(fileext = ".txt")
+  writeLines("hello", f)
+  update <- NULL
+  testthat::with_mocked_bindings(
+    out <- codeagent:::.stage_chat_attachment(f, "chat", session = list()),
+    update_chat_user_input = function(id, ..., attachments = NULL,
+                                      attachment_mode = "append", focus = FALSE,
+                                      session = NULL) {
+      update <<- list(id = id, attachments = attachments,
+                     attachment_mode = attachment_mode, focus = focus)
+    },
+    .package = "shinychat"
+  )
+  expect_identical(update$id, "chat")
+  expect_identical(update$attachment_mode, "append")
+  expect_true(update$focus)
+  expect_length(update$attachments, 1L)
+  expect_identical(update$attachments[[1L]], out)
+})

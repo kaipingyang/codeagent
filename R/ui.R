@@ -37,6 +37,35 @@ NULL
   )
 }
 
+.resolve_page_chat_theme <- function(theme = "default") {
+  key <- switch(tolower(theme %||% "default"),
+    light  = , default = "default",
+    dark   = , darkly  = "darkly",
+    flatly = "flatly",
+    glass  = , glassmorphism = "glass",
+    "default")
+  page_theme <- .shinychat_export("page_chat_theme")
+  if (!is.function(page_theme)) return(.resolve_app_theme(theme))
+  if (!identical(key, "glass"))
+    return(page_theme(preset = if (identical(key, "default")) "shiny" else key))
+  bslib::bs_add_rules(
+    page_theme(
+      preset = "shiny", bg = "#0e1230", fg = "#e9ecff",
+      primary = "#8ab4ff", secondary = "#9aa0c4"
+    ),
+    paste(
+      "body { background:",
+      "radial-gradient(1200px 800px at 15% 0%, #1b2350 0%, #0e1230 55%) fixed; }",
+      ".card, .accordion, .accordion-item, .bslib-sidebar-layout > .sidebar,",
+      ".modal-content {",
+      "background-color: rgba(255,255,255,0.06) !important;",
+      "backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);",
+      "border: 1px solid rgba(255,255,255,0.12) !important; }",
+      sep = "
+")
+  )
+}
+
 # Build the Model-dropdown choices from a codeagent.md `client:` alias map plus
 # the currently-active model. Returns a named character vector (label -> spec)
 # safe for shiny::selectInput (never NA/empty names). Empty when there is nothing
@@ -102,6 +131,59 @@ NULL
     chat = chat$clone(), permission_mode = permission_mode,
     cwd = cwd, btw_groups = btw_groups, register_tools = FALSE)
 }
+.codeagent_page_toolbar <- function() {
+  bslib::toolbar(
+    bslib::input_dark_mode(id = "ca_dark_mode"),
+    bslib::toolbar_input_button(
+      "ca_workspace_toggle", "Workspace",
+      show_label = TRUE,
+      tooltip = "Show or hide the workspace drawer"
+    ),
+    align = "right"
+  )
+}
+
+# Build the opt-in full-window shinychat page while codeagent keeps server,
+# session, permission, and streaming ownership.
+.codeagent_page_chat_ui <- function(theme, sidebar, workspace,
+                                    chat_args = list()) {
+  if (!.shinychat_page_chat_available()) {
+    stop(
+      paste0(
+        "`ui_layout = \"page_chat\"` requires shinychat APIs ",
+        "`page_chat()` and the complete chat drawer control API. ",
+        "Install the GitHub version pinned in DESCRIPTION."
+      ),
+      call. = FALSE
+    )
+  }
+  page_chat <- .shinychat_export("page_chat")
+  chat_drawer <- .shinychat_export("chat_drawer")
+
+  drawer <- do.call(
+    chat_drawer,
+    c(list(workspace), list(
+      title = "Workspace", width = "50%", open = TRUE, resizable = TRUE))
+  )
+  # page_chat owns the full-window layout; codeagent's primary chat should fill
+  # the available main column instead of inheriting shinychat's prose-oriented
+  # 760px default cap. The sidebar and drawer still reduce the containing width.
+  chat_args$width <- "100%"
+  page <- do.call(
+    page_chat,
+    c(list(
+      title = "codeagent", id = "chat", theme = theme,
+      toolbar_global = .codeagent_page_toolbar(),
+      sidebar = sidebar, drawer = drawer),
+      chat_args)
+  )
+  htmltools::tagAppendChildren(
+    page,
+    head_assets(),
+    shiny::uiOutput("ca_init_overlay")
+  )
+}
+
 #' Launch the codeagent Shiny application
 #'
 #' @param client A pre-built `CodeagentClient` (single-user compatibility) or,
@@ -110,6 +192,10 @@ NULL
 #' @param client_factory Optional `function(session)` (or zero-argument function)
 #'   returning a fresh `CodeagentClient` for each Shiny session. This is the
 #'   most flexible multi-user mode.
+#' @param ui_layout UI shell. `"classic"` (default) preserves the existing
+#'   three-column layout. `"page_chat"` opts into shinychat's full-window page
+#'   with codeagent controls on the left and the Output/Files/File workspace in
+#'   the official resizable drawer on the right.
 #' @param theme UI theme. One of `"default"` (light Bootstrap 5), `"flatly"`,
 #'   `"darkly"` (dark), or `"glass"` (dark glassmorphism). The CLI aliases
 #'   `"light"` -> `"default"`, `"dark"` -> `"darkly"`, and `"glassmorphism"` ->
@@ -166,9 +252,11 @@ codeagent_app <- function(
   btw_groups      = NULL,
   chat            = NULL,
   web_citations   = c("off", "shiny_aside"),
-  web_allow_private = FALSE
+  web_allow_private = FALSE,
+  ui_layout       = c("classic", "page_chat")
 ) {
 
+  ui_layout <- match.arg(ui_layout)
   if (is.logical(web_citations)) {
     if (length(web_citations) != 1L || is.na(web_citations))
       stop("`web_citations` must be TRUE/FALSE, 'off', or 'shiny_aside'.", call. = FALSE)
@@ -271,51 +359,59 @@ codeagent_app <- function(
   # UI
   # ---------------------------------------------------------------------------
   chat_submit_key <- match.arg(chat_submit_key)
-  ca_bs_theme <- .resolve_app_theme(theme)
-  ui <- bslib::page_sidebar(
-    fillable = TRUE,
-    theme    = ca_bs_theme,
-    head_assets(),
-    # Prominent full-window init overlay shown while tools/skills load in-app.
-    shiny::uiOutput("ca_init_overlay"),
-    sidebar  = bslib::sidebar(
-      id        = "ca_left_sidebar",
-      width     = 240,
-      resizable = TRUE,
-      padding   = 4,
-      bslib::card(
-        fill = TRUE,
-        left_sidebar_ui(
-          permission_mode      = permission_mode,
-          btw_available_groups = btw_available_groups,
-          btw_groups_selected  = btw_groups,
-          model_choices        = model_choices,
-          current_model        = sel_model
-        )
-      )
-    ),
-    bslib::layout_sidebar(
-      fill     = TRUE,
-      fillable = TRUE,
-      border   = FALSE,
-      sidebar  = bslib::sidebar(
-        id        = "ca_output_sidebar",
-        position  = "right",
-        width     = "50%",
-        resizable = TRUE,
-        fillable  = TRUE,
-        padding   = 4,
-        bslib::card(
-          fill = TRUE,
-          output_panel_ui()
-        )
-      ),
-      bslib::card(
-        fill = TRUE,
-        chat_codeagent_ui(skill_meta, submit_key = chat_submit_key)
+  ca_bs_theme <- if (identical(ui_layout, "page_chat"))
+    .resolve_page_chat_theme(theme) else .resolve_app_theme(theme)
+  left_sidebar <- bslib::sidebar(
+    id = "ca_left_sidebar", width = 240, resizable = TRUE, padding = 4,
+    bslib::card(
+      fill = TRUE,
+      left_sidebar_ui(
+        permission_mode = permission_mode,
+        btw_available_groups = btw_available_groups,
+        btw_groups_selected = btw_groups,
+        model_choices = model_choices,
+        current_model = sel_model,
+        show_dark_mode = !identical(ui_layout, "page_chat")
       )
     )
   )
+
+  if (identical(ui_layout, "page_chat")) {
+    workspace <- htmltools::div(
+      id = "ca_page_chat_workspace",
+      class = "html-fill-container html-fill-item",
+      style = "height:100%;min-height:0;",
+      bslib::card(fill = TRUE, output_panel_ui())
+    )
+    ui <- .codeagent_page_chat_ui(
+      theme = ca_bs_theme,
+      sidebar = left_sidebar,
+      workspace = workspace,
+      chat_args = .codeagent_chat_args(skill_meta, chat_submit_key)
+    )
+  } else {
+    ui <- bslib::page_sidebar(
+      fillable = TRUE,
+      theme = ca_bs_theme,
+      head_assets(),
+      shiny::uiOutput("ca_init_overlay"),
+      sidebar = left_sidebar,
+      bslib::layout_sidebar(
+        fill = TRUE,
+        fillable = TRUE,
+        border = FALSE,
+        sidebar = bslib::sidebar(
+          id = "ca_output_sidebar", position = "right", width = "50%",
+          resizable = TRUE, fillable = TRUE, padding = 4,
+          bslib::card(fill = TRUE, output_panel_ui())
+        ),
+        bslib::card(
+          fill = TRUE,
+          chat_codeagent_ui(skill_meta, submit_key = chat_submit_key)
+        )
+      )
+    )
+  }
 
   # ---------------------------------------------------------------------------
   # Server
@@ -329,6 +425,7 @@ codeagent_app <- function(
     chat_obj <- session_client$chat
     settings <- session_client$settings
     settings$web_citations <- web_citations
+    settings$ui_layout <- ui_layout
     cwd <- settings$cwd %||% getwd()
     tools_ready <- if (!is.null(client_factory))
       length(tryCatch(chat_obj$get_tools(), error = function(e) list())) > 0L else
@@ -425,7 +522,9 @@ codeagent_app <- function(
                                settings        = settings,
                                state           = state,
                                cwd             = cwd,
-                               chat_server_mod = chat_server_mod)
+                               chat_server_mod = chat_server_mod,
+                               drawer_id       = if (identical(ui_layout, "page_chat"))
+                                 "chat" else NULL)
 
     server_sessions(input, output, session,
                     chat        = chat_obj,
@@ -524,7 +623,15 @@ codeagent_app <- function(
                  cwd   = cwd,
                  state = state,
                  show_hidden = isTRUE(file_tree_show_hidden),
-                 exclude = file_tree_exclude)
+                 exclude = file_tree_exclude,
+                 drawer_id = if (identical(ui_layout, "page_chat"))
+                   "chat" else NULL)
+
+    if (identical(ui_layout, "page_chat")) {
+      shiny::observeEvent(input$ca_workspace_toggle, {
+        .shinychat_drawer_action("chat", "toggle", session = session)
+      }, ignoreInit = TRUE)
+    }
 
     # Stream task result handler (no-op: updates handled inside server_chat)
     shiny::observe({

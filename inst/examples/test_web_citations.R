@@ -18,6 +18,10 @@ if (!case %in% valid_cases) {
   stop("CODEAGENT_E2E_CASE must be one of: ",
        paste(valid_cases, collapse = ", "), call. = FALSE)
 }
+ui_layout <- Sys.getenv("CODEAGENT_E2E_UI_LAYOUT", "classic")
+if (!ui_layout %in% c("classic", "page_chat")) {
+  stop("CODEAGENT_E2E_UI_LAYOUT must be classic or page_chat.", call. = FALSE)
+}
 
 fixture_root <- Sys.getenv("CODEAGENT_E2E_ROOT", "")
 if (!nzchar(fixture_root)) {
@@ -29,6 +33,7 @@ fixture_root <- normalizePath(fixture_root, winslash = "/", mustWork = TRUE)
 fixture_cwd <- file.path(fixture_root, paste0("project-", case))
 dir.create(fixture_cwd, recursive = TRUE, showWarnings = FALSE)
 writeLines("E2E_FILE_CONTENT", file.path(fixture_cwd, "e2e-visible.txt"))
+writeLines("E2E_REOPEN_CONTENT", file.path(fixture_cwd, "e2e-reopen.txt"))
 
 # Do not let ambient credentials or provider configuration influence this app.
 Sys.unsetenv(c(
@@ -92,7 +97,14 @@ fixture_request <- ellmer::ContentToolRequest(
 source_result <- ellmer::ContentToolResult(
   value = "Local deterministic source fixture.",
   request = fixture_request,
-  extra = list(codeagent = list(sources = list(source, source)))
+  extra = list(
+    display = shinychat::tool_result_display(
+      title = "Deterministic source artifact",
+      html = htmltools::tags$pre("E2E_FRAMED_ARTIFACT"),
+      open_style = "framed"
+    ),
+    codeagent = list(sources = list(source, source))
+  )
 )
 
 assistant_text <- switch(
@@ -197,6 +209,7 @@ codeagent::codeagent_app(
   permission_mode = "bypass",
   cwd = fixture_cwd,
   btw_groups = all_groups,
+  ui_layout = ui_layout,
   web_citations = "shiny_aside",
   launch.browser = FALSE
 )

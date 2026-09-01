@@ -194,7 +194,7 @@ codeagent_stream_async <- function(
       finish <- .map_finish_reason(.last_finish_reason(chat))
       acc <- .append_finish_note(acc, finish$note)
       if (isTRUE(.citation_active))
-        acc <- .render_citation_markers(
+        acc <- .render_turn_citations(
           acc, citation_registry, settings, chat)
       og <- .output_gate_guarded(acc, settings, chat)
       acc <- og$text %||% acc
@@ -234,7 +234,7 @@ codeagent_stream_async <- function(
       # may itself embed a protected value, e.g. a mid-stream FAKEID) to on_error.
       if (isTRUE(.buffer_output)) {
         if (isTRUE(.citation_active))
-          acc <- .render_citation_markers(
+          acc <- .render_turn_citations(
             acc, citation_registry, settings, chat)
         og  <- .output_gate_guarded(acc, settings, chat)
         acc <- og$text %||% acc

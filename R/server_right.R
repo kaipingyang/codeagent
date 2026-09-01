@@ -3,10 +3,23 @@
 #' @keywords internal
 NULL
 
+.stage_chat_attachment <- function(path, id = "chat", session = shiny::getDefaultReactiveDomain()) {
+  attachment <- shinychat::chat_attachment(path)
+  shinychat::update_chat_user_input(
+    id,
+    attachments = list(attachment),
+    attachment_mode = "append",
+    focus = TRUE,
+    session = session
+  )
+  invisible(attachment)
+}
+
 server_right <- function(input, output, session, cwd, state,
-                          show_hidden = FALSE,
-                          exclude = c("renv", "node_modules", "packrat",
-                                      ".git", ".Rproj.user")) {
+                         show_hidden = FALSE,
+                         exclude = c("renv", "node_modules", "packrat",
+                                     ".git", ".Rproj.user"),
+                         drawer_id = NULL) {
 
   # File tree (jsTreeR). Uses .file_tree_server -- a thin fork of jsTreeR's
   # treeNavigatorServer that reuses its jstree widget + lazy-load JS protocol
@@ -44,6 +57,10 @@ server_right <- function(input, output, session, cwd, state,
           "padding:4px 10px; border-bottom:1px solid var(--bs-border-color);"),
         htmltools::tags$strong(cf$fname),
         htmltools::tags$span(style = "flex:1 1 auto;"),
+        shiny::actionButton(
+          "ca_attach_file", "Attach to chat",
+          class = "btn-sm btn-outline-secondary"
+        ),
         htmltools::tags$a(
           href    = "#",
           title   = "Close file",
@@ -74,8 +91,23 @@ server_right <- function(input, output, session, cwd, state,
 
     preview <- .build_file_preview(path, ext, id = paste0("ced__", key))
 
-    current_file(list(fname = basename(fname), preview = preview))
+    current_file(list(path = path, fname = basename(fname), preview = preview))
     bslib::nav_select("main_tab", "file_view", session = session)
+    if (!is.null(drawer_id) && nzchar(drawer_id)) {
+      tryCatch(
+        shinychat::chat_drawer_show(drawer_id, title = "Workspace", session = session),
+        error = function(e) NULL)
+    }
+  }, ignoreInit = TRUE)
+
+  shiny::observeEvent(input$ca_attach_file, {
+    cf <- current_file()
+    if (is.null(cf) || is.null(cf$path)) return()
+    tryCatch(
+      .stage_chat_attachment(cf$path, drawer_id %||% "chat", session),
+      error = function(e) .ui_toast(
+        paste0("Could not attach file: ", conditionMessage(e)), "warning")
+    )
   }, ignoreInit = TRUE)
 
   # Close the open file -> clear the viewer and return to the Files tree.

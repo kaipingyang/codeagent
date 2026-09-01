@@ -129,23 +129,30 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   sub(pat, "\\1", m[[1]])
 }
 
-# Discover agent definitions (`*.md`) under the standard project + user dirs.
-# Returns a list of list(name, description, model).
+# Discover agent definitions under Claude-compatible and btw project/user dirs.
+# The legacy flat btw form accepts only agent-*.md so btw.md is never presented
+# as an agent. Returns a list of list(name, description, model).
 .load_agents <- function(cwd = getwd()) {
-  paths <- c(
-    file.path(cwd, ".claude/agents"),
-    file.path(cwd, ".btw"),
-    path.expand("~/.claude/agents")
+  specs <- list(
+    list(path = file.path(cwd, ".claude", "agents"), pattern = "\\.md$"),
+    list(path = file.path(cwd, ".btw", "agents"), pattern = "\\.md$"),
+    list(path = file.path(cwd, ".btw"), pattern = "^agent-.*\\.md$"),
+    list(path = path.expand("~/.claude/agents"), pattern = "\\.md$"),
+    list(path = path.expand("~/.btw/agents"), pattern = "\\.md$"),
+    list(path = path.expand("~/.btw"), pattern = "^agent-.*\\.md$")
   )
-  mds <- unlist(lapply(paths, function(p) {
-    if (dir.exists(p)) list.files(p, pattern = "\\.md$", full.names = TRUE)
+  mds <- unique(unlist(lapply(specs, function(spec) {
+    if (dir.exists(spec$path))
+      list.files(spec$path, pattern = spec$pattern, full.names = TRUE)
     else character(0)
-  }))
+  })))
   lapply(mds, function(f) {
     lines <- tryCatch(readLines(f, n = 20L, warn = FALSE),
                       error = function(e) character(0))
+    fallback_name <- sub("\\.md$", "", basename(f))
+    fallback_name <- sub("^agent-", "", fallback_name)
     list(
-      name        = sub("\\.md$", "", basename(f)),
+      name        = .extract_yaml_field(lines, "name") %||% fallback_name,
       description = .extract_yaml_field(lines, "description"),
       model       = .extract_yaml_field(lines, "model")
     )

@@ -82,11 +82,12 @@ head_assets <- function() {
 
 left_sidebar_ui <- function(permission_mode, btw_available_groups,
                              btw_groups_selected,
-                             model_choices = NULL, current_model = NULL) {
+                             model_choices = NULL, current_model = NULL,
+                             show_dark_mode = TRUE) {
   htmltools::tagList(
-    # Light/dark toggle (Bootstrap 5 color mode). input_code_editor and bslib
-    # components follow data-bs-theme automatically.
-    htmltools::tags$div(
+    # Classic keeps this in the sidebar. page_chat mounts the same unique input
+    # in toolbar_global so it persists across pages and mobile app-menu moves.
+    if (isTRUE(show_dark_mode)) htmltools::tags$div(
       class = "d-flex justify-content-end mb-1",
       bslib::input_dark_mode(id = "ca_dark_mode")
     ),
@@ -220,32 +221,29 @@ left_sidebar_ui_default <- left_sidebar_ui
   )
 }
 
-chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
-  shinychat::chat_ui(
-    "chat",
-    fill             = TRUE,
-    enable_cancel    = TRUE,
-    submit_key       = submit_key,
-    # Group consecutive calls to the SAME tool into one collapsible activity row
-    # (shinychat >= dev). codeagent fires many tool calls per turn (Read/Grep/
-    # Bash bursts), so ungrouped cards flood the transcript; "tool" keeps
-    # distinct tools separate but folds repeats. (kiro dev-adoption A2.)
-    tool_grouping    = "tool",
-    placeholder      = "Ask codeagent... (/ for skills, ESC to interrupt)",
+.codeagent_chat_args <- function(skill_meta, submit_key = "enter") {
+  list(
+    enable_cancel = TRUE,
+    submit_key = submit_key,
+    tool_grouping = "tool",
+    placeholder = "Ask codeagent... (/ for skills, ESC to interrupt)",
     allow_attachments = TRUE,
-    # Citation links are user-click only. Disable shinychat's default external
-    # favicon lookup so rendering a source never creates a browser prefetch.
     `aside-favicon` = "false",
-    # Greeting + clickable suggestion cards for a fresh session. shinychat
-    # renders a markdown list whose items are <span class="suggestion"> as a
-    # grid of clickable cards; clicking submits the card's text.
     greeting = .codeagent_chat_greeting(),
-    footer           = htmltools::tagList(
-      # Phase 3 interaction bar (approval / question) sits just above the
-      # skill picker + input area; rendered on demand by server_interaction().
+    footer = htmltools::tagList(
       shiny::uiOutput("ca_interaction_ui"),
       .skill_picker_footer(skill_meta)
     )
+  )
+}
+
+chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
+  do.call(
+    shinychat::chat_ui,
+    c(list(
+      id = "chat", fill = TRUE,
+      drawer = FALSE, show_history = FALSE
+    ), .codeagent_chat_args(skill_meta, submit_key))
   )
 }
 

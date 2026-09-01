@@ -1,8 +1,12 @@
 # ellmer 开发版新功能（vs CRAN 0.4.2）
 
 当前安装：`0.4.2.9000`（GitHub: `tidyverse/ellmer`）
-当前 SHA：`19be478ebf1a2e5d2db96a8aeaca71592c8d3f26`
-最后验证：2026-08-18
+当前 SHA：`a64f94e644718c0598b01b0cd50a3c21c2646435`
+最后验证：2026-09-01
+
+最新 HEAD 相比上一验证 SHA `4d9c643b9b528ec71890d28bce99e1653c9bf545`
+只有一个自动模型数据刷新提交：更新 bundled pricing/model data，并调整 Bedrock
+模型到 Converse/Responses API 的自动映射；没有新增或删除公开 R API。
 
 ## 当前开发版新增功能
 
@@ -64,14 +68,15 @@ Model params/extra_args 有任何变化都重建 client。Shiny 为保持捕获�
 - `update_model_prices()` 是显式 opt-in 包装：只在用户调用时执行 `ellmer::models_update_prices()`，网络失败
   保留已有 cache；启动和模型请求绝不自动刷新，custom/private endpoint 仍可能没有价格。
 
-### 自定义 web citation 与工具结果
+### 自定义与 provider-native web citations
 
-codeagent 自定义 WebSearch/WebFetch 不会自动变成 ellmer `ContentCitation`。已落地的 bridge 让工具保存
-`extra$codeagent$sources`，模型只输出 `[[cite:SOURCE_ID|visible claim]]`；服务器只接受当前-turn source，扫描、
-escape 后确定性重建 shinychat aside。citation 模式 buffer-then-show，raw model custom element 不进入浏览器。
-
-复杂 `list`/`data.frame` 工具结果也已在 host/btw/MCP/Data Shield 边界规范化为合法 `ContentToolResult`
-或安全文本降级，不依赖弃用的隐式复杂返回值转换。
+codeagent 自定义 WebSearch/WebFetch 不会自动变成 ellmer `ContentCitation`。工具 bridge 让它们保存
+`extra$codeagent$sources`，模型只输出 `[[cite:SOURCE_ID|visible claim]]`。对于支持内置 web 工具的 provider，
+ellmer 原生 `ContentCitation` / `WebSource` 也已接入：codeagent 不采用 shinychat 直接生成的 raw aside，而是把
+citation 转为 current-turn registry 中的 opaque server ref；`grounded_span` 只保存在服务器 registry，不编码进
+marker。两条路径统一经过 public URL policy、Data Shield output gate、字段 sanitize/escape 和固定
+`<shiny-aside>` allowlist。citation 模式继续 buffer-then-show；session replay 从 lossless 原始 Content 重建，
+raw model/provider custom element 不进入浏览器。
 
 ## CRAN 0.4.2 已包含的基线能力
 
@@ -86,4 +91,4 @@ escape 后确定性重建 shinychat aside。citation 模式 buffer-then-show，r
 - `stream_controller()`；
 - 截断/过滤响应的警告与 structured-output 错误处理。
 
-上游比较：<https://github.com/tidyverse/ellmer/compare/dd1c8965c8e35d94a0fcaa6b452234e7e95e432d...19be478ebf1a2e5d2db96a8aeaca71592c8d3f26>
+上游比较：<https://github.com/tidyverse/ellmer/compare/dd1c8965c8e35d94a0fcaa6b452234e7e95e432d...a64f94e644718c0598b01b0cd50a3c21c2646435>
