@@ -43,7 +43,7 @@ server_chat <- function(input, output, session, chat, settings,
   # (extra$codeagent$artifact) on demand -- no stored right_output (plan 35 B1).
   # Returns the (possibly adapted) result so callers can store it.
   .push_output <- function(result, immediate = TRUE) {
-    artifact <- tryCatch(result@extra$codeagent$artifact, error = function(e) NULL)
+    artifact <- tool_result_artifact(result)
     title   <- .artifact_title(artifact)
     content <- tryCatch(render_artifact(artifact, mode = "panel"), error = function(e) NULL)
     if (is.null(content)) return(invisible(result))

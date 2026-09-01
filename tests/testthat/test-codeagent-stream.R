@@ -94,13 +94,16 @@ test_that("codeagent_stream_async fires on_tool_request from ContentToolRequest 
   expect_equal(tool_reqs[[1L]]$name, "Bash")
 })
 
-test_that("codeagent_stream_async fires on_tool_result with display field", {
+test_that("codeagent_stream_async fires on_tool_result with display and artifact", {
   skip_if_not_installed("coro"); skip_if_not_installed("promises")
   skip_if_not_installed("later")
 
   req    <- ContentToolRequest(id = "r1", name = "Read",
                                arguments = list(file_path = "R/utils.R"))
-  res    <- ContentToolResult(value = "100 lines", request = req)
+  res    <- tool_result(
+    value = "100 lines", kind = "text", title = "Read utils.R",
+    payload = list(text = "100 lines"))
+  res@request <- req
   chunks <- list(req, res)
   chat   <- .mk_fake_chat(chunks)
 
@@ -112,7 +115,15 @@ test_that("codeagent_stream_async fires on_tool_result with display field", {
   expect_length(tool_results, 1L)
   tr <- tool_results[[1L]]
   expect_equal(tr$name, "Read")
+  expect_named(
+    tr, c("id", "name", "display", "value", "is_error", "artifact"),
+    ignore.order = FALSE)
   expect_true("display" %in% names(tr))
+  expect_true("artifact" %in% names(tr))
+  expect_identical(tr$artifact$schema, "codeagent.tool-artifact")
+  expect_identical(tr$artifact$version, 1L)
+  expect_identical(tool_result_artifact(tr)$kind, "text")
+  expect_identical(tool_result_value(tr), "100 lines")
   expect_false(tr$is_error)
 })
 
@@ -292,4 +303,34 @@ test_that("public stream returns mapped finish reason and appends note", {
   expect_identical(result$finish_reason, "max_tokens")
   expect_match(result$text, "truncated", ignore.case = TRUE)
   expect_match(paste(deltas, collapse = ""), "truncated", ignore.case = TRUE)
+})
+
+
+test_that("codeagent_stream_async transports future artifacts unchanged", {
+  skip_if_not_installed("coro"); skip_if_not_installed("promises")
+  skip_if_not_installed("later")
+
+  req <- ContentToolRequest(id = "future-1", name = "FutureTool",
+                            arguments = list())
+  future <- list(
+    schema = "codeagent.tool-artifact", version = 2L,
+    kind = "future-kind", status = "success", icon = NULL, title = "Future",
+    payload = list(extension = "kept"))
+  res <- ContentToolResult(
+    value = "portable future fallback", request = req,
+    extra = list(codeagent = list(artifact = future)))
+  chat <- .mk_fake_chat(list(res))
+
+  events <- list()
+  p <- codeagent_stream_async(
+    chat, "test",
+    on_tool_result = function(x) events[[length(events) + 1L]] <<- x)
+  .pump(p)
+
+  expect_length(events, 1L)
+  expect_identical(events[[1L]]$artifact, future)
+  expect_identical(tool_result_artifact(events[[1L]], version = NULL), future)
+  expect_null(tool_result_artifact(events[[1L]]))
+  expect_identical(tool_result_value(events[[1L]]),
+                   "portable future fallback")
 })

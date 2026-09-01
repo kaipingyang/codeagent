@@ -67,14 +67,16 @@ NULL
     .args       <- as.list(environment())
     .check_args <- .args[names(.args) != "_intent"]
     if (!checker(.check_args)) {
-      return(ellmer::ContentToolResult(
-        value = paste0("[Permission denied] ", tool_name),
-        extra = list(display = list(
-          title = htmltools::HTML(sprintf(
-            "<code>%s</code> -- permission denied (%s mode)",
-            htmltools::htmlEscape(tool_name), mode
-          ))
-        ))
+      .value <- paste0("[Permission denied] ", tool_name)
+      return(.artifact_tool_result(
+        .value,
+        kind = "error",
+        status = "error",
+        title = htmltools::HTML(sprintf(
+          "<code>%s</code> -- permission denied (%s mode)",
+          htmltools::htmlEscape(tool_name), htmltools::htmlEscape(mode)
+        )),
+        payload = list(message = .value)
       ))
     }
     do.call(original_fn, .args)

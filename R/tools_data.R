@@ -25,14 +25,14 @@ explore_data_tool <- function(envir = .GlobalEnv) {
       df <- tryCatch(get(data_name, envir = envir, inherits = TRUE),
                      error = function(e) NULL)
       if (is.null(df))
-        return(.tool_result2(
+        return(.artifact_tool_result(
           sprintf("[Error] Object '%s' not found in the R session.", data_name),
           kind = "error", icon = "table",
           title = sprintf("ExploreData -- '%s' not found", data_name),
           payload = list(message = sprintf("'%s' not found.", data_name))))
 
       if (!is.data.frame(df))
-        return(.tool_result2(
+        return(.artifact_tool_result(
           sprintf("[Error] '%s' is not a data.frame (%s).", data_name, class(df)[1L]),
           kind = "error", icon = "table",
           title = sprintf("ExploreData -- '%s' is not a data.frame", data_name),
@@ -51,7 +51,7 @@ explore_data_tool <- function(envir = .GlobalEnv) {
         })
 
         if (inherits(result, "explore_error")) {
-          return(.tool_result2(
+          return(.artifact_tool_result(
             paste0("[Error] ", as.character(result)),
             kind = "error", icon = "table",
             title = sprintf("ExploreData '%s' -- error", data_name),
@@ -61,13 +61,13 @@ explore_data_tool <- function(envir = .GlobalEnv) {
         # Render result: data.frame -> table, scalar -> text
         if (is.data.frame(result)) {
           value <- sprintf("[%d x %d result]", nrow(result), ncol(result))
-          .tool_result2(value, kind = "table", icon = "table",
+          .artifact_tool_result(value, kind = "table", icon = "table",
                         title = sprintf("ExploreData: %s", question %||% data_name),
                         payload = list(df = result))
         } else {
           txt <- tryCatch(paste(utils::capture.output(print(result)), collapse = "\n"),
                           error = function(e) as.character(result))
-          .tool_result2(txt, kind = "text", icon = "table",
+          .artifact_tool_result(txt, kind = "text", icon = "table",
                         title = sprintf("ExploreData: %s", question %||% data_name),
                         payload = list(text = txt))
         }
@@ -76,7 +76,7 @@ explore_data_tool <- function(envir = .GlobalEnv) {
         schema <- ellmer::df_schema(df)
         # Prepend the data.frame name since ellmer::df_schema omits it
         schema_txt <- paste0("'", data_name, "': ", schema)
-        .tool_result2(schema_txt, kind = "text", icon = "table",
+        .artifact_tool_result(schema_txt, kind = "text", icon = "table",
                       title = sprintf("ExploreData: schema for '%s'", data_name),
                       payload = list(text = schema_txt))
       }

@@ -2,7 +2,7 @@
 % Please edit documentation in R/tool_display.R
 \name{tool_result}
 \alias{tool_result}
-\title{Build a rich tool result (typed display card) for a host tool}
+\title{Build a versioned cross-UI tool result}
 \usage{
 tool_result(
   value,
@@ -40,17 +40,16 @@ tool_result(
 An \link[ellmer:ContentToolResult]{ellmer::ContentToolResult}; return it from your tool function.
 }
 \description{
-Construct an \link[ellmer:ContentToolResult]{ellmer::ContentToolResult} that carries a \strong{typed display card},
-so a tool's output renders as a table / image / code / error / rich text both
-in codeagent's Shiny app and in any host UI that consumes the
-\code{on_tool_result$display} callback of \code{\link[=codeagent_stream]{codeagent_stream()}}.
+Construct an \link[ellmer:ContentToolResult]{ellmer::ContentToolResult} with three independent channels:
+\code{value} is portable model-facing text; \code{extra$codeagent$artifact} is the
+versioned, UI-neutral structured result; and \code{extra$display} is shinychat's
+official presentation adapter. Return the result from your tool function.
 
-\code{value} is the text the model sees; \code{payload} carries the rich artifact for
-the UI. Return the result from your tool's function body.
-
-A host UI reads \code{extra$codeagent$artifact$kind} + \code{...$payload} (the
-structured artifact, e.g. \code{payload$df} for a table); codeagent's Shiny app
-additionally receives a pre-rendered \code{display$html}.
+Non-shinychat hosts should read the artifact with
+\code{\link[=tool_result_artifact]{tool_result_artifact()}}, render supported \code{kind}/\code{payload} combinations
+natively, and use \code{\link[=tool_result_value]{tool_result_value()}} as the fallback. They never need to
+parse shinychat HTML. The streaming \code{on_tool_result} event exposes the same
+\code{artifact}, \code{display}, and \code{value} channels.
 }
 \examples{
 \dontrun{

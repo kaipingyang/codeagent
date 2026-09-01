@@ -1,0 +1,212 @@
+---
+title: "Portable tool-result artifacts"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Portable tool-result artifacts}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
+
+Tool results serve three different audiences: the model needs portable text,
+custom UIs need structured data, and shinychat needs its official presentation
+object. codeagent keeps those concerns separate instead of asking one format to
+serve all three.
+
+## The three-channel contract
+
+Every result created by `tool_result()` is an `ellmer::ContentToolResult` with
+three deliberately distinct channels:
+
+```text
+ContentToolResult
+├── value                         portable model/UI text fallback
+├── extra$codeagent$artifact      versioned, UI-neutral structured data
+└── extra$display                 optional shinychat presentation adapter
+```
+
+The artifact is the primary integration point for a non-shinychat UI. The
+`display` field is produced with `shinychat::tool_result_display()` and may use
+shinychat-specific HTML and framed-card behavior. A third-party host should not
+parse that presentation HTML.
+
+The `value` remains useful even when an artifact is absent, malformed, from a
+future version, or has a kind that the host does not render.
+
+## Artifact v1
+
+A version-1 artifact has this stable outer shape:
+
+```r
+list(
+  schema  = "codeagent.tool-artifact",
+  version = 1L,
+  kind,
+  status,
+  icon,
+  title,
+  payload
+)
+```
+
+| Field | Meaning |
+|---|---|
+| `schema` | Always `"codeagent.tool-artifact"` for this protocol. |
+| `version` | Positive whole-number protocol version. |
+| `kind` | Rendering category: `text`, `table`, `image`, `code`, `diff`, or `error`. |
+| `status` | Result state, normally `success` or `error`. |
+| `icon` | Optional portable icon name. |
+| `title` | Optional plain-text title. |
+| `payload` | Kind-specific structured data. |
+
+Common payloads include `list(text=)` for text/code, `list(df=)` for tables,
+`list(images=list(list(mime=, b64=)), output=)` for images, and
+`list(message=, detail=)` for errors. A host should still tolerate additional
+payload fields.
+
+## Producing a result
+
+Return `tool_result()` from an ellmer tool. Its first argument is always the
+portable value; rich fields are additive.
+
+```r
+summarise_tool <- ellmer::tool(
+  function(group) {
+    result <- summarise_data(group)
+    codeagent::tool_result(
+      value = sprintf("Summary contains %d rows.", nrow(result)),
+      kind = "table",
+      title = "Grouped summary",
+      payload = list(df = result)
+    )
+  },
+  name = "Summarise",
+  description = "Summarise data by a group.",
+  arguments = list(
+    group = ellmer::type_string("Grouping variable.")
+  )
+)
+```
+
+codeagent stores the portable artifact in `extra$codeagent$artifact` and builds
+the optional shinychat adapter separately in `extra$display`. Rich shinychat
+results use the official framed presentation; this does not change the
+cross-UI artifact.
+
+## Consuming results safely
+
+Use the public accessors for both `ContentToolResult` objects and streaming
+events. Do not reach through private nesting or parse display HTML.
+
+```r
+render_result <- function(event_or_result) {
+  artifact <- codeagent::tool_result_artifact(event_or_result)
+
+  if (is.null(artifact)) {
+    return(render_text(codeagent::tool_result_value(event_or_result)))
+  }
+
+  switch(
+    artifact$kind,
+    table = render_table(artifact$payload$df),
+    image = render_images(artifact$payload$images),
+    code  = render_code(artifact$payload$text),
+    diff  = render_diff(artifact$payload),
+    error = render_error(artifact$payload$message),
+    render_text(codeagent::tool_result_value(event_or_result))
+  )
+}
+```
+
+`tool_result_artifact()` validates schema, shape, and supported version. Its
+default is `version = 1L`; it returns `NULL` when a v1 consumer should fall back
+to text. `tool_result_value()` always extracts the portable text when possible.
+
+## Streaming callback
+
+`codeagent_stream()` and `codeagent_stream_async()` emit this tool-result event:
+
+```r
+list(
+  id,
+  name,
+  display,
+  value,
+  is_error,
+  artifact
+)
+```
+
+`artifact` is appended after the original five fields, preserving positional
+compatibility. A custom UI normally reads only `artifact`, `value`, and
+`is_error`. The `display` field is optional shinychat presentation data.
+
+```r
+codeagent::codeagent_stream(
+  client,
+  "Run the summary tool",
+  on_tool_result = function(event) {
+    artifact <- codeagent::tool_result_artifact(event)
+    if (!is.null(artifact) && identical(artifact$kind, "table")) {
+      render_table(artifact$payload$df)
+    } else {
+      render_text(codeagent::tool_result_value(event))
+    }
+  }
+)
+```
+
+## Version negotiation
+
+Future artifacts are transported unchanged through adaptation and streaming,
+but the default v1 accessor rejects them:
+
+```r
+# Safe v1 rendering decision
+artifact_v1 <- codeagent::tool_result_artifact(event)
+
+# Protocol inspection or forwarding only; do not render unknown versions
+artifact_any <- codeagent::tool_result_artifact(event, version = NULL)
+```
+
+This lets middleware forward a future artifact without destroying it while an
+older UI reliably falls back to `tool_result_value(event)`. A UI should opt in
+to a new version only after implementing that version's contract.
+
+## Trust boundary and failure behavior
+
+Artifact data and restored session metadata are untrusted input. codeagent
+therefore follows these rules:
+
+- malformed or unsupported artifacts fail softly to `value`;
+- plain titles, text, Markdown, and character HTML are escaped before browser
+  rendering;
+- only explicit `htmltools::HTML`, `shiny.tag`, or `shiny.tag.list` objects may
+  cross the trusted-HTML boundary;
+- `kind = "error"` implies `status = "error"`, and tool/provider error metadata
+  forces error status even when a rich image or diff kind is retained;
+- unrelated request, error, source-provenance, and provider metadata survive
+  adaptation;
+- legacy session cards are promoted on a presentation copy without changing
+  the provider-facing value or tool request/result identifiers.
+
+These rules apply to the built-in Shiny UI as well as custom consumers: the UI
+may enhance a valid artifact, but it must always have the portable value as a
+safe final fallback.
+
+## Migration checklist
+
+For an existing host integration:
+
+1. Keep treating `value` as the model-facing and last-resort text channel.
+2. Replace `display$toolcard` or `display$right_output` reads with
+   `tool_result_artifact()`.
+3. Render only artifact versions and kinds your host explicitly supports.
+4. Fall back through `tool_result_value()` for everything else.
+5. Consume `display` only when deliberately integrating with shinychat.
+
+The complete backend callback contract is documented in
+`vignette("backend-integration")`.

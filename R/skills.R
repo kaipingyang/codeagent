@@ -286,22 +286,20 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
         error = function(e) paste0("[Skill error] ", conditionMessage(e))
       )
       intent_val <- `_intent`
-      ellmer::ContentToolResult(
-        value = result,
-        extra = list(
-          display = list(
-            title    = htmltools::HTML(sprintf(
-              "Skill: <code>/%s</code>%s",
-              htmltools::htmlEscape(name),
-              if (!is.null(intent_val) && nzchar(intent_val))
-                sprintf(" <em style='color:#888;font-size:0.85em;'>%s</em>",
-                        htmltools::htmlEscape(intent_val))
-              else ""
-            )),
-            markdown = sprintf("**Skill `/%s` loaded**\n\n%s",
-                               name, substr(result, 1L, 200L))
-          )
-        )
+      .artifact_tool_result(
+        result,
+        kind = "text",
+        title = htmltools::HTML(sprintf(
+          "Skill: <code>/%s</code>%s",
+          htmltools::htmlEscape(name),
+          if (!is.null(intent_val) && nzchar(intent_val))
+            sprintf(" <em style='color:#888;font-size:0.85em;'>%s</em>",
+                    htmltools::htmlEscape(intent_val))
+          else ""
+        )),
+        payload = list(text = result, skill = name),
+        markdown = sprintf("**Skill `/%s` loaded**\n\n%s",
+                           name, substr(result, 1L, 200L))
       )
     },
     description = paste0(

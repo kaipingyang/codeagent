@@ -28,7 +28,7 @@ enter_plan_mode_tool <- function(mode_env) {
         "plan is ready.",
         if (!is.null(reason) && nzchar(reason)) paste0("\nReason: ", reason) else ""
       )
-      .tool_result2(msg, kind = "text", icon = "clipboard",
+      .artifact_tool_result(msg, kind = "text", icon = "clipboard",
                     title = "Plan mode: ON",
                     payload = list(text = msg))
     },
@@ -63,7 +63,7 @@ exit_plan_mode_tool <- function(mode_env) {
       mode_env$mode <- restored
       msg <- paste0("Exited plan mode. Permission mode restored to '",
                     restored, "'. Write/edit/shell tools are available again.")
-      .tool_result2(msg, kind = "text", icon = "check",
+      .artifact_tool_result(msg, kind = "text", icon = "check",
                     title = "Plan mode: OFF",
                     payload = list(text = msg))
     },

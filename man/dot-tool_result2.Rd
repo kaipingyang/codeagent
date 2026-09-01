@@ -25,15 +25,15 @@
 
 \item{status}{One of \code{"success"}, \code{"error"}, \code{"denied"}.}
 
-\item{icon}{bsicons name (character) for the in-chat card + right panel.}
+\item{icon}{Icon name used by UI adapters.}
 
-\item{title}{Character or HTML. Card title (HTML allowed for the in-chat card).}
+\item{title}{Character or HTML display title.}
 
-\item{payload}{List. Kind-specific data (see file docs).}
+\item{payload}{List of kind-specific artifact data.}
 
-\item{markdown}{Character. In-chat card body + two-phase fallback.}
+\item{markdown}{Optional shinychat markdown body.}
 
-\item{footer}{Optional official shinychat footer content.}
+\item{footer}{Optional shinychat footer content.}
 
 \item{label}{Optional compact activity label.}
 
@@ -43,9 +43,8 @@
 An \code{ellmer::ContentToolResult}.
 }
 \description{
-Superset of the legacy \code{.tool_result()}: in addition to \code{title}/\code{markdown},
-carries a typed \code{artifact} payload (on \code{extra$codeagent}) consumed by
-\code{\link[=render_artifact]{render_artifact()}}, and renders the panel view into \code{display$html} so the
-in-chat card is rich without a separate stored copy.
+Compatibility name for codeagent's original typed-result constructor. New
+internal code uses \code{.artifact_tool_result()}; this forwards without creating
+a second display protocol.
 }
 \keyword{internal}

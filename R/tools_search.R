@@ -25,13 +25,14 @@ glob_tool <- function() {
         result <- paste(files, collapse = "\n")
         result <- truncate_tool_result(result, "Glob")
         n <- length(files)
-        .tool_result2(
+        .artifact_tool_result(
           result,
           kind     = "text",
           icon     = "search",
-          title    = sprintf("Glob <code>%s</code> (%d file%s)",
-                             htmltools::htmlEscape(pattern), n,
-                             if (n == 1L) "" else "s"),
+          title    = htmltools::HTML(sprintf(
+            "Glob <code>%s</code> (%d file%s)",
+            htmltools::htmlEscape(pattern), n,
+            if (n == 1L) "" else "s")),
           markdown = paste0("```\n", result, "\n```"),
           payload  = list(text = result)
         )
@@ -136,13 +137,14 @@ grep_tool <- function() {
       result <- paste(out, collapse = "\n")
       result <- truncate_tool_result(result, "Grep")
       n_hits <- length(out)
-      .tool_result2(
+      .artifact_tool_result(
         result,
         kind     = "text",
         icon     = "search",
-        title    = sprintf("Grep <code>%s</code> (%d match%s)",
-                           htmltools::htmlEscape(pattern), n_hits,
-                           if (n_hits == 1L) "" else "es"),
+        title    = htmltools::HTML(sprintf(
+          "Grep <code>%s</code> (%d match%s)",
+          htmltools::htmlEscape(pattern), n_hits,
+          if (n_hits == 1L) "" else "es")),
         markdown = paste0("```\n", result, "\n```"),
         payload  = list(text = result)
       )
@@ -213,13 +215,14 @@ ls_tool <- function() {
         result <- truncate_tool_result(result, "LS")
         n <- length(annotated)
         dname <- if (path == ".") "." else basename(path)
-        .tool_result2(
+        .artifact_tool_result(
           result,
           kind     = "text",
           icon     = "folder",
-          title    = sprintf("LS <code>%s</code> (%d entr%s)",
-                             htmltools::htmlEscape(dname), n,
-                             if (n == 1L) "y" else "ies"),
+          title    = htmltools::HTML(sprintf(
+            "LS <code>%s</code> (%d entr%s)",
+            htmltools::htmlEscape(dname), n,
+            if (n == 1L) "y" else "ies")),
           markdown = paste0("```\n", result, "\n```"),
           payload  = list(text = result)
         )

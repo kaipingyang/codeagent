@@ -79,7 +79,7 @@ todo_write_tool <- function(session_id = "default") {
       summary <- sprintf("Updated %d todo(s) (%d completed). Saved to %s.",
                          length(items), n_done, path)
 
-      .tool_result2(summary, kind = "text", icon = "list-check",
+      .artifact_tool_result(summary, kind = "text", icon = "list-check",
                     title = sprintf("TodoWrite (%d items)", length(items)),
                     markdown = md,
                     payload = list(text = md, lang = "markdown"))

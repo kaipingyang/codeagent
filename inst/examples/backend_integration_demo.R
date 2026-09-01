@@ -47,8 +47,9 @@ summarise_frame <- ellmer::tool(
   function(group_by = "region") {
     df <- aggregate(cbind(units, revenue) ~ get(group_by), data = fake_sales, FUN = sum)
     names(df)[1] <- group_by
-    # tool_result() -> the model sees `value`; the host UI gets a typed table
-    # via on_tool_result$display (kind = "table", payload$df = df).
+    # tool_result() -> the model sees `value`; every host UI gets the versioned
+    # artifact (kind = "table", payload$df = df), while shinychat may also use
+    # the separate official `display` adapter.
     tool_result(
       sprintf("Summary by %s (%d rows).", group_by, nrow(df)),
       kind    = "table",
@@ -84,11 +85,19 @@ if (nzchar(Sys.getenv("CODEAGENT_BASE_URL"))) {
     on_tool_request = function(tr) cat(sprintf("\n[tool > %s(%s)]\n", tr$name,
                                                paste(names(tr$arguments), collapse = ","))),
     on_tool_result  = function(tr) {
-      k <- tryCatch(tr$display$toolcard$kind, error = function(e) NULL)
-      if (is.null(k)) k <- "text"
-      cat(sprintf("\n[tool < %s : kind=%s]\n", tr$name, k))
-      # A non-Shiny host renders the structured artifact itself:
-      if (identical(k, "table")) print(tr$display$toolcard$payload$df)
+      # `tr` is list(id, name, display, value, is_error, artifact). The first
+      # five fields retain their original positions; artifact is append-only.
+      # `display` is optional shinychat presentation and is intentionally ignored.
+      artifact <- tool_result_artifact(tr)
+      kind <- if (!is.null(artifact)) artifact$kind else "text"
+      cat(sprintf("\n[tool < %s : kind=%s]\n", tr$name, kind))
+      # A non-Shiny host renders the versioned artifact itself and falls back
+      # to portable text when the artifact version/kind is unsupported.
+      if (!is.null(artifact) && identical(kind, "table")) {
+        print(artifact$payload$df)
+      } else {
+        cat(tool_result_value(tr), "\n")
+      }
     }
   )
   cat("\n")

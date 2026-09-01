@@ -11,7 +11,7 @@ NULL
 #' @keywords internal
 .lint_impl <- function(path) {
   if (!requireNamespace("lintr", quietly = TRUE))
-    return(.tool_result2(
+    return(.artifact_tool_result(
       "[Error] The 'lintr' package is not installed (install.packages('lintr')).",
       kind = "error", icon = "exclamation-triangle",
       title = "Lint - unavailable", payload = list(available = FALSE)))
@@ -19,17 +19,17 @@ NULL
     if (dir.exists(path)) lintr::lint_dir(path) else lintr::lint(path),
     error = function(e) e)
   if (inherits(lints, "error"))
-    return(.tool_result2(paste("[Error]", conditionMessage(lints)),
+    return(.artifact_tool_result(paste("[Error]", conditionMessage(lints)),
       kind = "error", icon = "exclamation-triangle",
       title = "Lint - error", payload = list()))
   df <- as.data.frame(lints)
   if (nrow(df) == 0L)
-    return(.tool_result2("No lints found.", icon = "check-circle",
+    return(.artifact_tool_result("No lints found.", icon = "check-circle",
       title = "Lint - clean", payload = list(count = 0L)))
   lines <- sprintf("%s:%s:%s [%s] %s",
                    df$filename, df$line_number, df$column_number,
                    df$type, df$message)
-  .tool_result2(
+  .artifact_tool_result(
     paste0(nrow(df), " lint(s) found:\n", paste(lines, collapse = "\n")),
     icon = "list-check",
     title = sprintf("Lint - %d issue(s)", nrow(df)),
@@ -40,7 +40,7 @@ NULL
 #' @keywords internal
 .format_impl <- function(path) {
   if (!requireNamespace("styler", quietly = TRUE))
-    return(.tool_result2(
+    return(.artifact_tool_result(
       "[Error] The 'styler' package is not installed (install.packages('styler')).",
       kind = "error", icon = "exclamation-triangle",
       title = "Format - unavailable", payload = list(available = FALSE)))
@@ -48,11 +48,11 @@ NULL
     if (dir.exists(path)) styler::style_dir(path) else styler::style_file(path),
     error = function(e) e)
   if (inherits(res, "error"))
-    return(.tool_result2(paste("[Error]", conditionMessage(res)),
+    return(.artifact_tool_result(paste("[Error]", conditionMessage(res)),
       kind = "error", icon = "exclamation-triangle",
       title = "Format - error", payload = list()))
   changed <- tryCatch(sum(res$changed %in% TRUE), error = function(e) NA_integer_)
-  .tool_result2(
+  .artifact_tool_result(
     sprintf("Formatted %s (%s file(s) changed).", path,
             if (is.na(changed)) "?" else changed),
     icon = "magic", title = "Format",

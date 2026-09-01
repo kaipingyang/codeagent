@@ -1,8 +1,8 @@
 #' @title Typed Tool-Result Display Contract + Render Dispatcher
 #' @description Rich, interactive tool-card rendering for both the in-chat bubble
 #'   and the right Output panel. Defines a typed artifact contract stored under
-#'   `extra$codeagent$artifact` (a private key ellmer only transports, so
-#'   shinychat never warns about it), a render dispatcher that branches on the
+#'   `extra$codeagent$artifact` (a namespaced key ellmer transports without
+#'   coupling other UIs to shinychat), a render dispatcher that branches on the
 #'   artifact kind (code/image/table/diff/text/error), and a generalized adapter
 #'   that normalizes any native `ContentToolResult` -- raw `btw::btw_tools()`
 #'   results included -- into the typed contract.
@@ -78,6 +78,18 @@ NULL
     paste0(substr(value, 1L, max_chars - 3L), "...") else value
 }
 
+.safe_markdown_source <- function(text) {
+  as.character(htmltools::htmlEscape(as.character(text %||% "")))
+}
+
+.safe_markdown_html <- function(text) {
+  source <- .safe_markdown_source(text)
+  tryCatch(
+    commonmark::markdown_html(source),
+    error = function(e) as.character(htmltools::tags$pre(source))
+  )
+}
+
 .new_tool_result_display <- function(title = NULL, icon = NULL, html = NULL,
                                      markdown = NULL, text = NULL,
                                      show_request = TRUE, open = FALSE,
@@ -112,43 +124,265 @@ NULL
 
 # ---------------------------------------------------------------------------
 
+.safe_tool_display_title <- function(title) {
+  if (is.null(title)) return(NULL)
+  if (inherits(title, c("html", "shiny.tag", "shiny.tag.list"))) return(title)
+  htmltools::htmlEscape(as.character(title)[1L])
+}
+
+.safe_tool_display_html <- function(html) {
+  if (is.null(html)) return(NULL)
+  if (inherits(html, c("html", "shiny.tag", "shiny.tag.list"))) return(html)
+  htmltools::tags$pre(paste(as.character(html), collapse = "\n"))
+}
+
 .official_tool_display <- function(display = list(), text = "", title = NULL) {
   display <- display %||% list()
+  safe_html <- .safe_tool_display_html(display$html)
   .new_tool_result_display(
-    title = display$title %||% title,
+    title = .safe_tool_display_title(display$title %||% title),
     icon = display$icon,
-    html = display$html,
-    markdown = display$markdown,
+    html = safe_html,
+    markdown = if (!is.null(display$markdown))
+      .safe_markdown_source(display$markdown) else NULL,
     text = display$text,
     show_request = display$show_request %||% TRUE,
     open = display$open %||% FALSE,
-    full_screen = display$full_screen %||% !is.null(display$html),
+    full_screen = display$full_screen %||% !is.null(safe_html),
     footer = display$footer,
     label = display$label %||% .tool_display_preview(title %||% "Tool", 60L),
     value_preview = display$value_preview %||% .tool_display_preview(text, 160L),
     open_style = display$open_style %||%
-      if (!is.null(display$html)) "framed" else "minimal")
+      if (!is.null(safe_html)) "framed" else "minimal")
 }
 
-# Typed contract constructor
+.safe_official_tool_display <- function(display, text, title, artifact) {
+  tryCatch(
+    .official_tool_display(display, text, title),
+    error = function(e) .tool_artifact_shinychat_display(
+      artifact, text, display_title = artifact$title)
+  )
+}
+
+# Versioned, UI-neutral artifact contract
 # ---------------------------------------------------------------------------
+
+.TOOL_ARTIFACT_SCHEMA <- "codeagent.tool-artifact"
+.TOOL_ARTIFACT_VERSION <- 1L
+
+.valid_artifact_versions <- function(version) {
+  is.numeric(version) && length(version) > 0L &&
+    all(is.finite(version)) && all(version > 0) &&
+    all(version == floor(version))
+}
+
+.new_tool_artifact <- function(kind, status = "success", icon = NULL,
+                               title = NULL, payload = list()) {
+  if (!is.list(payload))
+    stop("`payload` must be a list.", call. = FALSE)
+  kind <- as.character(kind)[1L]
+  status <- as.character(status)[1L]
+  if (identical(kind, "error")) status <- "error"
+  structure(
+    list(
+      schema = .TOOL_ARTIFACT_SCHEMA,
+      version = .TOOL_ARTIFACT_VERSION,
+      kind = kind,
+      status = status,
+      icon = icon,
+      title = if (!is.null(title))
+        gsub("<[^>]+>", "", as.character(title)[1L]) else NULL,
+      payload = payload
+    ),
+    class = c("codeagent_tool_artifact", "list")
+  )
+}
+
+.upgrade_tool_artifact <- function(artifact) {
+  tryCatch({
+    if (!is.list(artifact)) return(NULL)
+    if (is.null(artifact$schema) && is.null(artifact$version) &&
+        !is.null(artifact$kind) && is.list(artifact$payload)) {
+      return(.new_tool_artifact(
+        artifact$kind,
+        status = artifact$status %||% "success",
+        icon = artifact$icon,
+        title = artifact$title,
+        payload = artifact$payload
+      ))
+    }
+    if (identical(artifact$schema, .TOOL_ARTIFACT_SCHEMA) &&
+        .valid_artifact_versions(artifact$version) &&
+        length(artifact$version) == 1L &&
+        artifact$version == .TOOL_ARTIFACT_VERSION) {
+      if (identical(artifact$kind, "error")) artifact$status <- "error"
+      if (!inherits(artifact, "codeagent_tool_artifact"))
+        class(artifact) <- unique(c("codeagent_tool_artifact", class(artifact)))
+    }
+    artifact
+  }, error = function(e) NULL)
+}
+
+.valid_optional_artifact_text <- function(value) {
+  is.null(value) ||
+    (is.character(value) && length(value) == 1L && !is.na(value))
+}
+
+.valid_tool_artifact <- function(artifact) {
+  is.list(artifact) &&
+    identical(artifact$schema, .TOOL_ARTIFACT_SCHEMA) &&
+    length(artifact$version) == 1L &&
+    .valid_artifact_versions(artifact$version) &&
+    is.character(artifact$kind) && length(artifact$kind) == 1L &&
+    !is.na(artifact$kind) && nzchar(artifact$kind) &&
+    is.character(artifact$status) && length(artifact$status) == 1L &&
+    !is.na(artifact$status) && nzchar(artifact$status) &&
+    .valid_optional_artifact_text(artifact$icon) &&
+    .valid_optional_artifact_text(artifact$title) &&
+    !(artifact$version == .TOOL_ARTIFACT_VERSION &&
+      identical(artifact$kind, "error") &&
+      !identical(artifact$status, "error")) &&
+    is.list(artifact$payload)
+}
+
+#' Extract a versioned tool artifact
+#'
+#' Returns codeagent's UI-neutral structured artifact from an
+#' [ellmer::ContentToolResult], an `on_tool_result` event, or an artifact itself.
+#' A renderer should consume supported artifacts first and fall back to
+#' [tool_result_value()] when this function returns `NULL`. The shinychat
+#' `extra$display` object is an optional presentation adapter, not the portable
+#' data contract.
+#'
+#' @param result An [ellmer::ContentToolResult], `on_tool_result` event list, or
+#'   artifact list.
+#' @param version Supported artifact version(s). Defaults to version 1. Use
+#'   `NULL` to inspect a structurally valid artifact of any version.
+#' @return A `codeagent_tool_artifact`-style list, or `NULL` when absent,
+#'   malformed, or unsupported.
+#' @export
+#' @examples
+#' result <- tool_result(
+#'   "2 rows", kind = "table",
+#'   payload = list(columns = c("id", "value"), rows = 2L))
+#' artifact <- tool_result_artifact(result)
+#' artifact$kind
+#' artifact$version
+#' tool_result_value(result)
+#'
+#' # Generic UI fallback pattern:
+#' if (is.null(tool_result_artifact(result))) tool_result_value(result)
+tool_result_artifact <- function(result, version = 1L) {
+  artifact <- if (inherits(result, "ellmer::ContentToolResult")) {
+    tryCatch(result@extra$codeagent$artifact, error = function(e) NULL)
+  } else if (is.list(result) && !is.null(result$artifact)) {
+    result$artifact
+  } else if (is.list(result) &&
+             identical(result$schema, .TOOL_ARTIFACT_SCHEMA)) {
+    result
+  } else {
+    NULL
+  }
+  if (is.list(artifact) &&
+      identical(artifact$schema, .TOOL_ARTIFACT_SCHEMA))
+    artifact <- .upgrade_tool_artifact(artifact) %||% artifact
+  if (!.valid_tool_artifact(artifact)) return(NULL)
+  if (!is.null(version)) {
+    if (!.valid_artifact_versions(version))
+      stop("`version` must contain finite positive whole numbers.", call. = FALSE)
+    if (!artifact$version %in% version) return(NULL)
+  }
+  artifact
+}
+
+#' Extract the portable text fallback from a tool result
+#'
+#' Works with an [ellmer::ContentToolResult], an `on_tool_result` event, or a
+#' character value. Third-party UIs should display this value whenever they do
+#' not support the result's artifact schema/version/kind.
+#'
+#' @param result An [ellmer::ContentToolResult], `on_tool_result` event list, or
+#'   character value.
+#' @param default Character fallback used when no value can be extracted.
+#' @return A character scalar.
+#' @export
+#' @seealso [tool_result_artifact()], [tool_result()]
+tool_result_value <- function(result, default = "") {
+  value <- if (inherits(result, "ellmer::ContentToolResult")) {
+    tryCatch(result@value, error = function(e) NULL)
+  } else if (is.list(result) && !is.null(result$value)) {
+    result$value
+  } else if (is.character(result)) {
+    result
+  } else {
+    NULL
+  }
+  if (is.null(value) || !length(value)) return(as.character(default)[1L])
+  paste(as.character(value), collapse = "\n")
+}
+
+# Convert the portable artifact into shinychat's official presentation object.
+# Other UI hosts ignore this adapter and render the artifact natively.
+.tool_artifact_shinychat_display <- function(
+    artifact, value, display_title = NULL, markdown = NULL, footer = NULL,
+    label = NULL, value_preview = NULL) {
+  rich <- artifact$kind %in% c("code", "image", "table", "diff", "error")
+  rendered <- if (rich) tryCatch(
+    render_artifact(artifact, mode = "panel"), error = function(e) NULL) else NULL
+  title <- .safe_tool_display_title(display_title)
+  .new_tool_result_display(
+    title = title,
+    icon = if (!is.null(artifact$icon)) .icon_tag(artifact$icon) else NULL,
+    html = rendered,
+    markdown = if (!is.null(markdown)) .safe_markdown_source(markdown) else NULL,
+    text = if (is.null(rendered) && is.null(markdown)) value else NULL,
+    show_request = TRUE,
+    open = identical(artifact$status, "error") ||
+      (nchar(value %||% "") > 500L),
+    full_screen = !is.null(rendered),
+    footer = footer,
+    label = label %||% .tool_display_preview(
+      display_title %||% tools::toTitleCase(artifact$kind), 60L),
+    value_preview = value_preview %||% .tool_display_preview(value, 160L),
+    open_style = if (!is.null(rendered)) "framed" else "minimal"
+  )
+}
+
+# Primary internal constructor: portable artifact first, UI adapter second.
+.artifact_tool_result <- function(
+    text, kind = "text", status = "success", icon = NULL, title = NULL,
+    payload = list(), markdown = NULL, footer = NULL, label = NULL,
+    value_preview = NULL) {
+  if (identical(kind, "error")) status <- "error"
+  artifact <- .new_tool_artifact(
+    kind, status = status, icon = icon, title = title, payload = payload)
+  display <- .tool_artifact_shinychat_display(
+    artifact, text, display_title = title, markdown = markdown,
+    footer = footer, label = label, value_preview = value_preview)
+  ellmer::ContentToolResult(
+    value = text,
+    extra = list(
+      display = display,
+      codeagent = list(artifact = artifact)
+    )
+  )
+}
 
 #' Build a typed ContentToolResult
 #'
-#' Superset of the legacy `.tool_result()`: in addition to `title`/`markdown`,
-#' carries a typed `artifact` payload (on `extra$codeagent`) consumed by
-#' [render_artifact()], and renders the panel view into `display$html` so the
-#' in-chat card is rich without a separate stored copy.
+#' Compatibility name for codeagent's original typed-result constructor. New
+#' internal code uses `.artifact_tool_result()`; this forwards without creating
+#' a second display protocol.
 #'
 #' @param text Character. LLM-facing value.
 #' @param kind One of `"code"`, `"image"`, `"table"`, `"diff"`, `"text"`,
 #'   `"error"`.
 #' @param status One of `"success"`, `"error"`, `"denied"`.
-#' @param icon bsicons name (character) for the in-chat card + right panel.
-#' @param title Character or HTML. Card title (HTML allowed for the in-chat card).
-#' @param payload List. Kind-specific data (see file docs).
-#' @param markdown Character. In-chat card body + two-phase fallback.
-#' @param footer Optional official shinychat footer content.
+#' @param icon Icon name used by UI adapters.
+#' @param title Character or HTML display title.
+#' @param payload List of kind-specific artifact data.
+#' @param markdown Optional shinychat markdown body.
+#' @param footer Optional shinychat footer content.
 #' @param label Optional compact activity label.
 #' @param value_preview Optional compact result preview.
 #' @return An `ellmer::ContentToolResult`.
@@ -157,66 +391,25 @@ NULL
                           icon = NULL, title = NULL, payload = list(),
                           markdown = NULL, footer = NULL,
                           label = NULL, value_preview = NULL) {
-  # artifact = the single, UI-agnostic structured data source (kind/status/
-  # payload). It lives on `extra$codeagent` (NOT `extra$display`) so shinychat --
-  # which validates `extra$display` against its official field set and warns
-  # "Unrecognized field ... ignoring" -- never sees it. Other UIs (shinyAssistantUI,
-  # a React host, future A2UI) read `extra$codeagent$artifact` and render it
-  # themselves. This is the artifact/canvas pattern: one data source, multiple
-  # views. (plan 35 B1 step 1.)
-  artifact <- list(
-    kind    = kind,
-    status  = status,
-    icon    = icon,
-    title   = if (!is.null(title)) gsub("<[^>]+>", "", as.character(title)) else NULL,
-    payload = payload
-  )
-
-  # Render the artifact once. Bubble and panel currently share one render; the
-  # right Output panel re-renders from the artifact on demand.
-  rendered <- tryCatch(render_artifact(artifact, mode = "panel"),
-                       error = function(e) NULL)
-  display_title <- if (!is.null(title))
-    htmltools::HTML(as.character(title)) else NULL
-  display_label <- label %||%
-    .tool_display_preview(title %||% tools::toTitleCase(kind), 60L)
-  display_preview <- value_preview %||% .tool_display_preview(text, 160L)
-  display <- .new_tool_result_display(
-    title = display_title,
-    icon = if (!is.null(icon)) .icon_tag(icon) else NULL,
-    html = rendered,
-    markdown = markdown,
-    show_request = TRUE,
-    open = identical(status, "error") || (nchar(text %||% "") > 500L),
-    full_screen = !is.null(rendered),
-    footer = footer,
-    label = display_label,
-    value_preview = display_preview,
-    open_style = if (!is.null(rendered)) "framed" else "minimal")
-
-  ellmer::ContentToolResult(
-    value = text,
-    extra = list(
-      display   = display,                    # shinychat-only (official fields)
-      codeagent = list(artifact = artifact)   # private data source (right panel / other UIs)
-    )
-  )
+  .artifact_tool_result(
+    text, kind = kind, status = status, icon = icon, title = title,
+    payload = payload, markdown = markdown, footer = footer,
+    label = label, value_preview = value_preview)
 }
 
-#' Build a rich tool result (typed display card) for a host tool
+#' Build a versioned cross-UI tool result
 #'
 #' @description
-#' Construct an [ellmer::ContentToolResult] that carries a **typed display card**,
-#' so a tool's output renders as a table / image / code / error / rich text both
-#' in codeagent's Shiny app and in any host UI that consumes the
-#' `on_tool_result$display` callback of [codeagent_stream()].
+#' Construct an [ellmer::ContentToolResult] with three independent channels:
+#' `value` is portable model-facing text; `extra$codeagent$artifact` is the
+#' versioned, UI-neutral structured result; and `extra$display` is shinychat's
+#' official presentation adapter. Return the result from your tool function.
 #'
-#' `value` is the text the model sees; `payload` carries the rich artifact for
-#' the UI. Return the result from your tool's function body.
-#'
-#' A host UI reads `extra$codeagent$artifact$kind` + `...$payload` (the
-#' structured artifact, e.g. `payload$df` for a table); codeagent's Shiny app
-#' additionally receives a pre-rendered `display$html`.
+#' Non-shinychat hosts should read the artifact with
+#' [tool_result_artifact()], render supported `kind`/`payload` combinations
+#' natively, and use [tool_result_value()] as the fallback. They never need to
+#' parse shinychat HTML. The streaming `on_tool_result` event exposes the same
+#' `artifact`, `display`, and `value` channels.
 #'
 #' @param value Character(1). Text summary returned to the model.
 #' @param kind One of `"text"`, `"table"`, `"image"`, `"code"`, `"diff"`,
@@ -261,7 +454,7 @@ tool_result <- function(value,
     stop("`value` must be a character(1).", call. = FALSE)
   if (!is.list(payload))
     stop("`payload` must be a named list.", call. = FALSE)
-  .tool_result2(value, kind = kind, status = status, icon = icon,
+  .artifact_tool_result(value, kind = kind, status = status, icon = icon,
                 title = title, payload = payload, markdown = markdown)
 }
 
@@ -304,11 +497,8 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
   if (is.null(artifact) || is.null(artifact$kind)) {
     # Fallback: markdown -> <pre>.
     md <- tryCatch(artifact$markdown %||% artifact$payload$markdown, error = function(e) NULL)
-    if (!is.null(md) && nzchar(md)) {
-      html <- tryCatch(commonmark::markdown_html(md),
-                       error = function(e) paste0("<pre>", md, "</pre>"))
-      return(htmltools::HTML(html))
-    }
+    if (!is.null(md) && nzchar(md))
+      return(htmltools::HTML(.safe_markdown_html(md)))
     return(htmltools::tags$pre("(no output)"))
   }
 
@@ -387,10 +577,9 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
                            class = paste0("language-", lang),
                            p$text %||% ""))
   } else {
-    md <- tryCatch(
-      commonmark::markdown_html(p$text %||% ""),
-      error = function(e) paste0("<pre>", htmltools::htmlEscape(p$text %||% ""), "</pre>"))
-    htmltools::div(id = tid, class = "toolcard-md", htmltools::HTML(md))
+    htmltools::div(
+      id = tid, class = "toolcard-md",
+      htmltools::HTML(.safe_markdown_html(p$text %||% "")))
   }
   htmltools::tagList(
     .card_header(p$icon %||% "text-left", p$title %||% "Output",
@@ -460,7 +649,8 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
       error = function(e) .html_table(df)
     )
   } else if (!is.null(html)) {
-    htmltools::HTML(as.character(html))
+    if (inherits(html, c("html", "shiny.tag", "shiny.tag.list")))
+      html else htmltools::tags$pre(as.character(html))
   } else if (!is.null(df) && is.data.frame(df)) {
     .html_table(df)
   } else {
@@ -575,16 +765,38 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
 #' @return A typed `ContentToolResult`.
 #' @keywords internal
 .adapt_tool_result <- function(result) {
-  # Already typed: preserve the private artifact/sources, but normalize a legacy
-  # plain display list on the presentation copy.
-  if (isTRUE(tryCatch(!is.null(result@extra$codeagent$artifact),
-                      error = function(e) FALSE))) {
+  # Already typed: upgrade the pre-versioned artifact in place, preserve future
+  # versions, and normalize only the shinychat presentation copy.
+  existing_artifact <- tryCatch(
+    result@extra$codeagent$artifact, error = function(e) NULL)
+  artifact <- .upgrade_tool_artifact(existing_artifact)
+  status_changed <- FALSE
+  if (.valid_tool_artifact(artifact) &&
+      identical(artifact$version, .TOOL_ARTIFACT_VERSION) &&
+      !is.null(tryCatch(result@error, error = function(e) NULL)) &&
+      !identical(artifact$status, "error")) {
+    artifact$status <- "error"
+    status_changed <- TRUE
+  }
+  if (.valid_tool_artifact(artifact)) {
+    ex <- result@extra
+    if (!identical(artifact, existing_artifact)) {
+      ex$codeagent$artifact <- artifact
+      result@extra <- ex
+    }
     display <- tryCatch(result@extra$display, error = function(e) list())
-    if (!inherits(display, "shinychat_tool_result_display")) {
+    if (isTRUE(status_changed)) {
       ex <- result@extra
-      title <- result@extra$codeagent$artifact$title %||% "Tool"
-      ex$display <- .official_tool_display(
-        display, tryCatch(result@value, error = function(e) ""), title)
+      ex$display <- .tool_artifact_shinychat_display(
+        artifact, tryCatch(result@value, error = function(e) ""),
+        display_title = artifact$title %||% "Tool")
+      result@extra <- ex
+    } else {
+      ex <- result@extra
+      title <- artifact$title %||% "Tool"
+      ex$display <- .safe_official_tool_display(
+        display, tryCatch(result@value, error = function(e) ""), title,
+        artifact)
       result@extra <- ex
     }
     return(result)
@@ -595,22 +807,31 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
   # strip it from display, and re-render the panel html into the official
   # display$html field so old sessions render rich + warning-free.
   legacy_card <- tryCatch(result@extra$display$toolcard, error = function(e) NULL)
-  if (!is.null(legacy_card)) {
+  artifact <- .upgrade_tool_artifact(legacy_card)
+  if (.valid_tool_artifact(artifact) &&
+      identical(artifact$version, .TOOL_ARTIFACT_VERSION) &&
+      !is.null(tryCatch(result@error, error = function(e) NULL))) {
+    artifact$status <- "error"
+  }
+  if (.valid_tool_artifact(artifact)) {
     ex <- tryCatch(result@extra, error = function(e) list()) %||% list()
     disp <- ex$display %||% list()
     disp$toolcard <- NULL
     disp$right_output <- NULL
-    rendered <- tryCatch(render_artifact(legacy_card, mode = "panel"),
+    rendered <- tryCatch(render_artifact(artifact, mode = "panel"),
                          error = function(e) NULL)
     if (!is.null(rendered)) {
       disp$html <- rendered
       if (is.null(disp$full_screen)) disp$full_screen <- TRUE
     }
-    ex$display <- .official_tool_display(
+    ex$display <- .safe_official_tool_display(
       disp,
       tryCatch(result@value, error = function(e) ""),
-      legacy_card$title %||% disp$title %||% "Tool")
-    ex$codeagent <- c(ex$codeagent %||% list(), list(artifact = legacy_card))
+      artifact$title %||% disp$title %||% "Tool",
+      artifact)
+    codeagent_extra <- if (is.list(ex$codeagent)) ex$codeagent else list()
+    codeagent_extra$artifact <- artifact
+    ex$codeagent <- codeagent_extra
     result@extra <- ex
     return(result)
   }
@@ -619,6 +840,8 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
   icon      <- .icon_for_tool(tool_name)
   value     <- tryCatch(as.character(result@value), error = function(e) "")
   contents  <- tryCatch(result@extra$contents, error = function(e) NULL)
+  original_extra <- tryCatch(result@extra, error = function(e) list()) %||% list()
+  original_error <- tryCatch(result@error, error = function(e) NULL)
 
   # Legacy display keys from raw btw / pre-migration results (markdown/title).
   # right_output is no longer produced or consumed (removed in plan 35 B1).
@@ -626,7 +849,8 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
   legacy_ti <- tryCatch(result@extra$display$title, error = function(e) NULL)
   legacy_footer <- tryCatch(result@extra$display$footer, error = function(e) NULL)
 
-  images <- list(); text_parts <- character(0); has_error <- FALSE
+  images <- list(); text_parts <- character(0)
+  has_error <- !is.null(original_error)
   for (ct in (contents %||% list())) {
     cls <- class(ct)[1]
     if (grepl("ContentImageInline", cls, fixed = TRUE)) {
@@ -661,9 +885,13 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
     kind <- "text"; status <- "success"
   }
 
+  # Rich payloads keep their kind, but provider/tool error metadata always wins
+  # for status so stream `is_error` and artifact$status cannot disagree.
+  if (isTRUE(has_error)) status <- "error"
+
   title <- if (!is.null(legacy_ti)) as.character(legacy_ti) else tool_name
 
-  res <- .tool_result2(
+  res <- .artifact_tool_result(
     text     = value,
     kind     = kind,
     status   = status,
@@ -673,14 +901,30 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
     markdown = legacy_md,
     footer   = legacy_footer
   )
-  original_codeagent <- tryCatch(result@extra$codeagent, error = function(e) NULL)
-  if (length(original_codeagent)) {
-    ex <- res@extra
-    ex$codeagent <- utils::modifyList(original_codeagent,
-                                      ex$codeagent %||% list())
-    res@extra <- ex
+  # Preserve unrelated provider/tool metadata while replacing only the
+  # presentation adapter and merging codeagent-owned fields.
+  preserved_extra <- original_extra
+  original_display <- preserved_extra$display
+  preserved_extra$display <- NULL
+  original_codeagent <- if (is.list(preserved_extra$codeagent)) {
+    preserved_extra$codeagent
+  } else {
+    list()
   }
+  preserved_extra$codeagent <- NULL
+  new_extra <- res@extra
+  if (inherits(original_display, "shinychat_tool_result_display")) {
+    new_extra$display <- .safe_official_tool_display(
+      original_display, value,
+      tool_result_artifact(res)$title %||% title,
+      tool_result_artifact(res))
+  }
+  new_extra$codeagent <- utils::modifyList(
+    original_codeagent, new_extra$codeagent %||% list())
+  res@extra <- c(preserved_extra, new_extra)
+
   original_request <- tryCatch(result@request, error = function(e) NULL)
   if (!is.null(original_request)) res@request <- original_request
+  if (!is.null(original_error)) res@error <- original_error
   res
 }

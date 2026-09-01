@@ -7,11 +7,17 @@
 NULL
 
 .web_tool_result <- function(value, title, markdown, sources = list()) {
-  ellmer::ContentToolResult(
-    value = value,
-    extra = list(
-      display = list(title = htmltools::HTML(title), markdown = markdown),
-      codeagent = list(sources = .dedupe_web_sources(sources))))
+  result <- .artifact_tool_result(
+    value,
+    kind = "text",
+    title = htmltools::HTML(title),
+    payload = list(text = value),
+    markdown = markdown
+  )
+  ex <- result@extra
+  ex$codeagent$sources <- .dedupe_web_sources(sources)
+  result@extra <- ex
+  result
 }
 
 #' Create the WebFetch tool

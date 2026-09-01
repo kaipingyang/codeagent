@@ -106,7 +106,7 @@ team_run_tool <- function(model = NULL, cwd = getwd()) {
       tk <- if (is.character(tasks)) as.list(tasks) else tasks
       tk <- unlist(lapply(tk, as.character))
       if (!length(tk))
-        return(.tool_result2("[TeamRun] no tasks provided.", kind = "error",
+        return(.artifact_tool_result("[TeamRun] no tasks provided.", kind = "error",
                              icon = "people", title = "TeamRun -- empty"))
       results <- tryCatch(
         team_run(tk, model = model, n_workers = n_workers, cwd = cwd),
@@ -116,7 +116,7 @@ team_run_tool <- function(model = NULL, cwd = getwd()) {
         sprintf("### Task %d\n%s", i, as.character(results[[i]])),
         character(1))
       combined <- paste(parts, collapse = "\n\n")
-      .tool_result2(combined, kind = "text", icon = "people",
+      .artifact_tool_result(combined, kind = "text", icon = "people",
                     title = sprintf("TeamRun (%d agents)", length(tk)),
                     markdown = combined,
                     payload = list(text = combined, lang = "markdown"))
@@ -176,20 +176,20 @@ team_coordinate_tool <- function(model = NULL, cwd = getwd()) {
       tk <- if (is.character(tasks)) as.list(tasks) else tasks
       tk <- unlist(lapply(tk, as.character))
       if (!length(tk))
-        return(.tool_result2("[TeamCoordinate] no tasks provided.", kind = "error",
+        return(.artifact_tool_result("[TeamCoordinate] no tasks provided.", kind = "error",
                              icon = "people", title = "TeamCoordinate -- empty"))
       board <- tryCatch(
         team_coordinate(tk, model = model, n_workers = n_workers, cwd = cwd),
         error = function(e) NULL)
       if (is.null(board))
-        return(.tool_result2("[TeamCoordinate] failed.", kind = "error",
+        return(.artifact_tool_result("[TeamCoordinate] failed.", kind = "error",
                              icon = "people", title = "TeamCoordinate -- error"))
       parts <- vapply(seq_len(nrow(board)), function(i)
         sprintf("### Task #%s (%s)\n%s", board$id[i], board$status[i],
                 as.character(board$result[i])),
         character(1))
       combined <- paste(parts, collapse = "\n\n")
-      .tool_result2(combined, kind = "text", icon = "people",
+      .artifact_tool_result(combined, kind = "text", icon = "people",
                     title = sprintf("TeamCoordinate (%d tasks)", nrow(board)),
                     markdown = combined,
                     payload = list(text = combined, lang = "markdown"))

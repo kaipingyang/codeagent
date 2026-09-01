@@ -49,10 +49,11 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
         system2(argv_bg[[1L]], argv_bg[-1L], wait = FALSE,
                 stdout = FALSE, stderr = FALSE,
                 env = sb_env %||% character())
-        return(.tool_result2(paste0("[Background: command started]\nCommand: ", command),
+        return(.artifact_tool_result(paste0("[Background: command started]\nCommand: ", command),
                              kind = "text", icon = "terminal",
-                             title = sprintf("Bash (bg) <code>%s</code>",
-                                             substr(command, 1L, 60L)),
+                             title = htmltools::HTML(sprintf(
+                               "Bash (bg) <code>%s</code>",
+                               htmltools::htmlEscape(substr(command, 1L, 60L)))),
                              payload = list(text = command, lang = "sh")))
       }
       tryCatch({
@@ -81,11 +82,11 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
         result <- truncate_tool_result(result, "Bash")
         label  <- substr(command, 1L, 80L)
         if (nchar(command) > 80L) label <- paste0(label, "...")
-        .tool_result2(result,
+        .artifact_tool_result(result,
                       kind     = "text",
                       icon     = "terminal",
-                      title    = sprintf("<code>%s</code>",
-                                         htmltools::htmlEscape(label)),
+                      title    = htmltools::HTML(sprintf(
+                        "<code>%s</code>", htmltools::htmlEscape(label))),
                       markdown = sprintf("```sh\n%s\n```\n\n%s", command, result),
                       payload  = list(text = result, lang = "sh"))
       }, error = function(e) {

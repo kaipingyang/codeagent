@@ -38,12 +38,12 @@ read_tool <- function(mode = "default", rules = list()) {
           sprintf(" (lines %d-%d)", start, end) else ""
 
         # code artifact -> in-chat card + right panel preview
-        .tool_result2(
+        .artifact_tool_result(
           result,
           kind     = "code",
           icon     = "file-text",
-          title    = sprintf("Read <code>%s</code>%s",
-                             htmltools::htmlEscape(fname), range_str),
+          title    = htmltools::HTML(sprintf(
+            "Read <code>%s</code>%s", htmltools::htmlEscape(fname), range_str)),
           markdown = sprintf("```%s\n%s\n```", ext, result),
           payload  = list(text = result,
                           lang = if (nzchar(ext)) ext else "text",
@@ -100,12 +100,12 @@ write_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
         writeLines(content, file_path)
         verb  <- if (existed) "Updated" else "Created"
         fname <- basename(file_path)
-        .tool_result2(
+        .artifact_tool_result(
           paste0(verb, ": ", file_path),
           kind    = "diff",
           icon    = if (existed) "pencil" else "file-earmark-plus",
-          title   = sprintf("%s <code>%s</code>",
-                            verb, htmltools::htmlEscape(fname)),
+          title   = htmltools::HTML(sprintf(
+            "%s <code>%s</code>", verb, htmltools::htmlEscape(fname))),
           payload = list(verb = verb, path = file_path, new = content)
         )
       }, error = function(e) {
@@ -173,12 +173,13 @@ edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
         else
           sub(old_string, new_string, content, fixed = TRUE)
         writeLines(new_content, path)
-        .tool_result2(
+        .artifact_tool_result(
           paste0("Edited: ", file_path),
           kind    = "diff",
           icon    = "pencil",
-          title   = sprintf("Edit <code>%s</code>",
-                            htmltools::htmlEscape(basename(file_path))),
+          title   = htmltools::HTML(sprintf(
+            "Edit <code>%s</code>",
+            htmltools::htmlEscape(basename(file_path)))),
           payload = list(verb = "Edited", path = file_path,
                          old = content, new = new_content)
         )
@@ -259,12 +260,13 @@ multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
           applied <- applied + 1L
         }
         writeLines(content, path)
-        .tool_result2(
+        .artifact_tool_result(
           paste0("Applied ", applied, " edit(s) to: ", file_path),
           kind    = "diff",
           icon    = "pencil-square",
-          title   = sprintf("MultiEdit <code>%s</code> (%d edits)",
-                            htmltools::htmlEscape(basename(file_path)), applied),
+          title   = htmltools::HTML(sprintf(
+            "MultiEdit <code>%s</code> (%d edits)",
+            htmltools::htmlEscape(basename(file_path)), applied)),
           payload = list(verb = sprintf("MultiEdit (%d)", applied),
                          path = file_path, old = orig_content, new = content)
         )

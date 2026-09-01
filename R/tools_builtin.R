@@ -14,18 +14,15 @@ NULL
 # Shared tool factory helpers  (used by tools_bash.R, tools_fs.R, etc.)
 # ---------------------------------------------------------------------------
 
-# Wrap a tool result string in ContentToolResult with display metadata.
-# NOTE: display carries ONLY shinychat-official fields (title/markdown). The
-# legacy right_output param was removed (plan 35 B1) -- it was dead (no caller)
-# and putting it under extra$display triggered shinychat "Unrecognized field".
+# Compatibility helper for simple text/markdown tool results. It now originates
+# the same artifact v1 contract as richer producers.
 .tool_result <- function(text, title = NULL, markdown = NULL) {
-  display <- list()
-  if (!is.null(title))        display$title        <- htmltools::HTML(title)
-  if (!is.null(markdown))     display$markdown     <- markdown
-  if (length(display) == 0L)  display <- NULL
-  ellmer::ContentToolResult(
-    value = text,
-    extra = if (!is.null(display)) list(display = display) else list()
+  .artifact_tool_result(
+    text,
+    kind = "text",
+    title = title,
+    payload = list(text = text),
+    markdown = markdown
   )
 }
 

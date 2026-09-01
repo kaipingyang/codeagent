@@ -79,3 +79,16 @@ test_that("register_btw_file_tools registers read direct + write gated", {
   # At least one read tool present (registered directly).
   expect_true(any(nms %in% .BTW_FILE_READONLY))
 })
+
+
+test_that("permission display escapes a hostile mode before trusted HTML", {
+  hostile <- "<img src=x onerror=alert(1)>"
+  wrapped <- .wrap_btw_tool_permission(
+    .fake_btw_write_tool(), mode = hostile, ask_fn = NULL)
+  out <- wrapped(path = "/a.txt", content = "hi")
+  title <- as.character(out@extra$display$title)
+
+  expect_false(grepl("<img", title, fixed = TRUE))
+  expect_match(title, "&lt;img", fixed = TRUE)
+  expect_identical(tool_result_artifact(out)$status, "error")
+})

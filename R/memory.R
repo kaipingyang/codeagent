@@ -194,15 +194,16 @@ remember_tool <- function() {
       path <- tryCatch(write_memory(title, content, description),
                        error = function(e) NULL)
       if (is.null(path))
-        return(.tool_result2("[Error] could not write memory.",
+        return(.artifact_tool_result("[Error] could not write memory.",
                              kind = "error", icon = "exclamation-triangle",
                              title = "Remember - error",
                              payload = list(message = "write failed")))
-      .tool_result2(
+      .artifact_tool_result(
         sprintf("Saved memory: %s", title),
         kind    = "text",
         icon    = "bookmark",
-        title   = sprintf("Remembered <code>%s</code>", htmltools::htmlEscape(title)),
+        title   = htmltools::HTML(sprintf(
+          "Remembered <code>%s</code>", htmltools::htmlEscape(title))),
         payload = list(text = content)
       )
     },

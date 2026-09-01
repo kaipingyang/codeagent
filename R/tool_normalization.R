@@ -27,7 +27,7 @@
                      null = "null", na = "null", digits = NA, POSIXt = "ISO8601"),
     error = function(e) NULL)
   if (is.null(encoded))
-    return(.tool_result2(
+    return(.artifact_tool_result(
       "[Error] Tool returned a complex value that could not be safely serialized.",
       kind = "error", status = "error", icon = "exclamation-triangle",
       title = "Tool result unavailable",
@@ -35,11 +35,11 @@
 
   text <- as.character(encoded)
   if (is.data.frame(value)) {
-    return(.tool_result2(
+    return(.artifact_tool_result(
       text, kind = "table", icon = "table", title = "Table result",
       payload = list(df = value), value_preview = .tool_display_preview(text)))
   }
-  .tool_result2(
+  .artifact_tool_result(
     text, kind = "text", icon = "braces", title = "Structured result",
     payload = list(text = text), value_preview = .tool_display_preview(text))
 }

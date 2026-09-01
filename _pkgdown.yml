@@ -13,6 +13,10 @@ navbar:
   structure:
     left:  [intro, reference, articles, news]
     right: [github]
+  components:
+    news:
+      text: Changelog
+      href: news/index.html
 
 reference:
   - title: "Core Client"
@@ -161,6 +165,8 @@ reference:
       - enable_btw_file_tools
       - register_tool_meta
       - tool_result
+      - tool_result_artifact
+      - tool_result_value
       - install_permission_gate
       # --- Data Shield: engine + lifecycle ---
       - DataShield
@@ -254,6 +260,7 @@ articles:
     navbar: "Embedding"
     contents:
       - backend-integration
+      - tool-artifacts
 
   - title: "Data Shield"
     navbar: "Data Shield"

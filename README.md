@@ -374,9 +374,30 @@ the Agent checkbox controls the single foreground Agent owner. Permission or
 tool-group changes are rejected while a response is streaming, and a failed
 refresh restores the previous tool snapshot before input is re-enabled.
 
-Tool results use shinychat's official display constructor with compact labels and
-value previews; rich artifacts use the official framed open style. codeagent keeps
-artifact/source metadata outside the display contract. `ui_layout = "page_chat"`
+Tool results have three deliberately separate channels: the model receives the
+portable text `value`; any UI can consume the versioned
+`extra$codeagent$artifact` (`schema = "codeagent.tool-artifact"`, `version = 1`);
+and shinychat receives its official `tool_result_display()` adapter in
+`extra$display`, including compact labels/value previews and framed rich cards.
+See the [tool-result artifact guide](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html)
+for the v1 schema, version negotiation, trust boundary, and migration checklist.
+The streaming `on_tool_result` event exposes all three as `artifact`, `display`,
+and `value`. A non-shinychat host should prefer the artifact, ignore the display
+adapter, and fall back to the value when it does not support that artifact
+version or kind:
+
+```r
+on_tool_result <- function(event) {
+  artifact <- tool_result_artifact(event)  # NULL if v1 is unsupported/invalid
+  if (!is.null(artifact) && artifact$kind == "table") {
+    render_my_table(artifact$payload)
+  } else {
+    render_plain_text(tool_result_value(event))
+  }
+}
+```
+
+`ui_layout = "page_chat"`
 uses shinychat's single-root page, `page_chat_theme()` baseline, a persistent global
 dark-mode/Workspace toolbar, and resizable drawer without transferring streaming,
 permission, session, or Data Shield ownership to `shinychat::chat_server()`. The

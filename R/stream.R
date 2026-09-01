@@ -25,8 +25,9 @@ NULL
 #' * `on_tool_request` / `on_tool_result` parameters are called from the
 #'   `ContentToolRequest` / `ContentToolResult` **stream chunks**.
 #'   `on_tool_request` fires **before** the permission gate ("pre-gate
-#'   notification"). `on_tool_result` receives a typed `display` contract from
-#'   `.adapt_tool_result()`.
+#'   notification"). `on_tool_result` receives the UI-neutral versioned
+#'   `artifact`, shinychat's optional `display` adapter, and portable `value`
+#'   fallback from `.adapt_tool_result()`.
 #' * `chat$on_tool_request` / `chat$on_tool_result` **callbacks** (registered
 #'   by the permission gate, midloop compaction, and display helpers) are
 #'   independent and complementary.
@@ -41,9 +42,11 @@ NULL
 #' @param on_tool_request Optional `function(list(id, name, arguments, intent))`.
 #'   Called from the `ContentToolRequest` stream chunk, **before** the
 #'   permission gate. Useful for displaying a "pending" tool card.
-#' @param on_tool_result Optional `function(list(id, name, display, value, is_error))`.
-#'   Called from the `ContentToolResult` stream chunk. `display` is a typed
-#'   toolcard contract from [tool_display] suitable for rich rendering.
+#' @param on_tool_result Optional
+#'   `function(list(id, name, display, value, is_error, artifact))`. Called from
+#'   the `ContentToolResult` stream chunk. `artifact` is codeagent's versioned,
+#'   UI-neutral primary contract; `display` is the optional shinychat adapter;
+#'   `value` is the portable fallback for unsupported artifact versions/kinds.
 #' @param on_error Optional `function(message, recovered)`. Called on error.
 #' @param on_usage Optional `function(usage)`. Called at turn end with a list:
 #'   `n_tokens`, `model_limit`, `warning_state`, `cost_last` (USD or `NA`).
@@ -163,8 +166,9 @@ codeagent_stream_async <- function(
           .citation_registry_add(
             citation_registry, .citation_sources_from_result(adapted))
           if (!is.null(on_tool_result)) {
-            display <- tryCatch(adapted@extra$display, error = function(e) NULL)
-            req     <- tryCatch(chunk@request, error = function(e) NULL)
+            display  <- tryCatch(adapted@extra$display, error = function(e) NULL)
+            artifact <- tool_result_artifact(adapted, version = NULL)
+            req      <- tryCatch(chunk@request, error = function(e) NULL)
             on_tool_result(list(
               id       = tryCatch(
                            if (!is.null(req)) req@id   else NA_character_,
@@ -173,8 +177,9 @@ codeagent_stream_async <- function(
                            if (!is.null(req)) req@name else NA_character_,
                            error = function(e) NA_character_),
               display  = display,
-              value    = tryCatch(as.character(chunk@value), error = function(e) ""),
-              is_error = !is.null(tryCatch(chunk@error, error = function(e) NULL))))
+              value    = tool_result_value(adapted),
+              is_error = !is.null(tryCatch(chunk@error, error = function(e) NULL)),
+              artifact = artifact))
           }
 
         } else {

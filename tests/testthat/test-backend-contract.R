@@ -11,7 +11,8 @@ test_that("Backend Contract v1: the promised functions are exported", {
     # entry + drive
     "codeagent_client", "codeagent_stream", "codeagent_stream_async", "agent_loop",
     # host tools + governance
-    "register_tool_meta", "tool_result", "install_permission_gate",
+    "register_tool_meta", "tool_result", "tool_result_artifact",
+    "tool_result_value", "install_permission_gate",
     "DataShield", "shield_describe", "shield_egress", "shield_regex",
     "shield_ingress", "shield_tool_policy", "shield_sandbox", "shield_reviewer",
     # skills
@@ -46,18 +47,22 @@ test_that("Backend Contract v1: streaming callback signature is stable", {
   expect_true("on_tick" %in% names(formals(codeagent_stream)))
 })
 
-test_that("Backend Contract v1: tool_result emits a typed display card", {
+test_that("Backend Contract v1: tool_result emits three separate channels", {
   tr <- tool_result("6 x 11 summary", kind = "table",
                      payload = list(df = utils::head(mtcars)), title = "Summary")
   expect_true(S7::S7_inherits(tr, ellmer::ContentToolResult))
-  art <- tr@extra$codeagent$artifact
+  art <- tool_result_artifact(tr)
+  expect_identical(art$schema, "codeagent.tool-artifact")
+  expect_identical(art$version, 1L)
   expect_identical(art$kind, "table")
   expect_true(is.data.frame(art$payload$df))
-  # private artifact lives on extra$codeagent, never under extra$display
+  expect_identical(tool_result_value(tr), "6 x 11 summary")
+  expect_s3_class(tr@extra$display, "shinychat_tool_result_display")
+  # The UI-neutral artifact never lives under the shinychat display adapter.
   expect_null(tr@extra$display$toolcard)
 
   err <- tool_result("boom", kind = "error", payload = list(message = "boom"))
-  expect_identical(err@extra$codeagent$artifact$status, "error")
+  expect_identical(tool_result_artifact(err)$status, "error")
 
   expect_error(tool_result(1, kind = "text"))            # value must be char(1)
   expect_error(tool_result("x", kind = "bogus"))         # kind validated

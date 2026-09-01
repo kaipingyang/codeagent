@@ -38,9 +38,11 @@ testing via duck-typing).}
 Called from the \code{ContentToolRequest} stream chunk, \strong{before} the
 permission gate. Useful for displaying a "pending" tool card.}
 
-\item{on_tool_result}{Optional \verb{function(list(id, name, display, value, is_error))}.
-Called from the \code{ContentToolResult} stream chunk. \code{display} is a typed
-toolcard contract from \link{tool_display} suitable for rich rendering.}
+\item{on_tool_result}{Optional
+\verb{function(list(id, name, display, value, is_error, artifact))}. Called from
+the \code{ContentToolResult} stream chunk. \code{artifact} is codeagent's versioned,
+UI-neutral primary contract; \code{display} is the optional shinychat adapter;
+\code{value} is the portable fallback for unsupported artifact versions/kinds.}
 
 \item{on_error}{Optional \verb{function(message, recovered)}. Called on error.}
 
@@ -80,8 +82,9 @@ save, cost tracking) and invokes typed callbacks for each content event.
 \item \code{on_tool_request} / \code{on_tool_result} parameters are called from the
 \code{ContentToolRequest} / \code{ContentToolResult} \strong{stream chunks}.
 \code{on_tool_request} fires \strong{before} the permission gate ("pre-gate
-notification"). \code{on_tool_result} receives a typed \code{display} contract from
-\code{.adapt_tool_result()}.
+notification"). \code{on_tool_result} receives the UI-neutral versioned
+\code{artifact}, shinychat's optional \code{display} adapter, and portable \code{value}
+fallback from \code{.adapt_tool_result()}.
 \item \code{chat$on_tool_request} / \code{chat$on_tool_result} \strong{callbacks} (registered
 by the permission gate, midloop compaction, and display helpers) are
 independent and complementary.

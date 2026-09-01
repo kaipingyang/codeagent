@@ -229,7 +229,7 @@ register_run_r_tool <- function(chat, mode = "default", rules = list(),
     list(mime = im$type, b64 = im$data))
 
   if (length(imgs) > 0L) {
-    .tool_result2(
+    .artifact_tool_result(
       value,
       kind     = "image",
       status   = if (status == "success") "success" else "error",
@@ -239,7 +239,7 @@ register_run_r_tool <- function(chat, mode = "default", rules = list(),
       payload  = list(images = imgs, code = code, output = output_text)
     )
   } else {
-    .tool_result2(
+    .artifact_tool_result(
       value,
       kind     = if (status == "success") "code" else "error",
       status   = if (status == "success") "success" else "error",

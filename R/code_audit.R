@@ -335,7 +335,7 @@ audit_code_tool <- function(shield = NULL, project_root = getwd()) {
         if (length(res$static_paths)) paste(res$static_paths, collapse = ", ") else "(none)",
         "\nblocked (outside project / non-source / missing):\n", blocked_txt,
         "\nreviewer verdicts:\n", review_txt)
-      .tool_result2(summary, kind = "text", icon = "shield-check",
+      .artifact_tool_result(summary, kind = "text", icon = "shield-check",
                     title = sprintf("AuditCode -- risk: %s", res$risk),
                     payload = list(text = summary, lang = "text"))
     },

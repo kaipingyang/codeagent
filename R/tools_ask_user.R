@@ -132,7 +132,7 @@ ask_user_tool <- function(ask_question_fn = NULL, async = FALSE) {
 }
 
 .ask_tool_result <- function(answer, question) {
-  .tool_result2(
+  .artifact_tool_result(
     if (nzchar(answer)) answer else "(no answer)",
     kind     = "text",
     icon     = "message-circle",
