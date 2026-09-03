@@ -5,65 +5,261 @@
 #' @keywords internal
 NULL
 
-# Map a theme name (README "default/flatly/darkly/glass" + CLI
-# "light/dark/glassmorphism" vocabularies) to a bslib bs_theme. Unknown names
-# fall back to the default light theme (never errors).
-.resolve_app_theme <- function(theme = "default") {
-  key <- switch(tolower(theme %||% "default"),
+# Theme foundation shared by the classic and page_chat layouts.
+# `page_chat_theme()` returns a regular bslib theme, while also supplying the
+# official shinychat page, safe-area, typography, surface, and drawer tokens.
+.codeagent_theme_key <- function(style = "default") {
+  if (!is.character(style) || length(style) != 1L || is.na(style))
+    return("default")
+  switch(tolower(style %||% "default"),
     light  = , default = "default",
+    ios    = "ios",
+    aurora = "aurora",
     dark   = , darkly  = "darkly",
     flatly = "flatly",
     glass  = , glassmorphism = "glass",
     "default")
-  switch(key,
-    flatly = bslib::bs_theme(version = 5, bootswatch = "flatly"),
-    darkly = bslib::bs_theme(version = 5, bootswatch = "darkly"),
-    glass  = bslib::bs_add_rules(
-      bslib::bs_theme(
-        version = 5, bg = "#0e1230", fg = "#e9ecff",
-        primary = "#8ab4ff", secondary = "#9aa0c4"
-      ),
-      paste(
-        "body { background:",
-        "radial-gradient(1200px 800px at 15% 0%, #1b2350 0%, #0e1230 55%) fixed; }",
-        ".card, .accordion, .accordion-item, .bslib-sidebar-layout > .sidebar,",
-        ".modal-content {",
-        "background-color: rgba(255,255,255,0.06) !important;",
-        "backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);",
-        "border: 1px solid rgba(255,255,255,0.12) !important; }",
-        sep = "\n")
-    ),
-    bslib::bs_theme(version = 5)
-  )
+}
+
+.is_codeagent_bs_theme <- function(x) {
+  tryCatch(bslib::is_bs_theme(x), error = function(e) inherits(x, "bs_theme"))
+}
+
+.merge_theme_args <- function(defaults, overrides) {
+  if (!length(overrides)) return(defaults)
+  nm <- names(overrides)
+  if (is.null(nm) || any(is.na(nm) | !nzchar(nm)))
+    stop("All `...` arguments to `codeagent_theme()` must be named.", call. = FALSE)
+  if ("preset" %in% nm)
+    stop("Choose the preset with `style`; do not pass `preset` in `...`.", call. = FALSE)
+  for (i in seq_along(overrides)) defaults[nm[[i]]] <- list(overrides[[i]])
+  defaults
+}
+
+.glass_theme_rules <- function() {
+  paste(c(
+    "body { background: radial-gradient(1200px 800px at 15% 0%, #1b2350 0%, #0e1230 55%) fixed; }",
+    ".card, .accordion, .accordion-item, .bslib-sidebar-layout > .sidebar, .modal-content {",
+    "  background-color: rgba(255,255,255,0.06) !important;",
+    "  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);",
+    "  border: 1px solid rgba(255,255,255,0.12) !important;",
+    "}"
+  ), collapse = "\n")
+}
+
+.ios_theme_rules <- function() {
+  paste(c(
+    ":root {",
+    "  --ca-app-canvas-bg: #f2f2f7;",
+    "  --ca-app-surface-bg: #ffffff;",
+    "  --ca-card-border: rgba(0,0,0,0.08);",
+    "  --ca-card-radius: 14px;",
+    "  --ca-card-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);",
+    "  --shiny-chat-page-surface-bg: var(--ca-app-canvas-bg);",
+    "  --shiny-chat-page-sidebar-bg: var(--ca-app-surface-bg);",
+    "  --shiny-chat-page-canvas-bg: var(--ca-app-canvas-bg);",
+    "  --shiny-chat-page-drawer-bg: var(--ca-app-surface-bg);",
+    "  --shiny-chat-page-drawer-header-bg: var(--ca-app-surface-bg);",
+    "}",
+    "[data-bs-theme='dark'] {",
+    "  --ca-app-canvas-bg: #1c1c1e;",
+    "  --ca-app-surface-bg: #2c2c2e;",
+    "  --ca-card-border: rgba(84,84,88,0.65);",
+    "  --ca-card-shadow: 0 2px 12px rgba(0,0,0,0.28), 0 1px 3px rgba(0,0,0,0.22);",
+    "}",
+    "body, .bslib-page-fill, .bslib-sidebar-layout > .main {",
+    "  background-color: var(--ca-app-canvas-bg);",
+    "}",
+    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar {",
+    "  background-color: var(--ca-app-surface-bg);",
+    "}",
+    "shiny-chat-page .shiny-chat-page-panel,",
+    "shiny-chat-page shiny-chat-container {",
+    "  background-color: var(--ca-app-canvas-bg);",
+    "}",
+    ".card, .toolcard, .accordion-item, .modal-content,",
+    "shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
+    "  background-color: var(--ca-app-surface-bg);",
+    "  border-color: var(--ca-card-border);",
+    "  border-radius: var(--ca-card-radius);",
+    "}",
+    ".card, shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
+    "  box-shadow: var(--ca-card-shadow);",
+    "}",
+    "shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
+    "  border: 1px solid var(--ca-card-border);",
+    "}",
+    ".shiny-chat-page-sidebar-panel > .card { margin-bottom: 0; }",
+    ".toolcard { --bs-body-bg: var(--ca-app-surface-bg); }"
+  ), collapse = "\n")
+}
+
+.aurora_theme_rules <- function() {
+  paste(c(
+    ":root {",
+    "  --ca-aurora-canvas: #f2f2f7;",
+    "  --ca-aurora-glass: rgba(255,255,255,0.76);",
+    "  --ca-aurora-content: rgba(255,255,255,0.94);",
+    "  --ca-aurora-border: rgba(255,255,255,0.72);",
+    "  --ca-aurora-content-border: rgba(67,56,140,0.12);",
+    "  --ca-aurora-shadow: 0 12px 36px rgba(56,45,110,0.11), 0 2px 8px rgba(0,0,0,0.05);",
+    "  --ca-aurora-blue: rgba(0,122,255,0.20);",
+    "  --ca-aurora-purple: rgba(175,82,222,0.17);",
+    "  --ca-aurora-indigo: rgba(88,86,214,0.15);",
+    "  --shiny-chat-page-surface-bg: var(--ca-aurora-canvas);",
+    "  --shiny-chat-page-sidebar-bg: var(--ca-aurora-glass);",
+    "  --shiny-chat-page-canvas-bg: var(--ca-aurora-canvas);",
+    "  --shiny-chat-page-drawer-bg: var(--ca-aurora-glass);",
+    "  --shiny-chat-page-drawer-header-bg: var(--ca-aurora-glass);",
+    "}",
+    "[data-bs-theme='dark'] {",
+    "  --ca-aurora-canvas: #0b0b14;",
+    "  --ca-aurora-glass: rgba(22,22,38,0.76);",
+    "  --ca-aurora-content: rgba(21,22,32,0.94);",
+    "  --ca-aurora-border: rgba(255,255,255,0.12);",
+    "  --ca-aurora-content-border: rgba(255,255,255,0.12);",
+    "  --ca-aurora-shadow: 0 12px 36px rgba(0,0,0,0.30), 0 2px 8px rgba(0,0,0,0.22);",
+    "  --ca-aurora-blue: rgba(69,125,255,0.20);",
+    "  --ca-aurora-purple: rgba(162,89,255,0.18);",
+    "  --ca-aurora-indigo: rgba(99,102,241,0.14);",
+    "}",
+    "body, .bslib-page-fill, shiny-chat-page {",
+    "  background-color: var(--ca-aurora-canvas);",
+    "  background-image: radial-gradient(54rem 38rem at 8% -8%, var(--ca-aurora-blue), transparent 68%), radial-gradient(48rem 40rem at 96% 4%, var(--ca-aurora-purple), transparent 66%), radial-gradient(42rem 34rem at 52% 108%, var(--ca-aurora-indigo), transparent 70%);",
+    "  background-attachment: fixed;",
+    "}",
+    "body > shiny-chat-page.shiny-bound-input {",
+    "  background-color: var(--ca-aurora-canvas) !important;",
+    "  background-image: radial-gradient(54rem 38rem at 8% -8%, var(--ca-aurora-blue), transparent 68%), radial-gradient(48rem 40rem at 96% 4%, var(--ca-aurora-purple), transparent 66%), radial-gradient(42rem 34rem at 52% 108%, var(--ca-aurora-indigo), transparent 70%) !important;",
+    "}",
+    ".bslib-sidebar-layout > .main, shiny-chat-page .shiny-chat-page-panel,",
+    "shiny-chat-page shiny-chat-container { background-color: transparent; }",
+    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
+    ".shiny-chat-drawer, .shiny-chat-page-drawer,",
+    ".shiny-chat-drawer-header, .shiny-chat-page-drawer-header,",
+    ".shiny-chat-composer {",
+    "  background-color: var(--ca-aurora-glass);",
+    "  backdrop-filter: blur(18px) saturate(140%);",
+    "  -webkit-backdrop-filter: blur(18px) saturate(140%);",
+    "  border-color: var(--ca-aurora-border);",
+    "  box-shadow: var(--ca-aurora-shadow);",
+    "}",
+    ".shiny-chat-composer {",
+    "  border: 1px solid var(--ca-aurora-border);",
+    "  border-radius: 14px;",
+    "}",
+    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar {",
+    "  border-right: 1px solid var(--ca-aurora-border);",
+    "}",
+    ".card, .toolcard, .accordion-item, .modal-content,",
+    ".shiny-chat-message-content, .table-responsive, .ca-tool-artifact {",
+    "  background-color: var(--ca-aurora-content);",
+    "  border-color: var(--ca-aurora-content-border);",
+    "}",
+    ".card, .toolcard, .accordion-item, .modal-content {",
+    "  border-radius: 14px;",
+    "}",
+    ".toolcard { --bs-body-bg: var(--ca-aurora-content); }",
+    ".table, table { --bs-table-bg: var(--ca-aurora-content); }",
+    "pre, code { background-color: var(--ca-aurora-content); }",
+    "@media (prefers-reduced-transparency: reduce) {",
+    "  :root { --ca-aurora-glass: #ffffff; --ca-aurora-content: #ffffff; }",
+    "  [data-bs-theme='dark'] { --ca-aurora-glass: #161626; --ca-aurora-content: #151620; }",
+    "  body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
+    "  .shiny-chat-drawer, .shiny-chat-page-drawer, .shiny-chat-composer {",
+    "    backdrop-filter: none; -webkit-backdrop-filter: none;",
+    "  }",
+    "}",
+    "@media (prefers-reduced-motion: reduce) {",
+    "  .shiny-chat-page-sidebar, .shiny-chat-drawer, .shiny-chat-page-drawer,",
+    "  .shiny-chat-composer { transition: none !important; animation: none !important; }",
+    "}",
+    "@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {",
+    "  body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
+    "  .shiny-chat-drawer, .shiny-chat-page-drawer, .shiny-chat-composer {",
+    "    background-color: var(--ca-aurora-content);",
+    "    backdrop-filter: none; -webkit-backdrop-filter: none;",
+    "  }",
+    "}"
+  ), collapse = "\n")
+}
+
+#' Build a codeagent application theme
+#'
+#' Uses shinychat's official `page_chat_theme()` as the common Bootstrap 5
+#' foundation for both codeagent layouts. The returned object can be passed to
+#' [codeagent_app()] or further customized with bslib.
+#'
+#' @param style One of `"default"`, `"ios"`, `"aurora"`, `"flatly"`,
+#'   `"darkly"`, or `"glass"`. CLI aliases `"light"`, `"dark"`, and
+#'   `"glassmorphism"` are also accepted. Unknown values fail soft to
+#'   `"default"`.
+#' @param ... Named Bootstrap or shinychat Sass variable overrides passed to
+#'   `shinychat::page_chat_theme()`. Overrides take precedence over built-in
+#'   style defaults.
+#' @return A bslib `bs_theme` object.
+#' @export
+codeagent_theme <- function(style = "default", ...) {
+  key <- .codeagent_theme_key(style)
+  preset <- if (key %in% c("default", "ios", "aurora", "glass")) "shiny" else key
+  defaults <- switch(key,
+    ios = list(
+      bg = "#ffffff", fg = "#1c1c1e",
+      primary = "#007aff", secondary = "#8e8e93",
+      `border-radius` = "0.5625rem",
+      `border-radius-sm` = "0.5rem",
+      `border-radius-lg` = "0.875rem",
+      `card-border-radius` = "0.875rem",
+      `shiny-chat-page-surface-bg` = "#f2f2f7",
+      `shiny-chat-page-sidebar-bg` = "#ffffff",
+      `shiny-chat-page-canvas-bg` = "#f2f2f7",
+      `shiny-chat-page-drawer-bg` = "#ffffff",
+      `shiny-chat-page-drawer-header-bg` = "#ffffff",
+      `shiny-chat-page-drawer-box-shadow` = "0 8px 28px rgba(0,0,0,0.10)",
+      `shiny-chat-suggestion-card-border-radius` = "0.875rem",
+      `shiny-chat-user-message-border-radius` = "1.125rem"),
+    aurora = list(
+      bg = "#f2f2f7", fg = "#1c1c1e",
+      primary = "#5856d6", secondary = "#7c7c8a",
+      `border-radius` = "0.5625rem",
+      `border-radius-sm` = "0.5rem",
+      `border-radius-lg` = "0.875rem",
+      `card-border-radius` = "0.875rem",
+      `shiny-chat-page-surface-bg` = "#f2f2f7",
+      `shiny-chat-page-sidebar-bg` = "rgba(255,255,255,0.76)",
+      `shiny-chat-page-canvas-bg` = "#f2f2f7",
+      `shiny-chat-page-drawer-bg` = "rgba(255,255,255,0.76)",
+      `shiny-chat-page-drawer-header-bg` = "rgba(255,255,255,0.76)",
+      `shiny-chat-page-drawer-box-shadow` = "0 12px 36px rgba(56,45,110,0.11), 0 2px 8px rgba(0,0,0,0.05)",
+      `shiny-chat-suggestion-card-border-radius` = "0.875rem",
+      `shiny-chat-user-message-border-radius` = "1.125rem"),
+    glass = list(
+      bg = "#0e1230", fg = "#e9ecff",
+      primary = "#8ab4ff", secondary = "#9aa0c4"),
+    list())
+  args <- .merge_theme_args(defaults, list(...))
+  page_theme <- .shinychat_export("page_chat_theme")
+  theme <- if (is.function(page_theme)) {
+    do.call(page_theme, c(args, list(preset = preset)))
+  } else {
+    do.call(bslib::bs_theme, c(list(version = 5, preset = preset), args))
+  }
+  if (identical(key, "ios"))
+    theme <- bslib::bs_add_rules(theme, .ios_theme_rules())
+  if (identical(key, "aurora"))
+    theme <- bslib::bs_add_rules(theme, .aurora_theme_rules())
+  if (identical(key, "glass"))
+    theme <- bslib::bs_add_rules(theme, .glass_theme_rules())
+  theme
+}
+
+.resolve_app_theme <- function(theme = "default") {
+  if (.is_codeagent_bs_theme(theme)) return(theme)
+  codeagent_theme(.codeagent_theme_key(theme))
 }
 
 .resolve_page_chat_theme <- function(theme = "default") {
-  key <- switch(tolower(theme %||% "default"),
-    light  = , default = "default",
-    dark   = , darkly  = "darkly",
-    flatly = "flatly",
-    glass  = , glassmorphism = "glass",
-    "default")
-  page_theme <- .shinychat_export("page_chat_theme")
-  if (!is.function(page_theme)) return(.resolve_app_theme(theme))
-  if (!identical(key, "glass"))
-    return(page_theme(preset = if (identical(key, "default")) "shiny" else key))
-  bslib::bs_add_rules(
-    page_theme(
-      preset = "shiny", bg = "#0e1230", fg = "#e9ecff",
-      primary = "#8ab4ff", secondary = "#9aa0c4"
-    ),
-    paste(
-      "body { background:",
-      "radial-gradient(1200px 800px at 15% 0%, #1b2350 0%, #0e1230 55%) fixed; }",
-      ".card, .accordion, .accordion-item, .bslib-sidebar-layout > .sidebar,",
-      ".modal-content {",
-      "background-color: rgba(255,255,255,0.06) !important;",
-      "backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);",
-      "border: 1px solid rgba(255,255,255,0.12) !important; }",
-      sep = "
-")
-  )
+  .resolve_app_theme(theme)
 }
 
 # Build the Model-dropdown choices from a codeagent.md `client:` alias map plus
@@ -196,11 +392,15 @@ NULL
 #'   three-column layout. `"page_chat"` opts into shinychat's full-window page
 #'   with codeagent controls on the left and the Output/Files/File workspace in
 #'   the official resizable drawer on the right.
-#' @param theme UI theme. One of `"default"` (light Bootstrap 5), `"flatly"`,
-#'   `"darkly"` (dark), or `"glass"` (dark glassmorphism). The CLI aliases
-#'   `"light"` -> `"default"`, `"dark"` -> `"darkly"`, and `"glassmorphism"` ->
-#'   `"glass"` are also accepted. Set at launch; the live dark-mode toggle in the
-#'   sidebar still flips light/dark on top of the chosen theme.
+#' @param theme UI theme name or a bslib `bs_theme` object. Built-in names are
+#'   `"default"`, `"ios"` (iOS grouped canvas with white cards), `"aurora"`
+#'   (ambient blue-indigo-purple light with selective frosted controls),
+#'   `"flatly"`, `"darkly"` (dark), and `"glass"` (dark glassmorphism). A theme
+#'   from [codeagent_theme()] or `shinychat::page_chat_theme()` is accepted
+#'   unchanged. The CLI aliases `"light"` -> `"default"`, `"dark"` ->
+#'   `"darkly"`, and `"glassmorphism"` -> `"glass"` are also accepted. Set at
+#'   launch; the live dark-mode toggle still flips light/dark on top of the
+#'   chosen theme.
 #' @param pinned_skills Character vector. Retained for backward compatibility;
 #'   the old Skills picker panel was replaced by the slash-command typeahead
 #'   (type `/` in the chat input), so this argument is currently unused.
@@ -359,8 +559,7 @@ codeagent_app <- function(
   # UI
   # ---------------------------------------------------------------------------
   chat_submit_key <- match.arg(chat_submit_key)
-  ca_bs_theme <- if (identical(ui_layout, "page_chat"))
-    .resolve_page_chat_theme(theme) else .resolve_app_theme(theme)
+  ca_bs_theme <- .resolve_app_theme(theme)
   left_sidebar <- bslib::sidebar(
     id = "ca_left_sidebar", width = 240, resizable = TRUE, padding = 4,
     bslib::card(

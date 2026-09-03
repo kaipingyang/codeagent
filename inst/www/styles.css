@@ -35,6 +35,21 @@
   color: var(--bs-danger, #dc3545) !important;
 }
 
+/* shinychat centers the composer beside an empty-state greeting. codeagent's
+   voice/server-file actions live in the footer, so keep the composer directly
+   above that footer instead of leaving a large visual gap between them. */
+.shiny-chat-layout:has(> .shiny-chat-footer .ca-chat-footer-actions)
+  .shiny-chat-composer {
+  translate: 0 0 !important;
+}
+shiny-chat-page
+  .shiny-chat-layout[data-composer-centered]:has(
+    > .shiny-chat-footer .ca-chat-footer-actions
+  )
+  .shiny-chat-greeting {
+  translate: 0 0 !important;
+}
+
 /* ── Settings labels ─────────────────────────────────────────────────────── */
 .ca-settings-label {
   font-size: 0.7rem;
@@ -60,11 +75,32 @@
    Tool-result cards (right Output panel)
    =========================================================================== */
 .toolcard {
+  /* Match shinychat's Atom One Light palette while keeping bslib surfaces. */
+  --ca-code-fg: #383a42;
+  --ca-code-comment: #a0a1a7;
+  --ca-code-keyword: #a626a4;
+  --ca-code-red: #e45649;
+  --ca-code-cyan: #0184bb;
+  --ca-code-green: #50a14f;
+  --ca-code-amber: #986801;
+  --ca-code-blue: #4078f2;
+  --ca-code-gold: #c18401;
   border: 1px solid var(--bs-border-color, #dee2e6);
-  border-radius: 8px;
+  border-radius: var(--bs-border-radius-lg, 8px);
   overflow: hidden;
   margin: 4px;
   background: var(--bs-body-bg, #fff);
+}
+[data-bs-theme="dark"] .toolcard {
+  --ca-code-fg: #abb2bf;
+  --ca-code-comment: #5c6370;
+  --ca-code-keyword: #c678dd;
+  --ca-code-red: #e06c75;
+  --ca-code-cyan: #56b6c2;
+  --ca-code-green: #98c379;
+  --ca-code-amber: #d19a66;
+  --ca-code-blue: #61aeee;
+  --ca-code-gold: #e6c07b;
 }
 .toolcard.toolcard-status-error  { border-color: var(--bs-danger, #dc3545); }
 .toolcard.toolcard-status-denied { border-color: var(--bs-warning, #fd7e14); }
@@ -73,8 +109,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
-  background: var(--bs-tertiary-bg, #f8f9fa);
+  padding: 7px 10px;
+  background: var(--bs-body-bg, #fff);
   border-bottom: 1px solid var(--bs-border-color, #dee2e6);
   font-size: 0.8rem;
   font-weight: 600;
@@ -86,8 +122,9 @@
   text-transform: uppercase;
   letter-spacing: 0.04em;
   padding: 1px 6px;
-  border-radius: 4px;
-  background: var(--bs-secondary-bg, #e9ecef);
+  border: 1px solid var(--bs-border-color, #dee2e6);
+  border-radius: 999px;
+  background: var(--bs-body-bg, #fff);
   color: var(--bs-secondary-color, #6c757d);
 }
 
@@ -97,31 +134,92 @@
   color: var(--bs-secondary-color, #6c757d);
   cursor: pointer;
   padding: 2px 5px;
-  border-radius: 4px;
+  border-radius: var(--bs-border-radius-sm, 4px);
   line-height: 1;
 }
 .toolcard-copy-btn:hover, .toolcard-icon-btn:hover {
-  background: var(--bs-secondary-bg, #e9ecef);
+  background: var(--bs-tertiary-bg, #f8f9fa);
   color: var(--bs-body-color, #212529);
 }
 .toolcard-copy-btn.toolcard-copied { color: var(--bs-success, #198754); }
 
-.toolcard-pre {
+/* Prism adds language-* to the parent <pre>. These scoped selectors are more
+   specific than Prism's classic theme, keeping artifact code on bslib's white
+   surface while reusing shinychat's modern Atom One syntax palette. */
+.toolcard pre.toolcard-pre,
+.toolcard pre.toolcard-pre[class*="language-"] {
   margin: 0;
   padding: 10px 12px;
-  font-size: 0.75rem;
   overflow: auto;
   background: var(--bs-body-bg, #fff);
+  color: var(--ca-code-fg);
+  text-shadow: none;
+  font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+  font-size: 0.8125rem;
+  line-height: 1.55;
+  text-align: left;
   white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  tab-size: 2;
+  border-radius: 0;
 }
+.toolcard pre.toolcard-pre code,
+.toolcard pre.toolcard-pre code[class*="language-"] {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-shadow: none;
+  font: inherit;
+  white-space: inherit;
+}
+.toolcard .token.comment,
+.toolcard .token.prolog,
+.toolcard .token.doctype,
+.toolcard .token.cdata {
+  color: var(--ca-code-comment);
+  font-style: italic;
+}
+.toolcard .token.doctag,
+.toolcard .token.keyword,
+.toolcard .token.atrule { color: var(--ca-code-keyword); }
+.toolcard .token.tag,
+.toolcard .token.deleted { color: var(--ca-code-red); }
+.toolcard .token.boolean,
+.toolcard .token.literal { color: var(--ca-code-cyan); }
+.toolcard .token.string,
+.toolcard .token.regex,
+.toolcard .token.attr-value,
+.toolcard .token.inserted { color: var(--ca-code-green); }
+.toolcard .token.attr-name,
+.toolcard .token.variable,
+.toolcard .token.number { color: var(--ca-code-amber); }
+.toolcard .token.function,
+.toolcard .token.selector,
+.toolcard .token.property,
+.toolcard .token.symbol { color: var(--ca-code-blue); }
+.toolcard .token.builtin,
+.toolcard .token.class-name { color: var(--ca-code-gold); }
+.toolcard .token.operator,
+.toolcard .token.entity,
+.toolcard .token.url,
+.toolcard .token.punctuation { color: var(--ca-code-fg); }
+.toolcard .token.bold,
+.toolcard .token.important { font-weight: 700; }
+.toolcard .token.italic { font-style: italic; }
+
 .toolcard-pre-output {
-  border-top: 1px dashed var(--bs-border-color, #dee2e6);
-  background: var(--bs-tertiary-bg, #f8f9fa);
+  border-top: 1px solid var(--bs-border-color, #dee2e6);
+  background: var(--bs-body-bg, #fff);
   color: var(--bs-secondary-color, #6c757d);
 }
 
 /* Error box */
-.toolcard-error-box { padding: 10px 12px; }
+.toolcard-error-box {
+  padding: 10px 12px;
+  background: var(--bs-body-bg, #fff);
+}
 .toolcard-error-msg {
   color: var(--bs-danger, #dc3545);
   font-weight: 600;
@@ -136,9 +234,14 @@
   gap: 2px;
   padding: 4px 8px;
   border-bottom: 1px solid var(--bs-border-color, #dee2e6);
-  background: var(--bs-tertiary-bg, #f8f9fa);
+  background: var(--bs-body-bg, #fff);
 }
-.toolcard-img-scroll { overflow: auto; padding: 8px; max-height: 70vh; }
+.toolcard-img-scroll {
+  overflow: auto;
+  padding: 8px;
+  max-height: 70vh;
+  background: var(--bs-body-bg, #fff);
+}
 .toolcard-zoomable { transition: transform 0.15s ease; max-width: 100%; height: auto; }
 .toolcard-fullscreen-overlay {
   position: fixed; inset: 0; z-index: 1080;
@@ -147,7 +250,11 @@
 .toolcard-fullscreen-overlay .toolcard-img-scroll { max-height: none; }
 
 /* Tables */
-.toolcard-table-wrap { padding: 6px; overflow: auto; }
+.toolcard-table-wrap {
+  padding: 6px;
+  overflow: auto;
+  background: var(--bs-body-bg, #fff);
+}
 .toolcard-html-table {
   width: 100%;
   border-collapse: collapse;
@@ -157,8 +264,9 @@
   border: 1px solid var(--bs-border-color, #dee2e6);
   padding: 3px 8px;
   text-align: left;
+  background: var(--bs-body-bg, #fff);
 }
-.toolcard-html-table th { background: var(--bs-tertiary-bg, #f8f9fa); }
+.toolcard-html-table th { font-weight: 600; }
 
 /* Diff */
 .toolcard-diff {

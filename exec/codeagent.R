@@ -233,7 +233,7 @@ switch(
 
   # app -- launch Shiny UI --------------------------------------------------
   app = {
-    #| description: 'UI theme - default, flatly, darkly, or glass.'
+    #| description: 'UI theme - default, ios, aurora, flatly, darkly, or glass.'
     #| short: 't'
     theme <- "default"
 

@@ -346,12 +346,32 @@ stdio and the default loopback HTTP configuration keep them disabled.
 codeagent_app(
   client,
   ui_layout     = "classic",   # default; opt in with "page_chat"
-  theme         = "default",   # "default" | "flatly" | "darkly" | "glass"
+  theme         = "default",   # default | ios | aurora | flatly | darkly | glass
   pinned_skills = c("plan", "compact")
 )
 
-# Opt-in full-window chat with the existing Output/Files/File workspace drawer:
-codeagent_app(client, ui_layout = "page_chat")
+# iOS grouped canvas with white cards, shared by classic and page_chat:
+codeagent_app(client, ui_layout = "page_chat", theme = "ios")
+
+# Aurora uses ambient blue-indigo-purple light, selective frosted navigation,
+# and high-opacity content surfaces for dense chat, code, tools, and tables:
+codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
+
+# Customize the same official shinychat/bslib theme foundation:
+ios_theme <- codeagent_theme(
+  "ios",
+  primary = "#0057d9",
+  `shiny-chat-page-canvas-bg` = "#ffffff"
+)
+codeagent_app(client, ui_layout = "page_chat", theme = ios_theme)
+
+# Arbitrary bslib/page_chat themes also pass through unchanged:
+codeagent_app(client, theme = shinychat::page_chat_theme(primary = "#0057d9"))
+
+# Preview any built-in theme/layout from the repository:
+# Rscript inst/examples/run_theme_preview.R --list
+# Rscript inst/examples/run_theme_preview.R aurora page_chat
+# Rscript inst/examples/run_theme_preview.R ios classic
 
 # Runnable example:
 # Rscript inst/examples/run_page_chat.R

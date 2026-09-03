@@ -33,6 +33,7 @@ reference:
     desc: "Interactive chat interface."
     contents:
       - codeagent_app
+      - codeagent_theme
 
   - title: "IDE Addins"
     desc: "RStudio / Positron keyboard-shortcut integration."

@@ -34,11 +34,15 @@ session). Prefer \verb{chat=} for the template form.}
 returning a fresh \code{CodeagentClient} for each Shiny session. This is the
 most flexible multi-user mode.}
 
-\item{theme}{UI theme. One of \code{"default"} (light Bootstrap 5), \code{"flatly"},
-\code{"darkly"} (dark), or \code{"glass"} (dark glassmorphism). The CLI aliases
-\code{"light"} -> \code{"default"}, \code{"dark"} -> \code{"darkly"}, and \code{"glassmorphism"} ->
-\code{"glass"} are also accepted. Set at launch; the live dark-mode toggle in the
-sidebar still flips light/dark on top of the chosen theme.}
+\item{theme}{UI theme name or a bslib \code{bs_theme} object. Built-in names are
+\code{"default"}, \code{"ios"} (iOS grouped canvas with white cards), \code{"aurora"}
+(ambient blue-indigo-purple light with selective frosted controls),
+\code{"flatly"}, \code{"darkly"} (dark), and \code{"glass"} (dark glassmorphism). A theme
+from \code{\link[=codeagent_theme]{codeagent_theme()}} or \code{shinychat::page_chat_theme()} is accepted
+unchanged. The CLI aliases \code{"light"} -> \code{"default"}, \code{"dark"} ->
+\code{"darkly"}, and \code{"glassmorphism"} -> \code{"glass"} are also accepted. Set at
+launch; the live dark-mode toggle still flips light/dark on top of the
+chosen theme.}
 
 \item{pinned_skills}{Character vector. Retained for backward compatibility;
 the old Skills picker panel was replaced by the slash-command typeahead

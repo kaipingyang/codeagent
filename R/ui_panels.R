@@ -50,7 +50,7 @@ head_assets <- function() {
   # inst/experiments/pickerinput_skill_selector/. This footer now only carries
   # the file-upload / voice / server-browse buttons.
   htmltools::tags$div(
-    class = "d-flex align-items-center gap-1 py-1",
+    class = "ca-chat-footer-actions d-flex align-items-center gap-1 py-1",
 
     # NOTE: local file upload is handled by shinychat's native attachment
     # button (chat_ui(allow_attachments = TRUE)) in the input row -- the old

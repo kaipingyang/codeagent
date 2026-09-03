@@ -110,6 +110,20 @@ test_that("render_artifact: code kind renders highlighted pre + copy", {
   expect_match(h, "toolcard")
 })
 
+test_that("toolcard code theme overrides Prism with bslib white surfaces", {
+  css_path <- system.file("www/styles.css", package = "codeagent")
+  expect_true(nzchar(css_path) && file.exists(css_path))
+  css <- paste(readLines(css_path, warn = FALSE), collapse = "\n")
+
+  expect_match(
+    css, '.toolcard pre.toolcard-pre[class*="language-"]', fixed = TRUE)
+  expect_match(css, "background: var(--bs-body-bg, #fff);", fixed = TRUE)
+  expect_match(css, "--ca-code-keyword: #a626a4;", fixed = TRUE)
+  expect_match(css, "--ca-code-green: #50a14f;", fixed = TRUE)
+  expect_match(css, "text-shadow: none;", fixed = TRUE)
+  expect_false(grepl("#f5f2f0", css, fixed = TRUE))
+})
+
 test_that("render_artifact: image kind embeds base64 + zoom toolbar", {
   d <- list(toolcard = list(kind = "image", status = "success",
                       payload = list(images = list(list(mime = "image/png", b64 = "ABC")))))

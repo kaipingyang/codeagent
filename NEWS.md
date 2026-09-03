@@ -1,3 +1,13 @@
+# codeagent (development version)
+
+## Shiny UI
+
+* Fixed the runnable theme/page-chat examples for Workbench and RStudio: they now preserve the `shiny.launch.browser` proxy launcher and bind to `0.0.0.0` when Workbench URL environment markers are present, while ordinary environments remain loopback-only. Previously the proxy could open a blank page because the app listened only on `127.0.0.1`.
+* Added the independently selectable `theme = "aurora"`: static blue-indigo-purple ambient light with selective frosted sidebars, drawers, and composer controls, while chat, code, tool-result, table, and artifact surfaces remain high-opacity for sustained readability. Includes dark-mode, reduced-transparency, reduced-motion, and no-`backdrop-filter` fallbacks.
+* Unified the classic and `page_chat` layouts on shinychat's official `page_chat_theme()` foundation. Added exported `codeagent_theme()`, built-in `theme = "ios"`, and direct pass-through of custom bslib themes (including `shinychat::page_chat_theme(...)`).
+* Refined the iOS preset with a Young Voice-style grouped canvas, compact 14px white cards, lightweight borders and shadows, white sidebars, and a bottom-anchored composer beside the voice/file footer actions.
+* Refreshed artifact/tool-result cards with bslib white surfaces and shinychat-aligned Atom One syntax colors, replacing Prism's legacy gray code background and text shadow.
+
 # codeagent 0.2.1
 
 This is a backward-compatible release focused on portable tool results, current
