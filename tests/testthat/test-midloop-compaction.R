@@ -1,6 +1,5 @@
-# Tests for Plan B mid-loop compaction: two-tier (budget-aware micro snip by
-# default, opt-in full two-level compact) driven by on_tool_result.
-# See references/plan/13-mid-loop-compaction.md.
+# Tests for upstream per-request mid-loop compaction: budget-aware micro snip
+# by default, with an opt-in full two-level compact, driven by on_request_start.
 
 .mk_chat_big_old_tool <- function() {
   chat <- ellmer::chat_openai_compatible(base_url = "http://x", model = "m",
@@ -77,15 +76,60 @@ test_that("opt-in full path routes to controller compact_now, not snip", {
   expect_identical(.first_tool_value(chat), before)    # snip NOT used
 })
 
-test_that("register_midloop_compaction wires an on_tool_result callback that snips", {
+test_that("outgoing turn estimates include pending tool results", {
+  pending <- ellmer::Turn(
+    "user",
+    list(ellmer::ContentToolResult(value = strrep("p", 3500)))
+  )
+  expect_gt(.estimate_turns_tokens(list(pending)), 900L)
+})
+
+test_that("pending outgoing turns can trigger mid-loop compaction", {
+  chat <- .mk_chat_big_old_tool()
+  before <- .first_tool_value(chat)
+  history_tokens <- token_count_with_estimation(chat, allow_network = FALSE)
+  pending <- ellmer::Turn(
+    "user",
+    list(ellmer::ContentToolResult(value = strrep("p", 3500)))
+  )
+  outgoing <- c(chat$get_turns(include_system_prompt = TRUE), list(pending))
+  threshold <- history_tokens + 100L
+  expect_gt(.estimate_turns_tokens(outgoing), threshold)
+
+  s <- list(
+    midloop_compact = TRUE,
+    midloop_threshold = threshold,
+    midloop_keep_recent = 2L,
+    midloop_snip_target = 1L
+  )
+  expect_true(.midloop_compact_step(
+    chat,
+    s,
+    ctrl = NULL,
+    request_turns = outgoing
+  ))
+  expect_false(identical(.first_tool_value(chat), before))
+  expect_identical(.first_tool_value(chat), .SNIP_PLACEHOLDER)
+})
+
+test_that("register_midloop_compaction uses on_request_start, not tool results", {
   chat <- .mk_chat_big_old_tool()
   skip_if(nchar(.first_tool_value(chat)) < 500, "chat setup lost big tool result")
+  before <- .first_tool_value(chat)
   s <- list(midloop_compact = TRUE, model_limit = 100L,
             midloop_keep_recent = 2L, midloop_snip_target = 1L)
   register_midloop_compaction(chat, s)
   pe <- environment(chat$chat)$private
-  suppressMessages(pe$callback_on_tool_result$invoke(
-    ellmer::ContentToolResult(value = "dummy")))
+
+  pe$callback_on_tool_result$invoke(
+    ellmer::ContentToolResult(value = "dummy"))
+  expect_identical(.first_tool_value(chat), before)
+
+  outgoing <- c(
+    chat$get_turns(include_system_prompt = TRUE),
+    list(ellmer::Turn("user", list(ellmer::ContentText("pending"))))
+  )
+  suppressMessages(pe$callback_on_request_start$invoke(outgoing))
   expect_identical(.first_tool_value(chat), .SNIP_PLACEHOLDER)
 })
 

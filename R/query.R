@@ -722,8 +722,8 @@ agent_loop <- function(user_input,
   # ask_question_fn is NULL for CLI (readline path) or a Shiny callback (Phase 3).
   tryCatch(register_ask_user_tool(chat, ask_question_fn, async = async_gate),
            error = function(e) NULL)
-  # Mid-loop compaction (Plan B, opt-in): snip old tool results between tool
-  # rounds via on_tool_result. No-op unless settings$midloop_compact = TRUE.
+  # Mid-loop compaction: check the complete outgoing context before every model
+  # request via on_request_start. No-op unless settings$midloop_compact = TRUE.
   tryCatch(register_midloop_compaction(chat, settings), error = function(e) NULL)
 
   # Single central permission gate (approach A): the sole authority over every

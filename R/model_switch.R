@@ -59,10 +59,17 @@ NULL
 
 .provider_configuration_equal <- function(x, y) {
   if (!identical(class(x), class(y))) return(FALSE)
-  px <- tryCatch(S7::props(x), error = function(e) NULL)
-  py <- tryCatch(S7::props(y), error = function(e) NULL)
-  if (is.null(px) || is.null(py) || !identical(names(px), names(py)))
-    return(FALSE)
+  # ellmer's Model class owns these fields. They remain as deprecated Provider
+  # compatibility properties, so reading all props must suppress lifecycle
+  # warnings and provider identity must exclude them; the caller compares the
+  # two Model objects separately.
+  model_props <- c("model", "params", "extra_args")
+  px <- suppressWarnings(tryCatch(S7::props(x), error = function(e) NULL))
+  py <- suppressWarnings(tryCatch(S7::props(y), error = function(e) NULL))
+  if (is.null(px) || is.null(py)) return(FALSE)
+  px[intersect(names(px), model_props)] <- NULL
+  py[intersect(names(py), model_props)] <- NULL
+  if (!identical(names(px), names(py))) return(FALSE)
   all(vapply(names(px), function(nm) {
     if (is.function(px[[nm]]) || is.function(py[[nm]]))
       .function_configuration_equal(px[[nm]], py[[nm]])

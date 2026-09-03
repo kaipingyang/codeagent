@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+## Core
+
+* Updated the pinned ellmer development build to official `main` SHA `2e96ac58a33d74bea585727daf8cd1535c67d7f1`, which includes the merged `Chat$on_request_start()` / `Chat$on_request_end()` callbacks from tidyverse/ellmer#1052.
+* Migrated mid-loop compaction from the per-tool `on_tool_result` workaround to `on_request_start`, so context is checked before every model request. Threshold accounting now includes the complete outgoing turns, including a pending tool-result turn, while history rewrites continue to use ellmer's supported `get_turns()` / `set_turns()` contract.
+* Adapted verified name-only model switching to ellmer's new `Model` ownership: deprecated Provider model fields are excluded from provider identity checks, while `Model` params and extra arguments remain strictly compared before an in-place switch.
+
 ## Shiny UI
 
 * Fixed the runnable theme/page-chat examples for Workbench and RStudio: they now preserve the `shiny.launch.browser` proxy launcher and bind to `0.0.0.0` when Workbench URL environment markers are present, while ordinary environments remain loopback-only. Previously the proxy could open a blank page because the app listened only on `127.0.0.1`.

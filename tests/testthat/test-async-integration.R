@@ -63,7 +63,7 @@ test_that(".chat_once guards singleton callbacks per chat+key", {
   expect_true(.chat_once(chat, "k2"))    # different key is independent
 })
 
-test_that("register_midloop_compaction installs its on_tool_result callback only once", {
+test_that("register_midloop_compaction installs its on_request_start callback only once", {
   chat <- ellmer::chat_openai_compatible(
     base_url = "http://x", model = "m", credentials = function() "k")
   # Simulate the Shiny multi-registration: called several times on the same chat.

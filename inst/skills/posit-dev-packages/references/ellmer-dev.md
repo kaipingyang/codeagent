@@ -1,14 +1,28 @@
 # ellmer 开发版新功能（vs CRAN 0.4.2）
 
 当前安装：`0.4.2.9000`（GitHub: `tidyverse/ellmer`）
-当前 SHA：`a64f94e644718c0598b01b0cd50a3c21c2646435`
-最后验证：2026-09-01
+当前 SHA：`2e96ac58a33d74bea585727daf8cd1535c67d7f1`
+最后验证：2026-09-03
 
-最新 HEAD 相比上一验证 SHA `4d9c643b9b528ec71890d28bce99e1653c9bf545`
-只有一个自动模型数据刷新提交：更新 bundled pricing/model data，并调整 Bedrock
-模型到 Converse/Responses API 的自动映射；没有新增或删除公开 R API。
+最新 HEAD 相比上一验证 SHA `a64f94e644718c0598b01b0cd50a3c21c2646435`
+新增 per-request lifecycle callbacks、provider file API、原生 structured-output
+streaming、document content 与 `tool_context()`，并包含 Model/Provider 迁移兼容、
+Connect viewer token forwarding、空响应和 Bedrock 映射等修复。
 
 ## 当前开发版新增功能
+
+### 每次模型请求的 lifecycle callbacks（#1052）
+
+`Chat$on_request_start(callback)` 在每次模型请求前触发，包括 tool loop 的每一轮；
+callback 接收完整 outgoing `turns`（历史加 pending turn）。历史改写必须使用
+`chat$set_turns(compact(chat$get_turns()))`，不能把 callback 的 `turns` 直接传回，
+否则 pending turn 会重复。`Chat$on_request_end(callback)` 在响应完成、工具执行前触发；
+取消时收到 `AssistantPartialTurn`，请求报错时不触发。异步 Chat 会等待 callback
+返回的 promise。
+
+**codeagent 采用：** `register_midloop_compaction()` 已从 `on_tool_result` workaround
+迁移到 `on_request_start`，因此每个请求前都检查 context。完整 outgoing turns 仅用于
+阈值计数，实际压缩仍通过 `get_turns()` / `set_turns()` 改写历史。
 
 ### 跨 provider 的 citation content（#1068）
 

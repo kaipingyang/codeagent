@@ -130,15 +130,13 @@ token_count_with_estimation <- function(chat, allow_network = FALSE) {
   estimate_tokens(chat)
 }
 
-# Char/3.5 token estimate for a bare list of turns (used by PTL head-dropping
-# where we work on a turns vector before calling set_turns()).
+# Char/3.5 token estimate for a bare list of turns. Used by PTL head-dropping
+# and on_request_start(), where the list includes the pending outgoing turn.
 .estimate_turns_tokens <- function(turns) {
   if (length(turns) == 0L) return(0L)
   total_chars <- sum(vapply(turns, function(turn) {
     contents <- tryCatch(turn@contents, error = function(e) list())
-    sum(vapply(contents, function(c) {
-      nchar(as.character(tryCatch(c@text %||% "", error = function(e) "")))
-    }, numeric(1)))
+    sum(vapply(contents, .content_chars, numeric(1)))
   }, numeric(1)))
   as.integer(ceiling(total_chars / 3.5))
 }
@@ -238,22 +236,17 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L,
 }
 
 # ---------------------------------------------------------------------------
-# Mid-loop compaction (between tool rounds) -- Plan B
+# Mid-loop compaction (before every model request)
 # ---------------------------------------------------------------------------
-# codeagent's harness runs compaction at turn boundaries (before chat$chat()).
-# A single turn with many large tool outputs can grow the context mid-loop with
-# no chance to compact until the turn ends. This uses ellmer's RELEASED
-# `on_tool_result` callback (fires between tool rounds, before the next model
-# request) to compact when over threshold. Two tiers (mirrors Claude Code
-# autoCompactIfNeeded):
-#   * default    -> cheap budget-aware micro snip (no LLM), snip_old_tools().
-#   * opt-in full -> the same two-level compact as the turn boundary
-#                    (session_memory -> full), via CompactionController.
-# The cleaner target is upstream `on_turn_start` (PR tidyverse/ellmer#1052),
-# which fires before EVERY model request (not just between tool rounds);
-# see references/plan/13-mid-loop-compaction.md. NB `on_tool_request` cannot
-# substitute: it fires AFTER the model request (inside invoke_tools) and only
-# when the model called tools, so it is not a pre-request compaction hook.
+# codeagent also checks compaction at turn boundaries before chat$chat().
+# ellmer's on_request_start callback (tidyverse/ellmer#1052) closes the timing
+# gap for a single turn with many tool rounds: it fires before every request and
+# supplies the complete outgoing request, including the pending turn, for
+# threshold accounting. The pending turn is inspected for size; history is
+# rewritten only through get_turns()/set_turns(), matching ellmer's contract.
+# Two tiers mirror the turn-boundary flow:
+#   * default     -> cheap budget-aware micro snip (no LLM), snip_old_tools().
+#   * opt-in full -> session_memory_compact() then full_compact() fallback.
 
 # Micro snip on by default (matches Claude Code default-on compaction; cheap +
 # safe, only acts near the context limit). Toggle: settings$midloop_compact /
@@ -292,12 +285,25 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L,
 }
 
 # Compact mid-loop if enabled AND over threshold. Returns invisibly TRUE when it
-# acted. `ctrl` is a CompactionController (or any object with a
-# `compact_now(chat, model)` method) used only for the opt-in full path.
+# acted. `request_turns`, when supplied by on_request_start(), is the complete
+# outgoing request including the pending turn. `ctrl` is a CompactionController
+# (or any object with a `compact_now(chat, model)` method) used only for the
+# opt-in full path.
 .midloop_compact_step <- function(chat, settings = list(), ctrl = NULL,
-                                   model = "", compact_model = .HAIKU_MODEL) {
+                                  model = "", compact_model = .HAIKU_MODEL,
+                                  request_turns = NULL) {
   if (!.midloop_enabled(settings)) return(invisible(FALSE))
-  n <- tryCatch(token_count_with_estimation(chat, allow_network = FALSE), error = function(e) 0L)
+  n <- tryCatch(
+    token_count_with_estimation(chat, allow_network = FALSE),
+    error = function(e) 0L
+  )
+  if (!is.null(request_turns)) {
+    request_n <- tryCatch(
+      .estimate_turns_tokens(request_turns),
+      error = function(e) 0L
+    )
+    n <- max(n, request_n)
+  }
   if (n < .midloop_trigger(settings, model)) return(invisible(FALSE))
 
   # Opt-in full two-level compact (blocking LLM call, like CC autoCompactIfNeeded).
@@ -321,13 +327,14 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L,
   invisible(did)
 }
 
-#' Register mid-loop compaction on a Chat (Plan B)
+#' Register per-request mid-loop compaction on a Chat
 #'
-#' Adds an `on_tool_result` callback that compacts between tool rounds when over
-#' threshold. Default = budget-aware micro snip (cheap, no LLM); opt in to a full
-#' two-level compact mid-loop with `settings$midloop_full_compact`. The whole
-#' feature is gated by `settings$midloop_compact` /
-#' `options(codeagent.midloop_compact = TRUE)` (on by default via settings).
+#' Adds an `on_request_start` callback that checks context before every model
+#' request, including every tool-loop round. Default = budget-aware micro snip
+#' (cheap, no LLM); opt in to a full two-level compact mid-loop with
+#' `settings$midloop_full_compact`. The whole feature is gated by
+#' `settings$midloop_compact` / `options(codeagent.midloop_compact = TRUE)`
+#' (on by default via settings).
 #'
 #' @param chat An `ellmer::Chat` object.
 #' @param settings Named list from [load_settings()].
@@ -336,18 +343,27 @@ snip_old_tools <- function(chat, keep_recent_turns = 10L, min_chars = 500L,
 register_midloop_compaction <- function(chat, settings = list()) {
   force(chat)
   force(settings)
-  # Install the on_tool_result callback at most once per chat: .register_all_tools
-  # may run several times on the same chat (Shiny re-registration) and ellmer's
-  # on_tool_result accumulates, which would run the snip multiple times per round.
+  # Install at most once per chat: .register_all_tools may run several times on
+  # the same chat during Shiny tool re-registration, while ellmer callbacks
+  # accumulate.
   if (!.chat_once(chat, "midloop")) return(invisible(chat))
   ctrl          <- tryCatch(CompactionController$new(), error = function(e) NULL)
   model         <- settings$model %||% ""
   compact_model <- settings$compact_model %||% settings$small_fast_model %||%
     .HAIKU_MODEL
   tryCatch(
-    chat$on_tool_result(function(result) {
-      tryCatch(.midloop_compact_step(chat, settings, ctrl, model, compact_model),
-               error = function(e) NULL)
+    chat$on_request_start(function(turns) {
+      tryCatch(
+        .midloop_compact_step(
+          chat,
+          settings,
+          ctrl,
+          model,
+          compact_model,
+          request_turns = turns
+        ),
+        error = function(e) NULL
+      )
       invisible(NULL)
     }),
     error = function(e) NULL

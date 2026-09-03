@@ -117,11 +117,11 @@ my_tool <- function(con, mode = "bypass") {
 - `mcptools` >= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
 - `httr2` 1.3.0（保持稳定版）
 
-**当前个人默认开发环境（2026-08-31）：**
+**当前个人默认开发环境（2026-09-03）：**
 
 个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
 
-- `ellmer` 0.4.2.9000 @ `a64f94e644718c0598b01b0cd50a3c21c2646435`
+- `ellmer` 0.4.2.9000 @ `2e96ac58a33d74bea585727daf8cd1535c67d7f1`
 - `btw` 1.4.0.9000 @ `d11591b09d9127b05d673e8c96569d2bbae2ec44`
 - `shinychat` 0.4.0.9000 @ `2b249764ce45b224224b7d185b3f34f14d0ad84f`（monorepo：`posit-dev/shinychat/pkg-r`）
 - `shiny` 1.14.0.9000 @ `81844600fc15f1952838546faa6699d0506ce7f9`
@@ -315,17 +315,16 @@ codeagent_app(client, theme="default") # Shiny UI
 > **two-level** — `snip_old_tools` pre-step → `session_memory_compact` → fall back to
 > `full_compact` (verbatim 9-section prompt). `ptl_fallback`/`context_collapse` remain
 > as reactive/utility paths. Dynamic per-model window lives in `R/context.R`.
-> **Known gap (mostly closed):** turn-boundary compaction runs before each
-> `chat$chat()`. Between tool rounds, `register_midloop_compaction()` (ellmer's
-> released `on_tool_result`) compacts in two tiers mirroring CC
-> `autoCompactIfNeeded`: a **budget-aware micro snip** ON by default
-> (`settings$midloop_compact`) and an **opt-in full two-level compact**
-> (`settings$midloop_full_compact`) via `CompactionController$compact_now()`.
-> Remaining gap is *timing*: `on_tool_result` only fires between tool rounds, not
-> before every request. `on_tool_request` cannot substitute (it fires after the
-> request, inside `invoke_tools`, per tool). True parity needs upstream
-> `on_turn_start` (PR tidyverse/ellmer#1052); see
-> `references/plan/13-mid-loop-compaction.md`.
+> Turn-boundary compaction runs before each `chat$chat()`. Mid-loop,
+> `register_midloop_compaction()` uses ellmer's `on_request_start` callback from
+> tidyverse/ellmer#1052, which fires before every model request including each
+> tool-loop round. Its complete outgoing `turns` (history plus the pending turn)
+> drive threshold accounting. A **budget-aware micro snip** is ON by default
+> (`settings$midloop_compact`), while an **opt-in full two-level compact**
+> (`settings$midloop_full_compact`) uses `CompactionController$compact_now()`.
+> The pending turn is inspected for size but is not passed to `set_turns()`;
+> history rewrites use `chat$get_turns()` / `chat$set_turns()` so ellmer can
+> re-append the pending turn exactly once.
 >
 > Token accounting is deliberately zero-implicit-network: `token_count_with_estimation(chat,
 > allow_network=FALSE)` includes `cached_input` from the last usage and otherwise uses the

@@ -10,11 +10,11 @@ metadata:
 ## 安装当前已验收GitHub HEAD
 
 先重新查询各仓库HEAD；确认后用完整SHA安装，且只更新`Depends`、`Imports`、
-`LinkingTo`运行时依赖，不批量升级无关CRAN包。2026-08-31 manifest：
+`LinkingTo`运行时依赖，不批量升级无关CRAN包。2026-09-03 manifest：
 
 ```r
 refs <- c(
-  "tidyverse/ellmer@a64f94e644718c0598b01b0cd50a3c21c2646435",
+  "tidyverse/ellmer@2e96ac58a33d74bea585727daf8cd1535c67d7f1",
   "posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44",
   "posit-dev/shinychat/pkg-r@2b249764ce45b224224b7d185b3f34f14d0ad84f",
   "rstudio/shiny@81844600fc15f1952838546faa6699d0506ce7f9",
@@ -62,7 +62,7 @@ pak::pak(c(
 当前个人默认开发环境使用以下完整manifest；0.2.0 shared library保持上方历史
 基线，不得被普通开发安装覆盖：
 
-- `ellmer` 0.4.2.9000 @ `a64f94e644718c0598b01b0cd50a3c21c2646435`
+- `ellmer` 0.4.2.9000 @ `2e96ac58a33d74bea585727daf8cd1535c67d7f1`
 - `btw` 1.4.0.9000 @ `d11591b09d9127b05d673e8c96569d2bbae2ec44`
 - `shinychat` 0.4.0.9000 @ `2b249764ce45b224224b7d185b3f34f14d0ad84f`（monorepo：`posit-dev/shinychat/pkg-r`）
 - `shiny` 1.14.0.9000 @ `81844600fc15f1952838546faa6699d0506ce7f9`
@@ -92,6 +92,7 @@ pak::pak(c(
 |------|-----|--------|
 | `set_model()` / `get_model_object()` | ellmer | `R/model_switch.R` 严格 name-only Route A；其它变化重建/拒绝 |
 | `Chat$token_count()` / usage | ellmer | `R/compaction.R` 默认零隐式网络，并包含 cached input |
+| `Chat$on_request_start()` / `$on_request_end()` | ellmer | `R/compaction.R` 在每次模型请求前执行 mid-loop compaction；完整 outgoing turns 用于阈值计数 |
 | `models_update_prices()` | ellmer | `update_model_prices()` 显式调用；从不启动时自动执行 |
 | `ContentCitation` / content stream | ellmer | 自定义 web 使用当前-turn marker bridge，不信任 raw model aside |
 | `btw_tool_files_patch` | btw | `R/tools_btw_files_pathA.R` Path A |

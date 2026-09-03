@@ -1,6 +1,6 @@
 Package: codeagent
 Title: An R-Native Coding Agent Powered by Large Language Models
-Version: 0.2.1
+Version: 0.2.1.9000
 Authors@R:
     person("Kaiping", "Yang", email = "1260146556@qq.com",
            role = c("aut", "cre"))
@@ -74,7 +74,7 @@ Suggests:
     pkgload
 Config/testthat/edition: 3
 Remotes:
-    tidyverse/ellmer@a64f94e644718c0598b01b0cd50a3c21c2646435,
+    tidyverse/ellmer@2e96ac58a33d74bea585727daf8cd1535c67d7f1,
     posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44,
     posit-dev/shinychat/pkg-r@2b249764ce45b224224b7d185b3f34f14d0ad84f,
     rstudio/shiny@81844600fc15f1952838546faa6699d0506ce7f9,

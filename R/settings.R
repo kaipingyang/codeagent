@@ -82,12 +82,12 @@ NULL
   # LLM picks per task). See references/plan/14-tool-reuse-and-selection.md.
   file_tools         = "core",
 
-  # Mid-loop compaction (Plan B): compact between tool rounds via on_tool_result.
+  # Mid-loop compaction before every model request via ellmer on_request_start.
   # midloop_compact = cheap budget-aware micro snip (ON by default, matches
   # Claude Code default-on compaction; only acts near the context limit).
   # midloop_full_compact = also run the full two-level LLM compact mid-loop when
   # a snip isn't enough (OFF by default -- it makes a blocking model call
-  # mid-stream). See references/plan/13-mid-loop-compaction.md.
+  # mid-stream).
   midloop_compact      = TRUE,
   midloop_full_compact = FALSE,
 
