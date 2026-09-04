@@ -4,7 +4,12 @@
 \alias{full_compact}
 \title{L3: Full context compaction via fork agent}
 \usage{
-full_compact(chat, model = .HAIKU_MODEL, instructions = NULL)
+full_compact(
+  chat,
+  model = .HAIKU_MODEL,
+  instructions = NULL,
+  pending_turn = NULL
+)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
@@ -12,9 +17,11 @@ full_compact(chat, model = .HAIKU_MODEL, instructions = NULL)
 \item{model}{Character. Haiku model for compaction.}
 
 \item{instructions}{Character or NULL. Optional user instructions to bias the summary.}
+
+\item{pending_turn}{Optional outgoing pending turn used for pairing validation.}
 }
 \value{
-Invisibly NULL.
+Invisibly TRUE after a validated history write, otherwise NULL.
 }
 \description{
 Spawns a separate haiku chat to generate a 9-section structured summary

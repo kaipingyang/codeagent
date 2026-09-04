@@ -11,6 +11,7 @@ failures to prevent infinite compaction loops.
 \section{Methods}{
 \subsection{Public methods}{
   \itemize{
+    \item \href{#method-CompactionController-adaptive_compact}{\code{CompactionController$adaptive_compact()}}
     \item \href{#method-CompactionController-maybe_compact}{\code{CompactionController$maybe_compact()}}
     \item \href{#method-CompactionController-compact_now}{\code{CompactionController$compact_now()}}
     \item \href{#method-CompactionController-handle_ptl_error}{\code{CompactionController$handle_ptl_error()}}
@@ -19,6 +20,46 @@ failures to prevent infinite compaction loops.
     \item \href{#method-CompactionController-clone}{\code{CompactionController$clone()}}
   }
 }
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-CompactionController-adaptive_compact"></a>}}
+\if{latex}{\out{\hypertarget{method-CompactionController-adaptive_compact}{}}}
+\subsection{\code{CompactionController$adaptive_compact()}}{
+  Run adaptive compaction with circuit-breaker protection.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{CompactionController$adaptive_compact(
+  chat,
+  settings = list(),
+  model = "",
+  compact_model = .HAIKU_MODEL,
+  request_turns = NULL,
+  full_enabled = FALSE,
+  force_summary = FALSE,
+  hooks = NULL,
+  use_provider_usage = TRUE
+)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{chat}}{An \code{ellmer::Chat} object.}
+      \item{\code{settings}}{Named compaction settings.}
+      \item{\code{model}}{Character. Active request model.}
+      \item{\code{compact_model}}{Character. Model for summary tasks.}
+      \item{\code{request_turns}}{Optional complete outgoing request including pending.}
+      \item{\code{full_enabled}}{Whether summary escalation is allowed.}
+      \item{\code{force_summary}}{Whether to summarize even after cheap reduction.}
+      \item{\code{hooks}}{Optional lifecycle registry; receives sanitized metadata only.}
+      \item{\code{use_provider_usage}}{Whether initial accounting may include prior usage.}
+    }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    A sanitized internal compaction decision.
+  }
+}
+
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-CompactionController-maybe_compact"></a>}}
 \if{latex}{\out{\hypertarget{method-CompactionController-maybe_compact}{}}}
@@ -29,7 +70,10 @@ failures to prevent infinite compaction loops.
     \preformatted{CompactionController$maybe_compact(
   chat,
   model_limit = 200000L,
-  compact_model = .HAIKU_MODEL
+  compact_model = .HAIKU_MODEL,
+  model = "",
+  hooks = NULL,
+  use_provider_usage = TRUE
 )}
     \if{html}{\out{</div>}}
   }
@@ -37,13 +81,16 @@ failures to prevent infinite compaction loops.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{chat}}{An \code{ellmer::Chat} object.}
-      \item{\code{model_limit}}{Integer. Model context window token limit.}
-      \item{\code{compact_model}}{Character. Model for compaction tasks (haiku).}
+      \item{\code{model_limit}}{Integer. Raw model context-window token limit.}
+      \item{\code{compact_model}}{Character. Model for compaction tasks.}
+      \item{\code{model}}{Character. Active request model used to resolve output reserve.}
+      \item{\code{hooks}}{Optional lifecycle registry.}
+      \item{\code{use_provider_usage}}{Whether initial accounting may include prior usage.}
     }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    Invisibly NULL.
+    Invisibly the internal compaction decision, or NULL when disabled.
   }
 }
 
@@ -51,11 +98,7 @@ failures to prevent infinite compaction loops.
 \if{html}{\out{<a id="method-CompactionController-compact_now"></a>}}
 \if{latex}{\out{\hypertarget{method-CompactionController-compact_now}{}}}
 \subsection{\code{CompactionController$compact_now()}}{
-  Run the two-level compaction now (snip -> session-memory ->
-full 9-section), guarded by the circuit breaker. Unlike
-\code{maybe_compact()} this skips the token-threshold check, so callers that
-have already decided to compact (e.g. mid-loop) can reuse the exact
-same Claude Code-aligned flow.
+  Force the adaptive summary chain for manual compaction.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{CompactionController$compact_now(chat, compact_model = .HAIKU_MODEL)}
@@ -65,12 +108,13 @@ same Claude Code-aligned flow.
     \if{html}{\out{<div class="arguments">}}
     \describe{
       \item{\code{chat}}{An \code{ellmer::Chat} object.}
-      \item{\code{compact_model}}{Character. Model for compaction tasks (haiku).}
+      \item{\code{compact_model}}{Character. Model for compaction tasks.}
     }
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    Invisibly \code{TRUE} on success, \code{FALSE} if skipped or failed.
+    Invisibly TRUE on a validated change, FALSE otherwise. The
+structured decision is attached as a \code{decision} attribute.
   }
 }
 
@@ -81,7 +125,7 @@ same Claude Code-aligned flow.
   Handle a prompt-too-long (PTL) error by dropping turns.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{CompactionController$handle_ptl_error(chat, error = NULL)}
+    \preformatted{CompactionController$handle_ptl_error(chat, error = NULL, pending_turn = NULL)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
@@ -90,6 +134,7 @@ same Claude Code-aligned flow.
       \item{\code{chat}}{An \code{ellmer::Chat} object.}
       \item{\code{error}}{An error condition or message string (parsed for a real
 context limit when present).}
+      \item{\code{pending_turn}}{Optional failed outgoing pending turn.}
     }
     \if{html}{\out{</div>}}
   }

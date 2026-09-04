@@ -94,3 +94,78 @@ test_that("Shiny finalizer maps reason before output gate", {
   expect_false(grepl("SHINYID001", out$text, fixed = TRUE))
   expect_match(out$text, "filtered", ignore.case = TRUE)
 })
+
+test_that(".handle_agent_error retries a PTL request once only", {
+  retries <- 0L
+  recoveries <- 0L
+  fake_chat <- list(chat = function(input) {
+    retries <<- retries + 1L
+    stop("413 context_length_exceeded again")
+  })
+  ctrl <- list(handle_ptl_error = function(chat, error = NULL,
+                                           pending_turn = NULL) {
+    recoveries <<- recoveries + 1L
+    invisible(NULL)
+  })
+
+  out <- .handle_agent_error(
+    simpleError("413 context_length_exceeded"),
+    fake_chat,
+    "synthetic input",
+    ctrl
+  )
+
+  expect_identical(recoveries, 1L)
+  expect_identical(retries, 1L)
+  expect_match(out, "PTL Error after compact", fixed = TRUE)
+})
+
+test_that("PTL recovery retries the saved pending tool-loop turn", {
+  req <- ellmer::ContentToolRequest(
+    id = "retry-tool", name = "Tool", arguments = list())
+  pending <- ellmer::Turn("user", list(ellmer::ContentToolResult(
+    request = req, value = "pending tool result")))
+  retried_input <- NULL
+  captured_pending <- NULL
+  fake_chat <- list(chat = function(...) {
+    retried_input <<- list(...)
+    "recovered"
+  })
+  attr(fake_chat, "codeagent_pending_request_turn") <- pending
+  ctrl <- list(handle_ptl_error = function(chat, error = NULL,
+                                           pending_turn = NULL) {
+    captured_pending <<- pending_turn
+    list(success = TRUE)
+  })
+  local_mocked_bindings(
+    .retry_pending_request = function(chat, pending_turn, fallback_input) {
+      retried_input <<- pending_turn@contents
+      "recovered"
+    }
+  )
+
+  out <- .handle_agent_error(
+    simpleError("413 context_length_exceeded"),
+    fake_chat,
+    "original top-level input",
+    ctrl
+  )
+
+  expect_identical(out, "recovered")
+  expect_identical(captured_pending, pending)
+  expect_identical(retried_input, pending@contents)
+})
+
+test_that("pending tool-result retry fails closed without exact submit support", {
+  req <- ellmer::ContentToolRequest(
+    id = "retry-tool", name = "Tool", arguments = list())
+  pending <- ellmer::Turn("user", list(ellmer::ContentToolResult(
+    request = req, value = "pending tool result")))
+  fake_chat <- list(chat = function(...) "must not be called")
+
+  expect_error(
+    .retry_pending_request(fake_chat, pending, "fallback"),
+    "Exact PTL retry is unavailable",
+    fixed = TRUE
+  )
+})

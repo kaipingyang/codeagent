@@ -2,24 +2,26 @@
 % Please edit documentation in R/compaction.R
 \name{ptl_fallback}
 \alias{ptl_fallback}
-\title{L4: Prompt-too-long fallback -- drop oldest turns}
+\title{Pair-safe prompt-too-long fallback}
 \usage{
-ptl_fallback(chat, drop_turns = 3L, error_msg = NULL)
+ptl_fallback(chat, drop_turns = 3L, error_msg = NULL, pending_turn = NULL)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
 
-\item{drop_turns}{Integer. Turns to drop when no limit can be parsed.}
+\item{drop_turns}{Deprecated compatibility argument; raw turns are never
+dropped independently.}
 
-\item{error_msg}{Character or NULL. The PTL/413 error message to parse.}
+\item{error_msg}{Character or NULL. Provider PTL message.}
+
+\item{pending_turn}{Optional pending turn, retained outside persisted history.}
 }
 \value{
-Invisibly NULL.
+A sanitized internal recovery decision.
 }
 \description{
-Called when the API returns a 413 / prompt_too_long error. When the error
-message carries a real context limit (Claude Code parses \code{contextLimit}), drop
-the oldest turns until the estimate is under ~90\% of that limit; otherwise
-drop a fixed number of oldest turns.
+Drops complete historical API rounds until the estimated request releases the
+provider-reported token gap. Without an actual/limit pair, targets a 20\%
+reduction. The newest round and pending turn are always retained.
 }
 \keyword{internal}

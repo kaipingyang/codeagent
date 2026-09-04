@@ -63,15 +63,18 @@ the result of an `if` (assign inside branches, or compute before the async body)
 built function — return a `promises::then()` promise from a plain function instead). See
 `lessons/2026-07-03-shiny-async-interaction.md`.
 
-**Compaction — turn-boundary + per-request mid-loop (two-tier):** compaction runs
+**Compaction — adaptive turn-boundary + per-request pipeline:** compaction runs
 before each `chat$chat()`. Ellmer's `on_request_start` callback also runs before
 every model request, including each tool-loop round; `register_midloop_compaction()`
-uses its complete outgoing `turns` (including the pending turn) for threshold
-accounting. A **budget-aware micro snip** runs by default
-(`settings$midloop_compact`, ON), and an **opt-in full two-level compact**
-(`settings$midloop_full_compact`, OFF) escalates when snip isn't enough. The
-pending turn is inspected but history is rewritten only through
-`chat$get_turns()` / `chat$set_turns()`, per ellmer's callback contract.
+uses its complete outgoing `turns` (including the pending turn) for initial
+threshold accounting. Cheap result controls and a budget-aware micro snip run
+before any summary. After a history mutation, codeagent rebuilds new history plus
+the original pending turn exactly once and performs a fresh structural recount;
+stale provider usage is never a post-mutation lower bound. An opt-in full path
+(`settings$midloop_full_compact`, OFF) escalates to incremental/full summary only
+when the cheap stages remain over the unified model-aware threshold. History is
+rewritten only through `chat$get_turns()` / `chat$set_turns()`; summary input is
+structured and tool-aware, and PTL recovery drops complete pair-safe rounds.
 
 **Env vars:** prefer `CODEAGENT_*` (`CODEAGENT_BASE_URL`, `CODEAGENT_MODEL`,
 `CODEAGENT_API_KEY`) over `OPENAI_*` names. Keep provider-specific experiments in `references/`

@@ -45,18 +45,25 @@ NULL
   settings <- if (inherits(client, "CodeagentClient")) client$settings else list()
   if (is.null(cwd)) cwd <- settings$cwd %||% getwd()
 
-  # Compaction (before sending the turn)
+  # Cheap resource replacement before summary decisions
+  resource_changed <- FALSE
+  if (!is.null(resource_state))
+    resource_changed <- isTRUE(tryCatch(
+      resource_state$maybe_replace(chat),
+      error = function(e) FALSE
+    ))
+
+  # Adaptive compaction (before sending the turn)
   if (!is.null(compaction_ctrl))
     tryCatch(
       compaction_ctrl$maybe_compact(
         chat,
         settings$model_limit %||% 200000L,
-        compact_model = .resolve_compact_model(chat, settings)),
+        compact_model = .resolve_compact_model(chat, settings),
+        model = settings$model %||% "",
+        hooks = settings$hooks_registry %||% NULL,
+        use_provider_usage = !resource_changed),
       error = function(e) NULL)
-
-  # Resource replacement (snip old large tool results)
-  if (!is.null(resource_state))
-    tryCatch(resource_state$maybe_replace(chat), error = function(e) NULL)
 
   # system-reminder injection: extract text for the reminder query,
   # then inject back into the original input (preserving list shape).

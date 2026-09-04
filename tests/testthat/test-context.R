@@ -101,3 +101,59 @@ test_that(".budget_payload shapes the update_budget message without coro-illegal
   none <- .budget_payload(500L, model_limit = 200000L, model = "")
   expect_identical(none$level, "ok")
 })
+
+test_that("explicit context windows use model-specific output reserve", {
+  expect_identical(
+    .auto_compact_threshold(
+      "claude-3-5-haiku",
+      context_window = 200000L
+    ),
+    200000L - 8192L - .AUTOCOMPACT_BUFFER_TOKENS
+  )
+  expect_identical(
+    .auto_compact_threshold(
+      "totally-unknown",
+      context_window = 200000L
+    ),
+    200000L - .MAX_OUTPUT_TOKENS_FOR_SUMMARY -
+      .AUTOCOMPACT_BUFFER_TOKENS
+  )
+})
+
+test_that("mid-loop trigger delegates model_limit to unified threshold", {
+  expect_identical(
+    .midloop_trigger(
+      list(model_limit = 200000L),
+      model = "claude-3-5-haiku"
+    ),
+    .auto_compact_threshold(
+      "claude-3-5-haiku",
+      context_window = 200000L
+    )
+  )
+})
+
+test_that("provider-reported window safely caps an explicit context window", {
+  chat <- list(get_model_info = function() list(context_length = 128000L))
+  expect_identical(
+    .auto_compact_threshold(
+      "totally-unknown",
+      chat = chat,
+      context_window = 200000L
+    ),
+    128000L - .MAX_OUTPUT_TOKENS_FOR_SUMMARY -
+      .AUTOCOMPACT_BUFFER_TOKENS
+  )
+})
+
+test_that("auto-compact window also caps explicit context windows", {
+  withr::local_envvar(CODEAGENT_AUTO_COMPACT_WINDOW = "100000")
+  expect_identical(
+    .auto_compact_threshold(
+      "totally-unknown",
+      context_window = 200000L
+    ),
+    100000L - .MAX_OUTPUT_TOKENS_FOR_SUMMARY -
+      .AUTOCOMPACT_BUFFER_TOKENS
+  )
+})

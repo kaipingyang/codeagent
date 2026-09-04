@@ -139,9 +139,30 @@ NULL
 
 #' Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)
 #' @inheritParams .model_context_window
+#' @param context_window Optional explicit raw context window. When supplied it
+#'   is reduced by the same model output reserve and autocompact buffer.
 #' @return Integer token count at/above which auto-compaction should trigger.
 #' @keywords internal
-.auto_compact_threshold <- function(model, chat = NULL) {
+.auto_compact_threshold <- function(model, chat = NULL, context_window = NULL) {
+  if (!is.null(context_window) && length(context_window) == 1L &&
+      is.numeric(context_window) && !is.na(context_window) &&
+      context_window > 0) {
+    context_window <- as.integer(context_window)
+    provider_window <- .provider_reported_window(chat)
+    if (!is.na(provider_window) && provider_window >= 100000L)
+      context_window <- min(context_window, provider_window)
+    configured_window <- Sys.getenv("CODEAGENT_AUTO_COMPACT_WINDOW", "")
+    if (nzchar(configured_window)) {
+      configured_window <- suppressWarnings(as.integer(configured_window))
+      if (!is.na(configured_window) && configured_window > 0L)
+        context_window <- min(context_window, configured_window)
+    }
+    reserve <- min(
+      .max_output_tokens_for_model(model),
+      .MAX_OUTPUT_TOKENS_FOR_SUMMARY
+    )
+    return(context_window - reserve - .AUTOCOMPACT_BUFFER_TOKENS)
+  }
   .effective_context_window(model, chat) - .AUTOCOMPACT_BUFFER_TOKENS
 }
 

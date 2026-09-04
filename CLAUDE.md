@@ -311,25 +311,29 @@ codeagent_app(client, theme="default") # Shiny UI
 - L4 `ptl_fallback`: drop oldest turns on 413 errors
 - L5 `context_collapse`: read-time projection (truncate all tool result values)
 
-> **Current flow (task 01 alignment):** the live `maybe_compact()` trigger is now
-> **two-level** — `snip_old_tools` pre-step → `session_memory_compact` → fall back to
-> `full_compact` (verbatim 9-section prompt). `ptl_fallback`/`context_collapse` remain
-> as reactive/utility paths. Dynamic per-model window lives in `R/context.R`.
-> Turn-boundary compaction runs before each `chat$chat()`. Mid-loop,
-> `register_midloop_compaction()` uses ellmer's `on_request_start` callback from
-> tidyverse/ellmer#1052, which fires before every model request including each
-> tool-loop round. Its complete outgoing `turns` (history plus the pending turn)
-> drive threshold accounting. A **budget-aware micro snip** is ON by default
-> (`settings$midloop_compact`), while an **opt-in full two-level compact**
-> (`settings$midloop_full_compact`) uses `CompactionController$compact_now()`.
-> The pending turn is inspected for size but is not passed to `set_turns()`;
-> history rewrites use `chat$get_turns()` / `chat$set_turns()` so ellmer can
-> re-append the pending turn exactly once.
+> **Current adaptive flow:** the live request-boundary pipeline is
+> cheap resource replacement → budget-aware micro snip → rebuild persisted
+> history plus the original pending turn → fresh structural recount. It calls
+> incremental summary, then full summary fallback, only when the rebuilt request
+> remains over the unified model-aware threshold and full compaction is enabled.
+> Both summary levels consume the same structured, tool-aware serialization;
+> successful history writes are rebuilt and validated again before the request
+> proceeds. PTL recovery drops complete historical API rounds, validates tool
+> request/result pairing, and retries once.
 >
-> Token accounting is deliberately zero-implicit-network: `token_count_with_estimation(chat,
-> allow_network=FALSE)` includes `cached_input` from the last usage and otherwise uses the
-> heuristic. Compaction, context-left, teardown and Shiny never call remote token counting;
-> only an explicit future action may pass `allow_network=TRUE`.
+> Turn-boundary compaction runs before each `chat$chat()`. Per-request coverage
+> uses ellmer's `on_request_start`, which fires for every model request including
+> internal tool-loop rounds. The callback's outgoing `turns` include the pending
+> turn; history mutations use `chat$get_turns()` / `chat$set_turns()`, and the
+> original pending turn is appended exactly once only for structural recount.
+> Initial accounting may conservatively include prior provider usage, while any
+> post-mutation recount deliberately excludes that stale lower bound.
+>
+> Token accounting remains zero-implicit-network: `token_count_with_estimation(chat,
+> allow_network=FALSE)` includes `cached_input` from the last usage and otherwise
+> uses the heuristic. Compaction, context-left, teardown and Shiny never call
+> remote token counting; only an explicit future action may pass
+> `allow_network=TRUE`.
 
 **`tools_web.R` / `web_citations.R`** — WebSearch/WebFetch return legal `ContentToolResult`s plus validated source records in `extra$codeagent$sources`. Citation mode is opt-in (`"off" | "shiny_aside"`) and buffers the final answer. Custom tools use model markers (`[[cite:SOURCE_ID|visible claim]]`); ellmer provider-native `ContentCitation` / `WebSource` objects are converted to opaque server-owned refs whose grounded spans never enter marker syntax. Both paths accept only current-turn registry entries, scan claim/grounded span/title/quote/URL, escape untrusted values, revalidate URLs, and rebuild the same fixed `<shiny-aside>` allowlist before the browser sees anything. Replay rebuilds from the lossless original turn rather than trusting shinychat-generated provider markup. Web fetches allow only public http/https, reject userinfo/private/reserved/mixed DNS, re-authorize every redirect, and pin the validated address with curl resolve to prevent DNS rebinding.
 

@@ -4,12 +4,15 @@
 \alias{.auto_compact_threshold}
 \title{Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)}
 \usage{
-.auto_compact_threshold(model, chat = NULL)
+.auto_compact_threshold(model, chat = NULL, context_window = NULL)
 }
 \arguments{
 \item{model}{Character. Model id/name.}
 
 \item{chat}{An \code{ellmer::Chat} or NULL (used to read provider-reported window).}
+
+\item{context_window}{Optional explicit raw context window. When supplied it
+is reduced by the same model output reserve and autocompact buffer.}
 }
 \value{
 Integer token count at/above which auto-compaction should trigger.

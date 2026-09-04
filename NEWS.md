@@ -1,6 +1,12 @@
-# codeagent (development version)
+# codeagent 0.3.0
+
+This minor release adds adaptive request-boundary compaction, adopts ellmer's
+request lifecycle hooks, and expands the Shiny theme system while preserving
+backward-compatible public interfaces.
 
 ## Core
+
+* Reworked request-boundary compaction into an adaptive, model-aware pipeline: cheap result replacement and micro snip run before structured fresh recount; incremental/full summaries run only when still needed and are post-validated. Summary input now preserves tool request/result structure, PTL recovery drops pair-safe complete rounds, and compaction lifecycle hooks expose metadata only.
 
 * Updated the pinned ellmer development build to official `main` SHA `2e96ac58a33d74bea585727daf8cd1535c67d7f1`, which includes the merged `Chat$on_request_start()` / `Chat$on_request_end()` callbacks from tidyverse/ellmer#1052.
 * Migrated mid-loop compaction from the per-tool `on_tool_result` workaround to `on_request_start`, so context is checked before every model request. Threshold accounting now includes the complete outgoing turns, including a pending tool-result turn, while history rewrites continue to use ellmer's supported `get_turns()` / `set_turns()` contract.

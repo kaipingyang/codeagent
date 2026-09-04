@@ -9,7 +9,8 @@ session_memory_compact(
   model = .HAIKU_MODEL,
   min_messages = 5L,
   min_tokens = .COMPACT_L2_MIN_TOKENS,
-  max_tokens = .COMPACT_L2_MAX_TOKENS
+  max_tokens = .COMPACT_L2_MAX_TOKENS,
+  pending_turn = NULL
 )
 }
 \arguments{
@@ -22,9 +23,11 @@ session_memory_compact(
 \item{min_tokens}{Integer. Minimum tokens to retain.}
 
 \item{max_tokens}{Integer. Maximum tokens for the summary section.}
+
+\item{pending_turn}{Optional outgoing pending turn used for pairing validation.}
 }
 \value{
-Invisibly NULL.
+Invisibly TRUE after a validated history write, otherwise NULL.
 }
 \description{
 Summarises early turns while retaining recent context.

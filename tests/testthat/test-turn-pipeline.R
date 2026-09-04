@@ -78,3 +78,47 @@ test_that(".turn_teardown saves session file when session_id provided", {
   session_dir <- codeagent:::.get_project_session_dir(tmp)
   expect_true(file.exists(file.path(session_dir, paste0(sid, ".jsonl"))))
 })
+
+test_that(".turn_setup applies cheap resource controls before compaction", {
+  order <- character(0)
+  chat <- list()
+  resources <- list(maybe_replace = function(chat) {
+    order <<- c(order, "resource")
+    invisible(NULL)
+  })
+  controller <- list(maybe_compact = function(...) {
+    order <<- c(order, "compaction")
+    invisible(NULL)
+  })
+
+  codeagent:::.turn_setup(
+    chat,
+    "test",
+    iteration = 2L,
+    cwd = getwd(),
+    compaction_ctrl = controller,
+    resource_state = resources
+  )
+
+  expect_identical(order, c("resource", "compaction"))
+})
+
+test_that(".turn_setup disables stale usage after resource mutation", {
+  captured <- NULL
+  resources <- list(maybe_replace = function(chat) TRUE)
+  controller <- list(maybe_compact = function(..., use_provider_usage = TRUE) {
+    captured <<- use_provider_usage
+    invisible(NULL)
+  })
+
+  codeagent:::.turn_setup(
+    list(),
+    "test",
+    iteration = 2L,
+    cwd = getwd(),
+    compaction_ctrl = controller,
+    resource_state = resources
+  )
+
+  expect_false(captured)
+})

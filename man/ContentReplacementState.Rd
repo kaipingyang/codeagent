@@ -75,7 +75,7 @@ This mirrors Claude Code's \code{ContentReplacementState}.
     \if{html}{\out{</div>}}
   }
   \subsection{Returns}{
-    Invisibly NULL.
+    Invisibly TRUE when history changed, FALSE otherwise.
   }
 }
 

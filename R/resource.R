@@ -3,9 +3,10 @@
 #'
 #'   * **Layer 1** (utils.R): Per-tool character truncation via
 #'     `truncate_tool_result()`.  Already applied at tool execution time.
-#'   * **Layer 2** (this file): Disk persistence for very large results.
-#'     Content > 5 KB is saved to `~/.codeagent/tool-results/`; a preview +
-#'     file path is injected into the conversation instead.
+#'   * **Layer 2** (this file): Optional disk-persistence helper for very large
+#'     results. It is intentionally NOT wired into production until file
+#'     permissions, retention/cleanup, path disclosure, and protected-data
+#'     policy are defined; built-in truncation remains the active protection.
 #'   * **Layer 3** (this file): `ContentReplacementState` -- global budget
 #'     tracker that replaces the largest old tool results across turns when
 #'     total context exceeds a soft ceiling.
@@ -86,57 +87,73 @@ ContentReplacementState <- R6::R6Class(
 
     #' @description Check usage and replace large old results if over ceiling.
     #' @param chat An `ellmer::Chat` object (modified in place).
-    #' @return Invisibly NULL.
+    #' @return Invisibly TRUE when history changed, FALSE otherwise.
     maybe_replace = function(chat) {
       total <- estimate_tokens(chat)
-      if (total <= private$ceiling) return(invisible(NULL))
+      if (total <= private$ceiling) return(invisible(FALSE))
 
       turns <- .safe_get_turns(chat)
-      if (length(turns) == 0L) return(invisible(NULL))
+      if (length(turns) == 0L) return(invisible(FALSE))
+      pending_ids <- character(0)
+      modified <- FALSE
 
-      # Collect all tool result blocks with their sizes and positions
-      candidates <- list()
-      for (ti in seq_along(turns)) {
-        turn     <- turns[[ti]]
-        contents <- tryCatch(turn@contents, error = function(e) list())
-        for (ci in seq_along(contents)) {
-          c      <- contents[[ci]]
-          is_tr  <- tryCatch(
-            identical(class(c)[[1L]], "ContentToolResult"),
-            error = function(e) FALSE
+      repeat {
+        candidates <- list()
+        for (turn_idx in seq_along(turns)) {
+          contents <- tryCatch(
+            turns[[turn_idx]]@contents,
+            error = function(e) list()
           )
-          if (!is_tr) next
-          # Use request@id (ellmer current API); @tool_use_id is a legacy slot
-          # that no longer exists on ContentToolResult -- tryCatch returns "".
-          tid <- tryCatch(c@request@id %||% "", error = function(e) "")
-          if (tid %in% private$replaced) next
-          if (tid %in% private$frozen)   next
-          txt   <- tryCatch(as.character(c@value %||% ""), error = function(e) "")
-          n     <- nchar(txt)
-          if (n < 500L) next   # too small to bother
-          candidates <- c(candidates, list(list(
-            turn_idx    = ti,
-            content_idx = ci,
-            tool_use_id = tid,
-            size        = n
-          )))
+          for (content_idx in seq_along(contents)) {
+            content <- contents[[content_idx]]
+            if (!identical(.compact_content_type(content),
+                           "ContentToolResult")) next
+            tool_use_id <- tryCatch(
+              as.character(content@request@id %||% ""),
+              error = function(e) ""
+            )
+            state_id <- tool_use_id
+            if (!nzchar(state_id))
+              state_id <- paste0("turn:", turn_idx, ":", content_idx)
+            if (state_id %in% c(private$replaced, pending_ids)) next
+            if (nzchar(tool_use_id) && tool_use_id %in% private$frozen) next
+            text <- tryCatch(
+              paste(as.character(content@value %||% ""), collapse = "\n"),
+              error = function(e) ""
+            )
+            size <- nchar(text)
+            if (size < 500L) next
+            candidates[[length(candidates) + 1L]] <- list(
+              turn_idx = turn_idx,
+              content_idx = content_idx,
+              state_id = state_id,
+              size = size
+            )
+          }
         }
+
+        if (length(candidates) == 0L) break
+        sizes <- vapply(candidates, function(x) x$size, integer(1L))
+        target <- candidates[[which.max(sizes)]]
+        changed <- tryCatch({
+          turns[[target$turn_idx]]@contents[[target$content_idx]]@value <-
+            "[Tool result replaced to save context space]"
+          TRUE
+        }, error = function(e) FALSE)
+        if (!changed) break
+        modified <- TRUE
+        pending_ids <- unique(c(pending_ids, target$state_id))
+        if (.estimate_turns_tokens(turns) <= private$ceiling) break
       }
 
-      if (length(candidates) == 0L) return(invisible(NULL))
-
-      # Sort by size descending; replace the largest one
-      sizes    <- vapply(candidates, function(x) x$size, integer(1))
-      target   <- candidates[[which.max(sizes)]]
-
-      tryCatch({
-        turns[[target$turn_idx]]@contents[[target$content_idx]]@value <-
-          "[Tool result replaced to save context space]"
+      if (!modified) return(invisible(FALSE))
+      set_ok <- tryCatch({
         chat$set_turns(turns)
-        private$replaced <- unique(c(private$replaced, target$tool_use_id))
-      }, error = function(e) NULL)
-
-      invisible(NULL)
+        TRUE
+      }, error = function(e) FALSE)
+      if (!set_ok) return(invisible(FALSE))
+      private$replaced <- unique(c(private$replaced, pending_ids))
+      invisible(TRUE)
     },
 
     #' @description Return IDs of replaced results.

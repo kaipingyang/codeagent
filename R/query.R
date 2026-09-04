@@ -530,24 +530,22 @@ agent_loop <- function(user_input,
                 stop_reason = reason))
   }
 
-  # 3. Compaction (fire PreCompact hook first)
-  if (!is.null(hooks)) tryCatch(
-    hooks$run_pre_compact("auto", list(tokens = current_tokens)),
-    error = function(e) NULL)
-  tokens_before <- current_tokens
-  compaction_ctrl$maybe_compact(chat, settings$model_limit %||% 200000L,
-                                compact_model = .resolve_compact_model(chat, settings))
-  # Fire PostCompact only if compaction actually ran (token count dropped).
-  if (!is.null(hooks)) {
-    tokens_after <- tryCatch(estimate_tokens(chat), error = function(e) tokens_before)
-    if (tokens_after < tokens_before)
-      tryCatch(hooks$run_post_compact("auto", "", list(
-        tokens_before = tokens_before, tokens_after = tokens_after)),
-        error = function(e) NULL)
-  }
+  # 3. Cheap resource management before summary decisions
+  resource_changed <- isTRUE(tryCatch(
+    resource_state$maybe_replace(chat),
+    error = function(e) FALSE
+  ))
 
-  # 4. Resource management
-  resource_state$maybe_replace(chat)
+  # 4. Adaptive compaction; the controller fires lifecycle hooks only when the
+  # request is over threshold and emits sanitized PostCompact metadata on change.
+  compaction_ctrl$maybe_compact(
+    chat,
+    settings$model_limit %||% 200000L,
+    compact_model = .resolve_compact_model(chat, settings),
+    model = settings$model %||% "",
+    hooks = hooks,
+    use_provider_usage = !resource_changed
+  )
 
   # 5. Send (with system-reminder injected into actual_input)
   response <- tryCatch({
@@ -828,6 +826,37 @@ agent_loop <- function(user_input,
   }, error = function(e) NA_character_)
 }
 
+.retry_pending_request <- function(chat, pending_turn, fallback_input) {
+  if (is.null(pending_turn)) return(chat$chat(fallback_input))
+
+  private <- tryCatch(environment(chat$chat)$private,
+                      error = function(e) NULL)
+  chat_impl <- tryCatch(private$chat_impl, error = function(e) NULL)
+  if (!is.function(chat_impl)) {
+    has_tool_result <- length(.turn_tool_result_ids(pending_turn)) > 0L
+    if (has_tool_result) {
+      stop(
+        "Exact PTL retry is unavailable for a pending tool result.",
+        call. = FALSE
+      )
+    }
+    contents <- tryCatch(pending_turn@contents, error = function(e) NULL)
+    if (is.null(contents)) return(chat$chat(fallback_input))
+    return(do.call(chat$chat, contents))
+  }
+
+  # The pinned ellmer public chat() first synthesizes results for dangling tool
+  # requests. Submit the already-built pending UserTurn through chat_impl so its
+  # real tool result is present exactly once while preserving request callbacks.
+  coro::collect(chat_impl(
+    pending_turn,
+    stream = FALSE,
+    echo = "none"
+  ))
+  text <- tryCatch(chat$last_turn()@text, error = function(e) "")
+  paste(as.character(text %||% ""), collapse = "")
+}
+
 .handle_agent_error <- function(e, chat, input, compaction_ctrl,
                                  max_retries = 3L, hooks = NULL) {
   msg   <- conditionMessage(e)
@@ -846,11 +875,19 @@ agent_loop <- function(user_input,
     txt
   }
 
-  # PTL: compact then retry once
+  # PTL: compact pair-safe history then retry the failed pending request once.
   if (grepl(.ERR_PTL, clean, ignore.case = TRUE)) {
-    compaction_ctrl$handle_ptl_error(chat, error = clean)
+    pending_turn <- attr(chat, "codeagent_pending_request_turn", exact = TRUE)
+    compaction_ctrl$handle_ptl_error(
+      chat,
+      error = clean,
+      pending_turn = pending_turn
+    )
+    retry_request <- function() {
+      .retry_pending_request(chat, pending_turn, input)
+    }
     return(tryCatch(
-      chat$chat(input),
+      retry_request(),
       error = function(e2) .fail(paste0("[PTL Error after compact] ",
                                         conditionMessage(e2)), conditionMessage(e2))
     ))

@@ -58,7 +58,7 @@ mandatory_preflight <- function(start_wd) {
   }
 
   frozen <- list(
-    codeagent = c(version = "0.2.1.9000", sha = ""),
+    codeagent = c(version = "0.3.0", sha = ""),
     ellmer = c(version = "0.4.2.9000",
                sha = "2e96ac58a33d74bea585727daf8cd1535c67d7f1"),
     btw = c(version = "1.4.0.9000",
