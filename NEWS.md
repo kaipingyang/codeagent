@@ -1,8 +1,8 @@
-# codeagent 0.3.0
+# codeagent 0.2.2
 
-This minor release adds adaptive request-boundary compaction, adopts ellmer's
-request lifecycle hooks, and expands the Shiny theme system while preserving
-backward-compatible public interfaces.
+This backward-compatible release adds adaptive request-boundary compaction, adopts
+ellmer's request lifecycle hooks, and expands the Shiny theme system while
+preserving public interfaces.
 
 ## Core
 
