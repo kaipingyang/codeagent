@@ -1,3 +1,17 @@
+# codeagent 0.2.3
+
+This backward-compatible patch release adds optional Liquid Glass theming and
+fixes default tool-card expansion without changing public APIs.
+
+## Shiny UI
+
+* Replaced the built-in glassmorphism imitation with optional, exact-pinned `shinyglass` material rendering. `codeagent_theme("glass", ...)` now forwards Liquid Glass controls such as `preset`, `intensity`, `tint`, and `specular` to shinyglass, while codeagent owns only a thin shinychat header/sidebar/drawer/composer token adapter and dark-mode bridge.
+* Changed artifact-backed tool cards to stay collapsed after successful completion regardless of output length; error cards still open by default. This prevents normal long Read, Grep, and `use_skill` results from making the interface appear permanently expanded.
+
+## Documentation
+
+* Added a bilingual pkgdown Shiny theme gallery with real Chromium screenshots of the Liquid Glass light and dark modes.
+
 # codeagent 0.2.2
 
 This backward-compatible release adds adaptive request-boundary compaction, adopts

@@ -48,6 +48,35 @@ test_that(".tool_result2 sets in-chat html + full_screen, collapsed", {
   expect_null(d$toolcard)
 })
 
+test_that("successful artifact displays stay collapsed regardless of value length", {
+  short <- codeagent:::.artifact_tool_result(
+    "loaded", kind = "text", payload = list(text = "loaded"))
+  long_value <- strrep("skill instructions ", 40L)
+  long <- codeagent:::.artifact_tool_result(
+    long_value,
+    kind = "text",
+    title = "Skill: /fixture",
+    payload = list(text = long_value, skill = "fixture"),
+    markdown = "**Skill `/fixture` loaded**"
+  )
+
+  expect_lt(nchar(tool_result_value(short)), 500L)
+  expect_gt(nchar(tool_result_value(long)), 500L)
+  expect_false(isTRUE(short@extra$display$open))
+  expect_false(isTRUE(long@extra$display$open))
+})
+
+test_that("error artifact displays open by default", {
+  result <- codeagent:::.artifact_tool_result(
+    "tool failed",
+    kind = "error",
+    payload = list(message = "tool failed")
+  )
+
+  expect_identical(tool_result_artifact(result)$status, "error")
+  expect_true(isTRUE(result@extra$display$open))
+})
+
 test_that("image toolbar has zoom, download, and fullscreen buttons", {
   d <- list(toolcard = list(kind = "image", status = "success",
             payload = list(images = list(list(mime = "image/png", b64 = "ABC")))))

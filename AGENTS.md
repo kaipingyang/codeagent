@@ -96,6 +96,12 @@ first, then broader runs with `devtools::test()`.
    ```r
    pak::local_install(".", ask = FALSE, upgrade = FALSE)
    ```
+- **Liquid Glass ownership:** `theme = "glass"` delegates material rendering to the
+  optional exact-pinned `shinyglass` package. Keep codeagent's adapter thin: map
+  shinychat header/sidebar/drawer/composer selectors to public `--glass-*` CSS
+  variables and bridge `data-bs-theme`; do not vendor or recreate shinyglass
+  material, tint, intensity, or specular logic. Keep message/code/tool/table
+  readability policy separate from navigation chrome.
    Then `codegraph sync` to refresh the symbol index for AI/code-review tooling.
 2. **Update `README.md`** — new exported functions/features get a line in the matching section;
    important behavior changes update the relevant description.

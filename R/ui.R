@@ -36,15 +36,98 @@ NULL
   defaults
 }
 
-.glass_theme_rules <- function() {
+.shinyglass_available <- function() {
+  requireNamespace("shinyglass", quietly = TRUE)
+}
+
+.shinyglass_page_chat_rules <- function() {
   paste(c(
-    "body { background: radial-gradient(1200px 800px at 15% 0%, #1b2350 0%, #0e1230 55%) fixed; }",
-    ".card, .accordion, .accordion-item, .bslib-sidebar-layout > .sidebar, .modal-content {",
-    "  background-color: rgba(255,255,255,0.06) !important;",
-    "  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);",
-    "  border: 1px solid rgba(255,255,255,0.12) !important;",
+    ":root {",
+    "  --shiny-chat-page-surface-bg: transparent;",
+    "  --shiny-chat-page-canvas-bg: transparent;",
+    "  --shiny-chat-page-sidebar-bg: var(--glass-bg);",
+    "  --shiny-chat-page-drawer-bg: var(--glass-bg);",
+    "  --shiny-chat-page-drawer-header-bg: var(--glass-bg);",
+    "  --shiny-chat-page-drawer-box-shadow: 0 12px 36px var(--glass-shadow);",
+    "}",
+    ".bslib-page-fill, body > shiny-chat-page.shiny-bound-input,",
+    "shiny-chat-page .shiny-chat-page-main,",
+    "shiny-chat-page .shiny-chat-page-panel,",
+    "shiny-chat-page shiny-chat-container {",
+    "  background-color: transparent !important;",
+    "}",
+    ".shiny-chat-page-header, .shiny-chat-page-sidebar,",
+    ".shiny-chat-drawer, .shiny-chat-page-drawer,",
+    ".shiny-chat-drawer-header, .shiny-chat-page-drawer-header,",
+    ".shiny-chat-composer {",
+    "  background: var(--glass-bg) !important;",
+    "  color: var(--glass-body-color);",
+    "  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));",
+    "  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));",
+    "  border-color: var(--glass-border) !important;",
+    "  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);",
+    "}",
+    ".shiny-chat-page-header { border-bottom: 1px solid var(--glass-border); }",
+    ".shiny-chat-page-sidebar { border-right: 1px solid var(--glass-border); }",
+    ".shiny-chat-drawer, .shiny-chat-page-drawer {",
+    "  border-left: 1px solid var(--glass-border);",
+    "}",
+    ".shiny-chat-composer {",
+    "  border: 1px solid var(--glass-border);",
+    "  border-radius: var(--glass-radius);",
     "}"
   ), collapse = "\n")
+}
+
+.shinyglass_dark_mode_dependency <- function() {
+  script <- paste0(
+    "<script>(function(){'use strict';",
+    "if(window.__codeagentShinyglassBridge)return;",
+    "window.__codeagentShinyglassBridge=true;",
+    "var root=document.documentElement,syncing=false;",
+    "function sync(){",
+    "if(syncing||!window.shinyglass||",
+    "typeof window.shinyglass.setPreset!=='function')return;",
+    "var mode=root.getAttribute('data-bs-theme');",
+    "if(mode!=='light'&&mode!=='dark')return;",
+    "if(root.dataset.glassPreset===mode)return;",
+    "syncing=true;window.shinyglass.setPreset(mode);syncing=false;",
+    "}",
+    "new MutationObserver(sync).observe(root,{attributes:true,",
+    "attributeFilter:['data-bs-theme']});",
+    "document.addEventListener('DOMContentLoaded',sync,{once:true});",
+    "document.addEventListener('shiny:connected',sync);",
+    "setTimeout(sync,0);",
+    "})();</script>"
+  )
+  htmltools::htmlDependency(
+    name = "codeagent-shinyglass-adapter",
+    version = "1.0.0",
+    src = c(href = ""),
+    head = script,
+    all_files = FALSE
+  )
+}
+
+.codeagent_shinyglass_theme <- function(...) {
+  if (!.shinyglass_available()) {
+    cli::cli_abort(c(
+      "The optional package `shinyglass` is required for `style = \"glass\"`.",
+      "i" = paste0(
+        "Install the verified build with ",
+        "`pak::pak(\"ericrayanderson/shinyglass@",
+        "25f759d702b8fc951f367178288486b613ee6969\")`."
+      )
+    ))
+  }
+  args <- list(...)
+  if (is.null(args$preset)) args$preset <- "auto"
+  theme <- do.call(shinyglass::glass_theme, args)
+  theme <- bslib::bs_add_rules(theme, .shinyglass_page_chat_rules())
+  bslib::bs_bundle(
+    theme,
+    sass::sass_layer(html = .shinyglass_dark_mode_dependency())
+  )
 }
 
 .ios_theme_rules <- function() {
@@ -187,21 +270,28 @@ NULL
 #' Build a codeagent application theme
 #'
 #' Uses shinychat's official `page_chat_theme()` as the common Bootstrap 5
-#' foundation for both codeagent layouts. The returned object can be passed to
-#' [codeagent_app()] or further customized with bslib.
+#' foundation for both codeagent layouts. The `"glass"` style instead delegates
+#' Liquid Glass material rendering to the optional [shinyglass::glass_theme()]
+#' package and adds only a thin adapter for shinychat page surfaces. The returned
+#' object can be passed to [codeagent_app()] or further customized with bslib.
 #'
 #' @param style One of `"default"`, `"ios"`, `"aurora"`, `"flatly"`,
 #'   `"darkly"`, or `"glass"`. CLI aliases `"light"`, `"dark"`, and
 #'   `"glassmorphism"` are also accepted. Unknown values fail soft to
-#'   `"default"`.
-#' @param ... Named Bootstrap or shinychat Sass variable overrides passed to
-#'   `shinychat::page_chat_theme()`. Overrides take precedence over built-in
-#'   style defaults.
+#'   `"default"`. `"glass"` requires the optional `shinyglass` package.
+#' @param ... For `style = "glass"`, arguments passed to
+#'   [shinyglass::glass_theme()] (for example `preset`, `intensity`, `tint`, and
+#'   `specular`). For other styles, named Bootstrap or shinychat Sass variable
+#'   overrides passed to `shinychat::page_chat_theme()`. Overrides take
+#'   precedence over built-in style defaults.
 #' @return A bslib `bs_theme` object.
 #' @export
 codeagent_theme <- function(style = "default", ...) {
   key <- .codeagent_theme_key(style)
-  preset <- if (key %in% c("default", "ios", "aurora", "glass")) "shiny" else key
+  if (identical(key, "glass"))
+    return(.codeagent_shinyglass_theme(...))
+
+  preset <- if (key %in% c("default", "ios", "aurora")) "shiny" else key
   defaults <- switch(key,
     ios = list(
       bg = "#ffffff", fg = "#1c1c1e",
@@ -233,9 +323,6 @@ codeagent_theme <- function(style = "default", ...) {
       `shiny-chat-page-drawer-box-shadow` = "0 12px 36px rgba(56,45,110,0.11), 0 2px 8px rgba(0,0,0,0.05)",
       `shiny-chat-suggestion-card-border-radius` = "0.875rem",
       `shiny-chat-user-message-border-radius` = "1.125rem"),
-    glass = list(
-      bg = "#0e1230", fg = "#e9ecff",
-      primary = "#8ab4ff", secondary = "#9aa0c4"),
     list())
   args <- .merge_theme_args(defaults, list(...))
   page_theme <- .shinychat_export("page_chat_theme")
@@ -248,8 +335,6 @@ codeagent_theme <- function(style = "default", ...) {
     theme <- bslib::bs_add_rules(theme, .ios_theme_rules())
   if (identical(key, "aurora"))
     theme <- bslib::bs_add_rules(theme, .aurora_theme_rules())
-  if (identical(key, "glass"))
-    theme <- bslib::bs_add_rules(theme, .glass_theme_rules())
   theme
 }
 
@@ -395,12 +480,12 @@ codeagent_theme <- function(style = "default", ...) {
 #' @param theme UI theme name or a bslib `bs_theme` object. Built-in names are
 #'   `"default"`, `"ios"` (iOS grouped canvas with white cards), `"aurora"`
 #'   (ambient blue-indigo-purple light with selective frosted controls),
-#'   `"flatly"`, `"darkly"` (dark), and `"glass"` (dark glassmorphism). A theme
-#'   from [codeagent_theme()] or `shinychat::page_chat_theme()` is accepted
+#'   `"flatly"`, `"darkly"` (dark), and `"glass"` (Liquid Glass from the
+#'   optional `shinyglass` package, with a thin shinychat surface adapter). A
+#'   theme from [codeagent_theme()] or `shinychat::page_chat_theme()` is accepted
 #'   unchanged. The CLI aliases `"light"` -> `"default"`, `"dark"` ->
 #'   `"darkly"`, and `"glassmorphism"` -> `"glass"` are also accepted. Set at
-#'   launch; the live dark-mode toggle still flips light/dark on top of the
-#'   chosen theme.
+#'   launch; the live dark-mode toggle also synchronizes the shinyglass preset.
 #' @param pinned_skills Character vector. Retained for backward compatibility;
 #'   the old Skills picker panel was replaced by the slash-command typeahead
 #'   (type `/` in the chat input), so this argument is currently unused.

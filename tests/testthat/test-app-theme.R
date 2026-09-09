@@ -20,6 +20,93 @@ test_that("theme vocabularies map to the expected preset", {
   expect_null(bsw("glass"))
 })
 
+
+test_that("glass theme delegates material ownership to shinyglass", {
+  calls <- list()
+  testthat::local_mocked_bindings(
+    .codeagent_shinyglass_theme = function(...) {
+      calls[[length(calls) + 1L]] <<- list(...)
+      bslib::bs_theme()
+    }
+  )
+
+  theme <- codeagent_theme(
+    "glass", preset = "dark", intensity = 0.7,
+    tint = FALSE, specular = TRUE)
+
+  expect_s3_class(theme, "bs_theme")
+  expect_identical(calls[[1L]]$preset, "dark")
+  expect_identical(calls[[1L]]$intensity, 0.7)
+  expect_false(calls[[1L]]$tint)
+  expect_true(calls[[1L]]$specular)
+})
+
+
+test_that("glass theme fails clearly when optional shinyglass is unavailable", {
+  testthat::local_mocked_bindings(
+    .shinyglass_available = function() FALSE
+  )
+
+  expect_error(
+    .codeagent_shinyglass_theme(),
+    "optional package `shinyglass`"
+  )
+})
+
+
+test_that("shinyglass adapter only maps shinychat surfaces to public tokens", {
+  css <- .shinyglass_page_chat_rules()
+
+  for (selector in c(
+    ".shiny-chat-page-header",
+    ".shiny-chat-page-sidebar",
+    ".shiny-chat-drawer",
+    ".shiny-chat-page-drawer",
+    ".shiny-chat-composer"
+  )) {
+    expect_match(css, selector, fixed = TRUE)
+  }
+  for (token in c(
+    "var(--glass-bg)",
+    "var(--glass-blur)",
+    "var(--glass-saturate)",
+    "var(--glass-border)",
+    "var(--glass-shadow)"
+  )) {
+    expect_match(css, token, fixed = TRUE)
+  }
+  expect_match(css, "--shiny-chat-page-sidebar-bg", fixed = TRUE)
+  expect_match(css, "--shiny-chat-page-drawer-bg", fixed = TRUE)
+  expect_false(grepl("radial-gradient", css, fixed = TRUE))
+  expect_false(grepl("rgba(", css, fixed = TRUE))
+  expect_false(grepl(".shiny-chat-message-content", css, fixed = TRUE))
+})
+
+
+test_that("shinyglass adapter bridges bslib dark mode to its preset", {
+  dep <- .shinyglass_dark_mode_dependency()
+
+  expect_s3_class(dep, "html_dependency")
+  expect_identical(dep$name, "codeagent-shinyglass-adapter")
+  expect_match(dep$head, "MutationObserver", fixed = TRUE)
+  expect_match(dep$head, "data-bs-theme", fixed = TRUE)
+  expect_match(dep$head, "window.shinyglass.setPreset", fixed = TRUE)
+})
+
+
+test_that("installed shinyglass is bundled with the codeagent adapter", {
+  skip_if_not_installed("shinyglass", minimum_version = "0.2.0.9000")
+
+  theme <- codeagent_theme(
+    "glass", preset = "light", intensity = 0.6, tint = FALSE)
+  expect_s3_class(theme, "bs_theme")
+
+  deps <- bslib::bs_theme_dependencies(theme)
+  dep_names <- vapply(deps, `[[`, character(1L), "name")
+  expect_true("shinyglass" %in% dep_names)
+  expect_true("codeagent-shinyglass-adapter" %in% dep_names)
+})
+
 test_that("custom codeagent themes carry additional rules", {
   default <- .resolve_app_theme("default")
   for (style in c("glass", "ios", "aurora")) {

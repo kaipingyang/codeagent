@@ -10,17 +10,21 @@ codeagent_theme(style = "default", ...)
 \item{style}{One of \code{"default"}, \code{"ios"}, \code{"aurora"}, \code{"flatly"},
 \code{"darkly"}, or \code{"glass"}. CLI aliases \code{"light"}, \code{"dark"}, and
 \code{"glassmorphism"} are also accepted. Unknown values fail soft to
-\code{"default"}.}
+\code{"default"}. \code{"glass"} requires the optional \code{shinyglass} package.}
 
-\item{...}{Named Bootstrap or shinychat Sass variable overrides passed to
-\code{shinychat::page_chat_theme()}. Overrides take precedence over built-in
-style defaults.}
+\item{...}{For \code{style = "glass"}, arguments passed to
+\code{\link[shinyglass:glass_theme]{shinyglass::glass_theme()}} (for example \code{preset}, \code{intensity}, \code{tint}, and
+\code{specular}). For other styles, named Bootstrap or shinychat Sass variable
+overrides passed to \code{shinychat::page_chat_theme()}. Overrides take
+precedence over built-in style defaults.}
 }
 \value{
 A bslib \code{bs_theme} object.
 }
 \description{
 Uses shinychat's official \code{page_chat_theme()} as the common Bootstrap 5
-foundation for both codeagent layouts. The returned object can be passed to
-\code{\link[=codeagent_app]{codeagent_app()}} or further customized with bslib.
+foundation for both codeagent layouts. The \code{"glass"} style instead delegates
+Liquid Glass material rendering to the optional \code{\link[shinyglass:glass_theme]{shinyglass::glass_theme()}}
+package and adds only a thin adapter for shinychat page surfaces. The returned
+object can be passed to \code{\link[=codeagent_app]{codeagent_app()}} or further customized with bslib.
 }

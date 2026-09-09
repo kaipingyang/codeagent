@@ -337,8 +337,9 @@ tool_result_value <- function(result, default = "") {
     markdown = if (!is.null(markdown)) .safe_markdown_source(markdown) else NULL,
     text = if (is.null(rendered) && is.null(markdown)) value else NULL,
     show_request = TRUE,
-    open = identical(artifact$status, "error") ||
-      (nchar(value %||% "") > 500L),
+    # Long successful outputs are routine for Read, Grep, and use_skill; their
+    # length must not turn the default collapsed presentation into always-open.
+    open = identical(artifact$status, "error"),
     full_screen = !is.null(rendered),
     footer = footer,
     label = label %||% .tool_display_preview(

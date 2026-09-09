@@ -8,6 +8,7 @@
 #   Rscript inst/examples/run_theme_preview.R ios classic
 #   Rscript inst/examples/run_theme_preview.R darkly page_chat 8888
 #
+#   theme = glass requires the optional shinyglass build pinned in DESCRIPTION.
 # Opening the UI does not send a model request. Chat turns use your normal
 # codeagent settings.
 

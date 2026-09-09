@@ -357,6 +357,15 @@ codeagent_app(client, ui_layout = "page_chat", theme = "ios")
 # and high-opacity content surfaces for dense chat, code, tools, and tables:
 codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
 
+# Liquid Glass delegates material rendering to the optional pinned shinyglass
+# package; codeagent adds only a thin shinychat surface/dark-mode adapter:
+pak::pak("ericrayanderson/shinyglass@25f759d702b8fc951f367178288486b613ee6969")
+liquid_theme <- codeagent_theme(
+  "glass", preset = "auto", intensity = 0.45,
+  tint = TRUE, specular = TRUE
+)
+codeagent_app(client, ui_layout = "page_chat", theme = liquid_theme)
+
 # Customize the same official shinychat/bslib theme foundation:
 ios_theme <- codeagent_theme(
   "ios",
@@ -367,6 +376,9 @@ codeagent_app(client, ui_layout = "page_chat", theme = ios_theme)
 
 # Arbitrary bslib/page_chat themes also pass through unchanged:
 codeagent_app(client, theme = shinychat::page_chat_theme(primary = "#0057d9"))
+
+# Visual theme gallery:
+# https://kaipingyang.github.io/codeagent/articles/shiny-themes.html
 
 # Preview any built-in theme/layout from the repository:
 # Rscript inst/examples/run_theme_preview.R --list
@@ -401,6 +413,8 @@ portable text `value`; any UI can consume the versioned
 `extra$codeagent$artifact` (`schema = "codeagent.tool-artifact"`, `version = 1`);
 and shinychat receives its official `tool_result_display()` adapter in
 `extra$display`, including compact labels/value previews and framed rich cards.
+Successful tool cards start collapsed regardless of output length; error cards
+start expanded so failures remain immediately visible.
 See the [tool-result artifact guide](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html)
 for the v1 schema, version negotiation, trust boundary, and migration checklist.
 The streaming `on_tool_result` event exposes all three as `artifact`, `display`,
