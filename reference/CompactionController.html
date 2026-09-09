@@ -11,7 +11,7 @@ failures to prevent infinite compaction loops."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">codeagent</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -26,6 +26,7 @@ failures to prevent infinite compaction loops."></head><body>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Configuration</h6></li>
     <li><a class="dropdown-item" href="../articles/configuration.html">Configuration</a></li>
+    <li><a class="dropdown-item" href="../articles/shiny-themes.html">Shiny app themes</a></li>
     <li><a class="dropdown-item" href="../articles/permissions.html">Permissions</a></li>
     <li><a class="dropdown-item" href="../articles/models.html">Models and providers</a></li>
     <li><a class="dropdown-item" href="../articles/compaction.html">Context management and compaction</a></li>
@@ -45,6 +46,7 @@ failures to prevent infinite compaction loops."></head><body>
     <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
     <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/shiny-themes-cn.html">Shiny 应用主题（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
     <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
@@ -82,63 +84,126 @@ failures to prevent infinite compaction loops.</p>
 
 <div class="section">
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
-<p></p><ul><li><p><a href="#method-CompactionController-maybe_compact"><code>CompactionController$maybe_compact()</code></a></p></li>
+<p></p><ul><li><p><a href="#method-CompactionController-adaptive_compact"><code>CompactionController$adaptive_compact()</code></a></p></li>
+<li><p><a href="#method-CompactionController-maybe_compact"><code>CompactionController$maybe_compact()</code></a></p></li>
 <li><p><a href="#method-CompactionController-compact_now"><code>CompactionController$compact_now()</code></a></p></li>
 <li><p><a href="#method-CompactionController-handle_ptl_error"><code>CompactionController$handle_ptl_error()</code></a></p></li>
 <li><p><a href="#method-CompactionController-reset_failures"><code>CompactionController$reset_failures()</code></a></p></li>
 <li><p><a href="#method-CompactionController-failure_count"><code>CompactionController$failure_count()</code></a></p></li>
 <li><p><a href="#method-CompactionController-clone"><code>CompactionController$clone()</code></a></p></li>
-</ul></div><p></p><hr><a id="method-CompactionController-maybe_compact"></a><div class="section">
-<h3 id="compactioncontroller-maybe-compact-"><code>CompactionController$maybe_compact()</code><a class="anchor" aria-label="anchor" href="#compactioncontroller-maybe-compact-"></a></h3>
-<p>Check token usage and compact if needed.</p><div class="section">
+</ul></div><p></p><hr><a id="method-CompactionController-adaptive_compact"></a><div class="section">
+<h3 id="compactioncontroller-adaptive-compact-"><code>CompactionController$adaptive_compact()</code><a class="anchor" aria-label="anchor" href="#compactioncontroller-adaptive-compact-"></a></h3>
+<p>Run adaptive compaction with circuit-breaker protection.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">maybe_compact</span><span class="op">(</span></span>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">adaptive_compact</span><span class="op">(</span></span>
 <span>  <span class="va">chat</span>,</span>
-<span>  model_limit <span class="op">=</span> <span class="fl">200000L</span>,</span>
-<span>  compact_model <span class="op">=</span> <span class="va">.HAIKU_MODEL</span></span>
+<span>  settings <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  compact_model <span class="op">=</span> <span class="va">.HAIKU_MODEL</span>,</span>
+<span>  request_turns <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  full_enabled <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  force_summary <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  hooks <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  use_provider_usage <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>chat</code></dt>
 <dd><p>An <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> object.</p></dd>
 
-      <dt><code>model_limit</code></dt>
-<dd><p>Integer. Model context window token limit.</p></dd>
+      <dt><code>settings</code></dt>
+<dd><p>Named compaction settings.</p></dd>
+
+      <dt><code>model</code></dt>
+<dd><p>Character. Active request model.</p></dd>
 
       <dt><code>compact_model</code></dt>
-<dd><p>Character. Model for compaction tasks (haiku).</p></dd>
+<dd><p>Character. Model for summary tasks.</p></dd>
+
+      <dt><code>request_turns</code></dt>
+<dd><p>Optional complete outgoing request including pending.</p></dd>
+
+      <dt><code>full_enabled</code></dt>
+<dd><p>Whether summary escalation is allowed.</p></dd>
+
+      <dt><code>force_summary</code></dt>
+<dd><p>Whether to summarize even after cheap reduction.</p></dd>
+
+      <dt><code>hooks</code></dt>
+<dd><p>Optional lifecycle registry; receives sanitized metadata only.</p></dd>
+
+      <dt><code>use_provider_usage</code></dt>
+<dd><p>Whether initial accounting may include prior usage.</p></dd>
 
 
 </dl><p></p></div>
 </div><p></p><div class="section">
 <h4 id="returns">Returns<a class="anchor" aria-label="anchor" href="#returns"></a></h4>
-<p>Invisibly NULL.</p>
+<p>A sanitized internal compaction decision.</p>
+</div>
+
+</div>
+
+<p></p><hr><a id="method-CompactionController-maybe_compact"></a><div class="section">
+<h3 id="compactioncontroller-maybe-compact-"><code>CompactionController$maybe_compact()</code><a class="anchor" aria-label="anchor" href="#compactioncontroller-maybe-compact-"></a></h3>
+<p>Check token usage and compact if needed.</p><div class="section">
+<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">maybe_compact</span><span class="op">(</span></span>
+<span>  <span class="va">chat</span>,</span>
+<span>  model_limit <span class="op">=</span> <span class="fl">200000L</span>,</span>
+<span>  compact_model <span class="op">=</span> <span class="va">.HAIKU_MODEL</span>,</span>
+<span>  model <span class="op">=</span> <span class="st">""</span>,</span>
+<span>  hooks <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  use_provider_usage <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>chat</code></dt>
+<dd><p>An <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> object.</p></dd>
+
+      <dt><code>model_limit</code></dt>
+<dd><p>Integer. Raw model context-window token limit.</p></dd>
+
+      <dt><code>compact_model</code></dt>
+<dd><p>Character. Model for compaction tasks.</p></dd>
+
+      <dt><code>model</code></dt>
+<dd><p>Character. Active request model used to resolve output reserve.</p></dd>
+
+      <dt><code>hooks</code></dt>
+<dd><p>Optional lifecycle registry.</p></dd>
+
+      <dt><code>use_provider_usage</code></dt>
+<dd><p>Whether initial accounting may include prior usage.</p></dd>
+
+
+</dl><p></p></div>
+</div><p></p><div class="section">
+<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<p>Invisibly the internal compaction decision, or NULL when disabled.</p>
 </div>
 
 </div>
 
 <p></p><hr><a id="method-CompactionController-compact_now"></a><div class="section">
 <h3 id="compactioncontroller-compact-now-"><code>CompactionController$compact_now()</code><a class="anchor" aria-label="anchor" href="#compactioncontroller-compact-now-"></a></h3>
-<p>Run the two-level compaction now (snip -&gt; session-memory -&gt;
-full 9-section), guarded by the circuit breaker. Unlike
-<code>maybe_compact()</code> this skips the token-threshold check, so callers that
-have already decided to compact (e.g. mid-loop) can reuse the exact
-same Claude Code-aligned flow.</p><div class="section">
-<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<p>Force the adaptive summary chain for manual compaction.</p><div class="section">
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">compact_now</span><span class="op">(</span><span class="va">chat</span>, compact_model <span class="op">=</span> <span class="va">.HAIKU_MODEL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>chat</code></dt>
 <dd><p>An <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> object.</p></dd>
 
       <dt><code>compact_model</code></dt>
-<dd><p>Character. Model for compaction tasks (haiku).</p></dd>
+<dd><p>Character. Model for compaction tasks.</p></dd>
 
 
 </dl><p></p></div>
 </div><p></p><div class="section">
-<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
-<p>Invisibly <code>TRUE</code> on success, <code>FALSE</code> if skipped or failed.</p>
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<p>Invisibly TRUE on a validated change, FALSE otherwise. The
+structured decision is attached as a <code>decision</code> attribute.</p>
 </div>
 
 </div>
@@ -146,16 +211,19 @@ same Claude Code-aligned flow.</p><div class="section">
 <p></p><hr><a id="method-CompactionController-handle_ptl_error"></a><div class="section">
 <h3 id="compactioncontroller-handle-ptl-error-"><code>CompactionController$handle_ptl_error()</code><a class="anchor" aria-label="anchor" href="#compactioncontroller-handle-ptl-error-"></a></h3>
 <p>Handle a prompt-too-long (PTL) error by dropping turns.</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">handle_ptl_error</span><span class="op">(</span><span class="va">chat</span>, error <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">handle_ptl_error</span><span class="op">(</span><span class="va">chat</span>, error <span class="op">=</span> <span class="cn">NULL</span>, pending_turn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>chat</code></dt>
 <dd><p>An <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> object.</p></dd>
 
       <dt><code>error</code></dt>
 <dd><p>An error condition or message string (parsed for a real
 context limit when present).</p></dd>
+
+      <dt><code>pending_turn</code></dt>
+<dd><p>Optional failed outgoing pending turn.</p></dd>
 
 
 </dl><p></p></div>
@@ -166,7 +234,7 @@ context limit when present).</p></dd>
 <p></p><hr><a id="method-CompactionController-reset_failures"></a><div class="section">
 <h3 id="compactioncontroller-reset-failures-"><code>CompactionController$reset_failures()</code><a class="anchor" aria-label="anchor" href="#compactioncontroller-reset-failures-"></a></h3>
 <p>Reset the failure counter (e.g. after a successful turn).</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">reset_failures</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -175,7 +243,7 @@ context limit when present).</p></dd>
 <p></p><hr><a id="method-CompactionController-failure_count"></a><div class="section">
 <h3 id="compactioncontroller-failure-count-"><code>CompactionController$failure_count()</code><a class="anchor" aria-label="anchor" href="#compactioncontroller-failure-count-"></a></h3>
 <p>Return current failure count.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">failure_count</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -184,10 +252,10 @@ context limit when present).</p></dd>
 <p></p><hr><a id="method-CompactionController-clone"></a><div class="section">
 <h3 id="compactioncontroller-clone-"><code>CompactionController$clone()</code><a class="anchor" aria-label="anchor" href="#compactioncontroller-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">CompactionController</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

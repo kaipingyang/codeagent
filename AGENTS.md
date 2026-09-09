@@ -91,17 +91,22 @@ async body); avoid bare `!!!` (use
 promise from a plain function instead). See
 `lessons/2026-07-03-shiny-async-interaction.md`.
 
-**Compaction — turn-boundary + mid-loop (two-tier):** compaction runs
-before each `chat$chat()`. Between tool rounds (ellmer’s released
-`on_tool_result`,
-[`register_midloop_compaction()`](https://kaipingyang.github.io/codeagent/reference/register_midloop_compaction.md)),
-a **budget-aware micro snip** runs by default
-(`settings$midloop_compact`, ON) and an **opt-in full two-level
-compact** (`settings$midloop_full_compact`, OFF) escalates when snip
-isn’t enough. Cleaner target: upstream `on_turn_start` (fires before
-*every* request; `on_tool_request` can’t substitute — it fires after the
-request, per-tool). See `references/plan/13-mid-loop-compaction.md` (PR
-tidyverse/ellmer#1052).
+**Compaction — adaptive turn-boundary + per-request pipeline:**
+compaction runs before each `chat$chat()`. Ellmer’s `on_request_start`
+callback also runs before every model request, including each tool-loop
+round;
+[`register_midloop_compaction()`](https://kaipingyang.github.io/codeagent/reference/register_midloop_compaction.md)
+uses its complete outgoing `turns` (including the pending turn) for
+initial threshold accounting. Cheap result controls and a budget-aware
+micro snip run before any summary. After a history mutation, codeagent
+rebuilds new history plus the original pending turn exactly once and
+performs a fresh structural recount; stale provider usage is never a
+post-mutation lower bound. An opt-in full path
+(`settings$midloop_full_compact`, OFF) escalates to incremental/full
+summary only when the cheap stages remain over the unified model-aware
+threshold. History is rewritten only through `chat$get_turns()` /
+`chat$set_turns()`; summary input is structured and tool-aware, and PTL
+recovery drops complete pair-safe rounds.
 
 **Env vars:** prefer `CODEAGENT_*` (`CODEAGENT_BASE_URL`,
 `CODEAGENT_MODEL`, `CODEAGENT_API_KEY`) over `OPENAI_*` names. Keep
@@ -134,22 +139,25 @@ broader runs with
     pak::local_install(".", ask = FALSE, upgrade = FALSE)
     ```
 
-    Then `codegraph sync` to refresh the symbol index for AI/code-review
-    tooling.
+- **Liquid Glass ownership:** `theme = "glass"` delegates material
+  rendering to the optional exact-pinned `shinyglass` package. Keep
+  codeagent’s adapter thin: map shinychat header/sidebar/drawer/composer
+  selectors to public `--glass-*` CSS variables and bridge
+  `data-bs-theme`; do not vendor or recreate shinyglass material, tint,
+  intensity, or specular logic. Keep message/code/tool/table readability
+  policy separate from navigation chrome. Then `codegraph sync` to
+  refresh the symbol index for AI/code-review tooling.
 
 2.  **Update `README.md`** — new exported functions/features get a line
     in the matching section; important behavior changes update the
     relevant description.
-
 3.  **Update tests and examples** — new/changed functions get
     `tests/testthat/test-*.R` coverage; public-API changes update
     `inst/examples/demo_*.R` / `test_databricks.R`.
-
 4.  **Wire new exported tools** — confirm whether they need registering
     in
     [`.register_all_tools()`](https://kaipingyang.github.io/codeagent/reference/dot-register_all_tools.md)
     and its call chain.
-
 5.  **Sync the pkgdown index for new/removed exports** — `_pkgdown.yml`
     uses an *explicit* reference index, so any `@export` you add/remove
     MUST be added to/removed from the matching `reference:` `contents:`

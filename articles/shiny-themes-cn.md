@@ -1,0 +1,100 @@
+# Shiny 应用主题（简体中文）
+
+**语言：**
+[English](https://kaipingyang.github.io/codeagent/articles/shiny-themes.md)
+\| 简体中文
+
+[`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
+同时支持经典嵌入式聊天布局和 shinychat 的全窗口 `page_chat`
+布局。内置主题在两种布局中共用同一套 bslib 基础；下面的截图 使用
+`page_chat`，因此可以同时看到侧边栏、全局工具栏、聊天画布、输入框和
+Workspace 抽屉。
+
+## Liquid Glass
+
+可选的 `glass` 主题把材质渲染、实时强度、色调、镜面高光和无障碍降级逻辑
+委托给
+[shinyglass](https://ericrayanderson.github.io/shinyglass/)。codeagent
+只为 shinychat 的 header、sidebar、drawer 和 composer
+提供一层很薄的适配。
+
+### 浅色模式
+
+![codeagent page_chat 布局的浅色 Liquid Glass
+主题](images/codeagent-shinyglass-light.png)
+
+*浅色 Liquid Glass，Workspace 抽屉处于打开状态。*
+
+### 深色模式
+
+![codeagent page_chat 布局的深色 Liquid Glass
+主题](images/codeagent-shinyglass-dark.png)
+
+*通过 bslib 颜色模式控件切换到深色后的同一个应用。*
+
+两张截图都由真实 Chromium 以 1440 x 1000 分辨率生成，参数为
+`intensity = 0.45`、`tint = FALSE`。深色模式控件会在运行时同步更新 bslib
+和 shinyglass。
+
+先安装 codeagent 已验证的精确 shinyglass 版本，再创建主题：
+
+``` r
+
+pak::pak(
+  "ericrayanderson/shinyglass@25f759d702b8fc951f367178288486b613ee6969"
+)
+
+liquid_theme <- codeagent_theme(
+  "glass",
+  preset = "auto",
+  intensity = 0.45,
+  tint = FALSE,
+  specular = TRUE
+)
+
+codeagent_app(
+  client,
+  ui_layout = "page_chat",
+  theme = liquid_theme
+)
+```
+
+宿主应用需要动态调节材质时，可以使用 shinyglass 的公共运行时控制。例如，
+`window.shinyglass.setIntensity(0.8)`
+会同时提高不透明度和模糊程度，不需要 替换 codeagent 主题。
+
+## 其他内置主题
+
+其余内置主题不依赖 shinyglass：
+
+| 主题      | 外观                                        |
+|-----------|---------------------------------------------|
+| `default` | 标准 shinychat/bslib 页面主题               |
+| `ios`     | 分组画布、明亮卡片和紧凑的 iOS 风格表面     |
+| `aurora`  | 蓝色、靛蓝和紫色环境光以及选择性磨砂 chrome |
+| `flatly`  | 浅色 Bootswatch 主题                        |
+| `darkly`  | 深色 Bootswatch 主题                        |
+
+可以把名称直接传给
+[`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)，也可以创建可复用的主题对象：
+
+``` r
+
+codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
+
+ios_theme <- codeagent_theme(
+  "ios",
+  primary = "#0057d9",
+  `shiny-chat-page-canvas-bg` = "#ffffff"
+)
+codeagent_app(client, ui_layout = "page_chat", theme = ios_theme)
+```
+
+任意 bslib 或
+[`shinychat::page_chat_theme()`](https://posit-dev.github.io/shinychat/r/reference/page_chat_theme.html)
+主题对象也会原样传递。无需发起 模型请求即可预览内置主题：
+
+``` bash
+Rscript inst/examples/run_theme_preview.R --list
+Rscript inst/examples/run_theme_preview.R glass page_chat
+```

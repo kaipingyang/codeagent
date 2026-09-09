@@ -162,11 +162,11 @@ library。
 - `mcptools` \>= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
 - `httr2` 1.3.0（保持稳定版）
 
-**当前个人默认开发环境（2026-08-31）：**
+**当前个人默认开发环境（2026-09-03）：**
 
 个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
 
-- `ellmer` 0.4.2.9000 @ `a64f94e644718c0598b01b0cd50a3c21c2646435`
+- `ellmer` 0.4.2.9000 @ `2e96ac58a33d74bea585727daf8cd1535c67d7f1`
 - `btw` 1.4.0.9000 @ `d11591b09d9127b05d673e8c96569d2bbae2ec44`
 - `shinychat` 0.4.0.9000 @
   `2b249764ce45b224224b7d185b3f34f14d0ad84f`（monorepo：`posit-dev/shinychat/pkg-r`）
@@ -503,26 +503,27 @@ replace large old tool results with placeholder - L2
 drop oldest turns on 413 errors - L5 `context_collapse`: read-time
 projection (truncate all tool result values)
 
-> **Current flow (task 01 alignment):** the live `maybe_compact()`
-> trigger is now **two-level** — `snip_old_tools` pre-step →
-> `session_memory_compact` → fall back to `full_compact` (verbatim
-> 9-section prompt). `ptl_fallback`/`context_collapse` remain as
-> reactive/utility paths. Dynamic per-model window lives in
-> `R/context.R`. **Known gap (mostly closed):** turn-boundary compaction
-> runs before each `chat$chat()`. Between tool rounds,
-> [`register_midloop_compaction()`](https://kaipingyang.github.io/codeagent/reference/register_midloop_compaction.md)
-> (ellmer’s released `on_tool_result`) compacts in two tiers mirroring
-> CC `autoCompactIfNeeded`: a **budget-aware micro snip** ON by default
-> (`settings$midloop_compact`) and an **opt-in full two-level compact**
-> (`settings$midloop_full_compact`) via
-> `CompactionController$compact_now()`. Remaining gap is *timing*:
-> `on_tool_result` only fires between tool rounds, not before every
-> request. `on_tool_request` cannot substitute (it fires after the
-> request, inside `invoke_tools`, per tool). True parity needs upstream
-> `on_turn_start` (PR tidyverse/ellmer#1052); see
-> `references/plan/13-mid-loop-compaction.md`.
+> **Current adaptive flow:** the live request-boundary pipeline is cheap
+> resource replacement → budget-aware micro snip → rebuild persisted
+> history plus the original pending turn → fresh structural recount. It
+> calls incremental summary, then full summary fallback, only when the
+> rebuilt request remains over the unified model-aware threshold and
+> full compaction is enabled. Both summary levels consume the same
+> structured, tool-aware serialization; successful history writes are
+> rebuilt and validated again before the request proceeds. PTL recovery
+> drops complete historical API rounds, validates tool request/result
+> pairing, and retries once.
 >
-> Token accounting is deliberately zero-implicit-network:
+> Turn-boundary compaction runs before each `chat$chat()`. Per-request
+> coverage uses ellmer’s `on_request_start`, which fires for every model
+> request including internal tool-loop rounds. The callback’s outgoing
+> `turns` include the pending turn; history mutations use
+> `chat$get_turns()` / `chat$set_turns()`, and the original pending turn
+> is appended exactly once only for structural recount. Initial
+> accounting may conservatively include prior provider usage, while any
+> post-mutation recount deliberately excludes that stale lower bound.
+>
+> Token accounting remains zero-implicit-network:
 > `token_count_with_estimation(chat, allow_network=FALSE)` includes
 > `cached_input` from the last usage and otherwise uses the heuristic.
 > Compaction, context-left, teardown and Shiny never call remote token
@@ -614,10 +615,20 @@ otherwise `chat_anthropic`.
 keeps instant startup: tool/skill registration is deferred behind the
 initialization overlay, and input remains disabled until ready. Citation
 mode is explicitly opt-in and buffer-then-show; ordinary streaming is
-unchanged. `ui_layout="page_chat"` uses one top-level `page_chat()`/one
-chat root, the official `page_chat_theme()` baseline, a persistent
-global dark-mode + Workspace toolbar (`toolbar_input_button()`), a
-supported
+unchanged. Both UI layouts now resolve from the official
+`page_chat_theme()` Bootstrap foundation through exported
+[`codeagent_theme()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme.md);
+`theme="ios"` adds an iOS grouped canvas/white-card layer,
+`theme="aurora"` adds static blue-indigo-purple ambient light with
+selective navigation/composer glass and high-opacity content surfaces,
+`theme="glass"` delegates material rendering and runtime
+intensity/tint/specular behavior to the optional exact-pinned
+`shinyglass` package while codeagent maps only shinychat
+header/sidebar/drawer/composer surfaces and bridges the bslib dark-mode
+attribute, and caller-supplied bslib themes pass through unchanged.
+`ui_layout="page_chat"` uses one top-level `page_chat()`/one chat root,
+a persistent global dark-mode + Workspace toolbar
+(`toolbar_input_button()`), a supported
 [`bslib::sidebar()`](https://rstudio.github.io/bslib/reference/sidebar.html),
 and `chat_drawer()` for the Output / Files / File artifact workspace.
 Its chat width is explicitly `100%` of the available main column;

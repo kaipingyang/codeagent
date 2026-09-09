@@ -100,7 +100,7 @@ codeagent_console(client)
 | **Agent loop** | [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md) with max_turns, token budget tracking, an optional hard `max_budget_usd` dollar-cost cap (`codeagent_client(max_budget_usd=)` / `CODEAGENT_MAX_BUDGET_USD` / `max_budget_usd` in `settings.json`; checked via `chat$get_cost()`, only fires where ellmer has price data for the model/provider), and compaction |
 | **Permissions** | 7 modes: `default`, `plan`, `accept_edits`, `bypass`, `dont_ask`, `auto`, `bubble`; fine-grained rules match tool arguments |
 | **Hooks** | 27 Claude Code-aligned lifecycle events (tool, permission, message, session, task, worktree, compaction), configurable from `settings.json`. `PreToolUse` can **rewrite tool arguments** (SDK-style `updatedInput`) or deny a call |
-| **Compaction** | Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), context counts include cached input and default to zero implicit token-count network calls, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and **mid-loop compaction** between tool rounds |
+| **Compaction** | Dynamic per-model context window + adaptive request-boundary flow (cheap result controls → micro snip → fresh structural recount → conditional incremental/full summary), structured tool-aware summary input, post-action validation, default-zero implicit token-count network calls, pair-safe PTL/413 recovery, an “N% context left” indicator (REPL + Shiny), and per-request coverage across internal tool-loop rounds through a Claude Agent SDK-compatible lifecycle |
 | **System prompt** | Tone, task, convention, tool-use, and R-specific behavioural guidance |
 | **Error recovery** | PTL/rate-limit/network/auth classification; exponential backoff; one finish-reason mapper reports completed/truncated/filtered/incomplete-tool-use consistently across sync, stream, and Shiny paths |
 | **Verification** | `verify_fn` param + [`verify_r_tests()`](https://kaipingyang.github.io/codeagent/reference/verify_r_tests.md) re-enters loop on test failures |
@@ -397,12 +397,44 @@ configuration keep them disabled.
 codeagent_app(
   client,
   ui_layout     = "classic",   # default; opt in with "page_chat"
-  theme         = "default",   # "default" | "flatly" | "darkly" | "glass"
+  theme         = "default",   # default | ios | aurora | flatly | darkly | glass
   pinned_skills = c("plan", "compact")
 )
 
-# Opt-in full-window chat with the existing Output/Files/File workspace drawer:
-codeagent_app(client, ui_layout = "page_chat")
+# iOS grouped canvas with white cards, shared by classic and page_chat:
+codeagent_app(client, ui_layout = "page_chat", theme = "ios")
+
+# Aurora uses ambient blue-indigo-purple light, selective frosted navigation,
+# and high-opacity content surfaces for dense chat, code, tools, and tables:
+codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
+
+# Liquid Glass delegates material rendering to the optional pinned shinyglass
+# package; codeagent adds only a thin shinychat surface/dark-mode adapter:
+pak::pak("ericrayanderson/shinyglass@25f759d702b8fc951f367178288486b613ee6969")
+liquid_theme <- codeagent_theme(
+  "glass", preset = "auto", intensity = 0.45,
+  tint = TRUE, specular = TRUE
+)
+codeagent_app(client, ui_layout = "page_chat", theme = liquid_theme)
+
+# Customize the same official shinychat/bslib theme foundation:
+ios_theme <- codeagent_theme(
+  "ios",
+  primary = "#0057d9",
+  `shiny-chat-page-canvas-bg` = "#ffffff"
+)
+codeagent_app(client, ui_layout = "page_chat", theme = ios_theme)
+
+# Arbitrary bslib/page_chat themes also pass through unchanged:
+codeagent_app(client, theme = shinychat::page_chat_theme(primary = "#0057d9"))
+
+# Visual theme gallery:
+# https://kaipingyang.github.io/codeagent/articles/shiny-themes.html
+
+# Preview any built-in theme/layout from the repository:
+# Rscript inst/examples/run_theme_preview.R --list
+# Rscript inst/examples/run_theme_preview.R aurora page_chat
+# Rscript inst/examples/run_theme_preview.R ios classic
 
 # Runnable example:
 # Rscript inst/examples/run_page_chat.R
@@ -435,8 +467,9 @@ receives the portable text `value`; any UI can consume the versioned
 `extra$codeagent$artifact` (`schema = "codeagent.tool-artifact"`,
 `version = 1`); and shinychat receives its official
 `tool_result_display()` adapter in `extra$display`, including compact
-labels/value previews and framed rich cards. See the [tool-result
-artifact
+labels/value previews and framed rich cards. Successful tool cards start
+collapsed regardless of output length; error cards start expanded so
+failures remain immediately visible. See the [tool-result artifact
 guide](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html)
 for the v1 schema, version negotiation, trust boundary, and migration
 checklist. The streaming `on_tool_result` event exposes all three as

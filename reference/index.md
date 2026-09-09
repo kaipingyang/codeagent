@@ -34,6 +34,8 @@ Interactive chat interface.
 
 - [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
   : Launch the codeagent Shiny application
+- [`codeagent_theme()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme.md)
+  : Build a codeagent application theme
 
 ## IDE Addins
 

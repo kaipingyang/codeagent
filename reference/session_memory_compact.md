@@ -11,7 +11,8 @@ session_memory_compact(
   model = .HAIKU_MODEL,
   min_messages = 5L,
   min_tokens = .COMPACT_L2_MIN_TOKENS,
-  max_tokens = .COMPACT_L2_MAX_TOKENS
+  max_tokens = .COMPACT_L2_MAX_TOKENS,
+  pending_turn = NULL
 )
 ```
 
@@ -38,6 +39,10 @@ session_memory_compact(
 
   Integer. Maximum tokens for the summary section.
 
+- pending_turn:
+
+  Optional outgoing pending turn used for pairing validation.
+
 ## Value
 
-Invisibly NULL.
+Invisibly TRUE after a validated history write, otherwise NULL.

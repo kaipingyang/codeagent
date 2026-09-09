@@ -1,5 +1,87 @@
 # Changelog
 
+## codeagent 0.2.3
+
+This backward-compatible patch release adds optional Liquid Glass
+theming and fixes default tool-card expansion without changing public
+APIs.
+
+### Shiny UI
+
+- Replaced the built-in glassmorphism imitation with optional,
+  exact-pinned `shinyglass` material rendering.
+  `codeagent_theme("glass", ...)` now forwards Liquid Glass controls
+  such as `preset`, `intensity`, `tint`, and `specular` to shinyglass,
+  while codeagent owns only a thin shinychat
+  header/sidebar/drawer/composer token adapter and dark-mode bridge.
+- Changed artifact-backed tool cards to stay collapsed after successful
+  completion regardless of output length; error cards still open by
+  default. This prevents normal long Read, Grep, and `use_skill` results
+  from making the interface appear permanently expanded.
+
+### Documentation
+
+- Added a bilingual pkgdown Shiny theme gallery with real Chromium
+  screenshots of the Liquid Glass light and dark modes.
+
+## codeagent 0.2.2
+
+This backward-compatible release adds adaptive request-boundary
+compaction, adopts ellmer’s request lifecycle hooks, and expands the
+Shiny theme system while preserving public interfaces.
+
+### Core
+
+- Reworked request-boundary compaction into an adaptive, model-aware
+  pipeline: cheap result replacement and micro snip run before
+  structured fresh recount; incremental/full summaries run only when
+  still needed and are post-validated. Summary input now preserves tool
+  request/result structure, PTL recovery drops pair-safe complete
+  rounds, and compaction lifecycle hooks expose metadata only.
+
+- Updated the pinned ellmer development build to official `main` SHA
+  `2e96ac58a33d74bea585727daf8cd1535c67d7f1`, which includes the merged
+  `Chat$on_request_start()` / `Chat$on_request_end()` callbacks from
+  tidyverse/ellmer#1052.
+
+- Migrated mid-loop compaction from the per-tool `on_tool_result`
+  workaround to `on_request_start`, so context is checked before every
+  model request. Threshold accounting now includes the complete outgoing
+  turns, including a pending tool-result turn, while history rewrites
+  continue to use ellmer’s supported `get_turns()` / `set_turns()`
+  contract.
+
+- Adapted verified name-only model switching to ellmer’s new `Model`
+  ownership: deprecated Provider model fields are excluded from provider
+  identity checks, while `Model` params and extra arguments remain
+  strictly compared before an in-place switch.
+
+### Shiny UI
+
+- Fixed the runnable theme/page-chat examples for Workbench and RStudio:
+  they now preserve the `shiny.launch.browser` proxy launcher and bind
+  to `0.0.0.0` when Workbench URL environment markers are present, while
+  ordinary environments remain loopback-only. Previously the proxy could
+  open a blank page because the app listened only on `127.0.0.1`.
+- Added the independently selectable `theme = "aurora"`: static
+  blue-indigo-purple ambient light with selective frosted sidebars,
+  drawers, and composer controls, while chat, code, tool-result, table,
+  and artifact surfaces remain high-opacity for sustained readability.
+  Includes dark-mode, reduced-transparency, reduced-motion, and
+  no-`backdrop-filter` fallbacks.
+- Unified the classic and `page_chat` layouts on shinychat’s official
+  `page_chat_theme()` foundation. Added exported
+  [`codeagent_theme()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme.md),
+  built-in `theme = "ios"`, and direct pass-through of custom bslib
+  themes (including `shinychat::page_chat_theme(...)`).
+- Refined the iOS preset with a Young Voice-style grouped canvas,
+  compact 14px white cards, lightweight borders and shadows, white
+  sidebars, and a bottom-anchored composer beside the voice/file footer
+  actions.
+- Refreshed artifact/tool-result cards with bslib white surfaces and
+  shinychat-aligned Atom One syntax colors, replacing Prism’s legacy
+  gray code background and text shadow.
+
 ## codeagent 0.2.1
 
 This is a backward-compatible release focused on portable tool results,

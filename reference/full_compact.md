@@ -6,7 +6,12 @@ wrapped in `<summary>` tags, then replaces all turns with that summary.
 ## Usage
 
 ``` r
-full_compact(chat, model = .HAIKU_MODEL, instructions = NULL)
+full_compact(
+  chat,
+  model = .HAIKU_MODEL,
+  instructions = NULL,
+  pending_turn = NULL
+)
 ```
 
 ## Arguments
@@ -24,6 +29,10 @@ full_compact(chat, model = .HAIKU_MODEL, instructions = NULL)
 
   Character or NULL. Optional user instructions to bias the summary.
 
+- pending_turn:
+
+  Optional outgoing pending turn used for pairing validation.
+
 ## Value
 
-Invisibly NULL.
+Invisibly TRUE after a validated history write, otherwise NULL.

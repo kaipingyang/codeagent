@@ -24,7 +24,7 @@
 
     <a class="navbar-brand me-2" href="index.html">codeagent</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -41,6 +41,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Configuration</h6></li>
     <li><a class="dropdown-item" href="articles/configuration.html">Configuration</a></li>
+    <li><a class="dropdown-item" href="articles/shiny-themes.html">Shiny app themes</a></li>
     <li><a class="dropdown-item" href="articles/permissions.html">Permissions</a></li>
     <li><a class="dropdown-item" href="articles/models.html">Models and providers</a></li>
     <li><a class="dropdown-item" href="articles/compaction.html">Context management and compaction</a></li>
@@ -60,6 +61,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
     <li><a class="dropdown-item" href="articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
     <li><a class="dropdown-item" href="articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="articles/shiny-themes-cn.html">Shiny 应用主题（简体中文）</a></li>
     <li><a class="dropdown-item" href="articles/permissions-cn.html">权限系统</a></li>
     <li><a class="dropdown-item" href="articles/models-cn.html">模型和供应商（简体中文）</a></li>
     <li><a class="dropdown-item" href="articles/compaction-cn.html">上下文管理与压缩</a></li>
@@ -190,7 +192,7 @@
 </tr>
 <tr>
 <td><strong>Compaction</strong></td>
-<td>Dynamic per-model context window + two-level flow (session-memory summary → full 9-section summary), context counts include cached input and default to zero implicit token-count network calls, PTL/413 fallback, an “N% context left” indicator (REPL + Shiny), and <strong>mid-loop compaction</strong> between tool rounds</td>
+<td>Dynamic per-model context window + adaptive request-boundary flow (cheap result controls → micro snip → fresh structural recount → conditional incremental/full summary), structured tool-aware summary input, post-action validation, default-zero implicit token-count network calls, pair-safe PTL/413 recovery, an “N% context left” indicator (REPL + Shiny), and per-request coverage across internal tool-loop rounds through a Claude Agent SDK-compatible lifecycle</td>
 </tr>
 <tr>
 <td><strong>System prompt</strong></td>
@@ -393,12 +395,44 @@
 <span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>,</span>
 <span>  ui_layout     <span class="op">=</span> <span class="st">"classic"</span>,   <span class="co"># default; opt in with "page_chat"</span></span>
-<span>  theme         <span class="op">=</span> <span class="st">"default"</span>,   <span class="co"># "default" | "flatly" | "darkly" | "glass"</span></span>
+<span>  theme         <span class="op">=</span> <span class="st">"default"</span>,   <span class="co"># default | ios | aurora | flatly | darkly | glass</span></span>
 <span>  pinned_skills <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"plan"</span>, <span class="st">"compact"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Opt-in full-window chat with the existing Output/Files/File workspace drawer:</span></span>
-<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, ui_layout <span class="op">=</span> <span class="st">"page_chat"</span><span class="op">)</span></span>
+<span><span class="co"># iOS grouped canvas with white cards, shared by classic and page_chat:</span></span>
+<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, ui_layout <span class="op">=</span> <span class="st">"page_chat"</span>, theme <span class="op">=</span> <span class="st">"ios"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Aurora uses ambient blue-indigo-purple light, selective frosted navigation,</span></span>
+<span><span class="co"># and high-opacity content surfaces for dense chat, code, tools, and tables:</span></span>
+<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, ui_layout <span class="op">=</span> <span class="st">"page_chat"</span>, theme <span class="op">=</span> <span class="st">"aurora"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Liquid Glass delegates material rendering to the optional pinned shinyglass</span></span>
+<span><span class="co"># package; codeagent adds only a thin shinychat surface/dark-mode adapter:</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ericrayanderson/shinyglass@25f759d702b8fc951f367178288486b613ee6969"</span><span class="op">)</span></span>
+<span><span class="va">liquid_theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_theme.html">codeagent_theme</a></span><span class="op">(</span></span>
+<span>  <span class="st">"glass"</span>, preset <span class="op">=</span> <span class="st">"auto"</span>, intensity <span class="op">=</span> <span class="fl">0.45</span>,</span>
+<span>  tint <span class="op">=</span> <span class="cn">TRUE</span>, specular <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, ui_layout <span class="op">=</span> <span class="st">"page_chat"</span>, theme <span class="op">=</span> <span class="va">liquid_theme</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Customize the same official shinychat/bslib theme foundation:</span></span>
+<span><span class="va">ios_theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_theme.html">codeagent_theme</a></span><span class="op">(</span></span>
+<span>  <span class="st">"ios"</span>,</span>
+<span>  primary <span class="op">=</span> <span class="st">"#0057d9"</span>,</span>
+<span>  `shiny-chat-page-canvas-bg` <span class="op">=</span> <span class="st">"#ffffff"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, ui_layout <span class="op">=</span> <span class="st">"page_chat"</span>, theme <span class="op">=</span> <span class="va">ios_theme</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Arbitrary bslib/page_chat themes also pass through unchanged:</span></span>
+<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, theme <span class="op">=</span> <span class="fu">shinychat</span><span class="fu">::</span><span class="fu"><a href="https://posit-dev.github.io/shinychat/r/reference/page_chat_theme.html" class="external-link">page_chat_theme</a></span><span class="op">(</span>primary <span class="op">=</span> <span class="st">"#0057d9"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Visual theme gallery:</span></span>
+<span><span class="co"># https://kaipingyang.github.io/codeagent/articles/shiny-themes.html</span></span>
+<span></span>
+<span><span class="co"># Preview any built-in theme/layout from the repository:</span></span>
+<span><span class="co"># Rscript inst/examples/run_theme_preview.R --list</span></span>
+<span><span class="co"># Rscript inst/examples/run_theme_preview.R aurora page_chat</span></span>
+<span><span class="co"># Rscript inst/examples/run_theme_preview.R ios classic</span></span>
 <span></span>
 <span><span class="co"># Runnable example:</span></span>
 <span><span class="co"># Rscript inst/examples/run_page_chat.R</span></span>
@@ -412,7 +446,7 @@
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>Shiny model controls only perform verified name-only switches that keep the captured Chat identity. A provider, endpoint, credentials, params, or API-args change is rejected with guidance to start a new session/app; the CLI/R <code><a href="reference/switch_model.html">switch_model()</a></code> API can safely take the rebuilding Route B.</p>
 <p>Tool-group changes in the Settings panel are atomic: deselected btw groups are actually removed while core, MCP, skill, and separately owned tools are retained; the Agent checkbox controls the single foreground Agent owner. Permission or tool-group changes are rejected while a response is streaming, and a failed refresh restores the previous tool snapshot before input is re-enabled.</p>
-<p>Tool results have three deliberately separate channels: the model receives the portable text <code>value</code>; any UI can consume the versioned <code>extra$codeagent$artifact</code> (<code>schema = "codeagent.tool-artifact"</code>, <code>version = 1</code>); and shinychat receives its official <code>tool_result_display()</code> adapter in <code>extra$display</code>, including compact labels/value previews and framed rich cards. See the <a href="https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html">tool-result artifact guide</a> for the v1 schema, version negotiation, trust boundary, and migration checklist. The streaming <code>on_tool_result</code> event exposes all three as <code>artifact</code>, <code>display</code>, and <code>value</code>. A non-shinychat host should prefer the artifact, ignore the display adapter, and fall back to the value when it does not support that artifact version or kind:</p>
+<p>Tool results have three deliberately separate channels: the model receives the portable text <code>value</code>; any UI can consume the versioned <code>extra$codeagent$artifact</code> (<code>schema = "codeagent.tool-artifact"</code>, <code>version = 1</code>); and shinychat receives its official <code>tool_result_display()</code> adapter in <code>extra$display</code>, including compact labels/value previews and framed rich cards. Successful tool cards start collapsed regardless of output length; error cards start expanded so failures remain immediately visible. See the <a href="https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html">tool-result artifact guide</a> for the v1 schema, version negotiation, trust boundary, and migration checklist. The streaming <code>on_tool_result</code> event exposes all three as <code>artifact</code>, <code>display</code>, and <code>value</code>. A non-shinychat host should prefer the artifact, ignore the display adapter, and fall back to the value when it does not support that artifact version or kind:</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">on_tool_result</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">artifact</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tool_result_artifact.html">tool_result_artifact</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span>  <span class="co"># NULL if v1 is unsupported/invalid</span></span>

@@ -45,12 +45,19 @@ codeagent_app(
 
 - theme:
 
-  UI theme. One of `"default"` (light Bootstrap 5), `"flatly"`,
-  `"darkly"` (dark), or `"glass"` (dark glassmorphism). The CLI aliases
-  `"light"` -\> `"default"`, `"dark"` -\> `"darkly"`, and
-  `"glassmorphism"` -\> `"glass"` are also accepted. Set at launch; the
-  live dark-mode toggle in the sidebar still flips light/dark on top of
-  the chosen theme.
+  UI theme name or a bslib `bs_theme` object. Built-in names are
+  `"default"`, `"ios"` (iOS grouped canvas with white cards), `"aurora"`
+  (ambient blue-indigo-purple light with selective frosted controls),
+  `"flatly"`, `"darkly"` (dark), and `"glass"` (Liquid Glass from the
+  optional `shinyglass` package, with a thin shinychat surface adapter).
+  A theme from
+  [`codeagent_theme()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme.md)
+  or
+  [`shinychat::page_chat_theme()`](https://posit-dev.github.io/shinychat/r/reference/page_chat_theme.html)
+  is accepted unchanged. The CLI aliases `"light"` -\> `"default"`,
+  `"dark"` -\> `"darkly"`, and `"glassmorphism"` -\> `"glass"` are also
+  accepted. Set at launch; the live dark-mode toggle also synchronizes
+  the shinyglass preset.
 
 - pinned_skills:
 

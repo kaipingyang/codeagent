@@ -8,6 +8,8 @@ failures to prevent infinite compaction loops.
 
 ### Public methods
 
+- [`CompactionController$adaptive_compact()`](#method-CompactionController-adaptive_compact)
+
 - [`CompactionController$maybe_compact()`](#method-CompactionController-maybe_compact)
 
 - [`CompactionController$compact_now()`](#method-CompactionController-compact_now)
@@ -22,6 +24,69 @@ failures to prevent infinite compaction loops.
 
 ------------------------------------------------------------------------
 
+### `CompactionController$adaptive_compact()`
+
+Run adaptive compaction with circuit-breaker protection.
+
+#### Usage
+
+    CompactionController$adaptive_compact(
+      chat,
+      settings = list(),
+      model = "",
+      compact_model = .HAIKU_MODEL,
+      request_turns = NULL,
+      full_enabled = FALSE,
+      force_summary = FALSE,
+      hooks = NULL,
+      use_provider_usage = TRUE
+    )
+
+#### Arguments
+
+- `chat`:
+
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  object.
+
+- `settings`:
+
+  Named compaction settings.
+
+- `model`:
+
+  Character. Active request model.
+
+- `compact_model`:
+
+  Character. Model for summary tasks.
+
+- `request_turns`:
+
+  Optional complete outgoing request including pending.
+
+- `full_enabled`:
+
+  Whether summary escalation is allowed.
+
+- `force_summary`:
+
+  Whether to summarize even after cheap reduction.
+
+- `hooks`:
+
+  Optional lifecycle registry; receives sanitized metadata only.
+
+- `use_provider_usage`:
+
+  Whether initial accounting may include prior usage.
+
+#### Returns
+
+A sanitized internal compaction decision.
+
+------------------------------------------------------------------------
+
 ### `CompactionController$maybe_compact()`
 
 Check token usage and compact if needed.
@@ -31,7 +96,10 @@ Check token usage and compact if needed.
     CompactionController$maybe_compact(
       chat,
       model_limit = 200000L,
-      compact_model = .HAIKU_MODEL
+      compact_model = .HAIKU_MODEL,
+      model = "",
+      hooks = NULL,
+      use_provider_usage = TRUE
     )
 
 #### Arguments
@@ -43,25 +111,33 @@ Check token usage and compact if needed.
 
 - `model_limit`:
 
-  Integer. Model context window token limit.
+  Integer. Raw model context-window token limit.
 
 - `compact_model`:
 
-  Character. Model for compaction tasks (haiku).
+  Character. Model for compaction tasks.
+
+- `model`:
+
+  Character. Active request model used to resolve output reserve.
+
+- `hooks`:
+
+  Optional lifecycle registry.
+
+- `use_provider_usage`:
+
+  Whether initial accounting may include prior usage.
 
 #### Returns
 
-Invisibly NULL.
+Invisibly the internal compaction decision, or NULL when disabled.
 
 ------------------------------------------------------------------------
 
 ### `CompactionController$compact_now()`
 
-Run the two-level compaction now (snip -\> session-memory -\> full
-9-section), guarded by the circuit breaker. Unlike `maybe_compact()`
-this skips the token-threshold check, so callers that have already
-decided to compact (e.g. mid-loop) can reuse the exact same Claude
-Code-aligned flow.
+Force the adaptive summary chain for manual compaction.
 
 #### Usage
 
@@ -76,11 +152,12 @@ Code-aligned flow.
 
 - `compact_model`:
 
-  Character. Model for compaction tasks (haiku).
+  Character. Model for compaction tasks.
 
 #### Returns
 
-Invisibly `TRUE` on success, `FALSE` if skipped or failed.
+Invisibly TRUE on a validated change, FALSE otherwise. The structured
+decision is attached as a `decision` attribute.
 
 ------------------------------------------------------------------------
 
@@ -90,7 +167,7 @@ Handle a prompt-too-long (PTL) error by dropping turns.
 
 #### Usage
 
-    CompactionController$handle_ptl_error(chat, error = NULL)
+    CompactionController$handle_ptl_error(chat, error = NULL, pending_turn = NULL)
 
 #### Arguments
 
@@ -103,6 +180,10 @@ Handle a prompt-too-long (PTL) error by dropping turns.
 
   An error condition or message string (parsed for a real context limit
   when present).
+
+- `pending_turn`:
+
+  Optional failed outgoing pending turn.
 
 ------------------------------------------------------------------------
 

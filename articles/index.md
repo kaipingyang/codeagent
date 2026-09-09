@@ -8,6 +8,8 @@
 ### Configuration
 
 - [Configuration](https://kaipingyang.github.io/codeagent/articles/configuration.md):
+- [Shiny app
+  themes](https://kaipingyang.github.io/codeagent/articles/shiny-themes.md):
 - [Permissions](https://kaipingyang.github.io/codeagent/articles/permissions.md):
 - [Models and
   providers](https://kaipingyang.github.io/codeagent/articles/models.md):
@@ -40,6 +42,8 @@
 - [codeagent
   入门（简体中文）](https://kaipingyang.github.io/codeagent/articles/getting-started-cn.md):
 - [配置（简体中文）](https://kaipingyang.github.io/codeagent/articles/configuration-cn.md):
+- [Shiny
+  应用主题（简体中文）](https://kaipingyang.github.io/codeagent/articles/shiny-themes-cn.md):
 - [权限系统](https://kaipingyang.github.io/codeagent/articles/permissions-cn.md):
 - [模型和供应商（简体中文）](https://kaipingyang.github.io/codeagent/articles/models-cn.md):
 - [上下文管理与压缩](https://kaipingyang.github.io/codeagent/articles/compaction-cn.md):

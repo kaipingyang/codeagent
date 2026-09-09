@@ -5,7 +5,7 @@ Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)
 ## Usage
 
 ``` r
-.auto_compact_threshold(model, chat = NULL)
+.auto_compact_threshold(model, chat = NULL, context_window = NULL)
 ```
 
 ## Arguments
@@ -18,6 +18,11 @@ Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)
 
   An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
   or NULL (used to read provider-reported window).
+
+- context_window:
+
+  Optional explicit raw context window. When supplied it is reduced by
+  the same model output reserve and autocompact buffer.
 
 ## Value
 

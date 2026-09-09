@@ -71,7 +71,7 @@ Check usage and replace large old results if over ceiling.
 
 #### Returns
 
-Invisibly NULL.
+Invisibly TRUE when history changed, FALSE otherwise.
 
 ------------------------------------------------------------------------
 

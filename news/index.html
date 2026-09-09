@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">codeagent</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -22,6 +22,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Configuration</h6></li>
     <li><a class="dropdown-item" href="../articles/configuration.html">Configuration</a></li>
+    <li><a class="dropdown-item" href="../articles/shiny-themes.html">Shiny app themes</a></li>
     <li><a class="dropdown-item" href="../articles/permissions.html">Permissions</a></li>
     <li><a class="dropdown-item" href="../articles/models.html">Models and providers</a></li>
     <li><a class="dropdown-item" href="../articles/compaction.html">Context management and compaction</a></li>
@@ -41,6 +42,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
     <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/shiny-themes-cn.html">Shiny 应用主题（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
     <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
@@ -65,6 +67,38 @@
       <small>Source: <a href="https://github.com/kaipingyang/codeagent/blob/main/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.3" id="codeagent-023">codeagent 0.2.3<a class="anchor" aria-label="anchor" href="#codeagent-023"></a></h2>
+<p>This backward-compatible patch release adds optional Liquid Glass theming and fixes default tool-card expansion without changing public APIs.</p>
+<div class="section level3">
+<h3 id="shiny-ui-0-2-3">Shiny UI<a class="anchor" aria-label="anchor" href="#shiny-ui-0-2-3"></a></h3>
+<ul><li>Replaced the built-in glassmorphism imitation with optional, exact-pinned <code>shinyglass</code> material rendering. <code>codeagent_theme("glass", ...)</code> now forwards Liquid Glass controls such as <code>preset</code>, <code>intensity</code>, <code>tint</code>, and <code>specular</code> to shinyglass, while codeagent owns only a thin shinychat header/sidebar/drawer/composer token adapter and dark-mode bridge.</li>
+<li>Changed artifact-backed tool cards to stay collapsed after successful completion regardless of output length; error cards still open by default. This prevents normal long Read, Grep, and <code>use_skill</code> results from making the interface appear permanently expanded.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="documentation-0-2-3">Documentation<a class="anchor" aria-label="anchor" href="#documentation-0-2-3"></a></h3>
+<ul><li>Added a bilingual pkgdown Shiny theme gallery with real Chromium screenshots of the Liquid Glass light and dark modes.</li>
+</ul></div>
+</div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.2" id="codeagent-022">codeagent 0.2.2<a class="anchor" aria-label="anchor" href="#codeagent-022"></a></h2>
+<p>This backward-compatible release adds adaptive request-boundary compaction, adopts ellmer’s request lifecycle hooks, and expands the Shiny theme system while preserving public interfaces.</p>
+<div class="section level3">
+<h3 id="core-0-2-2">Core<a class="anchor" aria-label="anchor" href="#core-0-2-2"></a></h3>
+<ul><li><p>Reworked request-boundary compaction into an adaptive, model-aware pipeline: cheap result replacement and micro snip run before structured fresh recount; incremental/full summaries run only when still needed and are post-validated. Summary input now preserves tool request/result structure, PTL recovery drops pair-safe complete rounds, and compaction lifecycle hooks expose metadata only.</p></li>
+<li><p>Updated the pinned ellmer development build to official <code>main</code> SHA <code>2e96ac58a33d74bea585727daf8cd1535c67d7f1</code>, which includes the merged <code>Chat$on_request_start()</code> / <code>Chat$on_request_end()</code> callbacks from tidyverse/ellmer#1052.</p></li>
+<li><p>Migrated mid-loop compaction from the per-tool <code>on_tool_result</code> workaround to <code>on_request_start</code>, so context is checked before every model request. Threshold accounting now includes the complete outgoing turns, including a pending tool-result turn, while history rewrites continue to use ellmer’s supported <code>get_turns()</code> / <code>set_turns()</code> contract.</p></li>
+<li><p>Adapted verified name-only model switching to ellmer’s new <code>Model</code> ownership: deprecated Provider model fields are excluded from provider identity checks, while <code>Model</code> params and extra arguments remain strictly compared before an in-place switch.</p></li>
+</ul></div>
+<div class="section level3">
+<h3 id="shiny-ui-0-2-2">Shiny UI<a class="anchor" aria-label="anchor" href="#shiny-ui-0-2-2"></a></h3>
+<ul><li>Fixed the runnable theme/page-chat examples for Workbench and RStudio: they now preserve the <code>shiny.launch.browser</code> proxy launcher and bind to <code>0.0.0.0</code> when Workbench URL environment markers are present, while ordinary environments remain loopback-only. Previously the proxy could open a blank page because the app listened only on <code>127.0.0.1</code>.</li>
+<li>Added the independently selectable <code>theme = "aurora"</code>: static blue-indigo-purple ambient light with selective frosted sidebars, drawers, and composer controls, while chat, code, tool-result, table, and artifact surfaces remain high-opacity for sustained readability. Includes dark-mode, reduced-transparency, reduced-motion, and no-<code>backdrop-filter</code> fallbacks.</li>
+<li>Unified the classic and <code>page_chat</code> layouts on shinychat’s official <code>page_chat_theme()</code> foundation. Added exported <code><a href="../reference/codeagent_theme.html">codeagent_theme()</a></code>, built-in <code>theme = "ios"</code>, and direct pass-through of custom bslib themes (including <code>shinychat::page_chat_theme(...)</code>).</li>
+<li>Refined the iOS preset with a Young Voice-style grouped canvas, compact 14px white cards, lightweight borders and shadows, white sidebars, and a bottom-anchored composer beside the voice/file footer actions.</li>
+<li>Refreshed artifact/tool-result cards with bslib white surfaces and shinychat-aligned Atom One syntax colors, replacing Prism’s legacy gray code background and text shadow.</li>
+</ul></div>
+</div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.1" id="codeagent-021">codeagent 0.2.1<a class="anchor" aria-label="anchor" href="#codeagent-021"></a></h2>
 <p>This is a backward-compatible release focused on portable tool results, current upstream integrations, Shiny presentation, safety, and documentation.</p>

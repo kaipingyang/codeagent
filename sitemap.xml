@@ -20,6 +20,8 @@
 <url><loc>https://kaipingyang.github.io/codeagent/articles/models.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/permissions-cn.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/permissions.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/articles/shiny-themes-cn.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/articles/shiny-themes.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/skills-usage-cn.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/skills-usage.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/team-coordination-cn.html</loc></url>
@@ -90,6 +92,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_stream.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_task.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_theme.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/compaction.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/constants.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/context_collapse.html</loc></url>

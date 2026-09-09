@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">codeagent</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -22,6 +22,7 @@
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Configuration</h6></li>
     <li><a class="dropdown-item" href="../articles/configuration.html">Configuration</a></li>
+    <li><a class="dropdown-item" href="../articles/shiny-themes.html">Shiny app themes</a></li>
     <li><a class="dropdown-item" href="../articles/permissions.html">Permissions</a></li>
     <li><a class="dropdown-item" href="../articles/models.html">Models and providers</a></li>
     <li><a class="dropdown-item" href="../articles/compaction.html">Context management and compaction</a></li>
@@ -41,6 +42,7 @@
     <li><h6 class="dropdown-header" data-toc-skip>中文</h6></li>
     <li><a class="dropdown-item" href="../articles/getting-started-cn.html">codeagent 入门（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/configuration-cn.html">配置（简体中文）</a></li>
+    <li><a class="dropdown-item" href="../articles/shiny-themes-cn.html">Shiny 应用主题（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/permissions-cn.html">权限系统</a></li>
     <li><a class="dropdown-item" href="../articles/models-cn.html">模型和供应商（简体中文）</a></li>
     <li><a class="dropdown-item" href="../articles/compaction-cn.html">上下文管理与压缩</a></li>
@@ -72,7 +74,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.auto_compact_threshold</span><span class="op">(</span><span class="va">model</span>, chat <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.auto_compact_threshold</span><span class="op">(</span><span class="va">model</span>, chat <span class="op">=</span> <span class="cn">NULL</span>, context_window <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -85,6 +87,11 @@
 
 <dt id="arg-chat">chat<a class="anchor" aria-label="anchor" href="#arg-chat"></a></dt>
 <dd><p>An <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code> or NULL (used to read provider-reported window).</p></dd>
+
+
+<dt id="arg-context-window">context_window<a class="anchor" aria-label="anchor" href="#arg-context-window"></a></dt>
+<dd><p>Optional explicit raw context window. When supplied it
+is reduced by the same model output reserve and autocompact buffer.</p></dd>
 
 </dl></div>
     <div class="section level2">
