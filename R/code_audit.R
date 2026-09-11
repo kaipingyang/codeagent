@@ -176,18 +176,11 @@ NULL
                 reason = sprintf("non-source extension '%s'", ext)))
   if (!file.exists(resolved))
     return(list(ok = FALSE, resolved = resolved, reason = "file does not exist"))
-  # Must be a REGULAR file, not a directory/FIFO/socket/device (kiro round-3 #dir
-  # + round-4 #8). A directory read()s to nothing (silently -> risk=none); a FIFO
-  # BLOCKS `file(open="rb")` forever waiting for a writer (DoS). file.info()$isdir
-  # only distinguishes directories, so a FIFO/socket slips through. Use POSIX
-  # `test -f` (true ONLY for a regular file) to reject every non-regular type.
+  # Must be a regular file, not a directory/FIFO/socket/device. file_test("-f")
+  # performs the platform-specific regular-file check without opening the path.
   if (dir.exists(resolved))
     return(list(ok = FALSE, resolved = resolved, reason = "is a directory"))
-  is_regular <- tryCatch(
-    identical(0L, suppressWarnings(system2("test", c("-f", shQuote(resolved)),
-                                           stdout = FALSE, stderr = FALSE))),
-    error = function(e) FALSE)
-  if (!isTRUE(is_regular))
+  if (!isTRUE(file_test("-f", resolved)))
     return(list(ok = FALSE, resolved = resolved,
                 reason = "not a regular file (FIFO/socket/device rejected)"))
   list(ok = TRUE, resolved = resolved, reason = NA_character_)
@@ -251,6 +244,18 @@ NULL
           stop("path changed after validation (TOCTOU)")
         readChar(con, nchars = max_bytes, useBytes = TRUE)
       }, error = function(e) { read_failed <<- TRUE; NULL })
+      # If readChar succeeded, ensure the content is valid UTF-8 by
+      # re-encoding it (this also strips any trailing multi-byte char that
+      # was truncated in the middle).
+      if (!isTRUE(read_failed) && is.character(content) && length(content) == 1L) {
+        content <- enc2utf8(content)
+        # If the last character is incomplete (common with useBytes=TRUE),
+        # nchar(..., type="chars") will still work but the character may
+        # be invalid. Replace any invalid UTF-8 sequences.
+        content <- tryCatch(
+          intToUtf8(utf8ToInt(content), multiple = FALSE),
+          error = function(e) iconv(content, from = "UTF-8", to = "UTF-8", sub = ""))
+      }
       # A read/TOCTOU failure must NOT be silently dropped to risk=none (kiro
       # round-3): record it as blocked so the overall risk escalates to block.
       if (isTRUE(read_failed)) {

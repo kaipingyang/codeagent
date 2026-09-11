@@ -28,6 +28,27 @@ test_that("switch_model Route A keeps the same Chat object + history", {
   expect_false(is.null(cli2$chat$get_system_prompt()))        # sp preserved
 })
 
+test_that("switch_model Route A refreshes the worker backend snapshot", {
+  cli <- .mk_client()
+  cli$settings$worker_backend <- list(
+    model = "claude-sonnet-4-6",
+    provider = "anthropic",
+    base_url = NULL,
+    api_key_env = "CODEAGENT_API_KEY")
+  captured <- NULL
+  testthat::local_mocked_bindings(
+    .register_all_tools = function(chat, settings, ask_fn = NULL, ...) {
+      captured <<- settings$worker_backend
+      invisible(chat)
+    },
+    .package = "codeagent"
+  )
+  out <- switch_model(cli, "anthropic/claude-haiku-4-5")
+  expect_identical(out$settings$worker_backend$model,
+                   "claude-haiku-4-5")
+  expect_identical(captured$model, "claude-haiku-4-5")
+})
+
 test_that("switch_model preserves tool-call turns across the swap", {
   req <- ContentToolRequest(id = "c1", name = "weather",
                             arguments = list(city = "NYC"))
@@ -51,6 +72,11 @@ test_that("switch_model preserves tool-call turns across the swap", {
 
 test_that("switch_model Route B rebuilds client when in-place swap fails", {
   cli <- .mk_client(list(Turn("user", "q1"), Turn("assistant", "a1")))
+  cli$settings$worker_backend <- list(
+    model = "claude-sonnet-4-6",
+    provider = "anthropic",
+    base_url = NULL,
+    api_key_env = "CODEAGENT_API_KEY")
   old_chat <- cli$chat
 
   # Force Route B by making the provider swap fail.
@@ -62,6 +88,7 @@ test_that("switch_model Route B rebuilds client when in-place swap fails", {
 
   expect_false(identical(cli2$chat, old_chat))                # NEW object (Route B)
   expect_identical(cli2$settings$model, "claude-haiku-4-5")
+  expect_null(cli2$settings$worker_backend)
   expect_length(cli2$chat$get_turns(), 2L)                    # history migrated
   expect_gt(length(cli2$chat$get_tools()), 0L)               # tools re-registered
 })

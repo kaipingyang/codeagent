@@ -16,6 +16,11 @@ test_that("bubble mode returns 'ask' even for read-only tools", {
   expect_equal(check_permission("Glob", "bubble"), "ask")
 })
 
+test_that("plan mode always allows its exit control", {
+  expect_identical(check_permission("ExitPlanMode", "plan"), "allow")
+  expect_identical(check_permission("Write", "plan"), "deny")
+})
+
 test_that("PermissionMode includes bubble", {
   expect_true("bubble" %in% unlist(PermissionMode))
   expect_equal(PermissionMode$BUBBLE, "bubble")

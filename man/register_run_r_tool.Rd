@@ -23,10 +23,11 @@ register_run_r_tool(
 \item{ask_fn}{Function or NULL. \verb{function(tool_name, input) -> logical}.
 Called when permission resolves to \code{"ask"}.}
 
-\item{sandbox}{List or NULL. Sandbox profile (see \code{\link[=.sandbox_profile]{.sandbox_profile()}}). RunR
-runs in-process so the environment cannot be scrubbed, but when the sandbox
-is enabled, code calling shell/process/env or (when network is disabled)
-network functions is refused.}
+\item{sandbox}{List or NULL. Sandbox profile (see \code{\link[=.sandbox_profile]{.sandbox_profile()}}).
+Enabling sandboxing fails closed unless \code{run_r_backend = "process"} is
+explicitly selected. That fallback uses a separate \code{callr} process with a
+timeout and best-effort environment hygiene, but is not an OS security
+boundary and does not restrict filesystem, network, or process access.}
 }
 \value{
 Invisibly returns \code{chat}.

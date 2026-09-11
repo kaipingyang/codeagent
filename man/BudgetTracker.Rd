@@ -4,100 +4,102 @@
 \alias{BudgetTracker}
 \title{Token budget tracker}
 \description{
+Token budget tracker
+
+Token budget tracker
+}
+\details{
 Monitors token consumption and detects when the agent loop should stop
 due to context exhaustion or diminishing returns.
 }
 \section{Methods}{
 \subsection{Public methods}{
-  \itemize{
-    \item \href{#method-BudgetTracker-reset}{\code{BudgetTracker$reset()}}
-    \item \href{#method-BudgetTracker-should_stop}{\code{BudgetTracker$should_stop()}}
-    \item \href{#method-BudgetTracker-state}{\code{BudgetTracker$state()}}
-    \item \href{#method-BudgetTracker-clone}{\code{BudgetTracker$clone()}}
-  }
+\itemize{
+\item \href{#method-BudgetTracker-reset}{\code{BudgetTracker$reset()}}
+\item \href{#method-BudgetTracker-should_stop}{\code{BudgetTracker$should_stop()}}
+\item \href{#method-BudgetTracker-state}{\code{BudgetTracker$state()}}
+\item \href{#method-BudgetTracker-clone}{\code{BudgetTracker$clone()}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-BudgetTracker-reset"></a>}}
 \if{latex}{\out{\hypertarget{method-BudgetTracker-reset}{}}}
-\subsection{\code{BudgetTracker$reset()}}{
-  Reset the tracker state.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{BudgetTracker$reset()}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{reset()}}{
+Reset the tracker state.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{BudgetTracker$reset()}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-BudgetTracker-should_stop"></a>}}
 \if{latex}{\out{\hypertarget{method-BudgetTracker-should_stop}{}}}
-\subsection{\code{BudgetTracker$should_stop()}}{
-  Determine whether the agent loop should stop.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{BudgetTracker$should_stop(
+\subsection{Method \code{should_stop()}}{
+Determine whether the agent loop should stop.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{BudgetTracker$should_stop(
   current_tokens,
   max_tokens,
   iteration = 1L,
   is_subagent = FALSE,
   current_cost_usd = NA_real_,
   max_budget_usd = NULL
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{current_tokens}}{Integer. Current total token count.}
-      \item{\code{max_tokens}}{Integer. Maximum allowed tokens (model context limit).}
-      \item{\code{iteration}}{Integer. Current loop iteration (1-indexed).}
-      \item{\code{is_subagent}}{Logical. If TRUE, budget limits are not applied.}
-      \item{\code{current_cost_usd}}{Numeric or NA. Current session spend in US
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{current_tokens}}{Integer. Current total token count.}
+
+\item{\code{max_tokens}}{Integer. Maximum allowed tokens (model context limit).}
+
+\item{\code{iteration}}{Integer. Current loop iteration (1-indexed).}
+
+\item{\code{is_subagent}}{Logical. If TRUE, budget limits are not applied.}
+
+\item{\code{current_cost_usd}}{Numeric or NA. Current session spend in US
 dollars (e.g. from \code{.current_cost_usd()}); NA when unknown/unpriced.}
-      \item{\code{max_budget_usd}}{Numeric or NULL. Hard dollar cap; NULL disables
+
+\item{\code{max_budget_usd}}{Numeric or NULL. Hard dollar cap; NULL disables
 the check. When set and \code{current_cost_usd} is known, this fires
 immediately (bypassing \code{iteration}/\code{.BUDGET_MIN_ITERATIONS}) -- a
 dollar cap is a hard stop, not a heuristic.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Logical. TRUE if the loop should stop.
-  }
 }
-
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Logical. TRUE if the loop should stop.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-BudgetTracker-state"></a>}}
 \if{latex}{\out{\hypertarget{method-BudgetTracker-state}{}}}
-\subsection{\code{BudgetTracker$state()}}{
-  Return current tracker state.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{BudgetTracker$state()}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Named list with \code{prev_tokens} and \code{same_count}.
-  }
+\subsection{Method \code{state()}}{
+Return current tracker state.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{BudgetTracker$state()}\if{html}{\out{</div>}}
 }
 
+\subsection{Returns}{
+Named list with \code{prev_tokens} and \code{same_count}.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-BudgetTracker-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-BudgetTracker-clone}{}}}
-\subsection{\code{BudgetTracker$clone()}}{
-  The objects of this class are cloneable with this method.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{BudgetTracker$clone(deep = FALSE)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{deep}}{Whether to make a deep clone.}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{clone()}}{
+The objects of this class are cloneable with this method.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{BudgetTracker$clone(deep = FALSE)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{deep}}{Whether to make a deep clone.}
+}
+\if{html}{\out{</div>}}
+}
+}
 }

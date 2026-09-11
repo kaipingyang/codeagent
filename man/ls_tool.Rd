@@ -4,7 +4,10 @@
 \alias{ls_tool}
 \title{Create the LS tool}
 \usage{
-ls_tool()
+ls_tool(cwd = getwd())
+}
+\arguments{
+\item{cwd}{Character. Fixed base directory for relative paths.}
 }
 \value{
 An \code{ellmer::tool()} object.

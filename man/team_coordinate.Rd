@@ -8,13 +8,14 @@ team_coordinate(
   tasks,
   model = NULL,
   n_workers = NULL,
-  permission_mode = "bypass",
+  permission_mode = "dont_ask",
   cwd = getwd(),
   blocked_by = NULL,
   worktree = FALSE,
   backoff = 0.5,
   reclaim_timeout = 300,
-  db_path = tempfile(fileext = ".sqlite")
+  db_path = tempfile(fileext = ".sqlite"),
+  security_context = NULL
 )
 }
 \arguments{
@@ -26,7 +27,8 @@ team_coordinate(
 (\verb{min(#tasks, parallelly::availableCores())}).}
 
 \item{permission_mode}{Character. Permission mode for workers (default
-\code{"bypass"}; parallel workers cannot prompt).}
+\code{"dont_ask"}; parallel workers cannot prompt interactively so "bypass"
+would silently escalate privileges inherited from the parent).}
 
 \item{cwd}{Character. Working directory for workers.}
 
@@ -44,6 +46,8 @@ dependency is still in progress (default 0.5).}
 a crashed worker is reclaimed back to \code{pending} (default 300).}
 
 \item{db_path}{Character. Board path (created if missing).}
+
+\item{security_context}{Internal immutable parent security snapshot.}
 }
 \value{
 A data.frame: the final board (id, prompt, owner, status, result).

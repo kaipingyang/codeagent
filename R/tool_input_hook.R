@@ -15,6 +15,37 @@
 #' @keywords internal
 NULL
 
+.wrap_tool_canonical_paths <- function(tool, cwd) {
+  name <- tryCatch(as.character(tool@name), error = function(e) "")
+  meta <- .tool_metadata(name)
+  if (!length(meta$path_args %||% character()) && !isTRUE(meta$cwd_bound))
+    return(tool)
+  original <- tryCatch(S7::S7_data(tool), error = function(e) NULL)
+  if (!is.function(original)) return(tool)
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
+  body <- quote({
+    args <- .canonicalize_permission_input(name, as.list(environment()), cwd)
+    attr(args, "permission_targets") <- NULL
+    args[[".permission_cwd"]] <- NULL
+    withr::with_dir(cwd, do.call(original, args))
+  })
+  wrapped <- rlang::new_function(formals(original), body, environment())
+  assign(".codeagent_path_original", original, environment(wrapped))
+  S7::S7_data(tool) <- wrapped
+  tool
+}
+
+.install_tool_path_canonicalizers <- function(chat, cwd) {
+  tools <- tryCatch(chat$get_tools(), error = function(e) NULL)
+  if (is.null(tools))
+    stop("path canonicalizer install: could not read tools", call. = FALSE)
+  wrapped <- lapply(tools, .wrap_tool_canonical_paths, cwd = cwd)
+  ok <- tryCatch({ chat$set_tools(wrapped); TRUE }, error = function(e) FALSE)
+  if (!isTRUE(ok))
+    stop("path canonicalizer install: set_tools() failed", call. = FALSE)
+  invisible(chat)
+}
+
 # Wrap one ToolDef so a PreToolUse hook can rewrite its arguments or deny it.
 # Re-wrapping unwraps to the original first (no nested hook layers). No-op when
 # hooks is NULL or the tool has no underlying function.
@@ -76,7 +107,10 @@ NULL
          envir = environment(wrapped))
   assign(".codeagent_pre_hook_original", original,
          envir = environment(wrapped))
-  tryCatch({ S7::S7_data(tool) <- wrapped }, error = function(e) NULL)
+  tryCatch({ S7::S7_data(tool) <- wrapped }, error = function(e) {
+    warning("[codeagent] PreToolUse hook wrapping failed for tool '", tool_name,
+            "': input rewrite is NOT active on this tool.", call. = FALSE)
+  })
   tool
 }
 

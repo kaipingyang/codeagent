@@ -126,6 +126,43 @@ NULL
   }, error = function(e) FALSE)
 }
 
+.refresh_model_bound_tools <- function(chat, settings, shield = NULL) {
+  if (is.null(settings$worker_backend)) return(settings)
+  settings$worker_backend$model <- chat$get_model_object()@name
+  old_tools <- chat$get_tools()
+  gate <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
+  old_gate <- if (is.null(gate)) NULL else list(
+    policy = gate$policy,
+    mode_env = gate$mode_env,
+    mode = gate$mode_env$mode,
+    rules = gate$rules,
+    ask_fn = gate$ask_fn,
+    hooks = gate$hooks,
+    data_shield = gate$data_shield,
+    cwd = gate$cwd
+  )
+  ask_fn <- settings$shiny_ask_fn %||%
+    if (interactive()) .console_ask_fn else NULL
+  tryCatch({
+    .register_all_tools(chat, settings, ask_fn = ask_fn)
+    if (inherits(shield, "DataShield")) shield$install(chat)
+  }, error = function(e) {
+    chat$set_tools(old_tools)
+    if (!is.null(gate) && !is.null(old_gate)) {
+      gate$policy <- old_gate$policy
+      gate$mode_env <- old_gate$mode_env
+      gate$mode_env$mode <- old_gate$mode
+      gate$rules <- old_gate$rules
+      gate$ask_fn <- old_gate$ask_fn
+      gate$hooks <- old_gate$hooks
+      gate$data_shield <- old_gate$data_shield
+      gate$cwd <- old_gate$cwd
+    }
+    stop(e)
+  })
+  settings
+}
+
 # Rebuild around a fresh Chat without reloading settings or re-merging rules.
 # Every live runtime setting object (hooks, scanner callbacks, sandbox/tool
 # settings, etc.) is carried forward; only the resolved model is changed.
@@ -137,6 +174,10 @@ NULL
 
   settings <- client$settings
   settings$model <- new_chat$get_model_object()@name
+  # Route B may change provider configuration. Without a serializable,
+  # verified reconstruction descriptor, process delegates must fail closed;
+  # the clone-based foreground Agent remains available.
+  settings$worker_backend <- NULL
   shield <- client$data_shield
   ask_fn <- if (interactive()) .console_ask_fn else NULL
 
@@ -166,12 +207,24 @@ NULL
   if (inherits(new_chat, "error"))
     return(list(ok = FALSE, type = "error",
                 message = paste0("Model switch failed: ", conditionMessage(new_chat))))
+  old_model <- chat$get_model_object()@name
   if (!.swap_provider(chat, new_chat))
     return(list(ok = FALSE, type = "warning",
                 message = paste0("This model requires a new provider/configuration. ",
                                  "Start a new session or app to switch to ", model, ".")))
+  refreshed <- tryCatch(
+    .refresh_model_bound_tools(
+      chat, settings, settings$data_shield_engine %||% NULL),
+    error = identity)
+  if (inherits(refreshed, "error")) {
+    tryCatch(chat$set_model(old_model), error = function(e) NULL)
+    return(list(ok = FALSE, type = "error",
+                message = paste0("Model switch failed: ",
+                                 conditionMessage(refreshed))))
+  }
   resolved <- chat$get_model_object()@name
   list(ok = TRUE, type = "success", model = resolved,
+       worker_backend = refreshed$worker_backend,
        message = sprintf("Switched to %s -- history preserved.", resolved))
 }
 
@@ -198,8 +251,20 @@ switch_model <- function(client, model) {
   new_model <- tryCatch(new_chat$get_model(), error = function(e) model)
 
   # Route A: in-place provider swap (Chat identity preserved).
+  old_model <- client$chat$get_model_object()@name
+  old_settings <- client$settings
   if (.swap_provider(client$chat, new_chat)) {
-    client$settings$model <- new_model
+    refreshed <- tryCatch({
+      client$settings$model <- new_model
+      .refresh_model_bound_tools(
+        client$chat, client$settings, client$data_shield)
+    }, error = identity)
+    if (inherits(refreshed, "error")) {
+      tryCatch(client$chat$set_model(old_model), error = function(e) NULL)
+      client$settings <- old_settings
+      stop(refreshed)
+    }
+    client$settings <- refreshed
     return(client)
   }
 

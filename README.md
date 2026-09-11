@@ -124,6 +124,31 @@ refresh. In that case `chat$get_cost()` may remain zero and a
 | agent | btw | hierarchical subagent delegation |
 | data | codeagent | `ExploreData` — sandboxed data.frame queries; `DescribeData` — strict protected-data metadata (Data Shield) |
 
+Tool authorization is enforced by one fail-closed central gate. Enabled tool
+sets, capability policies, per-tool overrides, and fine-grained path rules are
+checked for every invocation, including `bypass`; unknown tools require explicit
+metadata. File rules are matched against canonical paths for native, notebook,
+format, and btw file tools, including every path in an atomic patch. Sub-agents
+inherit both an immutable policy snapshot and an allowlist of the parent's
+actual tools; worker reconstruction may remove capabilities but cannot add
+tools the parent did not expose. Same-name tools must also match the parent's
+unwrapped implementation signature. Explicit deny rules take precedence over
+all allow rules, including multi-file patches.
+
+Foreground `Agent` clones the active Chat and forwards the parent's approval
+callback. Process-based `TeamRun` and `BackgroundAgent` are registered only
+when codeagent constructed the parent Chat and can preserve its model, provider,
+endpoint, and credential environment selector without serializing credentials.
+For an explicitly supplied Chat, use the foreground `Agent`; process delegation
+fails closed rather than silently selecting a different provider.
+
+`RunR` is always an arbitrary-code execution capability. With
+`sandbox$enabled = TRUE`, its default `run_r_backend = "required"` fails closed
+until a real OS sandbox backend is available. Callers may explicitly select
+`run_r_backend = "process"` for `callr` timeout/output/environment hygiene, but
+that mode does **not** isolate the filesystem, network, credential files, or
+child processes.
+
 ### Deterministic web citations (opt-in)
 
 ```r
@@ -147,6 +172,16 @@ Web fetching accepts only public `http`/`https` URLs without userinfo. It reject
 private, loopback, link-local, reserved, mixed public/private DNS answers and
 unsafe redirects. Every redirect is re-authorized, and each request pins the
 validated DNS address for the connection to prevent DNS rebinding.
+DNS resolution has a hard timeout both with optional `callr` and through the
+required `processx` fallback.
+Codebase RAG is a network capability because embedding sends source chunks or
+queries to an embedding backend. Automatic indexing requires network permission,
+set A, and no active Data Shield; with Data Shield enabled it fails closed
+rather than sending protected project content outside the shield pipeline.
+Public web text is wrapped in a server-generated untrusted-content boundary and
+the system prompt forbids treating it as instructions. Web tools are network
+capabilities: `default` mode asks for approval, while `plan` and `dont_ask`
+deny them unless an explicit rule or capability policy grants access.
 
 ### Data Shield (opt-in)
 
@@ -453,7 +488,14 @@ composer-prefill API.
 
 ## Configuration reference
 
-Precedence (low → high): package defaults → `~/.codeagent/settings.json` → `.codeagent/settings.json` → environment variables.
+Precedence (low → high): package defaults → trusted user settings →
+non-sensitive `.codeagent/settings.json` values → environment variables.
+Project settings cannot select credentials or endpoints, mutate the process
+environment, weaken permissions/sandbox policy, install hooks/MCP, or expand
+the tool set. Put those settings in the user config outside the repository or
+pass them explicitly to `codeagent_client()`. Project JSON uses a strict
+non-security allowlist and is ignored as a whole when duplicate top-level keys
+are present.
 
 ```json
 {

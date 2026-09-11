@@ -88,7 +88,7 @@ wear_explore <- function(data = NULL, client = NULL, mode = c("repl", "shiny"), 
   mode <- match.arg(mode)
 
   # Build or augment the client
-  if (is.null(client)) client <- codeagent_client(permission_mode = "bypass")
+  if (is.null(client)) client <- codeagent_client(permission_mode = "default")
 
   # Register ExploreData with the provided data sources
   envir <- if (is.null(data)) .GlobalEnv

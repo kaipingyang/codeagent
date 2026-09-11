@@ -11,7 +11,8 @@ register_builtin_tools(
   ask_fn = NULL,
   skip_file_tools = FALSE,
   sandbox = NULL,
-  async = FALSE
+  async = FALSE,
+  cwd = getwd()
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ passed through to \code{\link[=bash_tool]{bash_tool()}}.}
 
 \item{async}{Logical. If \code{TRUE}, register async permission-gated tool variants
 for the Shiny path (UI-gated approvals). Default \code{FALSE} (synchronous).}
+
+\item{cwd}{Character. Fixed base directory for relative file-tool paths.}
 }
 \value{
 Invisibly returns \code{chat}.

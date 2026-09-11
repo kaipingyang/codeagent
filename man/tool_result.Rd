@@ -37,10 +37,10 @@ tool_result(
 \item{markdown}{Optional markdown string attached to the display.}
 }
 \value{
-An \link[ellmer:ContentToolResult]{ellmer::ContentToolResult}; return it from your tool function.
+An \link[ellmer:Content]{ellmer::ContentToolResult}; return it from your tool function.
 }
 \description{
-Construct an \link[ellmer:ContentToolResult]{ellmer::ContentToolResult} with three independent channels:
+Construct an \link[ellmer:Content]{ellmer::ContentToolResult} with three independent channels:
 \code{value} is portable model-facing text; \code{extra$codeagent$artifact} is the
 versioned, UI-neutral structured result; and \code{extra$display} is shinychat's
 official presentation adapter. Return the result from your tool function.

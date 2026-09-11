@@ -16,8 +16,7 @@ test_that("prompt-referenced tool names all exist in the registered tools", {
   # Names the system prompt (prompts.R) instructs the model to call by name.
   referenced <- c(
     "Bash", "Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS",
-    "TaskCreate", "TaskList", "TodoWrite", "TeamRun", "use_skill",
-    "btw_tool_agent_subagent"
+    "TaskCreate", "TaskList", "TodoWrite", "TeamRun", "use_skill", "Agent"
   )
   missing <- setdiff(referenced, nms)
   expect_identical(missing, character(0),

@@ -24,7 +24,10 @@ NULL
 
 .bg_ensure_daemons <- function(n = 2L) {
   if (isTRUE(.bg_state$daemons)) return(invisible())
-  ok <- tryCatch({ mirai::daemons(n, .compute = .BG_COMPUTE); TRUE },
+  ok <- tryCatch({
+    .start_secure_mirai_daemons(n, .compute = .BG_COMPUTE)
+    TRUE
+  },
                  error = function(e) FALSE)
   if (isTRUE(ok)) .bg_state$daemons <- TRUE
   invisible()
@@ -40,28 +43,49 @@ NULL
 
 #' Spawn a background sub-agent. Returns the task id immediately (fire-and-forget).
 #' @keywords internal
-.bg_spawn <- function(prompt, model = NULL, cwd = getwd()) {
+.bg_spawn <- function(prompt, model = NULL, cwd = getwd(),
+                      security_context = NULL) {
+  context_supplied <- !is.null(security_context)
+  if (context_supplied && is.null(security_context$backend))
+    return(structure(
+      "[background agent unavailable: parent Chat cannot be safely reconstructed]",
+      class = "bg_error"))
   if (!.bg_available())
     return(structure("[background agents require the mirai package]",
                      class = "bg_error"))
   .bg_ensure_daemons()
-  model    <- model %||% Sys.getenv("CODEAGENT_MODEL", "")
-  base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")
-  api_key  <- Sys.getenv("CODEAGENT_API_KEY", "")
+  security_context <- security_context %||%
+    .worker_security_context(permission_mode = "dont_ask", cwd = cwd)
+  backend <- security_context$backend %||% NULL
+  model <- backend$model %||% model %||% Sys.getenv("CODEAGENT_MODEL", "")
+  base_url <- if (is.null(backend)) Sys.getenv("CODEAGENT_BASE_URL", "") else ""
+  api_key <- if (is.null(backend)) Sys.getenv("CODEAGENT_API_KEY", "") else ""
+  security_json <- tryCatch(
+    .worker_security_context_json(security_context),
+    error = function(e) NULL
+  )
+  if (is.null(security_json))
+    return(structure("[invalid background-agent security context]",
+                     class = "bg_error"))
   m <- tryCatch(
     mirai::mirai(
       {
-        Sys.setenv(CODEAGENT_BASE_URL = base_url, CODEAGENT_API_KEY = api_key,
-                   CODEAGENT_MODEL = model)
+        if (isTRUE(legacy_env))
+          Sys.setenv(CODEAGENT_BASE_URL = base_url, CODEAGENT_API_KEY = api_key,
+                     CODEAGENT_MODEL = model)
+        else
+          Sys.setenv(CODEAGENT_MODEL = model)
         suppressMessages(suppressWarnings(library(codeagent)))
         tryCatch({
-          client <- codeagent::codeagent_client(permission_mode = "bypass",
-                                                 cwd = cwd, btw_groups = NULL)
+          client <- codeagent:::.worker_client_from_json(
+            model, security_json)
           codeagent::codeagent(client, prompt)
         }, error = function(e) paste0("[Error] ", conditionMessage(e)))
       },
       prompt = prompt, model = model, base_url = base_url,
-      api_key = api_key, cwd = cwd, .compute = .BG_COMPUTE),
+      api_key = api_key, cwd = cwd, security_json = security_json,
+      legacy_env = is.null(backend),
+      .compute = .BG_COMPUTE),
     error = function(e) NULL)
   if (is.null(m))
     return(structure("[failed to spawn background agent]", class = "bg_error"))
@@ -209,7 +233,8 @@ NULL
 }
 
 # Spawn from a user slash command; returns a feedback string (never errors).
-.bg_slash_spawn <- function(task, data_shield = NULL) {
+.bg_slash_spawn <- function(task, data_shield = NULL,
+                            security_context = NULL) {
   task <- trimws(task %||% "")
   if (!nzchar(task)) return("Usage: /bg <task>")
   if (inherits(data_shield, "DataShield"))
@@ -217,7 +242,7 @@ NULL
       "Background agents are disabled while Data Shield is active: ",
       "the mirai worker cannot safely inherit this session's protected-data index. ",
       "Use the foreground Agent tool instead."))
-  id <- .bg_spawn(task)
+  id <- .bg_spawn(task, security_context = security_context)
   if (inherits(id, "bg_error")) return(paste0("Background agents unavailable: ", unclass(id)))
   sprintf("Started background sub-agent #%s. Its result will appear on a later turn.", id)
 }

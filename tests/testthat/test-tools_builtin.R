@@ -51,6 +51,43 @@ test_that("read_tool: line numbers are in ascending order (not reversed)", {
   expect_equal(nums, c(2L, 3L, 4L))
 })
 
+test_that("file tools resolve relative paths against their captured cwd", {
+  root <- withr::local_tempdir()
+  other <- withr::local_tempdir()
+  tool <- codeagent:::write_tool(mode = "bypass", cwd = root)
+  withr::with_dir(other, tool(
+    file_path = "nested/out.txt", content = "safe"))
+  expect_true(file.exists(file.path(root, "nested", "out.txt")))
+  expect_false(file.exists(file.path(other, "nested", "out.txt")))
+})
+
+test_that("path canonicalizer passes the authorized absolute path to execution", {
+  root <- withr::local_tempdir()
+  other <- withr::local_tempdir()
+  seen <- NULL
+  tool <- ellmer::tool(
+    function(path) { seen <<- path; path },
+    name = "Format", description = "fixture",
+    arguments = list(path = ellmer::type_string("path")))
+  wrapped <- codeagent:::.wrap_tool_canonical_paths(tool, root)
+  withr::with_dir(other, wrapped("file.R"))
+  expect_identical(seen, codeagent:::.canonical_security_path(
+    "file.R", root, allow_missing = TRUE))
+})
+
+test_that("cwd-bound btw search executes from the captured cwd", {
+  root <- withr::local_tempdir()
+  other <- withr::local_tempdir()
+  tool <- ellmer::tool(
+    function(term) { writeLines(term, "cwd-marker.txt"); term },
+    name = "btw_tool_files_search", description = "fixture",
+    arguments = list(term = ellmer::type_string("term")))
+  wrapped <- codeagent:::.wrap_tool_canonical_paths(tool, root)
+  withr::with_dir(other, wrapped("needle"))
+  expect_true(file.exists(file.path(root, "cwd-marker.txt")))
+  expect_false(file.exists(file.path(other, "cwd-marker.txt")))
+})
+
 # ---------------------------------------------------------------------------
 # edit_tool: gregexpr no-match detection
 # ---------------------------------------------------------------------------

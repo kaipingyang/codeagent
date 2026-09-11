@@ -582,7 +582,8 @@ test_that("shield_sandbox blocks outside and symlink escapes, allows session tmp
   root <- withr::local_tempdir(); outside <- tempfile("outside-"); dir.create(outside)
   on.exit(unlink(outside,recursive=TRUE),add=TRUE)
   writeLines("x",file.path(outside,"secret.txt")); dir.create(file.path(root,"tmp"))
-  file.symlink(outside,file.path(root,"link"))
+  linked <- suppressWarnings(file.symlink(outside, file.path(root, "link")))
+  skip_if_not(isTRUE(linked), "symlink creation unavailable")
   shield <- DataShield$new(strategies=list(shield_sandbox(
     project_root=root,temp_root=file.path(root,"tmp"),backend="policy")))
   expect_identical(shield$scan_ingress("Read",list(file_path=file.path(outside,"secret.txt")),capability="read")$action,"block")

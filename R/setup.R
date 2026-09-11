@@ -97,19 +97,26 @@ NULL
 #' `~/.codeagent/settings.json`, and optionally saves your API key to
 #' `~/.Renviron`.  Only works in interactive R sessions.
 #'
-#' @param scope Character. `"user"` writes to `~/.codeagent/settings.json`;
-#'   `"project"` writes to `.codeagent/settings.json` in the current directory.
+#' @param scope Character. Must be `"user"` for provider setup. Project files
+#'   cannot configure providers, endpoints, or credentials; pass an explicit
+#'   Chat to [codeagent_client()] for project-specific backends.
 #' @return Invisibly, the path to the settings file that was written.
 #' @export
 use_codeagent_setup <- function(scope = c("user", "project")) {
+  scope <- match.arg(scope)
+  if (identical(scope, "project"))
+    cli::cli_abort(c(
+      "Provider setup cannot be stored at project scope.",
+      "i" = "Repository-controlled settings cannot select providers, endpoints, or credentials.",
+      "i" = "Use {.code scope = \"user\"}, or pass an explicit {.cls Chat} to {.fn codeagent_client}."
+    ))
+
   if (!interactive())
     cli::cli_abort(c(
       "Setup requires an interactive R session.",
       "i" = "Configure manually: {.fn use_codeagent_settings} + edit the file.",
       "i" = "Or call {.fn codeagent_client} with an explicit {.cls Chat} object."
     ))
-
-  scope <- match.arg(scope)
 
   cli::cli_h1("codeagent setup")
   cli::cli_text("This wizard creates a settings file so {.fn codeagent_client}")
@@ -137,6 +144,10 @@ use_codeagent_setup <- function(scope = c("user", "project")) {
     model    <- trimws(readline("Model name: "))
     base_url <- trimws(readline("Base URL (leave blank if not needed): "))
     key_env  <- trimws(readline("API key env var name (e.g. MY_API_KEY): "))
+    # Basic URL validation for base_url: if provided, must look like a URL.
+    if (nzchar(base_url) && !grepl("^https?://", base_url, ignore.case = TRUE)) {
+      cli::cli_alert_warning("Base URL does not start with http:// or https://. Saved as-is but may not work.")
+    }
     info     <- list(name=provider, model=model, key_env=if(nzchar(key_env)) key_env else NULL,
                      base_url=nzchar(base_url), detect_envs=NULL)
   } else {
@@ -174,7 +185,6 @@ use_codeagent_setup <- function(scope = c("user", "project")) {
   cat("\n")
   env_block <- list()
   if (nzchar(base_url)) env_block[["CODEAGENT_BASE_URL"]] <- base_url
-  if (!is.null(key_env)) env_block[[key_env]] <- if (nzchar(key_val)) key_val else "<your-key>"
 
   new_settings <- list(
     provider = info$name,
@@ -245,7 +255,10 @@ use_codeagent_setup <- function(scope = c("user", "project")) {
 
 # Append KEY=value to ~/.Renviron without duplicating.
 .append_renviron <- function(key, value) {
-  renv_path <- path.expand("~/.Renviron")
+  renv_path <- Sys.getenv("R_ENVIRON_USER", "")
+  if (!nzchar(renv_path))
+    renv_path <- path.expand("~/.Renviron")
+  renv_path <- path.expand(renv_path)
   existing  <- if (file.exists(renv_path)) readLines(renv_path, warn=FALSE)
                else character(0)
   if (any(grepl(paste0("^", key, "="), existing))) {

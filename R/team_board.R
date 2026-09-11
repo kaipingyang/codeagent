@@ -242,8 +242,18 @@ board_reclaim_stale <- function(db_path, timeout = 300) {
 board_watch <- function(db_path, callback, latency = 0.3) {
   if (!requireNamespace("watcher", quietly = TRUE)) return(NULL)
   tryCatch({
-    w <- watcher::watcher(path = db_path, callback = callback, latency = latency)
+    target <- normalizePath(db_path, winslash = "/", mustWork = FALSE)
+    # SQLite may update the journal/WAL rather than the database path itself.
+    # Watch the containing board directory so every storage mode is observed.
+    w <- watcher::watcher(
+      path = dirname(target),
+      callback = callback,
+      latency = latency
+    )
     w$start()
+    # Deliver an initial refresh after the monitor starts. This also closes the
+    # startup race where SQLite can commit before the native watcher is ready.
+    later::later(function() callback(target), delay = latency)
     w
   }, error = function(e) NULL)
 }
@@ -358,7 +368,8 @@ board_messages <- function(db_path, recipient = NULL) {
 #' @param n_workers Integer or NULL. Worker count; default cgroup-aware
 #'   (`min(#tasks, parallelly::availableCores())`).
 #' @param permission_mode Character. Permission mode for workers (default
-#'   `"bypass"`; parallel workers cannot prompt).
+#'   `"dont_ask"`; parallel workers cannot prompt interactively so "bypass"
+#'   would silently escalate privileges inherited from the parent).
 #' @param cwd Character. Working directory for workers.
 #' @param blocked_by List or NULL. Optional DAG dependencies: `blocked_by[[i]]`
 #'   is an integer vector of 1-based task indices that must finish before task
@@ -370,13 +381,15 @@ board_messages <- function(db_path, recipient = NULL) {
 #' @param reclaim_timeout Numeric. Seconds after which a `claimed` task held by
 #'   a crashed worker is reclaimed back to `pending` (default 300).
 #' @param db_path Character. Board path (created if missing).
+#' @param security_context Internal immutable parent security snapshot.
 #' @return A data.frame: the final board (id, prompt, owner, status, result).
 #' @export
 team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
-                            permission_mode = "bypass", cwd = getwd(),
+                            permission_mode = "dont_ask", cwd = getwd(),
                             blocked_by = NULL, worktree = FALSE, backoff = 0.5,
                             reclaim_timeout = 300,
-                            db_path = tempfile(fileext = ".sqlite")) {
+                            db_path = tempfile(fileext = ".sqlite"),
+                            security_context = NULL) {
   if (!length(tasks)) return(board_status(board_create(db_path)))
   if (!is.character(tasks))
     cli::cli_abort("{.arg tasks} must be a character vector of task prompts.")
@@ -386,11 +399,16 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
       "i" = "Install it with {.code install.packages('mirai')}."
     ))
 
-  model     <- model %||% Sys.getenv("CODEAGENT_MODEL", "claude-sonnet-4-6")
+  security_context <- security_context %||% .worker_security_context(
+    permission_mode = permission_mode, cwd = cwd)
+  backend <- security_context$backend %||% NULL
+  model <- backend$model %||% model %||%
+    Sys.getenv("CODEAGENT_MODEL", "claude-sonnet-4-6")
   n_workers <- if (is.null(n_workers)) .team_default_workers(length(tasks))
                else as.integer(min(n_workers, .team_default_workers(length(tasks))))
-  base_url  <- Sys.getenv("CODEAGENT_BASE_URL", "")
-  api_key   <- Sys.getenv("CODEAGENT_API_KEY", "")
+  base_url <- if (is.null(backend)) Sys.getenv("CODEAGENT_BASE_URL", "") else ""
+  api_key <- if (is.null(backend)) Sys.getenv("CODEAGENT_API_KEY", "") else ""
+  security_json <- .worker_security_context_json(security_context)
 
   # Seed the board. Two passes so `blocked_by` can reference tasks by their
   # 1-based INDEX in `tasks` (the caller doesn't know DB ids yet): pass 1 adds
@@ -411,16 +429,19 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
     if (!ok) cli::cli_abort("{.arg blocked_by} defines a cyclic task dependency graph.")
   }
 
-  mirai::daemons(n_workers)
+  .start_secure_mirai_daemons(n_workers)
   on.exit(mirai::daemons(0L), add = TRUE)
 
   # Each worker loops: claim -> run -> complete, backing off while tasks remain
   # blocked by an in-progress task, until the board drains or stalls.
   worker_loop <- function(worker_id, db_path, model, base_url, api_key,
-                          permission_mode, cwd, worktree, backoff,
-                          reclaim_timeout) {
-    Sys.setenv(CODEAGENT_BASE_URL = base_url, CODEAGENT_API_KEY = api_key,
-               CODEAGENT_MODEL = model)
+                          security_json, cwd, worktree, backoff,
+                          reclaim_timeout, legacy_env) {
+    if (isTRUE(legacy_env))
+      Sys.setenv(CODEAGENT_BASE_URL = base_url, CODEAGENT_API_KEY = api_key,
+                 CODEAGENT_MODEL = model)
+    else
+      Sys.setenv(CODEAGENT_MODEL = model)
     # Team-level isolation: each worker gets its own git worktree so concurrent
     # edits never collide. Falls back to cwd if worktrees aren't available.
     wt <- if (isTRUE(worktree))
@@ -444,8 +465,9 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
         next
       }
       res <- tryCatch({
-        client <- codeagent::codeagent_client(
-          permission_mode = permission_mode, cwd = run_cwd, btw_groups = NULL)
+        client <- codeagent:::.worker_client_from_json(
+          model, security_json, run_cwd,
+          trusted_cwd_override = !is.null(wt))
         codeagent::codeagent(client, claimed$prompt)
       }, error = function(e) paste0("[Error] ", conditionMessage(e)))
       codeagent::board_complete(db_path, claimed$id, res)
@@ -463,9 +485,10 @@ team_coordinate <- function(tasks, model = NULL, n_workers = NULL,
   m <- mirai::mirai_map(
     worker_ids, worker_loop,
     .args = list(db_path = db_path, model = model, base_url = base_url,
-                 api_key = api_key, permission_mode = permission_mode,
+                 api_key = api_key, security_json = security_json,
                  cwd = cwd, worktree = isTRUE(worktree), backoff = backoff,
-                 reclaim_timeout = reclaim_timeout))
+                 reclaim_timeout = reclaim_timeout,
+                 legacy_env = is.null(backend)))
   tryCatch(m[], error = function(e) NULL)   # wait for all workers
 
   board_status(db_path)

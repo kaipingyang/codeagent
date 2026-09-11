@@ -6,8 +6,8 @@
 \description{
 Rich, interactive tool-card rendering for both the in-chat bubble
 and the right Output panel. Defines a typed artifact contract stored under
-\code{extra$codeagent$artifact} (a private key ellmer only transports, so
-shinychat never warns about it), a render dispatcher that branches on the
+\code{extra$codeagent$artifact} (a namespaced key ellmer transports without
+coupling other UIs to shinychat), a render dispatcher that branches on the
 artifact kind (code/image/table/diff/text/error), and a generalized adapter
 that normalizes any native \code{ContentToolResult} -- raw \code{btw::btw_tools()}
 results included -- into the typed contract.

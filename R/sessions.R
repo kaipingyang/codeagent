@@ -113,9 +113,16 @@ save_session <- function(chat, cwd = getwd(),
       message   = list(role = role, content = text)
     )
     lines <- c(lines, jsonlite::toJSON(entry, auto_unbox = TRUE))
-  }
+}
 
-  writeLines(lines, file_path)
+  # Checked replacement: atomic rename where supported, recoverable copy on
+  # platforms that cannot rename over an existing destination.
+  # Prevents partial/corrupt session files on crash mid-write.
+  dir <- dirname(file_path)
+  tmp_file <- tempfile(pattern = "session_", tmpdir = dir, fileext = ".jsonl")
+  on.exit(if (file.exists(tmp_file)) unlink(tmp_file), add = TRUE)
+  writeLines(lines, tmp_file)
+  .replace_file_checked(tmp_file, file_path)
   session_id
 }
 
@@ -346,7 +353,9 @@ restore_session_into_chat <- function(chat, session_id = NULL, cwd = getwd()) {
 .find_session_path <- function(session_id, directory) {
   fname <- paste0(session_id, ".jsonl")
   if (!is.null(directory)) {
-    path <- file.path(.get_project_session_dir(directory), fname)
+    session_dir <- .get_project_session_dir(directory)
+    .restore_directory_recoveries(session_dir)
+    path <- file.path(session_dir, fname)
     if (file.exists(path)) return(path)
     return(NULL)
   }
@@ -355,6 +364,7 @@ restore_session_into_chat <- function(chat, session_id = NULL, cwd = getwd()) {
   dirs <- tryCatch(list.dirs(root, full.names = TRUE, recursive = FALSE),
                    error = function(e) character(0))
   for (d in dirs) {
+    .restore_directory_recoveries(d)
     p <- file.path(d, fname)
     if (file.exists(p)) return(p)
   }
@@ -362,6 +372,7 @@ restore_session_into_chat <- function(chat, session_id = NULL, cwd = getwd()) {
 }
 
 .read_sessions_from_dir <- function(session_dir) {
+  .restore_directory_recoveries(session_dir)
   files <- tryCatch(
     list.files(session_dir, pattern = "\\.jsonl$", full.names = TRUE),
     error = function(e) character(0)

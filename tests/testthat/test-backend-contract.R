@@ -71,7 +71,7 @@ test_that("Backend Contract v1: tool_result emits three separate channels", {
 test_that("Backend Contract v1: host tools can be classified via register_tool_meta", {
   reg <- codeagent:::.tool_meta_user
   on.exit(rm(list = ls(reg), envir = reg), add = TRUE)
-  expect_identical(codeagent:::.tool_capability("HostToolX"), "read")  # default benign
+  expect_identical(codeagent:::.tool_capability("HostToolX"), "exec")  # default benign
   register_tool_meta("HostToolX", "exec")
   expect_identical(codeagent:::.tool_capability("HostToolX"), "exec")  # now governed
 })

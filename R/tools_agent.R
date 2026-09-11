@@ -111,6 +111,8 @@ NULL
 #'   the sub-agent's own tools are wrapped before its first LLM request.
 #' @param parent_chat Optional parent `ellmer::Chat`. The owned Agent path clones
 #'   this Chat, clears history/tools, and verifies provider + Model inheritance.
+#' @param security_context Internal immutable parent security snapshot used to
+#'   preserve tool sets, capabilities, overrides and sandbox settings.
 #' @return An `ellmer::tool()` object.
 #' @export
 agent_tool <- function(model              = "claude-sonnet-4-6",
@@ -122,26 +124,21 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                         ask_fn             = NULL,
                         async              = FALSE,
                         data_shield        = NULL,
-                        parent_chat        = NULL) {
-  # Prefer btw's upstream subagent (`btw_tool_agent_subagent`: own conversation
-  # thread, resumable via session_id) -- no reinvention. Only fall through to
-  # codeagent's own sub-agent loop when a codeagent-specific capability is
-  # requested that btw's subagent does NOT provide: git-worktree isolation.
-  # (Previously btw's tool was returned unconditionally, so worktree_isolation
-  # was silently ignored whenever btw was installed -- a latent bug.)
-  # Prefer btw's upstream subagent unless a codeagent-specific capability is
-  # requested: git-worktree isolation, OR async (concurrent) sub-agents -- btw's
-  # tool is synchronous, so async mode uses codeagent's own promise-based loop.
-  if (!isTRUE(worktree_isolation) && !isTRUE(async) &&
-      is.null(data_shield) && requireNamespace("btw", quietly = TRUE)) {
-    tools <- tryCatch(btw::btw_tools("btw_tool_agent_subagent"),
-                      error = function(e) list())
-    if (length(tools) > 0L) return(tools[[1L]])
+                        parent_chat        = NULL,
+                        security_context   = NULL) {
+  security_context <- security_context %||% .worker_security_context(
+    permission_mode = if (is.environment(mode)) mode$mode %||% "default" else mode,
+    rules = rules, cwd = getwd())
+  if (inherits(parent_chat, "Chat") &&
+      is.null(security_context$allowed_tools)) {
+    parent_tools <- tryCatch(parent_chat$get_tools(), error = function(e) list())
+    security_context$allowed_tools <- .tool_names(parent_tools)
+    security_context$allowed_tool_signatures <- .tool_signatures(parent_tools)
   }
 
-  # codeagent's own sub-agent -- used when btw is unavailable OR when
-  # worktree_isolation = TRUE (adds isolated git worktree + sidechain
-  # persistence + bubble permission mode on top of a plain sub-loop).
+  # Always use the owned implementation. Delegating to an upstream agent would
+  # create a second tool loop whose effective sets/capabilities/overrides cannot
+  # be proven to be a subset of the parent policy.
   resolved_model <- tryCatch(
     if (inherits(parent_chat, "Chat")) parent_chat$get_model_object()@name else model,
     error = function(e) model)
@@ -161,16 +158,33 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
       # parent's ask_fn (mirrors Claude Code's default sub-agent behaviour).
       setup <- tryCatch({
         # Capture repo dir BEFORE the sub-agent may change cwd.
-        repo_dir <- getwd()
+        repo_dir <- .canonical_security_path(
+          security_context$cwd %||% getwd(),
+          security_context$cwd %||% getwd(),
+          allow_missing = FALSE)
         wt_path  <- if (isTRUE(worktree_isolation)) .create_worktree(repo_dir) else NULL
         sub_cwd  <- wt_path %||% repo_dir
         sub_mode <- "bubble"
         system_prompt <- .prompt_subagent(description, sub_mode, wt_path)
-        sub_settings <- list(
-          model = resolved_model, permission_mode = sub_mode,
-          cwd = sub_cwd, max_turns = as.integer(max_turns),
-          base_url = Sys.getenv("CODEAGENT_BASE_URL", "")
-        )
+        tool_config <- security_context$tool_config %||% list()
+        sub_settings <- .CODEAGENT_DEFAULTS
+        sub_settings$model <- resolved_model
+        sub_settings$permission_mode <- sub_mode
+        sub_settings$rules <- rules
+        sub_settings$cwd <- sub_cwd
+        sub_settings$max_turns <- as.integer(max_turns)
+        sub_settings$base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")
+        sub_settings$tools <- security_context$tools
+        sub_settings$sandbox <- security_context$sandbox
+        sub_settings$file_tools <- tool_config$file_tools %||% "core"
+        sub_settings$btw_groups <- if (isTRUE(tool_config$btw_all_groups))
+          NULL else unlist(tool_config$btw_groups %||% character(),
+                           use.names = FALSE)
+        sub_settings$explore_data <- isTRUE(tool_config$explore_data)
+        sub_settings$rag <- isTRUE(tool_config$rag)
+        sub_settings$delegation_tools <- FALSE
+        sub_settings$hooks_registry <- hooks
+        sub_settings$data_shield_engine <- NULL
         if (inherits(parent_chat, "Chat")) {
           sub_chat <- parent_chat$clone()
           expected_provider <- parent_chat$get_provider()
@@ -190,14 +204,15 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         }
         # Replace the inherited/default prompt only after clone isolation.
         sub_chat$set_system_prompt(system_prompt)
-        # Build tools ungated and install the same single central permission
-        # gate used by the parent. Any failure aborts before the first request.
-        register_builtin_tools(sub_chat, mode = "bypass", rules = rules,
-                               ask_fn = NULL)
-        mode_env <- new.env(parent = emptyenv())
-        mode_env$mode <- sub_mode
-        .install_permission_gate(sub_chat, sub_settings, mode_env, rules,
-                                 ask_fn = ask_fn, hooks = hooks)
+        .register_all_tools(sub_chat, sub_settings, ask_fn = ask_fn)
+        allowed <- security_context$allowed_tools
+        if (!is.null(allowed)) {
+          live <- sub_chat$get_tools()
+          sub_chat$set_tools(.filter_verified_worker_tools(
+            live, security_context))
+          if (any(!.tool_names(sub_chat$get_tools()) %in% allowed))
+            stop("Agent tool set exceeds parent capabilities")
+        }
         if (inherits(data_shield, "DataShield")) data_shield$install(sub_chat)
         list(sub_chat = sub_chat, wt_path = wt_path, repo_dir = repo_dir)
       }, error = function(e)
@@ -293,6 +308,7 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
 #'   sub-agent lifecycle integration.
 #' @param hooks Optional [HookRegistry] used for SubagentStart/Stop lifecycle
 #'   events on the owned codeagent Agent path.
+#' @param security_context Internal immutable parent security snapshot.
 #' @return Invisibly returns `chat`.
 #' @export
 register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
@@ -302,32 +318,27 @@ register_agent_tool <- function(chat, model = "claude-sonnet-4-6",
                                   ask_fn = NULL, async = FALSE,
                                   data_shield = NULL,
                                   cwd = getwd(), parent_chat = NULL,
-                                  hooks = NULL) {
-  plain_upstream <- is.null(data_shield) && !isTRUE(async) &&
-                    !isTRUE(worktree_isolation) &&
-                    requireNamespace("btw", quietly = TRUE)
-  if (isTRUE(plain_upstream)) {
-    build_tools <- function()
-      withr::with_dir(cwd, btw::btw_tools("agent"))
-    tools <- tryCatch(
-      if (inherits(parent_chat, "Chat"))
-        withr::with_options(list(btw.client = parent_chat), build_tools())
-      else
-        build_tools(),
-      error = function(e) list())
-    if (length(tools)) {
-      for (tool in tools) chat$register_tool(tool)
-      return(invisible(chat))
+                                  hooks = NULL,
+                                  security_context = NULL) {
+  if (is.null(security_context)) {
+    resolved_mode <- if (is.environment(mode))
+      mode$mode %||% "default" else mode
+    security_context <- .worker_security_context(
+      permission_mode = resolved_mode, rules = rules, cwd = cwd)
+    source_chat <- parent_chat %||% chat
+    if (inherits(source_chat, "Chat")) {
+      parent_tools <- tryCatch(source_chat$get_tools(),
+                               error = function(e) list())
+      security_context$allowed_tools <- .tool_names(parent_tools)
+      security_context$allowed_tool_signatures <- .tool_signatures(parent_tools)
     }
   }
-
-  # Shield, async, and worktree modes have codeagent-specific invariants. Never
-  # register raw btw/custom delegators alongside this owned Agent path.
   chat$register_tool(agent_tool(model, mode, rules, max_turns,
                                 worktree_isolation, hooks = hooks,
                                 ask_fn = ask_fn, async = async,
                                 data_shield = data_shield,
-                                parent_chat = parent_chat))
+                                parent_chat = parent_chat,
+                                security_context = security_context))
   invisible(chat)
 }
 
@@ -449,7 +460,7 @@ codeagent_mcp_server <- function(tools = NULL,
 # Model-triggered fire-and-forget delegation. Returns immediately; the result is
 # surfaced on a later turn via the system reminder (.bg_reminder_block).
 # @keywords internal
-background_agent_tool <- function(data_shield = NULL) {
+background_agent_tool <- function(data_shield = NULL, security_context = NULL) {
   ellmer::tool(
     fun = function(prompt) {
       if (inherits(data_shield, "DataShield"))
@@ -457,7 +468,7 @@ background_agent_tool <- function(data_shield = NULL) {
           "[data_shield] BackgroundAgent is disabled while Data Shield is active: ",
           "a mirai worker cannot safely inherit the session's protected-data index. ",
           "Use the foreground Agent tool instead."))
-      id <- .bg_spawn(prompt)
+      id <- .bg_spawn(prompt, security_context = security_context)
       if (inherits(id, "bg_error")) return(unclass(id))
       paste0("Started background sub-agent #", id,
              ". It runs concurrently without blocking; its result will be ",
@@ -480,8 +491,9 @@ background_agent_tool <- function(data_shield = NULL) {
 
 # Register the BackgroundAgent tool (no-op if mirai is unavailable).
 # @keywords internal
-register_background_agent_tool <- function(chat, data_shield = NULL) {
+register_background_agent_tool <- function(chat, data_shield = NULL,
+                                           security_context = NULL) {
   if (inherits(data_shield, "DataShield") || .bg_available())
-    chat$register_tool(background_agent_tool(data_shield))
+    chat$register_tool(background_agent_tool(data_shield, security_context))
   invisible(chat)
 }

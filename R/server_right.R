@@ -20,6 +20,7 @@ server_right <- function(input, output, session, cwd, state,
                          exclude = c("renv", "node_modules", "packrat",
                                      ".git", ".Rproj.user"),
                          drawer_id = NULL) {
+  root_path <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
 
   # File tree (jsTreeR). Uses .file_tree_server -- a thin fork of jsTreeR's
   # treeNavigatorServer that reuses its jstree widget + lazy-load JS protocol
@@ -27,7 +28,7 @@ server_right <- function(input, output, session, cwd, state,
   # show_hidden hides dotfiles by default (incl. the multi-MB .codegraph).
   selected_paths <- .file_tree_server(
     "file_tree",
-    rootFolder = cwd,
+    rootFolder = root_path,
     all.files  = isTRUE(show_hidden),
     exclude    = exclude
   )
@@ -82,11 +83,16 @@ server_right <- function(input, output, session, cwd, state,
   shiny::observeEvent(selected_paths(), {
     paths <- selected_paths()
     if (length(paths) == 0L) return()
-    path <- normalizePath(paths[[length(paths)]], winslash = "/", mustWork = FALSE)
-    if (!file.exists(path) || dir.exists(path)) return()
+    path <- tryCatch(
+      .canonical_security_path(
+        paths[[length(paths)]], root_path, allow_missing = FALSE),
+      error = function(e) NULL
+    )
+    if (is.null(path) || !file.exists(path) || dir.exists(path) ||
+        !.path_is_within(path, root_path)) return()
 
     ext   <- tools::file_ext(path)
-    fname <- sub(paste0("^", normalizePath(cwd, winslash = "/", mustWork = FALSE), "/?"), "", path)
+    fname <- substring(path, nchar(root_path) + 2L)
     key   <- gsub("[^A-Za-z0-9]+", "_", path)
 
     preview <- .build_file_preview(path, ext, id = paste0("ced__", key))
@@ -103,8 +109,17 @@ server_right <- function(input, output, session, cwd, state,
   shiny::observeEvent(input$ca_attach_file, {
     cf <- current_file()
     if (is.null(cf) || is.null(cf$path)) return()
+    safe_path <- tryCatch(
+      .canonical_security_path(cf$path, root_path, allow_missing = FALSE),
+      error = function(e) NULL
+    )
+    if (is.null(safe_path) || !.path_is_within(safe_path, root_path)) {
+      .ui_toast("Could not attach file: path is outside the workspace.",
+                "warning")
+      return()
+    }
     tryCatch(
-      .stage_chat_attachment(cf$path, drawer_id %||% "chat", session),
+      .stage_chat_attachment(safe_path, drawer_id %||% "chat", session),
       error = function(e) .ui_toast(
         paste0("Could not attach file: ", conditionMessage(e)), "warning")
     )
@@ -143,11 +158,13 @@ server_right <- function(input, output, session, cwd, state,
                               all.files = FALSE, search = TRUE,
                               wholerow = FALSE, contextMenu = FALSE,
                               theme = "proton") {
+  root_path <- .canonical_security_path(
+    rootFolder, rootFolder, allow_missing = FALSE)
   shiny::moduleServer(id, function(input, output, session) {
     output[["treeNavigator___"]] <- jsTreeR::renderJstree({
       jsTreeR::jstree(
         nodes = list(list(
-          text     = normalizePath(rootFolder, winslash = "/", mustWork = TRUE),
+          text     = root_path,
           type     = "folder",
           children = FALSE,
           li_attr  = list(class = "jstree-x")
@@ -163,8 +180,16 @@ server_right <- function(input, output, session, cwd, state,
     })
 
     shiny::observeEvent(input[["path_from_js"]], {
-      entries <- tryCatch(
-        list.files(input[["path_from_js"]], all.files = all.files,
+      requested <- tryCatch(
+        .canonical_security_path(
+          input[["path_from_js"]], root_path, allow_missing = FALSE),
+        error = function(e) NULL
+      )
+      entries <- if (is.null(requested) || !dir.exists(requested) ||
+                     !.path_is_within(requested, root_path)) {
+        character(0)
+      } else tryCatch(
+        list.files(requested, all.files = all.files,
                    full.names = TRUE, no.. = TRUE),
         error = function(e) character(0))
       if (length(exclude)) {
@@ -178,8 +203,17 @@ server_right <- function(input, output, session, cwd, state,
 
     Paths <- shiny::reactiveVal()
     shiny::observeEvent(input[["treeNavigator____selected_paths"]], {
-      Paths(vapply(input[["treeNavigator____selected_paths"]],
-                   `[[`, character(1L), "path"))
+      candidates <- vapply(input[["treeNavigator____selected_paths"]],
+                           `[[`, character(1L), "path")
+      safe <- vapply(candidates, function(path) {
+        resolved <- tryCatch(
+          .canonical_security_path(path, root_path, allow_missing = FALSE),
+          error = function(e) NA_character_
+        )
+        if (is.na(resolved) || !.path_is_within(resolved, root_path))
+          NA_character_ else resolved
+      }, character(1L))
+      Paths(unname(safe[!is.na(safe)]))
     })
     Paths
   })
@@ -223,9 +257,13 @@ server_right <- function(input, output, session, cwd, state,
         style = "padding:0 10px;",
         htmltools::HTML(
           tryCatch(
-            commonmark::markdown_html(
-              paste(readLines(path, warn = FALSE), collapse = "\n")),
-            error = function(e) paste(readLines(path, warn = FALSE, n = 100), collapse = "\n")
+            .sanitize_markdown_html(
+              commonmark::markdown_html(
+                paste(readLines(path, warn = FALSE), collapse = "\n"))
+            ),
+            error = function(e) htmltools::htmlEscape(
+              paste(readLines(path, warn = FALSE, n = 100), collapse = "\n")
+            )
           ))),
       # Default: code/text files -> syntax-highlighted read-only editor.
       .code_preview(path, ext, id = id)
@@ -271,6 +309,64 @@ server_right <- function(input, output, session, cwd, state,
     # Fill the enclosing tab panel (NOT the viewport). `calc(100vh - ...)` made the
     # editor as tall as the whole window inside a 50%-width sidebar tab, so it
     # overflowed and covered the tab bar + the rest of the interface.
-    height       = "100%"
+height       = "100%"
+	  )
+	}
+
+# ---------------------------------------------------------------------------
+# Markdown HTML sanitizer
+# ---------------------------------------------------------------------------
+
+# Parse rendered Markdown as a DOM and retain only an explicit presentation
+# allowlist. Regex replacement is not a valid HTML security boundary because
+# browser parsing, unquoted attributes, entities and SVG/MathML provide many
+# alternate spellings of executable content.
+.sanitize_markdown_html <- function(html) {
+  if (!is.character(html) || length(html) != 1L || !nzchar(html))
+    return("")
+  doc <- xml2::read_html(
+    paste0("<div id=\"codeagent-preview-root\">", html, "</div>"),
+    options = c("RECOVER", "NOERROR", "NOWARNING")
   )
+  root <- xml2::xml_find_first(doc, "//*[@id='codeagent-preview-root']")
+  allowed <- c(
+    "p", "br", "hr", "h1", "h2", "h3", "h4", "h5", "h6",
+    "blockquote", "pre", "code", "em", "strong", "del", "a",
+    "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
+    "details", "summary", "div", "span"
+  )
+  dangerous <- xml2::xml_find_all(
+    root, paste0(
+      ".//*[self::script or self::style or self::iframe or self::object or ",
+      "self::embed or self::svg or self::math or self::form or self::input ",
+      "or self::button or self::textarea or self::select or self::link or ",
+      "self::meta or self::base or self::img]"
+    )
+  )
+  if (length(dangerous)) xml2::xml_remove(dangerous)
+
+  nodes <- xml2::xml_find_all(root, ".//*")
+  for (node in nodes) {
+    tag <- tolower(xml2::xml_name(node))
+    if (!tag %in% allowed) {
+      xml2::xml_remove(node)
+      next
+    }
+    attrs <- xml2::xml_attrs(node)
+    keep <- character()
+    if (identical(tag, "a") && "href" %in% names(attrs)) {
+      href <- attrs[["href"]]
+      compact <- tolower(gsub("[[:space:][:cntrl:]]+", "", href, perl = TRUE))
+      scheme <- sub("^([a-z][a-z0-9+.-]*):.*$", "\\1", compact, perl = TRUE)
+      has_scheme <- grepl("^[a-z][a-z0-9+.-]*:", compact, perl = TRUE)
+      if (!has_scheme || scheme %in% c("http", "https", "mailto"))
+        keep <- c(keep, href = href)
+    }
+    if ("title" %in% names(attrs)) keep <- c(keep, title = attrs[["title"]])
+    xml2::xml_set_attrs(node, keep)
+    if (identical(tag, "a") && "href" %in% names(keep))
+      xml2::xml_set_attrs(node, c(keep, rel = "noopener noreferrer"))
+  }
+  paste(vapply(xml2::xml_children(root), as.character, character(1L)),
+        collapse = "")
 }

@@ -93,12 +93,18 @@ build_codebase_store <- function(cwd = getwd(),
 #' @param chat An `ellmer::Chat` object.
 #' @param cwd Character. Project root.
 #' @param store Optional pre-built ragnar store (skips rebuilding).
+#' @param allow_network Logical. Whether registration may build a store through
+#'   a network embedding backend. The central registration path enables this
+#'   only when network capability is already allowed.
 #' @return Invisibly `chat`.
 #' @keywords internal
-register_rag_tool <- function(chat, cwd = getwd(), store = NULL) {
+register_rag_tool <- function(chat, cwd = getwd(), store = NULL,
+                              allow_network = FALSE) {
   if (!requireNamespace("ragnar", quietly = TRUE)) return(invisible(chat))
+  if (is.null(store) && !isTRUE(allow_network)) return(invisible(chat))
   st <- store %||% tryCatch(build_codebase_store(cwd), error = function(e) NULL)
   if (is.null(st)) return(invisible(chat))
+  before <- .tool_names(tryCatch(chat$get_tools(), error = function(e) list()))
   tryCatch(
     ragnar::ragnar_register_tool_retrieve(
       chat, st,
@@ -107,5 +113,8 @@ register_rag_tool <- function(chat, cwd = getwd(), store = NULL) {
         "find where something is defined or how a subsystem works before ",
         "editing.")),
     error = function(e) NULL)
+  after <- .tool_names(tryCatch(chat$get_tools(), error = function(e) list()))
+  for (name in setdiff(after, before))
+    register_tool_meta(name, capability = "net", set = "A")
   invisible(chat)
 }

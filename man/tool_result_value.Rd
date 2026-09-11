@@ -7,8 +7,8 @@
 tool_result_value(result, default = "")
 }
 \arguments{
-\item{result}{An \link[ellmer:ContentToolResult]{ellmer::ContentToolResult},
-\code{on_tool_result} event list, or character value.}
+\item{result}{An \link[ellmer:Content]{ellmer::ContentToolResult}, \code{on_tool_result} event list, or
+character value.}
 
 \item{default}{Character fallback used when no value can be extracted.}
 }
@@ -16,12 +16,10 @@ tool_result_value(result, default = "")
 A character scalar.
 }
 \description{
-Works with an \link[ellmer:ContentToolResult]{ellmer::ContentToolResult}, an
-\code{on_tool_result} event, or a character value. Third-party UIs should
-display this value whenever they do not support the result's artifact
-schema/version/kind.
+Works with an \link[ellmer:Content]{ellmer::ContentToolResult}, an \code{on_tool_result} event, or a
+character value. Third-party UIs should display this value whenever they do
+not support the result's artifact schema/version/kind.
 }
 \seealso{
-\code{\link[=tool_result_artifact]{tool_result_artifact()}},
-\code{\link[=tool_result]{tool_result()}}
+\code{\link[=tool_result_artifact]{tool_result_artifact()}}, \code{\link[=tool_result]{tool_result()}}
 }

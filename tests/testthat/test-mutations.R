@@ -108,3 +108,20 @@ test_that("fork_session creates an independent copy with a new UUID", {
   ts <- fork_hdr[["timestamp"]]
   expect_match(ts, "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d+Z$")
 })
+
+test_that("fork_session supports global lookup across project directories", {
+  home <- withr::local_tempdir()
+  project <- withr::local_tempdir()
+  withr::local_envvar(CODEAGENT_HOME = file.path(home, "codeagent"))
+  session_dir <- codeagent:::.ensure_session_dir(project)
+  sid <- codeagent:::.generate_uuid_v4()
+  writeLines(
+    jsonlite::toJSON(list(
+      type = "session-start", sessionId = sid, cwd = project,
+      timestamp = "2026-01-01T00:00:00Z", model = "test"),
+      auto_unbox = TRUE),
+    file.path(session_dir, paste0(sid, ".jsonl")))
+
+  new_sid <- fork_session(sid)
+  expect_true(file.exists(file.path(session_dir, paste0(new_sid, ".jsonl"))))
+})

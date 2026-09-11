@@ -110,7 +110,7 @@ team_lead <- function(goal, model = NULL, cwd = getwd(), max_rounds = 3L,
                       coordinate_fn = NULL) {
   if (!is.character(goal) || length(goal) != 1L || !nzchar(goal))
     cli::cli_abort("{.arg goal} must be a non-empty string.")
-  max_rounds    <- max(1L, as.integer(max_rounds))
+  max_rounds    <- max(1L, suppressWarnings(as.integer(max_rounds)))
   decompose_fn  <- decompose_fn  %||% .default_lead_decompose
   review_fn     <- review_fn     %||% .default_lead_review
   coordinate_fn <- coordinate_fn %||% function(tasks, blocked_by) {
@@ -125,7 +125,8 @@ team_lead <- function(goal, model = NULL, cwd = getwd(), max_rounds = 3L,
   repeat {
     if (!length(plan$tasks)) break
     round <- round + 1L
-    board <- coordinate_fn(plan$tasks, plan$blocked_by)
+    board <- tryCatch(coordinate_fn(plan$tasks, plan$blocked_by),
+                       error = function(e) { warning("[team_lead] coordinate failed: ", conditionMessage(e), call. = FALSE); NULL })
     if (!is.null(board) && nrow(board)) board$round <- round
     rounds[[length(rounds) + 1L]] <- board
 

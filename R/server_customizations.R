@@ -69,6 +69,14 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
     if (!nzchar(pkg)) {
       shiny::showNotification("Package name is required.", type = "warning"); return()
     }
+    # Validate package name: only alphanumeric, dots, and hyphens allowed (CRAN standard).
+    if (!grepl("^[a-zA-Z][a-zA-Z0-9._-]+$", pkg)) {
+      shiny::showNotification("Invalid package name.", type = "warning"); return()
+    }
+    # Validate scope
+    if (!scope %in% c("project", "user")) {
+      shiny::showNotification("Invalid scope.", type = "warning"); return()
+    }
     if (!requireNamespace("btw", quietly = TRUE)) {
       shiny::showNotification("btw required for skill installation.", type = "error"); return()
     }
@@ -132,14 +140,14 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
 # Discover agent definitions under Claude-compatible and btw project/user dirs.
 # The legacy flat btw form accepts only agent-*.md so btw.md is never presented
 # as an agent. Returns a list of list(name, description, model).
-.load_agents <- function(cwd = getwd()) {
+.load_agents <- function(cwd = getwd(), user_home = path.expand("~")) {
   specs <- list(
     list(path = file.path(cwd, ".claude", "agents"), pattern = "\\.md$"),
     list(path = file.path(cwd, ".btw", "agents"), pattern = "\\.md$"),
     list(path = file.path(cwd, ".btw"), pattern = "^agent-.*\\.md$"),
-    list(path = path.expand("~/.claude/agents"), pattern = "\\.md$"),
-    list(path = path.expand("~/.btw/agents"), pattern = "\\.md$"),
-    list(path = path.expand("~/.btw"), pattern = "^agent-.*\\.md$")
+    list(path = file.path(user_home, ".claude", "agents"), pattern = "\\.md$"),
+    list(path = file.path(user_home, ".btw", "agents"), pattern = "\\.md$"),
+    list(path = file.path(user_home, ".btw"), pattern = "^agent-.*\\.md$")
   )
   mds <- unique(unlist(lapply(specs, function(spec) {
     if (dir.exists(spec$path))

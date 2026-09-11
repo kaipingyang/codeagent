@@ -4,7 +4,7 @@
 \alias{multi_edit_tool}
 \title{Create the MultiEdit tool}
 \usage{
-multi_edit_tool(mode = "default", rules = list(), ask_fn = NULL)
+multi_edit_tool(mode = "default", rules = list(), ask_fn = NULL, cwd = getwd())
 }
 \arguments{
 \item{mode}{Character. Permission mode.}
@@ -12,6 +12,8 @@ multi_edit_tool(mode = "default", rules = list(), ask_fn = NULL)
 \item{rules}{List. Permission rules.}
 
 \item{ask_fn}{Function or NULL.}
+
+\item{cwd}{Character. Fixed base directory for relative paths.}
 }
 \value{
 An \code{ellmer::tool()} object.
