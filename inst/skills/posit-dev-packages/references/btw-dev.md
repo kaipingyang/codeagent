@@ -1,8 +1,14 @@
 # btw 开发版新功能（vs CRAN 1.4.0）
 
-当前安装：`1.4.0.9000`（GitHub: `posit-dev/btw`）
-当前 SHA：`d11591b09d9127b05d673e8c96569d2bbae2ec44`
-最后验证：2026-08-18
+当前安装：`1.5.0`（GitHub: `posit-dev/btw`）
+当前 SHA：`473d1d8e3114ed9136692ff3fb6b88ed0474ba66`
+最后验证：2026-09-10
+
+本轮 HEAD 相比上一验证 SHA `17c24685b614ba0336cc6ced0f43c6846332b63a`
+前进 3 个 commits 到 v1.5.0：支持 shinychat 0.5.0（`btw_app()` 改用 `page_chat()`）、
+本地存储由 DuckDB 改为 RSQLite（需 `RSQLite >= 2.2.2`）、skills 注册为 slash 命令。
+对 codeagent 影响间接：codeagent 只调用 btw 的 R tool factories，不使用 `btw_app()`；
+自身 RAG 的 duckdb 路径与 btw 存储无关。
 
 ## 当前开发版新增功能
 

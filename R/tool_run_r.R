@@ -176,11 +176,32 @@ register_run_r_tool <- function(chat, mode = "default", rules = list(),
 # Transform btw's BtwRunToolResult into codeagent's display contract.
 #
 # btw_tool_run_r() returns an S7 BtwRunToolResult whose @extra$contents holds a
-# list of Content objects (ContentSource = the code, ContentOutput = printed
+# list of Content items (ContentSource = the code, ContentOutput = printed
 # output, ContentImageInline = base64 plots). btw's own @extra$display uses
 # {open, copy_code} -- NOT codeagent's {title, markdown, right_output}. Without
 # translation the right-panel push and plot rendering both fail.
+#
+# btw <= 1.4.x delivered each item as a live S7 Content object (class via
+# class(), fields via @slot). btw >= 1.5.0 serializes them to plain named lists
+# shaped {version, class = "pkg::ContentType", props = list(field = value)}.
+# The two accessors below read a content item's class name and a named field
+# from EITHER shape, so codeagent stays compatible across both btw lines.
 # ---------------------------------------------------------------------------
+
+.runr_content_class <- function(ct) {
+  if (is.list(ct) && !is.null(ct$class)) return(as.character(ct$class)[1])
+  class(ct)[1]
+}
+
+.runr_content_field <- function(ct, field, default = "") {
+  if (is.list(ct)) {
+    props <- if (!is.null(ct$props)) ct$props else ct
+    if (field %in% names(props)) return(props[[field]] %||% default)
+    return(default)
+  }
+  # Legacy btw (<= 1.4.x): live S7 Content object, read via @slot.
+  tryCatch(eval(call("@", ct, field)), error = function(e) default) %||% default
+}
 
 .runr_to_tool_result <- function(raw, code) {
   contents <- tryCatch(raw@extra$contents, error = function(e) NULL)
@@ -190,20 +211,20 @@ register_run_r_tool <- function(chat, mode = "default", rules = list(),
   images     <- list()
 
   for (ct in (contents %||% list())) {
-    cls <- class(ct)[1]
+    cls <- .runr_content_class(ct)
     if (grepl("ContentImageInline", cls, fixed = TRUE)) {
       images[[length(images) + 1L]] <- list(
-        type = tryCatch(ct@type, error = function(e) "image/png"),
-        data = tryCatch(ct@data, error = function(e) "")
+        type = .runr_content_field(ct, "type", "image/png"),
+        data = .runr_content_field(ct, "data", "")
       )
     } else if (grepl("ContentOutput", cls, fixed = TRUE)) {
-      txt <- tryCatch(ct@text, error = function(e) "")
+      txt <- .runr_content_field(ct, "text", "")
       if (nzchar(txt)) text_parts <- c(text_parts, txt)
     } else if (grepl("ContentError", cls, fixed = TRUE)) {
-      txt <- tryCatch(ct@text, error = function(e) "")
+      txt <- .runr_content_field(ct, "text", "")
       if (nzchar(txt)) text_parts <- c(text_parts, paste0("Error: ", txt))
     } else if (grepl("ContentWarning|ContentMessage", cls)) {
-      txt <- tryCatch(ct@text, error = function(e) "")
+      txt <- .runr_content_field(ct, "text", "")
       if (nzchar(txt)) text_parts <- c(text_parts, txt)
     }
     # ContentSource (the echoed code) is skipped -- already have `code`.

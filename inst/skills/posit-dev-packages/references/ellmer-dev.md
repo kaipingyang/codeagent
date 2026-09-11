@@ -1,13 +1,13 @@
 # ellmer 开发版新功能（vs CRAN 0.4.2）
 
-当前安装：`0.4.2.9000`（GitHub: `tidyverse/ellmer`）
-当前 SHA：`2e96ac58a33d74bea585727daf8cd1535c67d7f1`
-最后验证：2026-09-03
+当前安装：`0.5.0.9000`（GitHub: `tidyverse/ellmer`）
+当前 SHA：`92cfa7f48270048105ea1bfb44d23a2e59c2df6e`
+最后验证：2026-09-09
 
-最新 HEAD 相比上一验证 SHA `a64f94e644718c0598b01b0cd50a3c21c2646435`
-新增 per-request lifecycle callbacks、provider file API、原生 structured-output
-streaming、document content 与 `tool_context()`，并包含 Model/Provider 迁移兼容、
-Connect viewer token forwarding、空响应和 Bedrock 映射等修复。
+本轮 HEAD 相比上一验证 SHA `2e96ac58a33d74bea585727daf8cd1535c67d7f1`
+前进 5 个 commits：完成 0.5.0 release 记录、补充 model data，并修复 partial
+argument/element match。该开发线仍包含 per-request lifecycle callbacks、provider
+file API、原生 structured-output streaming、document content 与 `tool_context()`。
 
 ## 当前开发版新增功能
 

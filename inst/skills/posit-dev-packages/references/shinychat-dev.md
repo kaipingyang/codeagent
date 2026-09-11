@@ -1,12 +1,18 @@
 # shinychat 当前 GitHub HEAD API 审计
 
-当前安装：`0.4.0.9000`
+当前安装：`0.5.0`
 
 仓库：`posit-dev/shinychat`，R package subdir：`pkg-r`
 
-完整 SHA：`2b249764ce45b224224b7d185b3f34f14d0ad84f`
+完整 SHA：`826c799994c32611629236bbc73516dbc14ff2ab`
 
-最后验证：2026-08-31
+最后验证：2026-09-10
+
+本轮 HEAD 相比上一验证 SHA `dde163ea6b27099304a658f3649dd1fac98208bd`
+前进 5 个 commits 到 R 0.5.0：新增 `chat_server()`/`page_chat()`/多会话 history/
+消息编辑分支/slash 命令/attachments/citations 与重做的 tool UI（含 py/v0.7.1）。
+codeagent 仍不采用 `chat_server()`/history，继续自管 loop，只用保留的
+presentation 与 client API。
 
 该构建共有 **33 个 exports、32 个 Rd topics、0 个未文档化 export**。开发版
 `Version` 不唯一标识构建；核验时必须同时检查完整 `RemoteSha` 和
@@ -16,7 +22,7 @@
 
 ```r
 pak::pak(
-  "posit-dev/shinychat/pkg-r@2b249764ce45b224224b7d185b3f34f14d0ad84f"
+  "posit-dev/shinychat/pkg-r@dde163ea6b27099304a658f3649dd1fac98208bd"
 )
 ```
 
