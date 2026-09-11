@@ -44,17 +44,51 @@ write_memory <- function(title, content, description = "") {
   slug <- .memory_slug(title)
   path <- file.path(dir, paste0(slug, ".md"))
 
+  get_field <- function(path, field) {
+    lines <- tryCatch(readLines(path, n = 5L, warn = FALSE),
+                      error = function(e) character())
+    line <- grep(paste0("^", field, ":"), lines, value = TRUE)
+    if (length(line)) trimws(sub(paste0("^", field, ":"), "", line[[1L]]))
+    else NULL
+  }
+  existing_files <- setdiff(
+    list.files(dir, pattern = "\\.md$", full.names = TRUE),
+    file.path(dir, "MEMORY.md"))
+  matching <- Filter(function(candidate) {
+    stored_title <- get_field(candidate, "title")
+    if (!is.null(stored_title)) return(identical(stored_title, title))
+    identical(get_field(candidate, "name"), slug) &&
+      identical(basename(candidate), paste0(slug, ".md"))
+  }, existing_files)
+  if (length(matching)) {
+    path <- matching[[1L]]
+    slug <- tools::file_path_sans_ext(basename(path))
+  } else if (file.exists(path)) {
+    repeat {
+      slug <- paste0(slug, "-", substr(.generate_uuid_v4(), 1L, 6L))
+      path <- file.path(dir, paste0(slug, ".md"))
+      if (!file.exists(path)) break
+    }
+  }
+
   body <- paste0(
     "---\n",
     "name: ", slug, "\n",
+    "title: ", gsub("\n", " ", title), "\n",
     "description: ", gsub("\n", " ", description %||% ""), "\n",
     "---\n\n",
     content, "\n"
   )
-  writeLines(body, path)
+  # Checked replacement; the Windows fallback retains a recovery copy.
+  tmp_path <- tempfile(pattern = "mem_", tmpdir = dir, fileext = ".md")
+  on.exit(if (file.exists(tmp_path)) unlink(tmp_path), add = TRUE)
+  writeLines(body, tmp_path)
+  .replace_file_checked(tmp_path, path)
 
   # Update MEMORY.md index (one line per memory, replace existing slug line).
+  # Also uses checked replacement with crash recovery on the fallback path.
   idx_path <- file.path(dir, "MEMORY.md")
+  .restore_recovery_checked(idx_path)
   hook     <- if (nzchar(description)) description else title
   new_line <- sprintf("- [%s](%s.md) - %s", title, slug, gsub("\n", " ", hook))
   lines    <- if (file.exists(idx_path))
@@ -62,7 +96,10 @@ write_memory <- function(title, content, description = "") {
   else character(0)
   lines <- lines[!grepl(sprintf("\\(%s\\.md\\)", slug), lines)]  # drop old entry
   lines <- c(lines, new_line)
-  writeLines(lines, idx_path)
+  tmp_idx <- tempfile(pattern = "mem_idx_", tmpdir = dir, fileext = ".md")
+  on.exit(if (file.exists(tmp_idx)) unlink(tmp_idx), add = TRUE)
+  writeLines(lines, tmp_idx)
+  .replace_file_checked(tmp_idx, idx_path)
 
   invisible(path)
 }
@@ -74,6 +111,7 @@ write_memory <- function(title, content, description = "") {
 list_memories <- function() {
   dir <- .memory_dir()
   if (!dir.exists(dir)) return(list())
+  .restore_directory_recoveries(dir)
   files <- list.files(dir, pattern = "\\.md$", full.names = TRUE)
   files <- files[basename(files) != "MEMORY.md"]
   lapply(files, function(f) {

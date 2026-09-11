@@ -4,7 +4,14 @@
 \alias{register_team_tool}
 \title{Register the TeamRun tool on a chat}
 \usage{
-register_team_tool(chat, model = NULL, cwd = getwd())
+register_team_tool(
+  chat,
+  model = NULL,
+  cwd = getwd(),
+  parent_rules = NULL,
+  parent_policy = NULL,
+  security_context = NULL
+)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
@@ -12,6 +19,12 @@ register_team_tool(chat, model = NULL, cwd = getwd())
 \item{model}{Character. Default model for team agents.}
 
 \item{cwd}{Character. Working directory.}
+
+\item{parent_rules}{List. Permission rules inherited from parent.}
+
+\item{parent_policy}{List. Tool capability policies inherited from parent.}
+
+\item{security_context}{Internal immutable parent security snapshot.}
 }
 \value{
 Invisibly \code{chat}.

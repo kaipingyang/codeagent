@@ -18,13 +18,13 @@ NULL
   "NotebookRead"
 )
 
-# Bash commands that are safe to run concurrently (read-only patterns)
+# Bash commands that are safe to run concurrently (read-only patterns).
+# NOTE: This is a SCHEDULING HINT only -- NOT a permission decision. The
+# permission gate (tools_gate.R) is the sole authority over whether a tool
+# call is allowed. Bash is always treated as potentially unsafe for
+# concurrent execution unless proven read-only by command analysis.
 .is_concurrent_safe <- function(tool_name, tool_input = NULL) {
   if (tool_name %in% .CONCURRENT_SAFE_TOOLS) return(TRUE)
-  if (identical(tool_name, "Bash") && !is.null(tool_input)) {
-    cmd <- tool_input[["command"]] %||% ""
-    return(.is_bash_readonly(cmd))
-  }
   FALSE
 }
 
@@ -38,8 +38,15 @@ NULL
 #' non-concurrent-safe tools. Mirrors Claude Code's `StreamingToolExecutor`.
 #'
 #' @details
+#' **IMPORTANT**: The synchronous path (`submit()` + `drain_queue()`) executes
+#' ALL tools serially — even concurrent-safe ones. True parallelism is only
+#' achieved via `execute_batch_async()` (promises-based, for Shiny/async
+#' contexts). The serial path is preserved for backward compatibility with
+#' synchronous `chat$chat()` loops.
+#'
 #' Rules:
-#' * Concurrent-safe tools run immediately (in parallel with other safe tools).
+#' * Concurrent-safe tools run immediately (in parallel with other safe tools)
+#'   in the async path; they run serially in the sync path.
 #' * Non-concurrent-safe tools wait for all running tools to finish,
 #'   execute exclusively, then release the queue.
 #' * Tool calls submitted while an unsafe tool is running are queued and

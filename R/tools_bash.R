@@ -43,9 +43,14 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
       # Fire-and-forget: do not capture output, do not block.
       if (isTRUE(run_in_background)) {
         tmp <- tempfile(fileext = ".sh")
+        on.exit(unlink(tmp), add = TRUE)
         writeLines(command, tmp)
         no_net_bg <- isTRUE(sb_prof$enabled) && !isTRUE(sb_prof$allow_network)
         argv_bg <- .sandbox_unshare_wrap(c("bash", tmp), no_network = no_net_bg)
+        # Run via system2 (wait=FALSE) so control returns immediately.
+        # NOTE: timeout is silently ignored when wait=FALSE in R's system2.
+        # Process tracking for timeout/kill is not supported on this platform,
+        # so long-running background commands are the caller's responsibility.
         system2(argv_bg[[1L]], argv_bg[-1L], wait = FALSE,
                 stdout = FALSE, stderr = FALSE,
                 env = sb_env %||% character())

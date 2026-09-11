@@ -42,11 +42,9 @@ test_that("register_btw_task_tools is opt-in and reuses btw (no reinvention)", {
   expect_gt(length(.tool_names(chat)), before)
 })
 
-test_that("agent_tool prefers btw's subagent; codeagent loop only for worktree", {
+test_that("agent_tool uses the dedicated codeagent Agent owner", {
   skip_if_not_installed("btw")
-  # default: reuse btw's upstream subagent (no reinvention)
-  expect_identical(agent_tool()@name, "btw_tool_agent_subagent")
-  # worktree isolation is a codeagent-only capability btw lacks -> own tool
+  expect_identical(agent_tool()@name, "Agent")
   expect_identical(agent_tool(worktree_isolation = TRUE)@name, "Agent")
 })
 
@@ -89,7 +87,7 @@ test_that("owned Agent clones current parent provider and Model", {
 })
 
 
-test_that("upstream Agent captures each session parent without global option leak", {
+test_that("registered Agent is session-owned without global option leak", {
   global <- ellmer::chat_anthropic(model = "global-sentinel")
   withr::local_options(list(btw.client = global))
   a <- ellmer::chat_anthropic(model = "session-a")
@@ -97,13 +95,9 @@ test_that("upstream Agent captures each session parent without global option lea
 
   register_agent_tool(a, parent_chat = a)
   register_agent_tool(b, parent_chat = b)
-  ta <- a$get_tools()[["btw_tool_agent_subagent"]]
-  tb <- b$get_tools()[["btw_tool_agent_subagent"]]
-  ca <- get("config", envir = environment(ta), inherits = FALSE)$client
-  cb <- get("config", envir = environment(tb), inherits = FALSE)$client
-
-  expect_identical(ca, a)
-  expect_identical(cb, b)
-  expect_false(identical(ca, cb))
+  expect_true("Agent" %in% names(a$get_tools()))
+  expect_true("Agent" %in% names(b$get_tools()))
+  expect_false("btw_tool_agent_subagent" %in% names(a$get_tools()))
+  expect_false("btw_tool_agent_subagent" %in% names(b$get_tools()))
   expect_identical(getOption("btw.client"), global)
 })

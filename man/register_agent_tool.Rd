@@ -16,7 +16,8 @@ register_agent_tool(
   data_shield = NULL,
   cwd = getwd(),
   parent_chat = NULL,
-  hooks = NULL
+  hooks = NULL,
+  security_context = NULL
 )
 }
 \arguments{
@@ -48,6 +49,8 @@ sub-agent lifecycle integration.}
 
 \item{hooks}{Optional \link{HookRegistry} used for SubagentStart/Stop lifecycle
 events on the owned codeagent Agent path.}
+
+\item{security_context}{Internal immutable parent security snapshot.}
 }
 \value{
 Invisibly returns \code{chat}.

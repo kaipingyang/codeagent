@@ -1525,7 +1525,12 @@ CompactionController <- R6::R6Class(
         }
       )
       if (!identical(decision$reason, "callback_error")) {
-        if (!isTRUE(decision$success) && decision$summary_calls > 0L) {
+        # Increment failure counter only for genuine failures — NOT when
+        # post_compact_still_large (the pipeline ran but couldn't compact
+        # enough below threshold) or over_threshold_full_disabled.
+        if (!isTRUE(decision$success) && decision$summary_calls > 0L &&
+            !identical(decision$reason, "no_safe_group") &&
+            !grepl("still_large|full_disabled", decision$reason %||% "")) {
           private$failures <- private$failures + 1L
         } else if (isTRUE(decision$success)) {
           private$failures <- 0L

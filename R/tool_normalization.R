@@ -16,7 +16,11 @@
 
 .normalize_tool_output <- function(value) {
   if (promises::is.promise(value))
-    return(promises::then(value, .normalize_tool_output))
+    return(promises::then(value, .normalize_tool_output,
+                          onRejected = function(e) {
+                            paste0("[Error] Tool returned a rejected promise: ",
+                                   conditionMessage(e))
+                          }))
   if (.is_ellmer_content(value)) return(value)
   if (is.list(value) && length(value) &&
       all(vapply(value, .is_ellmer_content, logical(1L)))) return(value)

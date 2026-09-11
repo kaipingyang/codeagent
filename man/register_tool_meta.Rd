@@ -17,8 +17,8 @@ register_tool_meta(
 for read-only/benign tools (allowed without prompting); \code{"write"}/\code{"exec"}/
 \code{"net"} route through the permission gate.}
 
-\item{set}{Character(1). Optional grouping label for reporting (default \code{"C"}
-= host/custom). Not used in gate decisions.}
+\item{set}{Character(1). Tool-set label used by the central gate (default
+\code{"C"} = host/custom). The set must be enabled in \code{settings$tools$sets}.}
 }
 \value{
 Invisibly, \code{name}.
@@ -29,10 +29,9 @@ attaches to the chat (via \code{chat$register_tool()}), so codeagent's central
 permission gate governs it like a native tool.
 
 codeagent classifies every tool call by capability. Built-in tools are known;
-any \strong{unregistered} tool defaults to \code{"read"} and is therefore allowed
-\strong{without gating}. If a host tool performs sensitive actions (writing files,
-executing code, network access), declare it here so the gate can \code{ask}/\code{deny}
-it under the active permission mode and \code{settings$tools} policy.
+any \strong{unregistered} tool defaults to \code{"exec"} and is therefore gated as a
+sensitive operation. If a host tool is read-only and benign, declare it as
+\code{"read"} so the gate will allow it without prompting under default mode.
 
 Built-in tool metadata stays authoritative -- this only classifies tools not
 already known to codeagent. Registrations persist for the R session.

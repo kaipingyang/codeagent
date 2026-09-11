@@ -6,13 +6,19 @@ NULL
 
 #' Create the Glob tool
 #'
+#' @param cwd Character. Fixed base directory for relative paths.
 #' @return An `ellmer::tool()` object.
 #' @export
-glob_tool <- function() {
+glob_tool <- function(cwd = getwd()) {
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
   ellmer::tool(
     name = "Glob",
     fun = function(pattern, path = NULL, `_intent` = NULL) {
-      base <- if (!is.null(path)) path else getwd()
+      base <- tryCatch(
+        .canonical_security_path(path %||% ".", cwd, allow_missing = FALSE),
+        error = function(e) NULL
+      )
+      if (is.null(base)) return("[Error] Directory not found or unsafe.")
       tryCatch({
         # Use portable ** implementation when the pattern contains **.
         # Sys.glob() handles simple patterns (no **) reliably on all platforms.
@@ -68,16 +74,22 @@ glob_tool <- function() {
 #'
 #' Uses `rg` (ripgrep) if available, falls back to base R `grep`.
 #'
+#' @param cwd Character. Fixed base directory for relative paths.
 #' @return An `ellmer::tool()` object.
 #' @export
-grep_tool <- function() {
+grep_tool <- function(cwd = getwd()) {
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
   ellmer::tool(
     name = "Grep",
     fun = function(pattern, path = NULL, glob = NULL,
                    output_mode = "content", `-i` = FALSE, `-n` = TRUE,
                    head_limit = 250L, offset = 0L, multiline = FALSE,
                    `_intent` = NULL) {
-      base  <- if (!is.null(path)) path else getwd()
+      base <- tryCatch(
+        .canonical_security_path(path %||% ".", cwd, allow_missing = FALSE),
+        error = function(e) NULL
+      )
+      if (is.null(base)) return("[Error] File or directory not found or unsafe.")
       limit <- as.integer(head_limit)
       off   <- as.integer(offset)
 
@@ -86,21 +98,30 @@ grep_tool <- function() {
       if (nzchar(rg_path)) {
         # Choose rg flag based on output_mode
         mode_flag <- switch(output_mode,
-          files_with_matches = "-l",
+          files_with_matches = "--files-with-matches",
           count              = "--count",
           NULL  # content mode: no extra flag
         )
+        # Build argument list as a character vector to avoid shell injection.
+        # Use processx::run() with argument array (not system2) so shell
+        # metacharacters in pattern/glob are never interpreted. Add "--" to
+        # prevent the pattern from being parsed as an rg flag. Add "--no-config"
+        # so a project-level .ripgreprc cannot alter rg's behaviour.
         args <- c(
           mode_flag,
-          if (isTRUE(`-i`)) "-i",
-          if (identical(output_mode, "content") && isTRUE(`-n`)) "-n",
-          if (isTRUE(multiline)) c("-U", "--multiline-dotall"),
+          if (isTRUE(`-i`)) "--ignore-case",
+          if (identical(output_mode, "content") && isTRUE(`-n`)) "--line-number",
+          if (isTRUE(multiline)) c("--multiline", "--multiline-dotall"),
           if (!is.null(glob)) c("--glob", glob),
           "--color=never",
+          "--no-config",
+          "--",
           pattern, base
         )
+        args <- args[!vapply(args, is.null, logical(1))]
         out <- tryCatch(
-          system2(rg_path, args, stdout = TRUE, stderr = FALSE),
+          as.character(processx::run(rg_path, args, stdout = TRUE, stderr = FALSE,
+                                     error_on_status = FALSE)$stdout),
           error = function(e) character(0)
         )
       } else {
@@ -189,13 +210,20 @@ grep_tool <- function() {
 
 #' Create the LS tool
 #'
+#' @param cwd Character. Fixed base directory for relative paths.
 #' @return An `ellmer::tool()` object.
 #' @export
-ls_tool <- function() {
+ls_tool <- function(cwd = getwd()) {
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
   ellmer::tool(
     name = "LS",
     fun = function(path = ".", ignore_patterns = NULL, `_intent` = NULL) {
-      base <- normalizePath(path, mustWork = FALSE)
+      base <- tryCatch(
+        .canonical_security_path(path, cwd, allow_missing = FALSE),
+        error = function(e) NULL
+      )
+      if (is.null(base))
+        return(paste0("[Error] Directory not found: ", path))
       if (!dir.exists(base))
         return(paste0("[Error] Directory not found: ", path))
       tryCatch({

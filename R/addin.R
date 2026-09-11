@@ -74,7 +74,6 @@ codeagent_addin_selection <- function() {
 }
 
 # Insert text at the cursor position in the active source editor.
-# Used by future addin features (e.g. /inline-edit that patches the file).
 .insert_at_cursor <- function(text) {
   if (!requireNamespace("rstudioapi", quietly = TRUE)) return(invisible(NULL))
   if (!rstudioapi::hasFun("insertText")) return(invisible(NULL))

@@ -85,8 +85,10 @@ explore_data_tool <- function(envir = .GlobalEnv) {
     description = paste0(
       "Answer natural-language questions about a data.frame in the R session. ",
       "First call with only data_name to get the schema, then call again with ",
-      "dplyr/base R code to execute the query. Never modifies the source data. ",
-      "Use for: filtering, aggregating, summarising, counting, finding patterns."
+      "dplyr/base R code to execute the query. ",
+      "Use for: filtering, aggregating, summarising, counting, finding patterns. ",
+      "Note: this tool executes R code and can have side effects; it is gated ",
+      "by the central permission system like RunR."
     ),
     arguments = list(
       data_name = ellmer::type_string(

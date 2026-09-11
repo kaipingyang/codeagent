@@ -4,12 +4,24 @@
 \alias{team_run_tool}
 \title{Create the TeamRun tool}
 \usage{
-team_run_tool(model = NULL, cwd = getwd())
+team_run_tool(
+  model = NULL,
+  cwd = getwd(),
+  parent_rules = NULL,
+  parent_policy = NULL,
+  security_context = NULL
+)
 }
 \arguments{
 \item{model}{Character. Default model for team agents.}
 
 \item{cwd}{Character. Working directory.}
+
+\item{parent_rules}{List. Permission rules inherited from the parent.}
+
+\item{parent_policy}{List. Tool capability policies inherited from parent.}
+
+\item{security_context}{Internal immutable parent security snapshot.}
 }
 \value{
 An \code{ellmer::tool()} object.

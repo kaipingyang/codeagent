@@ -28,7 +28,7 @@ fake_tool_chat <- function(tools, fail = c("never", "once", "always")) {
   chat
 }
 
-with_btw_group_fixtures <- function(code) {
+with_btw_group_fixtures <- function(code, collector = NULL) {
   testthat::local_mocked_bindings(
     .btw_selected_tools = function(groups = NULL, include_agent = TRUE) {
       available <- list(
@@ -39,7 +39,13 @@ with_btw_group_fixtures <- function(code) {
       if (is.null(groups)) return(unname(available))
       unname(available[intersect(groups, names(available))])
     },
-    .collect_dedicated_agent_tools = function(...) list(fake_tool("Agent")),
+    .collect_dedicated_agent_tools = function(parent_chat, settings,
+                                              allowed_tools = NULL,
+                                              allowed_tool_defs = NULL) {
+      if (is.function(collector))
+        collector(settings, allowed_tools)
+      list(fake_tool("Agent"))
+    },
     .btw_replaceable_names = function() c(
       "btw_tool_docs_help", "btw_tool_env_describe", "btw_tool_git_status")
   )
@@ -76,6 +82,26 @@ test_that("agent checkbox alone controls the dedicated Agent owner", {
     expect_true(.replace_btw_tool_groups(chat, "docs", settings)$ok)
     expect_false("Agent" %in% tool_names(chat$get_tools()))
   })
+})
+
+test_that("dynamic Agent snapshot uses the target groups and final tool names", {
+  captured <- NULL
+  collector <- function(settings, allowed_tools) {
+    captured <<- list(groups = settings$btw_groups,
+                      allowed_tools = allowed_tools)
+  }
+  with_btw_group_fixtures({
+    chat <- fake_tool_chat(list(
+      fake_tool("Read"), fake_tool("btw_tool_env_describe"),
+      fake_tool("Agent")))
+    settings <- list(cwd = tempdir(), permission_mode = "default",
+                     btw_groups = c("env", "agent"))
+    result <- .replace_btw_tool_groups(chat, c("docs", "agent"), settings)
+    expect_true(result$ok)
+    expect_setequal(captured$groups, c("docs", "agent"))
+    expect_setequal(captured$allowed_tools,
+                    c("Read", "btw_tool_docs_help", "Agent"))
+  }, collector = collector)
 })
 
 test_that("btw replacement applies input hook before Data Shield without nesting", {

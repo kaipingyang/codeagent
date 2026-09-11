@@ -31,11 +31,13 @@ Imports:
     keypress,
     base64enc,
     commonmark,
+    xml2,
     bsicons,
     reactable,
     later,
     rlang,
-    watcher
+    watcher,
+    processx
 Suggests:
     codetools,
     clipr,
@@ -88,4 +90,4 @@ Remotes:
 URL: https://kaipingyang.github.io/codeagent, https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues
 Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3

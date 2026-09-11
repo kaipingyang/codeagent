@@ -4,7 +4,7 @@
 \alias{register_rag_tool}
 \title{Register a codebase retrieval tool on a chat}
 \usage{
-register_rag_tool(chat, cwd = getwd(), store = NULL)
+register_rag_tool(chat, cwd = getwd(), store = NULL, allow_network = FALSE)
 }
 \arguments{
 \item{chat}{An \code{ellmer::Chat} object.}
@@ -12,6 +12,10 @@ register_rag_tool(chat, cwd = getwd(), store = NULL)
 \item{cwd}{Character. Project root.}
 
 \item{store}{Optional pre-built ragnar store (skips rebuilding).}
+
+\item{allow_network}{Logical. Whether registration may build a store through
+a network embedding backend. The central registration path enables this
+only when network capability is already allowed.}
 }
 \value{
 Invisibly \code{chat}.

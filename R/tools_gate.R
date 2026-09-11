@@ -21,25 +21,46 @@ NULL
   # codeagent-native
   Bash        = list(set = "A", capability = "exec"),
   RunR        = list(set = "A", capability = "exec"),
-  Write       = list(set = "A", capability = "write"),
-  Edit        = list(set = "A", capability = "write"),
-  MultiEdit   = list(set = "A", capability = "write"),
-  Format      = list(set = "A", capability = "write"),
-  Read        = list(set = "A", capability = "read"),
+  Write       = list(set = "A", capability = "write", path_args = "file_path"),
+  Edit        = list(set = "A", capability = "write", path_args = "file_path"),
+  MultiEdit   = list(set = "A", capability = "write", path_args = "file_path"),
+  Format      = list(set = "A", capability = "write", path_args = "path"),
+  Read        = list(set = "A", capability = "read", path_args = "file_path"),
   Glob        = list(set = "A", capability = "read"),
   Grep        = list(set = "A", capability = "read"),
-  LS          = list(set = "A", capability = "read"),
-  Lint        = list(set = "A", capability = "read"),
+  LS          = list(set = "A", capability = "read", path_args = "path"),
+  Lint        = list(set = "A", capability = "exec", path_args = "path"),
+  ExploreData = list(set = "A", capability = "exec"),
+  NotebookEdit= list(set = "A", capability = "write", path_args = "notebook_path"),
   WebFetch    = list(set = "A", capability = "net"),
   WebSearch   = list(set = "A", capability = "net"),
+  Agent       = list(set = "A", capability = "exec"),
+  TeamRun     = list(set = "A", capability = "exec"),
+  TeamCoordinate = list(set = "A", capability = "exec"),
+  BackgroundAgent = list(set = "A", capability = "exec"),
+  AskUserQuestion = list(set = "A", capability = "read"),
+  TaskCreate  = list(set = "A", capability = "write"),
+  TaskGet     = list(set = "A", capability = "read"),
+  TaskUpdate  = list(set = "A", capability = "write"),
+  TaskList    = list(set = "A", capability = "read"),
+  TodoWrite   = list(set = "A", capability = "write"),
+  NotebookRead = list(set = "A", capability = "read", path_args = "notebook_path"),
+  EnterPlanMode = list(set = "A", capability = "write"),
+  ExitPlanMode = list(set = "A", capability = "write"),
+  AuditCode   = list(set = "A", capability = "exec"),
+  DescribeData = list(set = "A", capability = "read"),
+  GenerateReport = list(set = "A", capability = "write"),
+  remember    = list(set = "A", capability = "write"),
+  use_skill   = list(set = "A", capability = "read"),
   # btw file tools (set B)
-  btw_tool_files_write   = list(set = "B", capability = "write"),
-  btw_tool_files_edit    = list(set = "B", capability = "write"),
-  btw_tool_files_replace = list(set = "B", capability = "write"),
-  btw_tool_files_patch   = list(set = "B", capability = "write"),
-  btw_tool_files_read    = list(set = "B", capability = "read"),
-  btw_tool_files_list    = list(set = "B", capability = "read"),
-  btw_tool_files_search  = list(set = "B", capability = "read"),
+  btw_tool_files_write   = list(set = "B", capability = "write", path_args = "path"),
+  btw_tool_files_edit    = list(set = "B", capability = "write", path_args = "path"),
+  btw_tool_files_replace = list(set = "B", capability = "write", path_args = "path"),
+  btw_tool_files_patch   = list(set = "B", capability = "write", path_args = "patch"),
+  btw_tool_files_read    = list(set = "B", capability = "read", path_args = "path"),
+  btw_tool_files_list    = list(set = "B", capability = "read", path_args = "path"),
+  btw_tool_files_search  = list(set = "B", capability = "read",
+                                cwd_bound = TRUE),
   # other write-capable btw tools
   btw_tool_git_commit         = list(set = "B", capability = "write"),
   btw_tool_git_branch_create  = list(set = "B", capability = "write"),
@@ -56,18 +77,36 @@ NULL
 .tool_meta_user <- new.env(parent = emptyenv())
 
 # Resolve a tool's capability. Precedence: built-in .TOOL_META > host registry
-# (register_tool_meta) > default "read". Only tools resolving to write/exec/net are
-# treated as sensitive; "read" (the default) is allowed WITHOUT gating, so benign
-# tools (todo, skill, remember, read-only btw, host read-only tools, ...) are not
-# accidentally gated. Fine-grained control over ANY tool is still possible via
-# settings$tools$overrides.
+# (register_tool_meta) > default "exec" (fail-closed: unknown tools are treated as
+# sensitive). Only tools resolving to "read" are explicitly allowed without gating;
+# everything else routes through the permission gate. Fine-grained control over ANY
+# tool is still possible via settings$tools$overrides.
 #' @keywords internal
-.tool_capability <- function(name, tool = NULL) {
+.tool_metadata <- function(name, tool = NULL) {
   m <- .TOOL_META[[name]]
-  if (!is.null(m)) return(m$capability)
+  if (!is.null(m))
+    return(list(known = TRUE, set = m$set, capability = m$capability,
+                path_args = m$path_args %||% character(),
+                cwd_bound = isTRUE(m$cwd_bound)))
   u <- .tool_meta_user[[name]]
-  if (!is.null(u)) return(u$capability)
-  "read"
+  if (!is.null(u))
+    return(list(known = TRUE, set = u$set, capability = u$capability,
+                path_args = u$path_args %||% character(),
+                cwd_bound = isTRUE(u$cwd_bound)))
+  if (startsWith(name, "btw_tool_")) {
+    capability <- if (grepl(
+      "^btw_tool_(docs|env|sessioninfo|cran)_", name)) "read"
+    else if (grepl("^btw_tool_(web_|github)", name)) "net"
+    else "exec"
+    return(list(known = TRUE, set = "B", capability = capability,
+                path_args = character(), cwd_bound = FALSE))
+  }
+  list(known = FALSE, set = NA_character_, capability = "exec",
+       path_args = character(), cwd_bound = FALSE)
+}
+
+.tool_capability <- function(name, tool = NULL) {
+  .tool_metadata(name, tool)$capability
 }
 
 #' Declare a host tool's permission capability
@@ -78,10 +117,9 @@ NULL
 #' permission gate governs it like a native tool.
 #'
 #' codeagent classifies every tool call by capability. Built-in tools are known;
-#' any **unregistered** tool defaults to `"read"` and is therefore allowed
-#' **without gating**. If a host tool performs sensitive actions (writing files,
-#' executing code, network access), declare it here so the gate can `ask`/`deny`
-#' it under the active permission mode and `settings$tools` policy.
+#' any **unregistered** tool defaults to `"exec"` and is therefore gated as a
+#' sensitive operation. If a host tool is read-only and benign, declare it as
+#' `"read"` so the gate will allow it without prompting under default mode.
 #'
 #' Built-in tool metadata stays authoritative -- this only classifies tools not
 #' already known to codeagent. Registrations persist for the R session.
@@ -90,8 +128,8 @@ NULL
 #' @param capability One of `"read"`, `"write"`, `"exec"`, `"net"`. Use `"read"`
 #'   for read-only/benign tools (allowed without prompting); `"write"`/`"exec"`/
 #'   `"net"` route through the permission gate.
-#' @param set Character(1). Optional grouping label for reporting (default `"C"`
-#'   = host/custom). Not used in gate decisions.
+#' @param set Character(1). Tool-set label used by the central gate (default
+#'   `"C"` = host/custom). The set must be enabled in `settings$tools$sets`.
 #' @return Invisibly, `name`.
 #' @examples
 #' \dontrun{
@@ -106,6 +144,8 @@ register_tool_meta <- function(name,
   if (!is.character(name) || length(name) != 1L || !nzchar(name))
     stop("`name` must be a non-empty character(1).", call. = FALSE)
   capability <- match.arg(capability)
+  if (!is.character(set) || length(set) != 1L || !nzchar(set))
+    stop("`set` must be a non-empty character(1).", call. = FALSE)
   .tool_meta_user[[name]] <- list(capability = capability, set = set)
   invisible(name)
 }
@@ -124,7 +164,14 @@ register_tool_meta <- function(name,
 # Decide allow/deny/ask for a tool call. Precedence: per-tool override >
 # capability-level policy > mode/rules permission (check_permission).
 #' @keywords internal
-.gate_decide <- function(name, input, policy, mode, rules, capability) {
+.gate_decide <- function(name, input, policy, mode, rules, capability = NULL) {
+  if (identical(mode, "plan") && identical(name, "ExitPlanMode"))
+    return("allow")
+  meta <- .tool_metadata(name)
+  if (!isTRUE(meta$known)) return("deny")
+  enabled_sets <- as.character(policy$sets %||% c("A", "B"))
+  if (!meta$set %in% enabled_sets) return("deny")
+  capability <- meta$capability
   ov <- policy$overrides[[name]]
   if (!is.null(ov) && nzchar(ov)) return(ov)
   cap <- policy$capabilities[[capability]]
@@ -173,6 +220,11 @@ register_tool_meta <- function(name,
 #' @keywords internal
 .gate_recheck <- function(ctx, name, input, cap = NULL) {
   if (is.null(ctx) || !is.environment(ctx)) return(list(action = "allow", input = input))
+  input[[".permission_cwd"]] <- ctx$cwd %||% getwd()
+  input <- tryCatch(
+    .canonicalize_permission_input(name, input, input[[".permission_cwd"]]),
+    error = function(e) return(list(action = "deny", input = input))
+  )
   cap <- cap %||% .tool_capability(name, NULL)
   shield <- ctx$data_shield %||%
     tryCatch(attr(ctx$chat, "codeagent_data_shield"), error = function(e) NULL)
@@ -197,6 +249,8 @@ register_tool_meta <- function(name,
     error = function(e) "deny")   # decision error -> deny (fail-closed, kiro round-3)
   if (identical(decision, "deny")) return(list(action = "deny", input = input))
   if (identical(decision, "ask"))  return(list(action = "deny", input = input))  # ask w/o path -> deny
+  attr(input, "permission_targets") <- NULL
+  input[[".permission_cwd"]] <- NULL
   list(action = "allow", input = input)
 }
 
@@ -234,6 +288,14 @@ register_tool_meta <- function(name,
     name  <- tryCatch(request@name, error = function(e) NULL)
     if (is.null(name) || !nzchar(name)) return(invisible())
     input <- tryCatch(as.list(request@arguments), error = function(e) list())
+    input[[".permission_cwd"]] <- ctx$cwd %||% getwd()
+    canonical_input <- tryCatch(
+      .canonicalize_permission_input(name, input, input[[".permission_cwd"]]),
+      error = function(e) NULL
+    )
+    if (is.null(canonical_input))
+      return(deny(name, input, "invalid or unresolvable path"))
+    input <- canonical_input
     tool  <- tryCatch(request@tool, error = function(e) NULL)
     cap   <- .tool_capability(name, tool)
 
@@ -256,8 +318,11 @@ register_tool_meta <- function(name,
       if (identical(shield_decision$action, "block"))
         return(deny(name, input, shield_decision$reason %||% "Data Shield ingress blocked"))
       shield_ask <- identical(shield_decision$action, "ask")
-      ov <- ctx$policy$overrides[[name]]
-      if (!shield_ask && is.null(ov) && identical(cap, "read")) return(invisible())
+
+      # Evaluate the full permission decision -- per-tool override, capability
+      # policy, mode + rules (check_permission). Even "read" capability tools
+      # MUST go through .gate_decide so that explicit deny/override rules are
+      # respected (V-05 remedy: no early return for "read" capability).
       decision <- if (shield_ask) "ask" else tryCatch(
         .gate_decide(name, input, ctx$policy, resolve_mode(), ctx$rules, cap),
         error = function(e) "deny")   # decision error -> deny (fail-closed, kiro round-3)
@@ -299,6 +364,7 @@ register_tool_meta <- function(name,
   ctx$hooks    <- hooks
   ctx$chat     <- NULL
   ctx$data_shield <- NULL
+  ctx$cwd <- getwd()
   ctx$installed <- FALSE
   ctx
 }
@@ -332,12 +398,14 @@ register_tool_meta <- function(name,
   if (is.null(ctx)) {
     ctx <- .make_gate_ctx(.resolve_tool_policy(settings), mode_env, rules, ask_fn, hooks)
     ctx$chat <- chat; ctx$data_shield <- shield
+    ctx$cwd <- settings$cwd %||% getwd()
     .gate_contexts[[key]] <- ctx
   } else {
     # refresh live context (mode/ask_fn/policy/hooks/shield may have changed)
     ctx$policy <- .resolve_tool_policy(settings); ctx$mode_env <- mode_env
     ctx$rules  <- rules; ctx$ask_fn <- ask_fn; ctx$hooks <- hooks
     ctx$chat <- chat; ctx$data_shield <- shield
+    ctx$cwd <- settings$cwd %||% getwd()
   }
   if (isTRUE(ctx$installed)) return(invisible(chat))   # gate already on this chat
 
@@ -409,6 +477,7 @@ install_permission_gate <- function(chat, permission_mode = "default",
       stop("`tool_meta` must be a named list (tool name -> capability).",
            call. = FALSE)
     for (nm in names(tool_meta)) register_tool_meta(nm, tool_meta[[nm]])
+    if (is.null(tools$sets)) tools$sets <- c("A", "B", "C")
   }
   mode_env <- new.env(parent = emptyenv())
   mode_env$mode <- permission_mode

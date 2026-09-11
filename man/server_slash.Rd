@@ -3,35 +3,6 @@
 \name{server_slash}
 \alias{server_slash}
 \title{Official shinychat slash-command typeahead (standalone driver)}
-\usage{
-server_slash(
-  input,
-  session,
-  cwd = getwd(),
-  id = "chat",
-  stream_task = NULL,
-  chat = NULL,
-  settings = NULL,
-  state = NULL
-)
-}
-\arguments{
-\item{input, session}{Standard Shiny server args.}
-
-\item{cwd}{Character. Working directory (for skill discovery).}
-
-\item{id}{Character. The \code{chat_ui()} id (default \code{"chat"}).}
-
-\item{stream_task}{The \code{ExtendedTask} returned by \code{\link[=server_chat]{server_chat()}}, used to
-run skill/normal slash commands through the harness (compaction, skill
-injection, streaming). Required for skill commands to reach the LLM.}
-
-\item{chat, settings, state}{Harness handles for executing local commands
-directly (via \code{.handle_chat_command()}).}
-}
-\value{
-Invisibly NULL.
-}
 \description{
 Drives shinychat's \strong{official} slash-command typeahead palette
 (dev feature #239: the native \code{/}-triggered command menu) WITHOUT using
@@ -57,16 +28,5 @@ client-of-LLM, skills inject their prompt, etc.
 Graceful degradation: on a shinychat build without the typeahead, the
 registration message is simply ignored and the footer \code{pickerInput} remains
 as the fallback slash UI. REPL is unaffected (uses \code{.preprocess_input}).
-}
-\details{
-Slash commands are dispatched \strong{directly inside this handler} -- we do NOT
-re-submit \verb{/command} through \code{update_chat_user_input()}. Re-submitting is
-broken: shinychat re-recognises the re-submitted \verb{/command} as a slash
-command and fires \verb{input$<id>_slash_command} again with the \emph{same} value,
-which Shiny's \code{observeEvent} de-dupes into a no-op -- so the command never
-reaches \verb{input$<id>_user_input} / \code{.preprocess_input} and silently dies.
-Instead we mirror \code{server_chat}'s routing here: local commands run via
-\code{.handle_chat_command()}, skills/normal go through the shared \code{stream_task}
-(which injects the skill prompt internally).
 }
 \keyword{internal}

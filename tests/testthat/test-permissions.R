@@ -20,7 +20,14 @@ test_that("plan mode blocks write/bash but allows read-only tools", {
   expect_equal(check_permission("Read",     "plan"), "allow")
   expect_equal(check_permission("Glob",     "plan"), "allow")
   expect_equal(check_permission("Grep",     "plan"), "allow")
-  expect_equal(check_permission("WebFetch", "plan"), "allow")
+  expect_equal(check_permission("WebFetch", "plan"), "deny")
+})
+
+test_that("network tools require approval by default and fail closed in dont_ask", {
+  expect_equal(check_permission("WebFetch", "default"), "ask")
+  expect_equal(check_permission("WebSearch", "default"), "ask")
+  expect_equal(check_permission("WebFetch", "dont_ask"), "deny")
+  expect_equal(check_permission("WebSearch", "dont_ask"), "deny")
 })
 
 test_that("accept_edits mode allows file edits but asks for Bash", {
@@ -37,14 +44,194 @@ test_that("default mode asks for write/bash, allows read-only", {
   expect_equal(check_permission("Edit",  "default"), "ask")
 })
 
-test_that("default mode auto-allows bash readonly commands", {
+test_that("default mode asks for all Bash commands", {
   allow_cmds <- c("ls -la", "cat README.md", "grep foo bar.R",
                   "git log --oneline", "git status", "echo hello")
   for (cmd in allow_cmds) {
     result <- check_permission("Bash", "default",
                                tool_input = list(command = cmd))
-    expect_equal(result, "allow", info = paste("Command:", cmd))
+    expect_equal(result, "ask", info = paste("Command:", cmd))
   }
+})
+
+test_that("file permission rules match canonical paths, not traversal strings", {
+  root <- withr::local_tempdir()
+  allowed <- file.path(root, "allowed")
+  dir.create(allowed)
+  rule <- PermissionRule(
+    "Write", "allow",
+    rule_content = paste0(allowed, .Platform$file.sep, "*")
+  )
+  attack <- file.path(allowed, "..", "outside.txt")
+  input <- list(file_path = attack, .permission_cwd = root)
+  expect_false(codeagent:::.rule_matches(rule, "Write", input))
+  expect_identical(
+    check_permission("Write", "default", list(rule), input),
+    "ask"
+  )
+})
+
+test_that("path rules cover native, notebook, format, and btw file tools", {
+  root <- withr::local_tempdir()
+  denied <- file.path(root, "denied")
+  dir.create(denied)
+  cases <- list(
+    LS = list(input = list(path = denied), pattern = denied),
+    NotebookEdit = list(
+      input = list(notebook_path = file.path(denied, "x.ipynb")),
+      pattern = paste0(denied, .Platform$file.sep, "*")),
+    Format = list(input = list(path = denied), pattern = denied),
+    btw_tool_files_write = list(
+      input = list(path = file.path(denied, "x.R")),
+      pattern = paste0(denied, .Platform$file.sep, "*"))
+  )
+  for (name in names(cases)) {
+    input <- codeagent:::.canonicalize_permission_input(
+      name, cases[[name]]$input, root)
+    input[[".permission_cwd"]] <- root
+    rule <- PermissionRule(
+      name, "deny", rule_content = cases[[name]]$pattern)
+    expect_true(codeagent:::.rule_matches(rule, name, input), info = name)
+  }
+})
+
+test_that("optional directory paths canonicalize to the captured cwd", {
+  root <- codeagent:::.canonical_security_path(withr::local_tempdir())
+  ls_input <- codeagent:::.canonicalize_permission_input("LS", list(), root)
+  btw_input <- codeagent:::.canonicalize_permission_input(
+    "btw_tool_files_list", list(path = NULL), root)
+  expect_identical(ls_input$path, root)
+  expect_identical(btw_input$path, root)
+})
+
+test_that("btw patch rules inspect every source and destination path", {
+  root <- withr::local_tempdir()
+  denied <- file.path(root, "denied")
+  dir.create(denied)
+  patch <- paste(
+    "*** Begin Patch",
+    "*** Add File: safe.txt",
+    "+safe",
+    "*** Update File: denied/out.txt",
+    "@@",
+    "-old",
+    "+blocked",
+    "*** Move to: denied/moved.txt",
+    "*** End Patch",
+    sep = "\n")
+  input <- codeagent:::.canonicalize_permission_input(
+    "btw_tool_files_patch", list(patch = patch), root)
+  input[[".permission_cwd"]] <- root
+  rule <- PermissionRule(
+    "btw_tool_files_patch", "deny",
+    rule_content = paste0(denied, .Platform$file.sep, "*"))
+  expect_true(codeagent:::.rule_matches(
+    rule, "btw_tool_files_patch", input))
+})
+
+test_that("btw patch ignores forged unified-diff markers in file content", {
+  root <- withr::local_tempdir()
+  denied <- file.path(root, "denied")
+  dir.create(denied)
+  patch <- paste(
+    "*** Begin Patch",
+    "*** Add File: denied/evil.txt",
+    "++++ b/safe.txt",
+    "*** End Patch",
+    sep = "\n")
+  input <- codeagent:::.canonicalize_permission_input(
+    "btw_tool_files_patch", list(patch = patch), root)
+  targets <- attr(input, "permission_targets")
+  expect_true(any(grepl("denied/evil[.]txt$", targets)))
+  expect_false(any(grepl("safe[.]txt$", targets)))
+})
+
+test_that("multi-target patch allow rules must cover every target", {
+  root <- withr::local_tempdir()
+  dir.create(file.path(root, "safe"))
+  dir.create(file.path(root, "blocked"))
+  patch <- paste(
+    "*** Begin Patch",
+    "*** Add File: safe/ok.txt",
+    "+ok",
+    "*** Add File: blocked/evil.txt",
+    "+bad",
+    "*** End Patch",
+    sep = "\n")
+  input <- codeagent:::.canonicalize_permission_input(
+    "btw_tool_files_patch", list(patch = patch), root)
+  input[[".permission_cwd"]] <- root
+  allow <- PermissionRule(
+    "btw_tool_files_patch", "allow",
+    rule_content = paste0(file.path(root, "safe"), .Platform$file.sep, "*"))
+  expect_false(codeagent:::.rule_matches(
+    allow, "btw_tool_files_patch", input))
+  expect_identical(check_permission(
+    "btw_tool_files_patch", "default", list(allow), input), "ask")
+})
+
+test_that("explicit deny rules override earlier broad allow rules", {
+  root <- withr::local_tempdir()
+  dir.create(file.path(root, "safe"))
+  dir.create(file.path(root, "denied"))
+  patch <- paste(
+    "*** Begin Patch",
+    "*** Add File: safe/ok.txt",
+    "+ok",
+    "*** Add File: denied/evil.txt",
+    "+bad",
+    "*** End Patch",
+    sep = "\n")
+  input <- codeagent:::.canonicalize_permission_input(
+    "btw_tool_files_patch", list(patch = patch), root)
+  input[[".permission_cwd"]] <- root
+  rules <- list(
+    PermissionRule("btw_tool_files_patch", "allow", rule_content = "*"),
+    PermissionRule(
+      "btw_tool_files_patch", "deny",
+      rule_content = paste0(file.path(root, "denied"),
+                            .Platform$file.sep, "*"))
+  )
+  expect_identical(check_permission(
+    "btw_tool_files_patch", "bypass", rules, input), "deny")
+})
+
+test_that("unextractable content deny rules fail closed", {
+  rule <- PermissionRule("NotebookEdit", "deny", rule_content = "secret/*")
+  expect_true(codeagent:::.rule_matches(
+    rule, "NotebookEdit", list(.permission_cwd = getwd())))
+})
+
+test_that("glob matching treats regex metacharacters literally", {
+  expect_true(codeagent:::.glob_match("safe.dir/*", "safe.dir/file.txt"))
+  expect_false(codeagent:::.glob_match("safe.dir/*", "safeXdir/file.txt"))
+  expect_true(codeagent:::.glob_match("dir[1]/*", "dir[1]/file.txt"))
+  expect_false(codeagent:::.glob_match("dir[1]/*", "dir1/file.txt"))
+})
+
+test_that("path containment compares components instead of string prefixes", {
+  root <- codeagent:::.canonical_security_path(withr::local_tempdir())
+  sibling <- paste0(root, "-secret")
+  dir.create(sibling)
+  expect_false(codeagent:::.path_is_within(
+    codeagent:::.canonical_security_path(sibling), root))
+  child <- file.path(root, "child")
+  dir.create(child)
+  expect_true(codeagent:::.path_is_within(
+    codeagent:::.canonical_security_path(child), root))
+})
+
+test_that("canonical missing paths resolve dangling symbolic links", {
+  root <- withr::local_tempdir()
+  outside <- tempfile("outside-")
+  dir.create(outside)
+  link <- file.path(root, "link")
+  ok <- suppressWarnings(file.symlink(
+    file.path(outside, "missing.txt"), link))
+  if (!isTRUE(ok)) skip("symbolic links are unavailable")
+  resolved <- codeagent:::.canonical_security_path(
+    link, root, allow_missing = TRUE)
+  expect_false(codeagent:::.path_is_within(resolved, root))
 })
 
 test_that("default mode asks for bash write commands", {

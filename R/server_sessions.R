@@ -35,8 +35,9 @@ server_sessions <- function(input, output, session, chat, cwd,
       htmltools::tags$button(
         type    = "button",
         class   = "ca-session-btn btn btn-outline-secondary btn-sm w-100 mb-1 text-start",
-        onclick = sprintf(
-          "Shiny.setInputValue('ca_load_session','%s',{priority:'event'});", sid),
+onclick = sprintf(
+  "Shiny.setInputValue('ca_load_session','%s',{priority:'event'});",
+  htmltools::htmlEscape(sid, attribute = TRUE)),
         label
       )
     })
@@ -57,7 +58,7 @@ server_sessions <- function(input, output, session, chat, cwd,
   shiny::observeEvent(input$delete_session_btn, {
     if (!is.null(stream_task) && stream_task$status() == "running") return()
     sid <- state$session_id
-    if (!is.null(sid)) {
+    if (!is.null(sid) && !is.null(.validate_uuid(sid))) {
       tryCatch(delete_session(sid, directory = cwd), error = function(e) NULL)
     }
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
@@ -72,6 +73,11 @@ server_sessions <- function(input, output, session, chat, cwd,
     if (!is.null(stream_task) && stream_task$status() == "running") return()
     sid <- input$ca_load_session
     if (is.null(sid) || !nzchar(sid)) return()
+    # Path traversal guard: reject non-UUID session IDs from client
+    if (is.null(.validate_uuid(sid))) {
+      shiny::showNotification("Invalid session ID.", type = "warning", duration = 3)
+      return()
+    }
     # Restore lossless chat state (tool calls preserved).
     ok <- tryCatch({
       restore_session_into_chat(chat, session_id = sid, cwd = cwd)

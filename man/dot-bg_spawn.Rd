@@ -4,7 +4,7 @@
 \alias{.bg_spawn}
 \title{Spawn a background sub-agent. Returns the task id immediately (fire-and-forget).}
 \usage{
-.bg_spawn(prompt, model = NULL, cwd = getwd())
+.bg_spawn(prompt, model = NULL, cwd = getwd(), security_context = NULL)
 }
 \description{
 Spawn a background sub-agent. Returns the task id immediately (fire-and-forget).

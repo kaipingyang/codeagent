@@ -330,6 +330,8 @@
   cite_pattern <- "\\[\\[cite:(src_[a-z0-9]{8})\\|([^]\\r\\n]+)\\]\\]"
   ref_pattern <- "\\[\\[cite-ref:(ref_[a-z0-9]{8})\\]\\]"
   pattern <- paste0("(?:", cite_pattern, "|", ref_pattern, ")")
+  # Cap input length to avoid PCRE backtracking issues on very long text.
+  text <- substr(text, 1L, 500000L)
   matches <- gregexpr(pattern, text, perl = TRUE)[[1L]]
   if (identical(matches[1L], -1L)) return(.escape_html(text))
   lengths <- attr(matches, "match.length")
@@ -397,10 +399,40 @@
   paste0(out, collapse = "")
 }
 
+.resolve_web_host_processx <- function(host, timeout = 10) {
+  expr <- paste0(
+    "cat(curl::nslookup(commandArgs(trailingOnly=TRUE)[[1L]],",
+    " multiple=TRUE, error=TRUE), sep='\\n')")
+  resolved <- processx::run(
+    file.path(R.home("bin"), "Rscript"),
+    c("--vanilla", "-e", expr, host),
+    timeout = as.numeric(timeout) * 1000,
+    error_on_status = FALSE,
+    echo = FALSE
+  )
+  if (!identical(resolved$status, 0L))
+    stop(trimws(resolved$stderr %||% "DNS resolver subprocess failed"))
+  result <- strsplit(resolved$stdout, "\r?\n")[[1L]]
+  result[nzchar(result)]
+}
+
 .resolve_web_host <- function(host) {
   host <- gsub("^\\[|\\]$", "", host)
   if (.is_ipv4_literal(host) || grepl(":", host, fixed = TRUE)) return(host)
-  curl::nslookup(host, ipv4_only = FALSE, multiple = TRUE, error = TRUE)
+  tryCatch({
+    result <- if (requireNamespace("callr", quietly = TRUE))
+      callr::r(
+        function(h) curl::nslookup(h, multiple = TRUE, error = TRUE),
+        args = list(h = host),
+        timeout = 10
+      )
+    else
+      .resolve_web_host_processx(host, timeout = 10)
+    as.character(result)
+  }, error = function(e) {
+    stop("DNS resolution timed out or failed for ", host, ": ",
+         conditionMessage(e), call. = FALSE)
+  })
 }
 
 .authorize_web_url <- function(url) {
@@ -467,7 +499,8 @@
       auth$url, auth$host, auth$port, auth$ip,
       timeout = timeout, headers = current_headers)
     if (!response$status %in% c(301L, 302L, 303L, 307L, 308L)) return(response)
-    location <- response$headers$location %||% response$headers$Location %||% NULL
+    location <- response$headers$location %||% response$headers$Location %||%
+                 response$headers$LOCATION %||% NULL
     if (is.null(location) || !nzchar(location))
       stop("Web redirect response omitted Location.", call. = FALSE)
     if (hop >= as.integer(max_redirects))

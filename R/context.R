@@ -113,8 +113,8 @@ NULL
     v <- suppressWarnings(as.integer(env))
     if (!is.na(v) && v > 0L) return(v)
   }
-  # 2. [1m] suffix (= has1mContext, context.ts:35)
-  if (!is.null(model) && grepl("\\[1m\\]", model, ignore.case = TRUE)) return(1000000L)
+  # 2. [1m] suffix (= has1mContext, context.ts:35). Match only at end of model name.
+  if (!is.null(model) && grepl("\\[1m\\]$", model, ignore.case = TRUE)) return(1000000L)
   # 3. Capability (provider value or table); only trust >= 100K (= CC guard)
   cap <- .model_capability_tokens(model, chat)
   if (!is.na(cap) && cap >= 100000L) return(cap)
@@ -191,7 +191,7 @@ calculate_token_warning_state <- function(token_usage, model, chat = NULL) {
     percent_left  = max(0L, as.integer(round((threshold - token_usage) / threshold * 100))),
     above_warning = token_usage >= threshold - .WARNING_THRESHOLD_BUFFER,
     above_error   = token_usage >= threshold - .ERROR_THRESHOLD_BUFFER,
-    above_compact = enabled && token_usage >= .auto_compact_threshold(model, chat),
+    above_compact = enabled && token_usage >= threshold,
     at_blocking   = token_usage >= eff - .MANUAL_COMPACT_BUFFER
   )
 }

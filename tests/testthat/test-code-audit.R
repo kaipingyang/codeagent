@@ -73,8 +73,9 @@ test_that("sourceCpp literal path is extracted", {
 test_that(".audit_code_impl reads an in-project source file (whitelist pass)", {
   root <- withr::local_tempdir()
   writeLines("x <- 1", file.path(root, "helper.R"))
+  helper <- normalizePath(file.path(root, "helper.R"), winslash = "/")
   r <- codeagent:::.audit_code_impl(
-    sprintf('source("%s")', file.path(root, "helper.R")),
+    sprintf('source("%s")', helper),
     shield = NULL, project_root = root)
   expect_length(r$allowed, 1L)
   expect_length(r$blocked, 0L)
@@ -94,8 +95,9 @@ test_that(".audit_code_impl blocks a path outside the project root", {
 test_that(".audit_code_impl blocks a non-source extension inside the project", {
   root <- withr::local_tempdir()
   writeLines("blob", file.path(root, "data.bin"))
+  data_file <- normalizePath(file.path(root, "data.bin"), winslash = "/")
   r <- codeagent:::.audit_code_impl(
-    sprintf('readRDS("%s")', file.path(root, "data.bin")),
+    sprintf('readRDS("%s")', data_file),
     shield = NULL, project_root = root)
   expect_match(r$blocked[[1]]$reason, "non-source extension")
   expect_identical(r$risk, "block")
@@ -119,7 +121,7 @@ test_that(".audit_path_allowed resolves symlink escape and rejects it", {
   outside <- withr::local_tempdir()
   writeLines("secret", file.path(outside, "s.R"))
   link <- file.path(root, "link.R")
-  ok <- tryCatch({ file.symlink(file.path(outside, "s.R"), link); TRUE },
+  ok <- tryCatch(isTRUE(file.symlink(file.path(outside, "s.R"), link)),
                  error = function(e) FALSE)
   skip_if_not(ok, "symlink unsupported here")
   dec <- codeagent:::.audit_path_allowed(link, root)
@@ -143,4 +145,3 @@ test_that("audit_code_tool reports block for an out-of-project source, no conten
   expect_match(val, "path outside project root")
   expect_false(grepl("root:", val))   # metadata only, never file contents
 })
-

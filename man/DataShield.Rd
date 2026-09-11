@@ -32,42 +32,41 @@ shield$coverage()
 }
 \section{Methods}{
 \subsection{Public methods}{
-  \itemize{
-    \item \href{#method-DataShield-initialize}{\code{DataShield$new()}}
-    \item \href{#method-DataShield-register_data}{\code{DataShield$register_data()}}
-    \item \href{#method-DataShield-register_asset}{\code{DataShield$register_asset()}}
-    \item \href{#method-DataShield-asset_policy}{\code{DataShield$asset_policy()}}
-    \item \href{#method-DataShield-tool_policy}{\code{DataShield$tool_policy()}}
-    \item \href{#method-DataShield-prompt_content}{\code{DataShield$prompt_content()}}
-    \item \href{#method-DataShield-trusted_result}{\code{DataShield$trusted_result()}}
-    \item \href{#method-DataShield-install}{\code{DataShield$install()}}
-    \item \href{#method-DataShield-describe}{\code{DataShield$describe()}}
-    \item \href{#method-DataShield-schema_block}{\code{DataShield$schema_block()}}
-    \item \href{#method-DataShield-dp_budget_remaining}{\code{DataShield$dp_budget_remaining()}}
-    \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
-    \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
-    \item \href{#method-DataShield-scan_tool_args}{\code{DataShield$scan_tool_args()}}
-    \item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
-    \item \href{#method-DataShield-scan_response}{\code{DataShield$scan_response()}}
-    \item \href{#method-DataShield-review_code_public}{\code{DataShield$review_code_public()}}
-    \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
-    \item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
-    \item \href{#method-DataShield-bind_reviewer_factory}{\code{DataShield$bind_reviewer_factory()}}
-    \item \href{#method-DataShield-audit}{\code{DataShield$audit()}}
-    \item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
-    \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
-    \item \href{#method-DataShield-close}{\code{DataShield$close()}}
-    \item \href{#method-DataShield-coverage}{\code{DataShield$coverage()}}
-  }
+\itemize{
+\item \href{#method-DataShield-new}{\code{DataShield$new()}}
+\item \href{#method-DataShield-register_data}{\code{DataShield$register_data()}}
+\item \href{#method-DataShield-register_asset}{\code{DataShield$register_asset()}}
+\item \href{#method-DataShield-asset_policy}{\code{DataShield$asset_policy()}}
+\item \href{#method-DataShield-tool_policy}{\code{DataShield$tool_policy()}}
+\item \href{#method-DataShield-prompt_content}{\code{DataShield$prompt_content()}}
+\item \href{#method-DataShield-trusted_result}{\code{DataShield$trusted_result()}}
+\item \href{#method-DataShield-install}{\code{DataShield$install()}}
+\item \href{#method-DataShield-describe}{\code{DataShield$describe()}}
+\item \href{#method-DataShield-schema_block}{\code{DataShield$schema_block()}}
+\item \href{#method-DataShield-dp_budget_remaining}{\code{DataShield$dp_budget_remaining()}}
+\item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
+\item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
+\item \href{#method-DataShield-scan_tool_args}{\code{DataShield$scan_tool_args()}}
+\item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
+\item \href{#method-DataShield-scan_response}{\code{DataShield$scan_response()}}
+\item \href{#method-DataShield-review_code_public}{\code{DataShield$review_code_public()}}
+\item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
+\item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
+\item \href{#method-DataShield-bind_reviewer_factory}{\code{DataShield$bind_reviewer_factory()}}
+\item \href{#method-DataShield-audit}{\code{DataShield$audit()}}
+\item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
+\item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
+\item \href{#method-DataShield-close}{\code{DataShield$close()}}
+\item \href{#method-DataShield-coverage}{\code{DataShield$coverage()}}
+}
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-DataShield-initialize"></a>}}
-\if{latex}{\out{\hypertarget{method-DataShield-initialize}{}}}
-\subsection{\code{DataShield$new()}}{
-  Create a Data Shield.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$new(
+\if{html}{\out{<a id="method-DataShield-new"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-new}{}}}
+\subsection{Method \code{new()}}{
+Create a Data Shield.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$new(
   max_rows = 0L,
   distributions = "off",
   k_anon = 5L,
@@ -77,45 +76,51 @@ shield$coverage()
   dp_epsilon = .DATA_SHIELD_DP_EPSILON_DEFAULT,
   dp_budget = .DATA_SHIELD_DP_BUDGET_DEFAULT,
   strategies = NULL
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{max_rows}}{Direct \code{row_cap} value when \code{strategies = NULL}: \code{0}
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{max_rows}}{Direct \code{row_cap} value when \code{strategies = NULL}: \code{0}
 exposes no raw tabular line; positive values retain that many leading
 printed lines.}
-      \item{\code{distributions}}{Direct DescribeData policy. \code{"off"} (default,
+
+\item{\code{distributions}}{Direct DescribeData policy. \code{"off"} (default,
 safe): labels only. \code{"on"}/\code{"dp"}: real/DP-noised per-category counts
 (see \code{\link[=shield_describe]{shield_describe()}}); numeric/date columns unchanged in all modes.}
-      \item{\code{k_anon}}{Minimum category support for exposing a label.}
-      \item{\code{category_max}}{Maximum distinct character values treated as a category.}
-      \item{\code{category_ratio}}{Maximum distinct/non-missing ratio for character
+
+\item{\code{k_anon}}{Minimum category support for exposing a label.}
+
+\item{\code{category_max}}{Maximum distinct character values treated as a category.}
+
+\item{\code{category_ratio}}{Maximum distinct/non-missing ratio for character
 categorical treatment.}
-      \item{\code{audit_max}}{Maximum in-memory non-sensitive decision events retained.}
-      \item{\code{dp_epsilon}}{Direct per-column-per-call DP privacy cost when
+
+\item{\code{audit_max}}{Maximum in-memory non-sensitive decision events retained.}
+
+\item{\code{dp_epsilon}}{Direct per-column-per-call DP privacy cost when
 \code{distributions = "dp"} (see \code{\link[=shield_describe]{shield_describe()}}).}
-      \item{\code{dp_budget}}{Direct per-dataset total DP privacy budget when
+
+\item{\code{dp_budget}}{Direct per-dataset total DP privacy budget when
 \code{distributions = "dp"} (see \code{\link[=shield_describe]{shield_describe()}}).}
-      \item{\code{strategies}}{Optional ordered list from \code{\link[=shield_describe]{shield_describe()}},
+
+\item{\code{strategies}}{Optional ordered list from \code{\link[=shield_describe]{shield_describe()}},
 \code{\link[=shield_egress]{shield_egress()}}, \code{\link[=shield_regex]{shield_regex()}}, \code{\link[=shield_ingress]{shield_ingress()}},
 \code{\link[=shield_tool_policy]{shield_tool_policy()}}, \code{\link[=shield_sandbox]{shield_sandbox()}}, and \code{\link[=shield_reviewer]{shield_reviewer()}}.
 If supplied, only listed strategies are enabled and list order controls
 egress execution order.}
-    }
-    \if{html}{\out{</div>}}
-  }
 }
-
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-register_data"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-register_data}{}}}
-\subsection{\code{DataShield$register_data()}}{
-  Register one protected data.frame.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$register_data(
+\subsection{Method \code{register_data()}}{
+Register one protected data.frame.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$register_data(
   df,
   name = NULL,
   sensitivity = NULL,
@@ -124,45 +129,49 @@ egress execution order.}
   min_card = 8L,
   max_index_values = 500000L,
   column_access = NULL
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{df}}{A data.frame retained locally; rows are never emitted by
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{df}}{A data.frame retained locally; rows are never emitted by
 \code{DescribeData}.}
-      \item{\code{name}}{Dataset name used by the model-facing \code{DescribeData} tool.}
-      \item{\code{sensitivity}}{Optional named overrides: \code{identifier}, \code{quasi},
+
+\item{\code{name}}{Dataset name used by the model-facing \code{DescribeData} tool.}
+
+\item{\code{sensitivity}}{Optional named overrides: \code{identifier}, \code{quasi},
 \code{measure}, or \code{open}. Local heuristics classify unspecified columns.}
-      \item{\code{cols}}{Optional explicit value-match columns. Default: columns
+
+\item{\code{cols}}{Optional explicit value-match columns. Default: columns
 classified \code{identifier}/\code{quasi}.}
-      \item{\code{min_len, min_card}}{Minimum value length and column cardinality for
+
+\item{\code{min_len, min_card}}{Minimum value length and column cardinality for
 deterministic value indexing (reduces low-entropy false positives).}
-      \item{\code{max_index_values}}{Cap on indexed values (default 500000, ~65MB of
+
+\item{\code{max_index_values}}{Cap on indexed values (default 500000, ~65MB of
 keys). On overflow, indexing stops and a warning is emitted; unindexed
 values are not caught by value_match and rely on the other egress
 layers. \code{NULL}/\code{Inf} disables the cap.}
-      \item{\code{column_access}}{Optional named list of per-column raw-access
+
+\item{\code{column_access}}{Optional named list of per-column raw-access
 overrides, each \code{list(prompt=, egress=, reason=, scan_secrets=)} using
 \code{none}/\code{schema}/\code{scan}/\code{raw}. A raw edge requires a non-empty \code{reason};
 overrides missing it are dropped (with a warning) so the column falls
 back to its sensitivity tier. \code{egress="raw"} removes the column from the
 value-match index; \code{prompt="raw"} lets \code{DescribeData} enumerate its real
 values.}
-    }
-    \if{html}{\out{</div>}}
-  }
 }
-
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-register_asset"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-register_asset}{}}}
-\subsection{\code{DataShield$register_asset()}}{
-  Register a typed data/document/spec asset and its LLM access policy.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$register_asset(
+\subsection{Method \code{register_asset()}}{
+Register a typed data/document/spec asset and its LLM access policy.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$register_asset(
   x,
   name,
   kind,
@@ -170,220 +179,208 @@ values.}
   scan_secrets = TRUE,
   reason = NULL,
   expires = "session"
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{x}}{Local asset value or path.}
-      \item{\code{name}}{Unique asset name.}
-      \item{\code{kind}}{\code{dataset}, \code{spec}, \code{document}, or \code{synthetic}.}
-      \item{\code{llm_access}}{NULL for kind defaults, or list(prompt=, egress=) using
-\code{none}, \code{schema}, \code{scan}, or \code{raw}.}
-      \item{\code{scan_secrets}}{Keep baseline PII/secret regex active for raw access.}
-      \item{\code{reason}}{Required when prompt or egress access is raw.}
-      \item{\code{expires}}{\code{"session"} or POSIXct expiry.}
-    }
-    \if{html}{\out{</div>}}
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{x}}{Local asset value or path.}
+
+\item{\code{name}}{Unique asset name.}
+
+\item{\code{kind}}{\code{dataset}, \code{spec}, \code{document}, or \code{synthetic}.}
+
+\item{\code{llm_access}}{NULL for kind defaults, or list(prompt=, egress=) using
+\code{none}, \code{schema}, \code{scan}, or \code{raw}.}
+
+\item{\code{scan_secrets}}{Keep baseline PII/secret regex active for raw access.}
+
+\item{\code{reason}}{Required when prompt or egress access is raw.}
+
+\item{\code{expires}}{\code{"session"} or POSIXct expiry.}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-asset_policy"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-asset_policy}{}}}
-\subsection{\code{DataShield$asset_policy()}}{
-  Return non-sensitive policy metadata for one registered asset.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$asset_policy(name)}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{asset_policy()}}{
+Return non-sensitive policy metadata for one registered asset.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$asset_policy(name)}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-tool_policy"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-tool_policy}{}}}
-\subsection{\code{DataShield$tool_policy()}}{
-  Resolve effective Shield policy for one tool/agent name.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$tool_policy(tool_name)}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{tool_policy()}}{
+Resolve effective Shield policy for one tool/agent name.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$tool_policy(tool_name)}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-prompt_content"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-prompt_content}{}}}
-\subsection{\code{DataShield$prompt_content()}}{
-  Return prompt-safe content according to an asset policy.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$prompt_content(name)}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{prompt_content()}}{
+Return prompt-safe content according to an asset policy.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$prompt_content(name)}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-trusted_result"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-trusted_result}{}}}
-\subsection{\code{DataShield$trusted_result()}}{
-  Tag one result with registered provenance for raw egress.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$trusted_result(value, source)}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{trusted_result()}}{
+Tag one result with registered provenance for raw egress.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$trusted_result(value, source)}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-install"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-install}{}}}
-\subsection{\code{DataShield$install()}}{
-  Install/refresh this shield on an ellmer Chat.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$install(chat)}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{install()}}{
+Install/refresh this shield on an ellmer Chat.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$install(chat)}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-describe"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-describe}{}}}
-\subsection{\code{DataShield$describe()}}{
-  Return strict safe metadata for a registered dataset.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$describe(name = NULL)}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{describe()}}{
+Return strict safe metadata for a registered dataset.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$describe(name = NULL)}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-schema_block"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-schema_block}{}}}
-\subsection{\code{DataShield$schema_block()}}{
-  Build a system-prompt block listing every registered
+\subsection{Method \code{schema_block()}}{
+Build a system-prompt block listing every registered
 protected dataset with its filtered schema (the same per-dataset output
 \code{DescribeData} produces). Reused by the system-prompt builder so the
 model knows what protected data exists without calling the tool first.
 Reads live engine state, so it reflects the current dataset set (grows
 as \code{register_data} is called). Returns \code{""} when no dataset is
 registered or \code{DescribeData} is disabled.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$schema_block()}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$schema_block()}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-dp_budget_remaining"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-dp_budget_remaining}{}}}
-\subsection{\code{DataShield$dp_budget_remaining()}}{
-  Return remaining DP privacy budget (epsilon units) for a
+\subsection{Method \code{dp_budget_remaining()}}{
+Return remaining DP privacy budget (epsilon units) for a
 registered dataset, or a named vector for all datasets when \code{name} is
 NULL. \code{NA_real_} for a dataset not under \code{distributions="dp"}.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$dp_budget_remaining(name = NULL)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{name}}{Character or NULL.}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$dp_budget_remaining(name = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{name}}{Character or NULL.}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-scan_egress"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-scan_egress}{}}}
-\subsection{\code{DataShield$scan_egress()}}{
-  Apply the ordered egress strategy pipeline to a tool result.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$scan_egress(result, context = list())}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{result}}{Tool return value.}
-      \item{\code{context}}{Optional non-sensitive context (\code{tool_name}, \code{tool_call_id}).}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{scan_egress()}}{
+Apply the ordered egress strategy pipeline to a tool result.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$scan_egress(result, context = list())}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{result}}{Tool return value.}
+
+\item{\code{context}}{Optional non-sensitive context (\code{tool_name}, \code{tool_call_id}).}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-scan_ingress"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-scan_ingress}{}}}
-\subsection{\code{DataShield$scan_ingress()}}{
-  Scan one tool request before execution.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$scan_ingress(
+\subsection{Method \code{scan_ingress()}}{
+Scan one tool request before execution.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$scan_ingress(
   tool_name,
   input,
   tool_call_id = NULL,
   capability = "read"
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{tool_name}}{Model-facing tool name.}
-      \item{\code{input}}{Named list of tool arguments.}
-      \item{\code{tool_call_id}}{Optional non-sensitive tool-call identifier.}
-      \item{\code{capability}}{Tool capability (\code{read}, \code{write}, \code{exec}, or \code{net}).}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    List with action (\code{pass}, \code{block}, or \code{ask}), reason, matches and score.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{tool_name}}{Model-facing tool name.}
+
+\item{\code{input}}{Named list of tool arguments.}
+
+\item{\code{tool_call_id}}{Optional non-sensitive tool-call identifier.}
+
+\item{\code{capability}}{Tool capability (\code{read}, \code{write}, \code{exec}, or \code{net}).}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+List with action (\code{pass}, \code{block}, or \code{ask}), reason, matches and score.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-scan_tool_args"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-scan_tool_args}{}}}
-\subsection{\code{DataShield$scan_tool_args()}}{
-  Redact protected values inside a tool's arguments before the
+\subsection{Method \code{scan_tool_args()}}{
+Redact protected values inside a tool's arguments before the
 tool executes (ingress rewrite). Complements \code{scan_ingress} (which
 decides pass/block/ask): this scrubs each string argument value in place
 using the same detectors as \code{scan_prompt} (value_match + PII regex), so
 a registered value pasted into a tool argument is redacted rather than
 the whole call being blocked. Runs in the tool wrapper, after the
 permission gate. Non-string arguments are left untouched.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$scan_tool_args(args, scanners = c("regex", "value_match"))}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{args}}{Named list of tool arguments.}
-      \item{\code{scanners}}{Detector subset (default both).}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    List: \code{action} (\code{"pass"}/\code{"redact"}), \code{args} (possibly-redacted).
-  }
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$scan_tool_args(args, scanners = c("regex", "value_match"))}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{args}}{Named list of tool arguments.}
+
+\item{\code{scanners}}{Detector subset (default both).}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+List: \code{action} (\code{"pass"}/\code{"redact"}), \code{args} (possibly-redacted).
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-scan_prompt"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-scan_prompt}{}}}
-\subsection{\code{DataShield$scan_prompt()}}{
-  Scan a user prompt BEFORE it reaches the model (edge 1).
+\subsection{Method \code{scan_prompt()}}{
+Scan a user prompt BEFORE it reaches the model (edge 1).
 This is the Data Shield half of the prompt gate: it detects protected
 data the user may have pasted into their message. Unlike egress (which
 withholds a whole unsafe tool result), prompt redaction replaces ONLY
@@ -396,85 +393,89 @@ Two detectors, both reusing existing machinery:
 (e.g. a real USUBJID)? O(1) hash lookup via the value index.
 \item regex/PII: email / phone / token / id shapes.
 }
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$scan_prompt(
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$scan_prompt(
   text,
   on_fail = c("redact", "block", "ask"),
   on_progress = NULL,
   context = list(),
   scanners = c("regex", "value_match")
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{text}}{Character scalar. The raw user prompt.}
-      \item{\code{on_fail}}{\code{"redact"} (default, replace matches, keep rest),
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{text}}{Character scalar. The raw user prompt.}
+
+\item{\code{on_fail}}{\code{"redact"} (default, replace matches, keep rest),
 \code{"block"} (reject the whole turn), or \code{"ask"} (defer to approval).}
-      \item{\code{on_progress}}{Optional \verb{function(list(stage, status, matched, elapsed_ms))} progress callback so a UI can show "scanning data
+
+\item{\code{on_progress}}{Optional \verb{function(list(stage, status, matched, elapsed_ms))} progress callback so a UI can show "scanning data
 safety...". NULL (default) is silent and zero-overhead.}
-      \item{\code{context}}{Optional non-sensitive context (e.g. \code{tool_call_id},
+
+\item{\code{context}}{Optional non-sensitive context (e.g. \code{tool_call_id},
 \code{edge}). \code{context$edge} labels audit events; defaults to \code{"prompt"} so
 the reusable output-side wrapper (\code{scan_response}) can pass
 \code{edge = "response"} to distinguish direction in the audit log.}
-      \item{\code{scanners}}{Character vector selecting which detectors run, a subset
+
+\item{\code{scanners}}{Character vector selecting which detectors run, a subset
 of \code{c("regex", "value_match")}. Default runs both (secure-by-default);
 a host may drop one via \code{settings$data_shield_input_scanners} /
 \code{data_shield_output_scanners}.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    List: \code{action} (\code{"pass"}/\code{"redact"}/\code{"block"}/\code{"ask"}),
-\code{text} (possibly redacted prompt), \code{matches} (count), \code{score}.
-  }
 }
-
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+List: \code{action} (\code{"pass"}/\code{"redact"}/\code{"block"}/\code{"ask"}),
+\code{text} (possibly redacted prompt), \code{matches} (count), \code{score}.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-scan_response"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-scan_response}{}}}
-\subsection{\code{DataShield$scan_response()}}{
-  Scan the model's final reply BEFORE it reaches the user
+\subsection{Method \code{scan_response()}}{
+Scan the model's final reply BEFORE it reaches the user
 (edge 3, the output gate). Symmetric to \code{scan_prompt} (edge 1): the
 model may reproduce a protected value it inferred from tool output even
 when the user's input was clean, so the reply is scanned on the way out.
 A thin wrapper over \code{scan_prompt} -- identical detectors (value_match +
 PII regex), differing only in the audit \code{edge} label (\code{"response"}).
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$scan_response(
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$scan_response(
   text,
   on_fail = c("redact", "block", "ask"),
   scanners = c("regex", "value_match"),
   on_progress = NULL,
   context = list()
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{text}}{Character scalar. The model's final reply.}
-      \item{\code{on_fail}}{\code{"redact"} (default), \code{"block"}, or \code{"ask"}.}
-      \item{\code{scanners}}{Subset of \code{c("regex", "value_match")}; default both.}
-      \item{\code{on_progress}}{Optional progress callback (see \code{scan_prompt}).}
-      \item{\code{context}}{Optional non-sensitive context; \code{edge} is forced to
-\code{"response"}.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Same shape as \code{scan_prompt}.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{text}}{Character scalar. The model's final reply.}
+
+\item{\code{on_fail}}{\code{"redact"} (default), \code{"block"}, or \code{"ask"}.}
+
+\item{\code{scanners}}{Subset of \code{c("regex", "value_match")}; default both.}
+
+\item{\code{on_progress}}{Optional progress callback (see \code{scan_prompt}).}
+
+\item{\code{context}}{Optional non-sensitive context; \code{edge} is forced to
+\code{"response"}.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Same shape as \code{scan_prompt}.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-review_code_public"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-review_code_public}{}}}
-\subsection{\code{DataShield$review_code_public()}}{
-  Public bridge to the internal code reviewer rail (kiro
+\subsection{Method \code{review_code_public()}}{
+Public bridge to the internal code reviewer rail (kiro
 round-2 #7). The reviewer logic lives in \code{private$review_code}, so an
 external caller (the AuditCode pipeline, \code{.audit_code_impl}) could not
 reach it -- \code{shield$review_code} resolved to NULL and every audit fell
@@ -483,138 +484,121 @@ the deterministic audit can feed vetted, whitelisted file contents to
 the configured reviewer. Returns the reviewer verdict (list with
 \code{risk}/\code{error}) or a promise thereof; \code{list(error=TRUE, reason=...)}
 when no reviewer is configured.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$review_code_public(text, context = list())}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{text}}{Character. Already-vetted code/content to review (the caller
-is responsible for deciding what to read; the reviewer gets no tools).}
-      \item{\code{context}}{Optional non-sensitive context (tool_name, capability).}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$review_code_public(text, context = list())}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{text}}{Character. Already-vetted code/content to review (the caller
+is responsible for deciding what to read; the reviewer gets no tools).}
+
+\item{\code{context}}{Optional non-sensitive context (tool_name, capability).}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-add_scanner"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-add_scanner}{}}}
-\subsection{\code{DataShield$add_scanner()}}{
-  Add a custom scanner function to the end of the egress pipeline.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$add_scanner(name, fn)}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{add_scanner()}}{
+Add a custom scanner function to the end of the egress pipeline.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$add_scanner(name, fn)}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-set_egress_ask"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-set_egress_ask}{}}}
-\subsection{\code{DataShield$set_egress_ask()}}{
-  Set the sync/promise egress approval callback.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$set_egress_ask(fn = NULL)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{fn}}{Function receiving non-sensitive event metadata and returning
-\code{redact}, \code{block}, or (when enabled) \code{raw_once}; NULL clears it.}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{set_egress_ask()}}{
+Set the sync/promise egress approval callback.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$set_egress_ask(fn = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{fn}}{Function receiving non-sensitive event metadata and returning
+\code{redact}, \code{block}, or (when enabled) \code{raw_once}; NULL clears it.}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-bind_reviewer_factory"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-bind_reviewer_factory}{}}}
-\subsection{\code{DataShield$bind_reviewer_factory()}}{
-  Bind codeagent's parent-provider reviewer Chat factory.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$bind_reviewer_factory(fn)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{fn}}{Function accepting optional model and returning a fresh Chat.}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{bind_reviewer_factory()}}{
+Bind codeagent's parent-provider reviewer Chat factory.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$bind_reviewer_factory(fn)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{fn}}{Function accepting optional model and returning a fresh Chat.}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-audit"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-audit}{}}}
-\subsection{\code{DataShield$audit()}}{
-  Return a copy of non-sensitive decision events.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$audit(limit = NULL)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{limit}}{Optional number of most recent events.}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{audit()}}{
+Return a copy of non-sensitive decision events.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$audit(limit = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{limit}}{Optional number of most recent events.}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-clear_audit"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-clear_audit}{}}}
-\subsection{\code{DataShield$clear_audit()}}{
-  Remove all in-memory audit events.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$clear_audit()}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{clear_audit()}}{
+Remove all in-memory audit events.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$clear_audit()}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-clear"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-clear}{}}}
-\subsection{\code{DataShield$clear()}}{
-  Remove one dataset, or all datasets when name is NULL.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$clear(name = NULL)}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{clear()}}{
+Remove one dataset, or all datasets when name is NULL.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$clear(name = NULL)}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-close"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-close}{}}}
-\subsection{\code{DataShield$close()}}{
-  Clear sensitive state and close the shield.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$close()}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{close()}}{
+Clear sensitive state and close the shield.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$close()}\if{html}{\out{</div>}}
 }
 
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-coverage"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-coverage}{}}}
-\subsection{\code{DataShield$coverage()}}{
-  Summarise non-sensitive runtime coverage.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$coverage()}
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{coverage()}}{
+Summarise non-sensitive runtime coverage.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{DataShield$coverage()}\if{html}{\out{</div>}}
 }
 
+}
 }

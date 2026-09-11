@@ -23,7 +23,8 @@ test_that(".sandbox_unshare_wrap prefixes only when no_network + available", {
     expect_identical(wrapped[1:3], c("unshare", "-Urn", "--"))
     expect_identical(wrapped[-(1:3)], argv)
   } else {
-    expect_identical(wrapped, argv)   # unavailable -> unchanged (fallback)
+    expect_identical(as.vector(wrapped, mode = "character"), argv)
+    expect_identical(attr(wrapped, "network_isolation"), "unavailable")
   }
 })
 
@@ -42,6 +43,7 @@ test_that("Bash no-net sandbox blocks a non-blacklisted net call (syscall level)
 })
 
 test_that("Bash with network allowed runs normally (no unshare wrap)", {
+  skip_on_os("windows")
   t <- codeagent:::bash_tool("bypass", list(), NULL,
                              sandbox = list(enabled = TRUE, allow_network = TRUE))
   r <- S7::S7_data(t)(command = "echo NET_ALLOWED_PATH")

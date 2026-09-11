@@ -20,7 +20,8 @@ enter_plan_mode_tool <- function(mode_env) {
     name = "EnterPlanMode",
     fun = function(reason = NULL) {
       prev <- mode_env$mode %||% "default"
-      mode_env$prev <- prev
+      # Nested plan mode detection: don't overwrite prev with "plan".
+      if (!identical(mode_env$mode, "plan")) mode_env$prev <- prev
       mode_env$mode <- "plan"
       msg <- paste0(
         "Entered plan mode (read-only). Write, edit, and shell tools are now ",

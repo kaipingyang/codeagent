@@ -1,11 +1,11 @@
 #' @title Settings System
 #' @description Configuration loading for codeagent.
 #'   Priority (highest to lowest): environment variables >
-#'   `~/.codeagent/settings.json` > `.codeagent/settings.json` > CLAUDE.md.
+#'   trusted user settings > non-sensitive project settings > CLAUDE.md.
 #'
-#'   The `env` block in settings.json is applied via `Sys.setenv()` before the
-#'   environment-variable layer is read, so it works even under `Rscript
-#'   --vanilla` (which skips `.Renviron`). This mirrors Claude Code's behaviour.
+#'   Only the user-level `env` block is applied via `Sys.setenv()`. Repository
+#'   settings cannot change credentials, endpoints, permissions, hooks, sandbox
+#'   policy, or the registered tool set.
 #' @name settings
 #' @keywords internal
 NULL
@@ -67,7 +67,8 @@ NULL
   env                = list(), # env block (applied; stored for reference)
 
   # Bash sandbox (best-effort env scrub + network deny; see sandbox.R)
-  sandbox            = list(enabled = FALSE, allow_network = TRUE),
+  sandbox            = list(enabled = FALSE, allow_network = TRUE,
+                            run_r_backend = "required"),
 
   # Codebase RAG retrieval (opt-in; indexing is costly). See rag.R.
   rag                = FALSE,
@@ -108,9 +109,9 @@ NULL
 
 #' Load codeagent settings
 #'
-#' Merges configuration from all sources in priority order and applies the
-#' `env` block from settings.json so that environment variables are available
-#' even when running under `Rscript --vanilla`.
+#' Merges configuration from all sources in priority order. The trusted
+#' user-level `env` block is applied before the environment-variable layer;
+#' security-sensitive project settings are ignored.
 #'
 #' @param cwd Character. Working directory (used to locate `.codeagent/settings.json`
 #'   and `CLAUDE.md`). Defaults to `getwd()`.
@@ -119,28 +120,72 @@ NULL
 load_settings <- function(cwd = getwd()) {
   settings <- .CODEAGENT_DEFAULTS
 
-  # Layer 3 & 2: JSON files (user then project; project wins)
-  user_json    <- file.path(.get_codeagent_dir(), "settings.json")
-  project_json <- file.path(cwd, ".codeagent", "settings.json")
-
-  for (json_path in c(user_json, project_json)) {
-    if (file.exists(json_path)) {
-      overrides <- tryCatch(
-        jsonlite::fromJSON(json_path, simplifyVector = TRUE),
-        error = function(e) {
-          warning("Failed to parse ", json_path, ": ", conditionMessage(e),
-                  call. = FALSE)
-          list()
-        }
+  read_json <- function(path) {
+    if (!file.exists(path)) return(list())
+    tryCatch(
+      jsonlite::fromJSON(path, simplifyVector = TRUE),
+      error = function(e) {
+        warning("Failed to parse ", path, ": ", conditionMessage(e),
+                call. = FALSE)
+        list()
+      }
+    )
+  }
+  sanitize_project <- function(x) {
+    if (!length(x)) return(list())
+    keys <- names(x)
+    if (is.null(keys) || anyNA(keys) || any(!nzchar(keys)) ||
+        anyDuplicated(keys)) {
+      warning(
+        "Ignoring project settings with duplicate, empty, or invalid keys.",
+        call. = FALSE
       )
-      settings <- .merge_settings(settings, overrides)
+      return(list())
     }
+    allowed <- c(
+      "max_turns", "model_limit", "max_output_tokens", "max_budget_usd",
+      "thinking", "stream", "effort_level", "effortLevel",
+      "include_coauthored_by", "auto_compact_enabled",
+      "cleanup_period_days", "theme", "output_style", "outputStyle",
+      "status_line", "statusLine", "web_citations", "auto_continue",
+      "midloop_compact", "midloop_full_compact"
+    )
+    blocked <- unique(keys[!keys %in% allowed])
+    if (length(blocked)) {
+      warning(
+        "Ignoring project settings outside the safe allowlist: ",
+        paste(blocked, collapse = ", "),
+        ". Configure security, credentials, endpoints, tools, and execution ",
+        "behavior at user scope or pass them explicitly.",
+        call. = FALSE
+      )
+    }
+    x[keys %in% allowed]
   }
 
-  # Apply env block BEFORE reading env-var layer.  Claude Code does the same:
-  # the env block is injected into the session so downstream Sys.getenv() calls
-  # see the overrides regardless of how the process was launched.
+  # User configuration is trusted. Repository-controlled project settings may
+  # tune presentation/context behavior, but cannot change credentials, network
+  # destinations, authorization, executable hooks, or the registered tool set.
+  user_json    <- file.path(.get_codeagent_dir(), "settings.json")
+  project_json <- file.path(cwd, ".codeagent", "settings.json")
+  settings <- .merge_settings(settings, read_json(user_json))
+  settings <- .merge_settings(
+    settings, sanitize_project(read_json(project_json)))
+
+  # Only the trusted user-level env block reaches the process environment.
   if (is.list(settings$env) && length(settings$env) > 0L) {
+    forbidden_env <- c(
+      "R_ENVIRON", "R_ENVIRON_USER", "R_PROFILE", "R_PROFILE_USER",
+      "R_USER", "HOME", "R_LIBS", "R_LIBS_USER", "R_LIBS_SITE"
+    )
+    unsafe <- intersect(names(settings$env), forbidden_env)
+    if (length(unsafe)) {
+      warning(
+        "Ignoring settings `env` entries that can alter R startup: ",
+        paste(unsafe, collapse = ", "), call. = FALSE
+      )
+      settings$env[unsafe] <- NULL
+    }
     tryCatch(
       do.call(Sys.setenv, lapply(settings$env, as.character)),
       error = function(e)
@@ -164,7 +209,12 @@ load_settings <- function(cwd = getwd()) {
     settings$model_limit <- as.integer(env_limit)
   } else {
     # Resolve the context window dynamically from the model (Claude Code:
-    # getContextWindowForModel) instead of the hard-coded 200K default.
+    # getContextWindowForModel). For unrecognised models the table lookup
+    # returns .MODEL_CONTEXT_WINDOW_DEFAULT (200K). If you use a model with
+    # a smaller window, set CODEAGENT_MODEL_LIMIT or model_limit in settings.
+    # WARNING: on unrecognised models the table returns 200K, which may
+    # significantly overestimate available context. Set CODEAGENT_MODEL_LIMIT
+    # to the actual window size for your model.
     settings$model_limit <- .model_context_window(settings$model %||% "")
   }
 
@@ -172,6 +222,9 @@ load_settings <- function(cwd = getwd()) {
   if (nzchar(env_budget_usd)) {
     v <- suppressWarnings(as.numeric(env_budget_usd))
     if (!is.na(v) && v > 0) settings$max_budget_usd <- v
+    else if (!is.na(v) && v == 0)
+      warning("[codeagent] CODEAGENT_MAX_BUDGET_USD=0 is ignored (use NULL/unset for no cap).",
+              call. = FALSE)
   }
 
   env_base_url <- Sys.getenv("CODEAGENT_BASE_URL", "")
@@ -207,6 +260,10 @@ load_settings <- function(cwd = getwd()) {
         do.call(Sys.setenv, stats::setNames(list(val), var))
     }
   }
+
+  # Normalize the documented camelCase alias once so every runtime path,
+  # including delegated worker reconstruction, observes the same value.
+  settings$effort_level <- settings$effort_level %||% settings$effortLevel
 
   # apiKeyHelper: run the declared command to obtain the API key when the
   # env var is not already set (mirrors Claude Code's apiKeyHelper behaviour).

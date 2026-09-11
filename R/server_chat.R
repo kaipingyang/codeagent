@@ -349,6 +349,7 @@ server_chat <- function(input, output, session, chat, settings,
     result <- .shiny_switch_model(chat, settings, new_spec, cwd, running)
     if (isTRUE(result$ok)) {
       settings$model <<- result$model
+      settings$worker_backend <<- result$worker_backend
       state$settings_changed <- state$settings_changed + 1L
     }
     .ui_toast(result$message, result$type)
@@ -384,7 +385,8 @@ server_chat <- function(input, output, session, chat, settings,
     model_limit = settings$model_limit %||% 200000L,
     n_turns     = n_turns,
     sessions    = sessions,
-    data_shield = settings$data_shield_engine
+    data_shield = settings$data_shield_engine,
+    security_context = .worker_security_context_from_settings(settings, chat)
   )
   feedback <- res$feedback
 
@@ -420,6 +422,7 @@ server_chat <- function(input, output, session, chat, settings,
         running = isTRUE(tryCatch(state$busy, error = function(e) FALSE)))
       if (isTRUE(result$ok)) {
         settings$model <- result$model
+        settings$worker_backend <- result$worker_backend
         state$settings_changed <- state$settings_changed + 1L
         feedback <- paste0("OK Switched to `", result$model, "`")
       } else {
@@ -517,6 +520,7 @@ server_chat <- function(input, output, session, chat, settings,
         running = isTRUE(tryCatch(is_running(), error = function(e) FALSE)))
       if (isTRUE(result$ok)) {
         settings$model <- result$model
+        settings$worker_backend <- result$worker_backend
         state$settings_changed <- state$settings_changed + 1L
         mod$append(paste0("OK Switched to `", result$model, "`"), role = "assistant")
       } else {

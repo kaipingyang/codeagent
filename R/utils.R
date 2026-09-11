@@ -62,6 +62,91 @@ NULL
          substr(hex, 21L, 32L))
 }
 
+.restore_recovery_checked <- function(dest_path) {
+  recovery <- paste0(dest_path, ".recovery.bak")
+  committed <- paste0(recovery, ".committed")
+  if (file.exists(recovery)) {
+    if (file.exists(committed)) {
+      if (unlink(recovery) != 0L)
+        warning("Could not remove committed recovery copy: ", recovery,
+                call. = FALSE)
+    } else {
+      if (!isTRUE(file.copy(recovery, dest_path, overwrite = TRUE)))
+        stop("Could not restore interrupted replacement: ", dest_path,
+             call. = FALSE)
+      if (unlink(recovery) != 0L)
+        warning("Restored replacement but could not remove recovery copy: ",
+                recovery, call. = FALSE)
+    }
+  }
+  if (file.exists(committed) && unlink(committed) != 0L)
+    warning("Could not remove replacement commit marker: ", committed,
+            call. = FALSE)
+  invisible(dest_path)
+}
+
+.restore_directory_recoveries <- function(directory) {
+  if (!dir.exists(directory)) return(invisible(directory))
+  artifacts <- tryCatch(
+    list.files(
+      directory,
+      pattern = "\\.recovery\\.bak(\\.committed)?$",
+      full.names = TRUE),
+    error = function(e) character())
+  destinations <- unique(sub(
+    "\\.recovery\\.bak(\\.committed)?$", "", artifacts))
+  for (dest in destinations) .restore_recovery_checked(dest)
+  invisible(directory)
+}
+
+# Replace a file with a prepared temporary file and verify every filesystem
+# transition. The recovery path handles Windows, where rename does not replace
+# an existing destination.
+.replace_file_checked <- function(tmp_path, dest_path) {
+  if (!file.exists(tmp_path))
+    stop("Replacement source does not exist: ", tmp_path, call. = FALSE)
+
+  .restore_recovery_checked(dest_path)
+
+  if (isTRUE(suppressWarnings(file.rename(tmp_path, dest_path))))
+    return(invisible(dest_path))
+
+  if (!file.exists(dest_path))
+    stop("Could not move temporary file into place: ", dest_path, call. = FALSE)
+
+  recovery <- paste0(dest_path, ".recovery.bak")
+  if (!isTRUE(file.copy(dest_path, recovery, overwrite = TRUE)))
+    stop("Could not create replacement recovery copy: ", dest_path,
+         call. = FALSE)
+  committed <- paste0(recovery, ".committed")
+
+  installed <- FALSE
+  on.exit({
+    if (!installed && file.exists(recovery)) {
+      suppressWarnings(file.copy(recovery, dest_path, overwrite = TRUE))
+      if (file.exists(committed)) unlink(committed)
+    }
+    if (file.exists(tmp_path)) unlink(tmp_path)
+  }, add = TRUE)
+
+  if (!isTRUE(file.copy(tmp_path, dest_path, overwrite = TRUE)))
+    stop("Could not replace file: ", dest_path, call. = FALSE)
+  hashes <- unname(tools::md5sum(c(tmp_path, dest_path)))
+  if (length(hashes) != 2L || anyNA(hashes) || !identical(hashes[[1L]], hashes[[2L]]))
+    stop("Replacement verification failed: ", dest_path, call. = FALSE)
+  writeLines("committed", committed)
+
+  installed <- TRUE
+  unlink(tmp_path)
+  if (file.exists(recovery) && unlink(recovery) != 0L)
+    warning("Replaced file but could not remove recovery copy: ", recovery,
+            call. = FALSE)
+  if (file.exists(committed) && unlink(committed) != 0L)
+    warning("Replaced file but could not remove commit marker: ", committed,
+            call. = FALSE)
+  invisible(dest_path)
+}
+
 # ---------------------------------------------------------------------------
 # codeagent config directory helpers
 # ---------------------------------------------------------------------------
@@ -172,13 +257,133 @@ migrate_config_dir <- function(quiet = FALSE) {
   invisible(NULL)
 }
 
+# Resolve a path to the object that permission checks and file operations use.
+# Missing write targets are resolved through their nearest existing ancestor so
+# symlinked/junction parents cannot move the effective target after lexical
+# `..` cleanup.
+.canonical_security_path <- function(path, root = getwd(),
+                                     allow_missing = FALSE, .depth = 0L) {
+  if (!is.character(path) || length(path) != 1L || is.na(path) ||
+      !nzchar(path) || grepl("[\\x00]", path, perl = TRUE))
+    stop("path must be a non-empty character(1)", call. = FALSE)
+
+  root <- normalizePath(path.expand(root), winslash = "/", mustWork = TRUE)
+  expanded <- path.expand(path)
+  absolute <- grepl("^(?:[A-Za-z]:[/\\\\]|[/\\\\]{2}|/)", expanded,
+                    perl = TRUE)
+  candidate <- if (absolute) expanded else file.path(root, expanded)
+
+  if (file.exists(candidate) || dir.exists(candidate))
+    return(normalizePath(candidate, winslash = "/", mustWork = TRUE))
+  if (!isTRUE(allow_missing))
+    stop("File not found: ", path, call. = FALSE)
+  if (.depth > 32L)
+    stop("Too many symbolic-link resolutions for: ", path, call. = FALSE)
+
+  suffix <- character()
+  ancestor <- candidate
+  while (!file.exists(ancestor) && !dir.exists(ancestor)) {
+    link_target <- tryCatch(Sys.readlink(ancestor), error = function(e) "")
+    if (length(link_target) == 1L && !is.na(link_target) &&
+        nzchar(link_target)) {
+      if (!grepl("^(?:[A-Za-z]:[/\\\\]|[/\\\\]{2}|/)", link_target,
+                 perl = TRUE))
+        link_target <- file.path(dirname(ancestor), link_target)
+      target <- if (length(suffix))
+        do.call(file.path, as.list(c(link_target, suffix))) else link_target
+      return(.canonical_security_path(
+        target, root, allow_missing = TRUE, .depth = .depth + 1L))
+    }
+    parent <- dirname(ancestor)
+    leaf <- basename(ancestor)
+    if (!nzchar(leaf) || leaf %in% c(".", "..") || identical(parent, ancestor))
+      stop("Could not resolve a safe existing ancestor for: ", path,
+           call. = FALSE)
+    suffix <- c(leaf, suffix)
+    ancestor <- parent
+  }
+  base <- normalizePath(ancestor, winslash = "/", mustWork = TRUE)
+  resolved <- if (length(suffix))
+    do.call(file.path, as.list(c(base, suffix))) else base
+  normalizePath(resolved, winslash = "/", mustWork = FALSE)
+}
+
+.path_compare_key <- function(path) {
+  key <- gsub("\\\\", "/", path)
+  key <- sub("/+$", "", key)
+  if (.Platform$OS.type == "windows") key <- tolower(key)
+  key
+}
+
+.path_is_within <- function(path, root) {
+  path <- .path_compare_key(path)
+  root <- .path_compare_key(root)
+  identical(path, root) || startsWith(path, paste0(root, "/"))
+}
+
+.canonicalize_path_pattern <- function(pattern, root = getwd()) {
+  if (!is.character(pattern) || length(pattern) != 1L || !nzchar(pattern))
+    return(pattern)
+  wildcard <- regexpr("[*?\\[]", pattern, perl = TRUE)
+  if (wildcard[[1L]] < 0L)
+    return(.canonical_security_path(pattern, root, allow_missing = TRUE))
+
+  prefix <- substr(pattern, 1L, wildcard[[1L]] - 1L)
+  tail <- substr(pattern, wildcard[[1L]], nchar(pattern))
+  base <- sub("[/\\\\]+$", "", prefix)
+  if (!nzchar(base)) base <- "."
+  paste0(.canonical_security_path(base, root, allow_missing = TRUE), "/", tail)
+}
+
+.canonicalize_permission_input <- function(tool_name, input, root = getwd()) {
+  if (!is.list(input)) return(input)
+  meta <- .tool_metadata(tool_name)
+  keys <- meta$path_args %||% character()
+  targets <- character()
+  for (key in setdiff(keys, "patch")) {
+    value <- input[[key]]
+    if ((is.null(value) || !length(value)) &&
+        tool_name %in% c("LS", "btw_tool_files_list"))
+      value <- "."
+    if (!is.character(value) || length(value) != 1L || !nzchar(value))
+      stop("missing path argument for ", tool_name, call. = FALSE)
+    input[[key]] <- .canonical_security_path(
+      value, root, allow_missing = TRUE)
+    targets <- c(targets, input[[key]])
+  }
+  if ("patch" %in% keys) {
+    patch <- input[["patch"]]
+    if (!is.character(patch) || length(patch) != 1L || !nzchar(patch))
+      stop("missing patch argument for ", tool_name, call. = FALSE)
+    if (!requireNamespace("btw", quietly = TRUE))
+      stop("btw is required to validate a btw patch", call. = FALSE)
+    ops <- tryCatch(
+      utils::getFromNamespace("parse_patch", "btw")(patch),
+      error = function(e) stop("invalid btw patch", call. = FALSE)
+    )
+    raw_paths <- unlist(lapply(ops, function(op)
+      c(op$path %||% character(), op$move_to %||% character())),
+      use.names = FALSE)
+    raw_paths <- unique(raw_paths[nzchar(raw_paths)])
+    if (!length(raw_paths))
+      stop("patch contains no verifiable paths", call. = FALSE)
+    targets <- c(targets, vapply(unique(raw_paths), function(path)
+      .canonical_security_path(path, root, allow_missing = TRUE),
+      character(1L)))
+  }
+  attr(input, "permission_targets") <- unique(targets)
+  input
+}
+
 # Normalize a file path and check existence.
 # Returns list(path = <path>) on success, list(error = <msg>) on failure.
-.safe_normalize_path <- function(file_path) {
-  path <- normalizePath(file_path, mustWork = FALSE)
-  if (!file.exists(path))
-    return(list(error = paste0("[Error] File not found: ", file_path)))
-  list(path = path)
+.safe_normalize_path <- function(file_path, allow_missing = FALSE,
+                                 root = getwd()) {
+  tryCatch(
+    list(path = .canonical_security_path(
+      file_path, root = root, allow_missing = allow_missing)),
+    error = function(e) list(error = paste0("[Error] ", conditionMessage(e)))
+  )
 }
 
 # (r_mcp_server moved to mcp_client.R where MCP logic lives)

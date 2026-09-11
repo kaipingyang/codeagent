@@ -45,8 +45,9 @@ print.CodeagentClient <- function(x, ...) {
   sp <- .build_system_prompt(settings, cwd)
 
   # effort_level -> ellmer params(reasoning_effort=) when set
-  extra_params <- if (!is.null(settings$effort_level) && nzchar(settings$effort_level)) {
-    list(params = ellmer::params(reasoning_effort = settings$effort_level))
+  effort_level <- settings$effort_level %||% settings$effortLevel
+  extra_params <- if (!is.null(effort_level) && nzchar(effort_level)) {
+    list(params = ellmer::params(reasoning_effort = effort_level))
   } else list()
 
   # Resolve the ellmer chat factory to use.
@@ -207,6 +208,8 @@ codeagent_client <- function(
   data_shield        = NULL,
   max_budget_usd     = NULL
 ) {
+  chat_supplied <- !is.null(chat)
+
   # Input validation (user-facing entry point).
   if (!is.null(chat) && !inherits(chat, "Chat"))
     cli::cli_abort("{.arg chat} must be an {.cls ellmer::Chat} object or NULL, not {.cls {class(chat)[1]}}.")
@@ -270,6 +273,19 @@ codeagent_client <- function(
     settings$model <- tryCatch(chat$get_model(),
                                error = function(e) settings$model)
   }
+  # Process-based delegates cannot safely serialize an arbitrary user-supplied
+  # Chat or its credential closure. Only internally constructed chats receive
+  # a verified reconstruction descriptor; explicit Chat objects keep the
+  # foreground clone-based Agent but omit Team/Background tools.
+  if (isTRUE(chat_supplied)) {
+    settings$worker_backend <- NULL
+  } else {
+    backend_settings <- settings
+    backend_settings$model <- tryCatch(
+      chat$get_model_object()@name,
+      error = function(e) settings$model)
+    settings$worker_backend <- .worker_backend_from_settings(backend_settings)
+  }
 
   if (inherits(shield_state, "DataShield"))
     tryCatch(.bind_data_shield_reviewer_factory(
@@ -293,7 +309,7 @@ codeagent_client <- function(
   # Data Shield (opt-in): install its R6 policy engine after tool registration.
   # Harness-only hosts attach tools then call client$data_shield$install(chat).
   if (isTRUE(register_tools) && !is.null(shield_state))
-    tryCatch(shield_state$install(chat), error = function(e) NULL)
+    shield_state$install(chat)
 
   .new_client(chat, settings, data_shield = shield_state)
 }
@@ -620,8 +636,14 @@ agent_loop <- function(user_input,
   # Live, mutable permission mode shared by every checker. Plan-mode tools flip
   # `mode_env$mode` mid-conversation and all already-registered checkers observe
   # it (see .make_permission_checker). Static string still works elsewhere.
-  mode_env      <- new.env(parent = emptyenv())
-  mode_env$mode <- settings$permission_mode %||% "default"
+  existing_gate <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
+  mode_env <- if (!is.null(existing_gate) &&
+                  is.environment(existing_gate$mode_env))
+    existing_gate$mode_env
+  else
+    new.env(parent = emptyenv())
+  if (is.null(existing_gate))
+    mode_env$mode <- settings$permission_mode %||% "default"
   mode  <- mode_env             # pass the env as `mode` to permission checkers
   rules <- settings$rules %||% list()
   cwd   <- settings$cwd %||% getwd()
@@ -653,7 +675,8 @@ agent_loop <- function(user_input,
   # be the sole permission authority for EVERY tool -- native, btw, Format, MCP.
   register_builtin_tools(chat, mode = "bypass", rules = rules, ask_fn = NULL,
                          sandbox = settings$sandbox, async = FALSE,
-                         skip_file_tools = identical(file_tools, "btw"))
+                         skip_file_tools = identical(file_tools, "btw"),
+                         cwd = cwd)
   if (file_tools %in% c("btw", "both")) {
     tryCatch(register_btw_file_tools(chat, "bypass", rules, NULL),
              error = function(e) NULL)
@@ -675,8 +698,6 @@ agent_loop <- function(user_input,
                                                               error = function(e) NULL)
   parent_model <- tryCatch(chat$get_model_object()@name,
                            error = function(e) settings$model %||% NULL)
-  tryCatch(register_team_tool(chat, parent_model, cwd),
-                                                              error = function(e) NULL)
   # Data exploration tool (opt-in via settings$explore_data = TRUE; default TRUE
   # since ExploreData is read-only and does not modify any data).
   if (!isFALSE(settings$explore_data))
@@ -685,23 +706,21 @@ agent_loop <- function(user_input,
   # indexing is costly).
   rag_on <- isTRUE(settings$rag) ||
             (is.list(settings$rag) && isTRUE(settings$rag$enabled))
-  if (rag_on)
-    tryCatch(register_rag_tool(chat, cwd), error = function(e) NULL)
+  if (rag_on) {
+    policy <- .resolve_tool_policy(settings)
+    net_policy <- policy$capabilities$net %||% NULL
+    shield_active <- inherits(settings$data_shield_engine, "DataShield")
+    rag_network_allowed <- identical(net_policy, "allow") ||
+      (is.null(net_policy) && identical(mode_env$mode, "bypass"))
+    rag_network_allowed <- rag_network_allowed &&
+      "A" %in% as.character(policy$sets %||% c("A", "B")) &&
+      !shield_active
+    tryCatch(register_rag_tool(
+      chat, cwd, allow_network = rag_network_allowed),
+      error = function(e) NULL)
+  }
   tryCatch(register_notebook_tools(chat, "bypass", rules, NULL),error = function(e) NULL)
-  tryCatch(register_agent_tool(chat, parent_model,
-                                "bypass", rules,
-                                worktree_isolation = isTRUE(settings$worktree_isolation),
-                                ask_fn = NULL,
-                                async = isTRUE(settings$async_subagents),
-                                data_shield = settings$data_shield_engine,
-                                cwd = cwd, parent_chat = chat,
-                                hooks = settings$hooks_registry),
-                                                              error = function(e) NULL)
-  # Background (non-blocking) sub-agent tool -- opt-in, requires mirai.
-  if (isTRUE(settings$background_agents))
-    tryCatch(register_background_agent_tool(chat, settings$data_shield_engine),
-             error = function(e) NULL)
-  # Agent tools are owned by register_agent_tool() above. The internal path
+  # Agent tools are owned by register_agent_tool() below. The internal path
   # excludes btw_tool_agent_* so a raw upstream delegator cannot bypass
   # worktree/async/Data Shield semantics. The exported register_r_tools() keeps
   # groups="agent" compatibility for standalone callers.
@@ -720,6 +739,33 @@ agent_loop <- function(user_input,
   # ask_question_fn is NULL for CLI (readline path) or a Shiny callback (Phase 3).
   tryCatch(register_ask_user_tool(chat, ask_question_fn, async = async_gate),
            error = function(e) NULL)
+  # Capture the complete non-delegation tool snapshot only after every parent
+  # tool has been registered. Delegates may remove tools, never add tools that
+  # were absent from this verified snapshot.
+  security_context <- .worker_security_context_from_settings(settings, chat)
+  process_delegation_ready <- !is.null(security_context$backend)
+  if (!isFALSE(settings$delegation_tools) && process_delegation_ready &&
+      !inherits(settings$data_shield_engine, "DataShield"))
+    tryCatch(register_team_tool(
+      chat, parent_model, cwd, security_context = security_context),
+      error = function(e) NULL)
+  if (!isFALSE(settings$delegation_tools))
+    tryCatch(register_agent_tool(
+      chat, parent_model, "bypass", rules,
+      worktree_isolation = isTRUE(settings$worktree_isolation),
+      ask_fn = ask_fn,
+      async = isTRUE(settings$async_subagents),
+      data_shield = settings$data_shield_engine,
+      cwd = cwd, parent_chat = chat,
+      hooks = settings$hooks_registry,
+      security_context = security_context),
+      error = function(e) NULL)
+  if (!isFALSE(settings$delegation_tools) && process_delegation_ready &&
+      isTRUE(settings$background_agents))
+    tryCatch(register_background_agent_tool(
+      chat, settings$data_shield_engine,
+      security_context = security_context),
+      error = function(e) NULL)
   # Mid-loop compaction: check the complete outgoing context before every model
   # request via on_request_start. No-op unless settings$midloop_compact = TRUE.
   tryCatch(register_midloop_compaction(chat, settings), error = function(e) NULL)
@@ -730,6 +776,7 @@ agent_loop <- function(user_input,
   gate_ask_fn <- settings$shiny_ask_fn %||% ask_fn
   gate_hooks  <- settings$hooks_registry %||%
                  tryCatch(.hooks_from_settings(settings), error = function(e) NULL)
+  .install_tool_path_canonicalizers(chat, cwd)
   # Normalize complex list/data.frame results inside ToolDefs before ellmer sees
   # them; already-normalized Content/image/PDF values pass through unchanged.
   tryCatch(.install_tool_result_normalizers(chat),
@@ -738,9 +785,8 @@ agent_loop <- function(user_input,
   # execution. Installed BEFORE the gate so the gate still sees original args
   # (a rewrite cannot bypass permission checks). No-op when no hooks.
   tryCatch(.install_tool_input_hooks(chat, gate_hooks), error = function(e) NULL)
-  tryCatch(.install_permission_gate(chat, settings, mode_env, rules,
-                                    ask_fn = gate_ask_fn, hooks = gate_hooks),
-           error = function(e) NULL)
+  .install_permission_gate(chat, settings, mode_env, rules,
+                           ask_fn = gate_ask_fn, hooks = gate_hooks)
 
   invisible(chat)
 }

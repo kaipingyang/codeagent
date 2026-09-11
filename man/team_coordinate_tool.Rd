@@ -4,12 +4,14 @@
 \alias{team_coordinate_tool}
 \title{Create the TeamCoordinate tool}
 \usage{
-team_coordinate_tool(model = NULL, cwd = getwd())
+team_coordinate_tool(model = NULL, cwd = getwd(), security_context = NULL)
 }
 \arguments{
 \item{model}{Character. Default model for team agents.}
 
 \item{cwd}{Character. Working directory.}
+
+\item{security_context}{Internal immutable parent security snapshot.}
 }
 \value{
 An \code{ellmer::tool()} object.

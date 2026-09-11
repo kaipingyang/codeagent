@@ -12,21 +12,14 @@
 \item{settings}{List from \code{\link[=load_settings]{load_settings()}}.}
 }
 \value{
-Invisibly, the number of tools registered.
+Invisibly, the number of tools registered (always 0 -- auto-connect
+is disabled).
 }
 \description{
-Connects external MCP servers without an explicit \code{mcp_config} argument, by
-looking (in order) at:
-\enumerate{
-\item \code{settings$mcpServers} / \code{settings$mcp_servers} -- an inline server map in
-settings.json.
-\item a project-level \code{.mcp.json} / \code{.codeagent/mcp.json} file.
-}
-}
-\details{
-\code{enabled_mcp_json_servers} / \code{disabled_mcp_json_servers} (Claude Code schema)
-filter which named servers are connected. Servers already provided via the
-\code{mcp_config} parameter to \code{\link[=codeagent_client]{codeagent_client()}} are handled separately and not
-duplicated here.
+NOTE: Project-level and merged settings CANNOT authorise MCP startup (V-08
+remedy). This function only connects when the host has explicitly provided
+\code{mcp_config} to \code{codeagent_client()}. Settings-file servers and project
+\code{.mcp.json} are NOT auto-connected -- the caller must migrate to the
+explicit \code{mcp_config} parameter and review the server configurations.
 }
 \keyword{internal}

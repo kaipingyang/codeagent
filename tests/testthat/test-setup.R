@@ -49,7 +49,10 @@ test_that(".append_renviron writes key=value to a new .Renviron", {
   tmp <- tempfile()
   on.exit(unlink(tmp), add = TRUE)
   # Point HOME so .append_renviron writes to our temp file
-  withr::with_envvar(c(HOME = dirname(tmp)), {
+  withr::with_envvar(c(
+    HOME = dirname(tmp),
+    R_ENVIRON_USER = file.path(dirname(tmp), ".Renviron")
+  ), {
     # rename temp to ~/.Renviron path
     renv_path <- file.path(dirname(tmp), ".Renviron")
     on.exit(unlink(renv_path), add = TRUE)
@@ -67,7 +70,10 @@ test_that(".append_renviron does not overwrite existing key", {
   renv_path <- file.path(tmp_home, ".Renviron")
   writeLines('EXISTING_KEY="original"', renv_path)
 
-  withr::with_envvar(c(HOME = tmp_home), {
+  withr::with_envvar(c(
+    HOME = tmp_home,
+    R_ENVIRON_USER = file.path(tmp_home, ".Renviron")
+  ), {
     expect_warning(
       codeagent:::.append_renviron("EXISTING_KEY", "new_value"),
       regexp = NA   # cli_alert_warning -- not a warning in R sense, just message
@@ -84,7 +90,10 @@ test_that(".append_renviron is idempotent for new keys", {
   dir.create(tmp_home)
   on.exit(unlink(tmp_home, recursive = TRUE), add = TRUE)
 
-  withr::with_envvar(c(HOME = tmp_home), {
+  withr::with_envvar(c(
+    HOME = tmp_home,
+    R_ENVIRON_USER = file.path(tmp_home, ".Renviron")
+  ), {
     renv_path <- file.path(tmp_home, ".Renviron")
     codeagent:::.append_renviron("IDEM_KEY", "val1")
     n1 <- length(readLines(renv_path, warn = FALSE))
@@ -101,6 +110,14 @@ test_that(".append_renviron is idempotent for new keys", {
 
 test_that("use_codeagent_setup aborts in non-interactive sessions", {
   expect_error(use_codeagent_setup(), class = "rlang_error")
+})
+
+test_that("use_codeagent_setup rejects provider configuration at project scope", {
+  expect_error(
+    use_codeagent_setup(scope = "project"),
+    "cannot be stored at project scope",
+    class = "rlang_error"
+  )
 })
 
 test_that("every provider in the catalogue maps to an existing ellmer chat function", {

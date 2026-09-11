@@ -10,8 +10,8 @@ own simple sub-agent loop.
 
 Also discovers and registers custom agent definitions from:
 \itemize{
-\item \verb{.btw/agent-*.md} (project)
-\item \verb{~/.btw/agent-*.md} (user)
+\item \verb{.btw/agents/*.md} or legacy \verb{.btw/agent-*.md} (project)
+\item \verb{~/.btw/agents/*.md} or legacy \verb{~/.btw/agent-*.md} (user)
 \item \verb{.claude/agents/} (Claude Code compat)
 }
 }
