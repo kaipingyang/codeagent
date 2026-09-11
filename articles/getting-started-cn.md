@@ -20,7 +20,7 @@ harness。它不会通过 shell 调用另一个编码智能体 CLI，而是自�
 pak::pak("kaipingyang/codeagent")
 
 # Recommended to ensure the verified development build of the optional btw tools
-pak::pak("posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44")
+pak::pak("posit-dev/btw@473d1d8e3114ed9136692ff3fb6b88ed0474ba66")
 ```
 
 命令行启动器需要可选的 `Rapp` 包，并且需要单独执行一次安装：

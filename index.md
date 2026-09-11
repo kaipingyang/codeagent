@@ -21,7 +21,7 @@ an interactive Shiny UI.
 pak::pak("kaipingyang/codeagent")
 
 # Recommended: install the pinned btw development build for R-environment tools.
-pak::pak("posit-dev/btw@d11591b09d9127b05d673e8c96569d2bbae2ec44")
+pak::pak("posit-dev/btw@473d1d8e3114ed9136692ff3fb6b88ed0474ba66")
 ```
 
 ## Configuration
@@ -410,7 +410,7 @@ codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
 
 # Liquid Glass delegates material rendering to the optional pinned shinyglass
 # package; codeagent adds only a thin shinychat surface/dark-mode adapter:
-pak::pak("ericrayanderson/shinyglass@25f759d702b8fc951f367178288486b613ee6969")
+pak::pak("ericrayanderson/shinyglass@e07c0ae7b9cdf7959eace05c7ac32481f06d5a7c")
 liquid_theme <- codeagent_theme(
   "glass", preset = "auto", intensity = 0.45,
   tint = TRUE, specular = TRUE

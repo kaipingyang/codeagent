@@ -41,7 +41,7 @@ Workspace 抽屉。
 ``` r
 
 pak::pak(
-  "ericrayanderson/shinyglass@25f759d702b8fc951f367178288486b613ee6969"
+  "ericrayanderson/shinyglass@e07c0ae7b9cdf7959eace05c7ac32481f06d5a7c"
 )
 
 liquid_theme <- codeagent_theme(
