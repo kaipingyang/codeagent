@@ -21,7 +21,7 @@
 4. [第一轮：基于安全审计的修复](#第一轮基于安全审计的修复)
 5. [第二轮：全面代码审查修复](#第二轮全面代码审查修复)
 6. [第一、二轮已修复文件摘要](#第一二轮已修复文件摘要)
-7. [历史代码审查待办](#历史代码审查待办)
+7. [历史代码审查清单](#历史代码审查清单)
 
 ---
 
@@ -47,7 +47,9 @@
 首次测试因已安装的 `ellmer`/`btw` 版本低于 `DESCRIPTION` 要求而未进入测试；
 安装锁定 SHA 后重跑全部通过。
 
-当前仍未执行 commit、push 或 GitHub 上传。
+修复已通过提交 `ecce4704046a5d0af22b31d415ccb9c0239f269d`
+推送到远程 `process` 分支；未推送到 `main`。该提交包含的最后一轮静态修复
+仍遵照用户要求未运行新增测试、R CMD check、本地重装或 codegraph sync。
 
 ### 2026-09-11 合并后静态复审新增待办
 
@@ -406,13 +408,14 @@ settings、worker 快照、执行包装、网络内容和完整路径型工具�
 
 ---
 
-## 历史代码审查待办
+## 历史代码审查清单
 
 以下清单来自第二轮范围更广的一般代码审查，保留用于历史追踪。它混合了
 安全、可靠性、性能、文档一致性和架构改进项，**不能直接解释为当前仍存在
-21 个 MEDIUM 安全漏洞**。第三、四轮已经覆盖其中部分安全边界，因此这些
-条目在后续处理前必须根据当前代码重新验证；未重新验证的条目仅表示代码
-审查待办，不表示已确认仍可利用。
+21 个 MEDIUM 安全漏洞**。2026-09-11 已根据 `process@ecce470` 完成静态同步：
+8 项已修复、5 项原判断已失效、1 项部分解决、7 项仍待处理。未运行 R、测试、
+构建或安装，因此“已修复”表示当前源码和已有测试接线支持该结论，不代表本轮
+新增修改已经通过运行时验证。
 
 ### HIGH（原报告已修复）
 
@@ -436,31 +439,36 @@ settings、worker 快照、执行包装、网络内容和完整路径型工具�
 | H-09 | `R/tools_fs.R` | 211, 301 | Edit/MultiEdit destructive_hint 错误 | ✅ 已修复 |
 | H-10 | `R/tool_run_r.R` | 42-51 | RunR 沙箱正则屏蔽可绕过 | ✅ 已修复 |
 
-### MEDIUM（历史待办，需按当前代码重新验证）
+### MEDIUM（2026-09-11 静态同步）
 
-| # | 文件 | 行号 | 严重性 | 问题描述 | 修复建议 | 影响 |
-|---|------|------|--------|----------|----------|------|
-| M-02 | `R/memory.R` | 60-65 | MEDIUM | `write_memory` 读取 MEMORY.md → 修改 → 写入，并发写入可能丢失条目 | 使用文件锁或原子写入（临时文件 + rename） | 并发场景下记忆丢失 |
-| M-03 | `R/server_slash.R` | 160-163 | MEDIUM | 斜杠命令名称直接作为 markdown 追加到聊天，可注入恶意 markdown/HTML | 回显时使用 `htmltools::htmlEscape` | 会话中的 XSS |
-| M-06 | `R/executor.R` | 77-85 | MEDIUM | `StreamingToolExecutor` 的 `submit()` 方法同步执行工具，声称的并发实为串行 | 记录文档说明同步路径的限制 | 性能与文档不符 |
-| M-07 | `R/sandbox.R` | 44, 62 | MEDIUM | `unshare` 可用性缓存在包级全局环境，多实例共享一个缓存状态 | 改为每个 chat 实例的配置缓存 | 不同沙箱配置的 chat 互相影响 |
-| M-08 | `R/compaction.R` | 431-435 | MEDIUM | `snip_old_tools()` 在压缩管道早期修改聊天对象状态，后续步骤失败不回滚 | 修改前保存状态副本，失败时恢复 | 压缩失败导致聊天状态不一致 |
-| M-09 | `R/compaction.R` | 1527-1532 | MEDIUM | 压缩断路器将 `post_compact_still_large` 计为失败，错误触发断路器 | 将此场景的 `success` 改为 `TRUE` | 连续性压缩被错误中断 |
-| M-10 | `R/context.R` | 117 | MEDIUM | `.model_context_window` 用 `grepl("\\[1m\\]", model)` 匹配模型中任意位置的 `[1m]`，匹配过于宽松 | 改为检查模型名是否以 `[1m]` 结尾 | 不正确的 1M 上下文窗口判断 |
-| M-11 | `R/tools_bash.R` | 49 | MEDIUM | 背景命令 `wait = FALSE` 导致 `timeout` 参数被 R 静默忽略，失控进程无法被杀 | 记录子进程 PID，实现超时/清理机制 | 失控背景进程积累 |
-| M-12 | `R/tools_web.R` | 96 | MEDIUM | `WebFetch` 声明了 `prompt` 参数但函数体从未使用 | 删除 `prompt` 参数或实现选择性提取 | 死代码或缺失功能 |
-| M-13 | `R/hooks.R` | 156-158 | MEDIUM | `HookRegistry$initialize` 为所有事件类型（含废弃/占位符）创建空条目 | 移除废弃事件类型的条目 | 误导用户注册永不触发的事件 |
-| M-14 | `R/data_shield.R` | 1337-1341 | MEDIUM | `scan_tool_args` 每次调用重建正则扫描器，不缓存编译结果 | 缓存编译后的正则扫描器 | 大量工具参数时的性能问题 |
-| M-15 | `R/settings.R` | 168 | MEDIUM | `model_limit` 对未识别模型回退到 200K，可能严重高估可用上下文 | 对未知模型使用保守默认值（如 8K）或允许用户显式设置 | token 预算计算错误 |
-| M-16 | `R/settings.R` | 278 | MEDIUM | `.expand_claude_md_imports` 的最大递归深度检查 `depth >= max_depth` 允许 6 层（0-5），设计意图可能为 5 层 | 改为 `depth >= max_depth - 1L` | 深层嵌套导入未按预期截断 |
-| M-17 | `R/budget.R` | 75-76 | MEDIUM | `BudgetTracker$should_stop` 在美元预算触发时未更新 `prev_tokens` | 保持当前行为并记录文档（停止后不再调用） | 极少触发，影响有限 |
-| M-18 | `R/prompts.R` | 242-246 | MEDIUM | `.build_system_reminder` 每次迭代 1 调用 `recall_memories_relevant` 可能触发模型调用 | 缓存记忆召回结果，或在无变化时跳过 | 不必要的模型调用和延迟 |
-| M-19 | `R/ui.R` | 750-764 | MEDIUM | R6 对象存储在 `shiny::reactiveValues` 中，内部状态突变不触发响应式更新 | 使用 `shiny::makeReactiveBinding` 或手动触发更新 | Shiny UI 可能显示过时状态 |
-| M-20 | `R/ui_panels.R` | 36-37 | MEDIUM | `voice.js` 缺失导致应用启动失败（无 `tryCatch` 保护） | 添加 `tryCatch` 或检查文件存在性后再读取 | 关键资产缺失使整个应用崩溃 |
-| M-21 | `R/server_sessions.R` | 57-68 | MEDIUM | `delete_session_btn` 使用 `state$session_id`（可能被 H-04 类型的攻击污染） | 删除前添加 `.validate_uuid(sid)` 校验 | 潜在路径穿越 |
-| M-22 | `R/server_interaction.R` | 68 | MEDIUM | Egress 审批超时硬编码为 60 秒，不可配置 | 允许通过 `event$timeout` 或 settings 配置 | 长时间运行的工具有限时间内超时 |
-| M-23 | `R/sandbox.R` | 126-134 | MEDIUM | `.sandbox_block_reason` 只检查命令首词，`curl | something` 等管道命令不被检测 | 改为在整个命令文本上使用正则 | 管道命令绕过网络屏蔽 |
-| M-24 | `R/sandbox.R` | 151 | MEDIUM | `.sandbox_env` 使用 `paste0(names, "=", vals)`，环境变量值中的 `=` 导致解析歧义 | 使用 `processx` 的环境变量机制（命名列表而非字符串向量） | 环境变量值中含 `=` 时被截断 |
+| ID | 当前位置 | 状态 | 同步结论 |
+|----|----------|------|----------|
+| M-02 | `R/memory.R:42-102` | 部分解决 | memory 文件和索引已使用临时文件及校验替换，但整个 read-modify-write 事务仍无文件锁，并发 writer 仍可能覆盖索引更新 |
+| M-03 | `R/server_slash.R:149-152` | 已修复 | 本地斜杠命令名称以反引号代码形式回显，不再作为原始 HTML/Markdown 插入 |
+| M-06 | `R/executor.R:41-42,172-190` | 已修复 | 同步 `submit()` 已明确为串行路径；并行能力仅由 async batch 的 `promise_all()` 提供，行为与文档一致 |
+| M-07 | `R/sandbox.R:44-94` | 已失效 | `unshare` 缓存是进程级能力探测和一次性告警，不携带单个 Chat 的策略状态，未形成多实例权限串扰 |
+| M-08 | `R/compaction.R:263-300,406-548` | 待处理 | `snip_old_tools()` 会先写入 Chat history，后续压缩阶段失败或提前返回时仍缺少统一 snapshot/rollback |
+| M-09 | `R/compaction.R:550,1529-1534` | 已修复 | `post_compact_still_large` 和 `full_disabled` 已从断路器失败计数中排除，并有定向测试覆盖 |
+| M-10 | `R/context.R:109-117` | 已修复 | 1M 模型标记已改为结尾锚定匹配 `\\[1m\\]$` |
+| M-11 | `R/tools_bash.R:44-56` | 待处理 | 后台 `system2(wait = FALSE)` 仍不实施 timeout，也没有 PID 跟踪和终止机制 |
+| M-12 | `R/tools_web.R:51-54` | 待处理 | `prompt` 参数仍保留为兼容参数但未参与提取；需明确实现、弃用或从公开契约移除 |
+| M-13 | `R/hooks.R:103,164-169` | 已修复 | Hook registry 已跳过废弃或不可触发的事件，不再为其创建空 bucket |
+| M-14 | `R/data_shield.R:1256-1264,1337-1342` | 待处理 | 工具参数逐项扫描时仍会重复构建 regex scanner，属于性能优化项 |
+| M-15 | `R/constants.R:47`, `R/settings.R:211-218` | 待处理 | 未识别模型仍回退到 200K context；已有 warning，但预算仍可能高估，应采用保守默认值或显式配置 |
+| M-16 | `R/settings.R:320-336` | 已失效 | `max_depth` 当前定义为 next-hop guard，测试确认第 6 次导入会被阻止，现有行为符合约定 |
+| M-17 | `R/budget.R:73-76` | 已失效 | 美元硬上限触发后立即终止；停止后的 `prev_tokens` 不再被消费，无需更新 |
+| M-18 | `R/prompts.R:251` | 待处理 | 首轮 reminder 仍可能调用模型进行相关记忆召回，尚无结果缓存或内容未变跳过机制 |
+| M-19 | `R/ui.R:750-763`, `R/server_chat.R:139-140` | 已失效 | 相关 R6 controller 通过 `isolate()` 命令式读取，当前没有依赖其内部突变自动触发的 reactive consumer |
+| M-20 | `R/ui_panels.R:36-40` | 待处理 | `voice.js` 已随包提供，但读取入口仍未检查空路径或读取失败；安装损坏或资源缺失时仍可能阻止 UI 启动 |
+| M-21 | `R/server_sessions.R:58-77` | 已修复 | load/delete 使用客户端 session ID 前均执行 UUID 校验 |
+| M-22 | `R/server_interaction.R:68` | 已修复 | Egress 审批使用 `event$timeout %||% 60`，支持逐事件配置 |
+| M-23 | `R/sandbox.R:126-132` | 已修复 | 网络阻断规则扫描完整命令文本，覆盖管道和复合命令中的网络工具 |
+| M-24 | `R/sandbox.R:148-154` | 已失效 | `system2(env=)` 的公开契约就是 `NAME=VALUE` 字符串；名称后的第一个 `=` 是分隔符，值中继续包含 `=` 不构成所述截断问题 |
+
+仍待处理的 M-08 涉及压缩失败后的状态一致性；M-11 和 M-20 涉及进程及启动
+可靠性；M-12 属于 API 行为收口；M-14、M-18 属于性能；M-15 属于未知模型的
+预算保守性。M-02 的原子替换已经降低损坏风险，但并发一致性仍需文件锁或等价
+事务机制。这些条目不应整体表述为已确认的安全漏洞。
 
 ### LOW（历史待办，需按当前代码重新验证）
 
