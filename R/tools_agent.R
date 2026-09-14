@@ -184,7 +184,11 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
         sub_settings$rag <- isTRUE(tool_config$rag)
         sub_settings$delegation_tools <- FALSE
         sub_settings$hooks_registry <- hooks
-        sub_settings$data_shield_engine <- NULL
+        # Bind the shield before tool/gate registration so child ingress and
+        # sandbox decisions use the same live engine as the parent. Installing
+        # wrappers only after registration would protect output but leave the
+        # central gate's data_shield pointer NULL.
+        sub_settings$data_shield_engine <- data_shield
         if (inherits(parent_chat, "Chat")) {
           sub_chat <- parent_chat$clone()
           expected_provider <- parent_chat$get_provider()

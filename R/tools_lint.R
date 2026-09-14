@@ -72,7 +72,9 @@ lint_tool <- function() {
     arguments = list(
       path = ellmer::type_string(
         "Path to an R file or directory to lint.", required = TRUE)),
-    annotations = ellmer::tool_annotations(title = "Lint", read_only_hint = TRUE)
+    annotations = ellmer::tool_annotations(
+      title = "Lint", read_only_hint = FALSE,
+      destructive_hint = FALSE, open_world_hint = TRUE)
   )
 }
 

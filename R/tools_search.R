@@ -4,6 +4,20 @@
 #' @keywords internal
 NULL
 
+# A glob may contain wildcards, but its lexical path components must stay below
+# the separately canonicalized base directory. Matched symlinks are checked
+# again after expansion by glob_tool().
+.glob_pattern_is_confined <- function(pattern) {
+  if (!is.character(pattern) || length(pattern) != 1L || is.na(pattern) ||
+      !nzchar(pattern))
+    return(FALSE)
+  normalized <- gsub("\\", "/", path.expand(pattern), fixed = TRUE)
+  if (grepl("^(?:[A-Za-z]:/|//|/|~(?:/|$))", normalized, perl = TRUE))
+    return(FALSE)
+  parts <- strsplit(normalized, "/", fixed = TRUE)[[1L]]
+  !any(parts %in% "..")
+}
+
 #' Create the Glob tool
 #'
 #' @param cwd Character. Fixed base directory for relative paths.
@@ -19,6 +33,8 @@ glob_tool <- function(cwd = getwd()) {
         error = function(e) NULL
       )
       if (is.null(base)) return("[Error] Directory not found or unsafe.")
+      if (!.glob_pattern_is_confined(pattern))
+        return("[Error] Glob pattern must stay within its base directory.")
       tryCatch({
         # Use portable ** implementation when the pattern contains **.
         # Sys.glob() handles simple patterns (no **) reliably on all platforms.
@@ -28,6 +44,11 @@ glob_tool <- function(cwd = getwd()) {
           Sys.glob(file.path(base, pattern))
         }
         if (length(files) == 0L) return("No files matched.")
+        files <- vapply(files, .canonical_security_path, character(1L),
+                        root = base, allow_missing = FALSE)
+        if (any(!vapply(files, .path_is_within, logical(1L), root = base)))
+          return("[Error] Glob match escaped its base directory.")
+        files <- unique(files)
         result <- paste(files, collapse = "\n")
         result <- truncate_tool_result(result, "Glob")
         n <- length(files)
@@ -119,11 +140,13 @@ grep_tool <- function(cwd = getwd()) {
           pattern, base
         )
         args <- args[!vapply(args, is.null, logical(1))]
-        out <- tryCatch(
-          as.character(processx::run(rg_path, args, stdout = TRUE, stderr = FALSE,
-                                     error_on_status = FALSE)$stdout),
-          error = function(e) character(0)
-        )
+        out <- tryCatch({
+          stdout <- processx::run(
+            rg_path, args, stdout = "|", stderr = "|",
+            error_on_status = FALSE)$stdout
+          lines <- strsplit(stdout %||% "", "\n", fixed = TRUE)[[1L]]
+          lines[nzchar(lines)]
+        }, error = function(e) character(0))
       } else {
         # Fallback: list files + base grep
         files <- list.files(base, recursive = TRUE, full.names = TRUE)

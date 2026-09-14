@@ -206,7 +206,12 @@ HookRegistry <- R6::R6Class(
       current_input <- tool_input
       for (hook in private$hooks[[HookEvent$PRE_TOOL_USE]]) {
         if (!.hook_pattern_matches(hook$pattern, tool_name)) next
-        result <- .run_hook_timed(hook$fn, hook$timeout_ms, tool_name, current_input)
+        result <- .run_hook_timed(
+          hook$fn, hook$timeout_ms, tool_name, current_input,
+          .error_result = function(e) list(
+            action = "deny",
+            message = paste0("PreToolUse hook failed safely: ",
+                             conditionMessage(e))))
         if (is.null(result)) next
         action <- result[["action"]] %||% "allow"
         if (identical(action, "deny"))
@@ -477,11 +482,11 @@ HookRegistry <- R6::R6Class(
   identical(pattern, tool_name)
 }
 
-.run_hook_timed <- function(fn, timeout_ms, ...) {
+.run_hook_timed <- function(fn, timeout_ms, ..., .error_result = NULL) {
   start  <- proc.time()[["elapsed"]]
   result <- tryCatch(fn(...), error = function(e) {
     warning("[codeagent] Hook error: ", conditionMessage(e), call. = FALSE)
-    NULL
+    if (is.function(.error_result)) .error_result(e) else .error_result
   })
   elapsed_ms <- (proc.time()[["elapsed"]] - start) * 1000
   if (elapsed_ms > 500)

@@ -263,6 +263,15 @@ codeagent_client <- function(
     }
   }
 
+  # Before registration, advertise no delegation for a lightweight shell. A
+  # registering client gets only a temporary capability prediction; the prompt
+  # is rebuilt from chat$get_tools() after registration completes.
+  settings$foreground_delegation_available <- isTRUE(register_tools) &&
+    !isFALSE(settings$delegation_tools)
+  settings$process_delegation_available <- isTRUE(register_tools) &&
+    !isTRUE(chat_supplied) &&
+    !isFALSE(settings$delegation_tools) &&
+    !inherits(shield_state, "DataShield")
   if (is.null(chat)) {
     chat <- .make_chat(settings, cwd)
   } else {
@@ -286,6 +295,16 @@ codeagent_client <- function(
       error = function(e) settings$model)
     settings$worker_backend <- .worker_backend_from_settings(backend_settings)
   }
+  settings$process_delegation_available <-
+    isTRUE(register_tools) &&
+    !is.null(settings$worker_backend) &&
+    !isFALSE(settings$delegation_tools) &&
+    !inherits(shield_state, "DataShield")
+  # Rebuild once the verified backend capability is known. No model request has
+  # occurred yet, so this keeps prompt and registered tool contracts aligned.
+  tryCatch(chat$set_system_prompt(.build_system_prompt(settings, cwd)),
+           error = function(e) NULL)
+  .sync_delegation_prompt(chat, settings, cwd)
 
   if (inherits(shield_state, "DataShield"))
     tryCatch(.bind_data_shield_reviewer_factory(
@@ -304,6 +323,7 @@ codeagent_client <- function(
     # Auto-connect MCP servers declared in settings.json (P2 closing). The
     # mcp_config param still works; this adds servers from the settings file.
     tryCatch(.mcp_autoconnect(chat, settings), error = function(e) NULL)
+    .sync_delegation_prompt(chat, settings, cwd)
   }
 
   # Data Shield (opt-in): install its R6 policy engine after tool registration.
@@ -642,8 +662,10 @@ agent_loop <- function(user_input,
     existing_gate$mode_env
   else
     new.env(parent = emptyenv())
-  if (is.null(existing_gate))
+  if (is.null(existing_gate)) {
     mode_env$mode <- settings$permission_mode %||% "default"
+    mode_env$plan_exit_allowed <- FALSE
+  }
   mode  <- mode_env             # pass the env as `mode` to permission checkers
   rules <- settings$rules %||% list()
   cwd   <- settings$cwd %||% getwd()
@@ -698,8 +720,9 @@ agent_loop <- function(user_input,
                                                               error = function(e) NULL)
   parent_model <- tryCatch(chat$get_model_object()@name,
                            error = function(e) settings$model %||% NULL)
-  # Data exploration tool (opt-in via settings$explore_data = TRUE; default TRUE
-  # since ExploreData is read-only and does not modify any data).
+  # Data exploration tool (opt-in via settings$explore_data = TRUE; default TRUE).
+  # It evaluates model-provided R code and is therefore classified as exec even
+  # though its intended use is querying a data.frame.
   if (!isFALSE(settings$explore_data))
     tryCatch(register_explore_data_tool(chat), error = function(e) NULL)
   # Codebase RAG retrieval (opt-in via settings$rag = TRUE or list(enabled=TRUE);
@@ -766,6 +789,7 @@ agent_loop <- function(user_input,
       chat, settings$data_shield_engine,
       security_context = security_context),
       error = function(e) NULL)
+  .sync_delegation_prompt(chat, settings, cwd)
   # Mid-loop compaction: check the complete outgoing context before every model
   # request via on_request_start. No-op unless settings$midloop_compact = TRUE.
   tryCatch(register_midloop_compaction(chat, settings), error = function(e) NULL)
@@ -784,7 +808,7 @@ agent_loop <- function(user_input,
   # PreToolUse updatedInput: wrap tools so a hook can rewrite arguments before
   # execution. Installed BEFORE the gate so the gate still sees original args
   # (a rewrite cannot bypass permission checks). No-op when no hooks.
-  tryCatch(.install_tool_input_hooks(chat, gate_hooks), error = function(e) NULL)
+  .install_tool_input_hooks(chat, gate_hooks)
   .install_permission_gate(chat, settings, mode_env, rules,
                            ask_fn = gate_ask_fn, hooks = gate_hooks)
 

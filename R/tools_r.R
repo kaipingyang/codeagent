@@ -228,6 +228,7 @@ NULL
 # The `agent` checkbox controls the dedicated foreground Agent owner.
 .replace_btw_tool_groups <- function(chat, groups, settings) {
   old_tools <- tryCatch(chat$get_tools(), error = function(e) NULL)
+  old_prompt <- tryCatch(chat$get_system_prompt(), error = function(e) NULL)
   if (is.null(old_tools))
     return(list(ok = FALSE, restored = FALSE, fatal = TRUE,
                 message = "Could not read the current tool snapshot."))
@@ -280,7 +281,10 @@ NULL
   committed <- tryCatch({
     chat$set_tools(target)
     live <- chat$get_tools()
-    identical(.tool_names(live), target_names)
+    if (!identical(.tool_names(live), target_names))
+      stop("tool replacement did not take effect")
+    .sync_delegation_prompt(chat, settings, settings$cwd %||% getwd())
+    TRUE
   }, error = function(e) FALSE)
   if (isTRUE(committed))
     return(list(ok = TRUE, restored = TRUE, fatal = FALSE,
@@ -288,6 +292,7 @@ NULL
 
   restored <- tryCatch({
     chat$set_tools(old_tools)
+    if (!is.null(old_prompt)) chat$set_system_prompt(old_prompt)
     identical(chat$get_tools(), old_tools)
   }, error = function(e) FALSE)
   list(ok = FALSE, restored = isTRUE(restored), fatal = !isTRUE(restored),

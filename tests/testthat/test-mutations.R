@@ -112,7 +112,10 @@ test_that("fork_session creates an independent copy with a new UUID", {
 test_that("fork_session supports global lookup across project directories", {
   home <- withr::local_tempdir()
   project <- withr::local_tempdir()
-  withr::local_envvar(CODEAGENT_HOME = file.path(home, "codeagent"))
+  codeagent_home <- file.path(home, "codeagent")
+  dir.create(codeagent_home)
+  withr::local_envvar(CODEAGENT_HOME = codeagent_home)
+  withr::local_options(codeagent._migrated = TRUE)
   session_dir <- codeagent:::.ensure_session_dir(project)
   sid <- codeagent:::.generate_uuid_v4()
   writeLines(

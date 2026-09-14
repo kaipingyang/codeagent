@@ -39,51 +39,42 @@ bash_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
       if (!is.null(blocked)) {
         ellmer::tool_reject(paste0("Sandbox blocked: ", blocked, ". Command: ", command))
       }
-      sb_env <- .sandbox_env(sb_prof)   # NULL = inherit; character() = scrubbed
-      # Fire-and-forget: do not capture output, do not block.
+      # processx replaces the child environment when `env` is non-NULL; this is
+      # the security property base system2(env=) does not provide.
+      sb_env <- .sandbox_env(sb_prof)   # NULL = inherit; named vector = replace
+      bash <- unname(Sys.which("bash"))
+      if (!nzchar(bash)) return("[Error] bash executable not found")
+      no_net <- isTRUE(sb_prof$enabled) && !isTRUE(sb_prof$allow_network)
+      argv <- .sandbox_unshare_wrap(c(bash, "-c", command), no_network = no_net)
+
+      # Fire-and-forget. Passing the command as one argv element avoids a
+      # temporary-script deletion race; cleanup=FALSE leaves the child running
+      # after the local process handle is garbage-collected.
       if (isTRUE(run_in_background)) {
-        tmp <- tempfile(fileext = ".sh")
-        on.exit(unlink(tmp), add = TRUE)
-        writeLines(command, tmp)
-        no_net_bg <- isTRUE(sb_prof$enabled) && !isTRUE(sb_prof$allow_network)
-        argv_bg <- .sandbox_unshare_wrap(c("bash", tmp), no_network = no_net_bg)
-        # Run via system2 (wait=FALSE) so control returns immediately.
-        # NOTE: timeout is silently ignored when wait=FALSE in R's system2.
-        # Process tracking for timeout/kill is not supported on this platform,
-        # so long-running background commands are the caller's responsibility.
-        system2(argv_bg[[1L]], argv_bg[-1L], wait = FALSE,
-                stdout = FALSE, stderr = FALSE,
-                env = sb_env %||% character())
-        return(.artifact_tool_result(paste0("[Background: command started]\nCommand: ", command),
-                             kind = "text", icon = "terminal",
-                             title = htmltools::HTML(sprintf(
-                               "Bash (bg) <code>%s</code>",
-                               htmltools::htmlEscape(substr(command, 1L, 60L)))),
-                             payload = list(text = command, lang = "sh")))
+        return(tryCatch({
+          null_device <- if (.Platform$OS.type == "windows") "NUL" else "/dev/null"
+          proc <- processx::process$new(
+            argv[[1L]], argv[-1L], stdout = null_device, stderr = null_device,
+            env = sb_env, cleanup = FALSE, cleanup_tree = FALSE)
+          .artifact_tool_result(
+            paste0("[Background: command started]\nCommand: ", command),
+            kind = "text", icon = "terminal",
+            title = htmltools::HTML(sprintf(
+              "Bash (bg) <code>%s</code>",
+              htmltools::htmlEscape(substr(command, 1L, 60L)))),
+            payload = list(text = command, lang = "sh", pid = proc$get_pid()))
+        }, error = function(e) paste0("[Error] ", conditionMessage(e))))
       }
       tryCatch({
-        # Write command to temp file so shell quote nesting is never an issue
-        tmp <- tempfile(fileext = ".sh")
-        on.exit(unlink(tmp), add = TRUE)
-        writeLines(command, tmp)
-        # No-network sandbox: wrap in `unshare -Urn` (user+net namespace with no
-        # interface) so any connect()/socket() fails at the kernel level -- a
-        # bounded syscall boundary, not a bypassable blacklist. Only when the
-        # sandbox is enabled AND network is disabled AND unshare is available;
-        # otherwise run bash directly (the .sandbox_block_reason blacklist above
-        # is the fallback first line).
-        no_net <- isTRUE(sb_prof$enabled) && !isTRUE(sb_prof$allow_network)
-        argv <- .sandbox_unshare_wrap(c("bash", tmp), no_network = no_net)
-        out <- system2(
-          argv[[1L]], argv[-1L],
-          stdout = TRUE, stderr = TRUE,
-          timeout = as.numeric(timeout),
-          env = sb_env %||% character()
-        )
-        status <- attr(out, "status") %||% 0L
-        result <- paste(out, collapse = "\n")
+        out <- processx::run(
+          argv[[1L]], argv[-1L], stdout = "|", stderr_to_stdout = TRUE,
+          timeout = as.numeric(timeout), env = sb_env,
+          error_on_status = FALSE, cleanup_tree = TRUE)
+        status <- out$status %||% 0L
+        result <- out$stdout %||% ""
         if (!is.null(status) && status != 0L)
-          result <- paste0(result, "\n[exit status: ", status, "]")
+          result <- paste0(result, if (nzchar(result)) "\n" else "",
+                           "[exit status: ", status, "]")
         result <- truncate_tool_result(result, "Bash")
         label  <- substr(command, 1L, 80L)
         if (nchar(command) > 80L) label <- paste0(label, "...")

@@ -235,9 +235,9 @@ child binding/copy-on-modify and is tested not to change the source data.frame.
 However, this is namespace isolation, **not a security sandbox**. The evaluated
 code can resolve functions through parent environments and can potentially use
 explicit parent assignment, mutable/reference objects, filesystem functions,
-process execution, or network functions available in the R process. The
-`read_only_hint = TRUE` and `open_world_hint = FALSE` annotations are metadata,
-not enforcement. Use only with a trusted model and environment, add an explicit
+process execution, or network functions available in the R process. The tool therefore advertises `read_only_hint = FALSE`,
+`destructive_hint = TRUE`, and `open_world_hint = TRUE`; these annotations are
+risk signals, not enforcement. Use only with a trusted model and environment, add an explicit
 permission override if required by the host, and use Data Shield/
 `DescribeData` rather than `ExploreData` for protected data. The general `RunR`
 tool remains separately classified as execution-capable and goes through its

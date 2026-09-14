@@ -66,7 +66,7 @@ test_that("processx DNS fallback is bounded and parses resolver output", {
     codeagent:::.resolve_web_host_processx("example.com", timeout = 3),
     "93.184.216.34"
   )
-  expect_identical(seen_timeout, 3000)
+  expect_identical(seen_timeout, 3)
 })
 
 test_that("citation registry is current-turn, deduplicated, and rejects conflicts", {

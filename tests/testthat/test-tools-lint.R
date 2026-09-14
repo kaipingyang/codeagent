@@ -1,5 +1,9 @@
 test_that("lint_tool + format_tool build named ellmer tools", {
-  expect_identical(lint_tool()@name, "Lint")
+  lint <- lint_tool()
+  expect_identical(lint@name, "Lint")
+  expect_false(lint@annotations$read_only_hint)
+  expect_true(lint@annotations$open_world_hint)
+  expect_identical(codeagent:::.tool_capability("Lint"), "exec")
   expect_identical(format_tool()@name, "Format")
 })
 

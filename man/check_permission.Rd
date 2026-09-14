@@ -8,7 +8,8 @@ check_permission(
   tool_name,
   mode = "default",
   rules = list(),
-  tool_input = NULL
+  tool_input = NULL,
+  allow_plan_exit = FALSE
 )
 }
 \arguments{
@@ -16,9 +17,14 @@ check_permission(
 
 \item{mode}{Character(1). One of the values in \link{PermissionMode}.}
 
-\item{rules}{List of \code{\link[=PermissionRule]{PermissionRule()}} objects (highest priority first).}
+\item{rules}{List of \code{\link[=PermissionRule]{PermissionRule()}} objects. Every matching explicit deny
+is absolute; declaration order is preserved only among remaining allow/ask
+rules.}
 
 \item{tool_input}{List or NULL. Tool arguments (used for Bash read-only detection).}
+
+\item{allow_plan_exit}{Logical. Whether \code{ExitPlanMode} may restore a mode
+after a trusted in-session \code{EnterPlanMode} transition.}
 }
 \value{
 Character(1): \code{"allow"}, \code{"deny"}, or \code{"ask"}.

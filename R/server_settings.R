@@ -71,9 +71,19 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     }
     old_mode <- settings$permission_mode
     old_tools <- tryCatch(chat$get_tools(), error = function(e) NULL)
-    settings$permission_mode <<- new_mode
+    old_prompt <- tryCatch(chat$get_system_prompt(), error = function(e) NULL)
     live_ctx <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
-    if (!is.null(live_ctx)) live_ctx$mode_env$mode <- new_mode
+    old_live_mode <- if (!is.null(live_ctx))
+      live_ctx$mode_env$mode else old_mode
+    old_plan_exit_allowed <- if (!is.null(live_ctx))
+      isTRUE(live_ctx$mode_env$plan_exit_allowed) else FALSE
+    old_plan_prev <- if (!is.null(live_ctx)) live_ctx$mode_env$prev else NULL
+    settings$permission_mode <<- new_mode
+    if (!is.null(live_ctx)) {
+      live_ctx$mode_env$mode <- new_mode
+      live_ctx$mode_env$plan_exit_allowed <- FALSE
+      live_ctx$mode_env$prev <- NULL
+    }
     err <- tryCatch({
       .register_all_tools(chat, settings)
       reinstall_shield()
@@ -82,9 +92,12 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     if (inherits(err, "error")) {
       settings$permission_mode <<- old_mode
       if (!is.null(old_tools)) chat$set_tools(old_tools)
+      if (!is.null(old_prompt)) chat$set_system_prompt(old_prompt)
       ctx <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
       if (!is.null(ctx)) {
-        ctx$mode_env$mode <- old_mode
+        ctx$mode_env$mode <- old_live_mode
+        ctx$mode_env$plan_exit_allowed <- old_plan_exit_allowed
+        ctx$mode_env$prev <- old_plan_prev
         ctx$policy <- .resolve_tool_policy(settings)
         ctx$rules <- settings$rules %||% list()
       }
@@ -133,6 +146,8 @@ server_settings <- function(input, output, session, chat, settings, cwd,
       settings$model <<- result$model
       settings$worker_backend <<- result$worker_backend
     }
+    if (isTRUE(result$fatal))
+      session$sendCustomMessage("ca_input_busy", list(busy = TRUE))
     .ui_toast(result$message, result$type)
   })
 }

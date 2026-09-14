@@ -352,6 +352,10 @@ server_chat <- function(input, output, session, chat, settings,
       settings$worker_backend <<- result$worker_backend
       state$settings_changed <- state$settings_changed + 1L
     }
+    if (isTRUE(result$fatal)) {
+      state$busy <- TRUE
+      session$sendCustomMessage("ca_input_busy", list(busy = TRUE))
+    }
     .ui_toast(result$message, result$type)
   })
 
@@ -426,6 +430,10 @@ server_chat <- function(input, output, session, chat, settings,
         state$settings_changed <- state$settings_changed + 1L
         feedback <- paste0("OK Switched to `", result$model, "`")
       } else {
+        if (isTRUE(result$fatal)) {
+          state$busy <- TRUE
+          session$sendCustomMessage("ca_input_busy", list(busy = TRUE))
+        }
         feedback <- paste0("ERR ", result$message)
       }
     },
@@ -524,6 +532,10 @@ server_chat <- function(input, output, session, chat, settings,
         state$settings_changed <- state$settings_changed + 1L
         mod$append(paste0("OK Switched to `", result$model, "`"), role = "assistant")
       } else {
+        if (isTRUE(result$fatal)) {
+          state$busy <- TRUE
+          session$sendCustomMessage("ca_input_busy", list(busy = TRUE))
+        }
         mod$append(paste0("ERR ", result$message), role = "assistant")
       }
     }

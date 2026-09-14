@@ -105,7 +105,7 @@ NULL
 #' @return A data.frame: every task run across all rounds (with a `round` column).
 #' @export
 team_lead <- function(goal, model = NULL, cwd = getwd(), max_rounds = 3L,
-                      n_workers = NULL, permission_mode = "bypass",
+                      n_workers = NULL, permission_mode = "dont_ask",
                       worktree = FALSE, decompose_fn = NULL, review_fn = NULL,
                       coordinate_fn = NULL) {
   if (!is.character(goal) || length(goal) != 1L || !nzchar(goal))

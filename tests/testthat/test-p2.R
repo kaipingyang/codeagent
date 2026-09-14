@@ -78,7 +78,7 @@ test_that(".sandbox_block_reason blocks network cmds only when enabled + no netw
   expect_null(codeagent:::.sandbox_block_reason("ls -la", p_block))
 })
 
-test_that(".sandbox_env returns NULL when disabled, scrubbed vector when enabled", {
+test_that(".sandbox_env returns a replacement environment when enabled", {
   p_off <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = FALSE)))
   expect_null(codeagent:::.sandbox_env(p_off))
 
@@ -86,11 +86,49 @@ test_that(".sandbox_env returns NULL when disabled, scrubbed vector when enabled
     p_on <- codeagent:::.sandbox_profile(list(sandbox = list(enabled = TRUE)))
     env <- codeagent:::.sandbox_env(p_on)
     expect_true(is.character(env))
-    # SECRET_TOKEN must not leak (not in keep_env)
-    expect_false(any(grepl("^SECRET_TOKEN=", env)))
-    # PATH is kept
-    expect_true(any(grepl("^PATH=", env)))
+    expect_false("SECRET_TOKEN" %in% names(env))
+    expect_identical(unname(env[["PATH"]]), Sys.getenv("PATH"))
   })
+})
+
+test_that("sandboxed Bash child cannot read an unlisted parent secret", {
+  skip_if(Sys.which("bash") == "", "bash unavailable")
+  withr::with_envvar(c(CODEAGENT_SANDBOX_SECRET = "must-not-leak"), {
+    tool <- bash_tool(mode = "bypass",
+                      sandbox = list(enabled = TRUE, allow_network = TRUE))
+    result <- tool(command =
+      "printf '%s' \"${CODEAGENT_SANDBOX_SECRET-unset}\"")
+    value <- as.character(result@value)
+    expect_match(value, "unset", fixed = TRUE)
+    expect_false(grepl("must-not-leak", value, fixed = TRUE))
+  })
+})
+
+test_that("background Bash executes without a temporary-script race", {
+  skip_if(Sys.which("bash") == "", "bash unavailable")
+  marker <- tempfile("codeagent-bg-")
+  on.exit(unlink(marker), add = TRUE)
+  tool <- bash_tool(mode = "bypass",
+                    sandbox = list(enabled = TRUE, allow_network = TRUE))
+  tool(command = sprintf("sleep 0.05; printf ok > %s", shQuote(marker)),
+       run_in_background = TRUE)
+  for (i in seq_len(50L)) {
+    if (file.exists(marker)) break
+    Sys.sleep(0.02)
+  }
+  expect_true(file.exists(marker))
+  expect_identical(readLines(marker, warn = FALSE), "ok")
+})
+
+
+test_that("foreground Bash timeout is interpreted in seconds", {
+  skip_if(Sys.which("bash") == "", "bash unavailable")
+  tool <- bash_tool(mode = "bypass")
+  started <- proc.time()[["elapsed"]]
+  result <- tool(command = "sleep 2", timeout = 0.2)
+  elapsed <- proc.time()[["elapsed"]] - started
+  expect_lt(elapsed, 1.5)
+  expect_match(as.character(result@value), "exit status: -9", fixed = TRUE)
 })
 
 test_that("bash_tool blocks network command under sandbox", {

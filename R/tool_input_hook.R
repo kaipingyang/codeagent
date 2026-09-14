@@ -76,7 +76,11 @@ NULL
 
   wrapped <- function(...) {
     args <- list(...)
-    r <- tryCatch(hooks$run_pre(tool_name, args), error = function(e) NULL)
+    r <- tryCatch(
+      hooks$run_pre(tool_name, args),
+      error = function(e)
+        ellmer::tool_reject(paste0(
+          "PreToolUse hook failed safely: ", conditionMessage(e))))
     if (!is.null(r)) {
       if (identical(r[["action"]], "deny"))
         return(ellmer::tool_reject(r[["message"]] %||% "Blocked by PreToolUse hook."))
@@ -107,10 +111,12 @@ NULL
          envir = environment(wrapped))
   assign(".codeagent_pre_hook_original", original,
          envir = environment(wrapped))
-  tryCatch({ S7::S7_data(tool) <- wrapped }, error = function(e) {
-    warning("[codeagent] PreToolUse hook wrapping failed for tool '", tool_name,
-            "': input rewrite is NOT active on this tool.", call. = FALSE)
-  })
+  ok <- tryCatch({ S7::S7_data(tool) <- wrapped; TRUE },
+                 error = function(e) FALSE)
+  if (!isTRUE(ok))
+    stop("PreToolUse hook wrapping failed for tool '", tool_name,
+         "': input rewrite/re-check is not active (fail-closed).",
+         call. = FALSE)
   tool
 }
 
@@ -122,11 +128,16 @@ NULL
 #' @keywords internal
 .install_tool_input_hooks <- function(chat, hooks) {
   if (is.null(hooks)) return(invisible(chat))
-  tools <- tryCatch(chat$get_tools(), error = function(e) list())
+  tools <- tryCatch(
+    chat$get_tools(),
+    error = function(e)
+      stop("tool-input-hook install: get_tools() failed; refusing to continue ",
+           "with an unknown tool set (fail-closed).", call. = FALSE)
+  )
   if (!length(tools)) return(invisible(chat))
   recheck_fn <- function(name, input) {
     ctx <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
-    if (is.null(ctx)) return("allow")            # no gate installed -> nothing to enforce
+    if (is.null(ctx)) return(list(action = "allow", input = input))
     .gate_recheck(ctx, name, input)
   }
   wrapped <- lapply(tools, function(t) .wrap_tool_pre_hook(t, hooks, recheck_fn))

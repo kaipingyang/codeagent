@@ -10,11 +10,12 @@
 \item{profile}{List from \code{\link[=.sandbox_profile]{.sandbox_profile()}}.}
 }
 \value{
-Character vector of \code{NAME=VALUE} strings, or NULL.
+Named character vector, or NULL.
 }
 \description{
-When the sandbox is enabled, returns a minimal \code{character()} env vector
-(NAME=VALUE) limited to \code{keep_env}. When disabled, returns NULL (inherit the
-parent environment, the legacy behaviour).
+When the sandbox is enabled, returns a minimal named character vector
+limited to \code{keep_env}. \code{processx} treats a non-NULL \code{env} as the complete
+child environment, unlike base \code{system2(env=)} which inherits every unlisted
+parent variable. When disabled, returns NULL to preserve legacy inheritance.
 }
 \keyword{internal}

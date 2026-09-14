@@ -26,7 +26,9 @@ shield_sandbox(
 \item{modes}{Named list using \code{r}, \code{rw}, or \code{rwx} for project,
 protected_data, and temp.}
 
-\item{process_exec}{Preserve exec-capability tools (default TRUE).}
+\item{process_exec}{Permit shield-preserving Agent/AuditCode delegation
+(default TRUE). Non-delegated exec tools require a real OS backend and fail
+closed under the policy backend.}
 
 \item{network}{\code{"tool_policy"} or \code{"deny"}.}
 
@@ -40,9 +42,11 @@ protected_data, and temp.}
 A Data Shield sandbox strategy specification.
 }
 \description{
-Restrict explicit tool path arguments to project/protected/session-temp roots
-while preserving project \code{rwx} and process execution by default. This is a
-portable policy guard, not a kernel sandbox. \code{backend="auto"} currently falls
-back to policy because no full out-of-process OS adapter is implemented;
-\code{on_unavailable="block"} can fail closed for exec/net tools.
+Restrict declared tool path arguments to project/protected/session-temp roots.
+This is a portable policy guard, not a kernel sandbox: every non-delegated
+exec tool fails closed because project configuration, child processes,
+filesystem, or network effects cannot be bounded from path metadata alone.
+\code{backend="auto"} currently falls back to this policy because no full
+out-of-process OS adapter is implemented; \code{on_unavailable="block"} blocks all
+exec/net tools when the adapter is absent.
 }

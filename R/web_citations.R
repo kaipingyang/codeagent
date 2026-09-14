@@ -406,7 +406,7 @@
   resolved <- processx::run(
     file.path(R.home("bin"), "Rscript"),
     c("--vanilla", "-e", expr, host),
-    timeout = as.numeric(timeout) * 1000,
+    timeout = as.numeric(timeout),
     error_on_status = FALSE,
     echo = FALSE
   )

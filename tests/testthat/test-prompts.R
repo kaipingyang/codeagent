@@ -31,6 +31,17 @@ test_that(".build_system_prompt contains key behavioural anchors", {
   expect_match(p, "file_path:line_number")
 })
 
+test_that("delegation prompt matches verified process-worker availability", {
+  unavailable <- codeagent:::.prompt_using_tools(
+    .mk_settings(process_delegation_available = FALSE))
+  available <- codeagent:::.prompt_using_tools(
+    .mk_settings(process_delegation_available = TRUE))
+  expect_match(unavailable,
+               "Process-based team/background delegation is unavailable")
+  expect_false(grepl("TeamRun runs", unavailable, fixed = TRUE))
+  expect_match(available, "TeamRun runs")
+})
+
 test_that(".build_system_prompt injects CLAUDE.md when present", {
   s <- .mk_settings(claude_md = "PROJECT_SPECIFIC_RULE_XYZ")
   p <- codeagent:::.build_system_prompt(s, getwd())

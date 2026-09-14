@@ -109,3 +109,39 @@ test_that("asset audit stores stable reason codes, not caller text", {
   expect_false(grepl(sentinel, serialized, fixed = TRUE))
   expect_true(any(audit$reason == "approved_asset_policy"))
 })
+
+
+test_that("shielded child Agent keeps sandbox ingress for Bash and RunR", {
+  root <- withr::local_tempdir()
+  shield <- DataShield$new(strategies = list(shield_sandbox(
+    project_root = root, backend = "policy")))
+  parent <- ellmer::chat_anthropic(model = "fixture")
+  client <- suppressWarnings(codeagent_client(
+    parent, permission_mode = "bypass", cwd = root, data_shield = shield))
+  names <- vapply(client$chat$get_tools(), function(tool) tool@name, character(1L))
+  agent <- client$chat$get_tools()[[match("Agent", names)]]
+  decisions <- NULL
+
+  testthat::local_mocked_bindings(
+    .run_subagent_loop = function(chat, ...) {
+      ctx <- .gate_ctx_for(chat)
+      decisions <<- list(
+        same_shield = identical(ctx$data_shield, shield),
+        prompt = chat$get_system_prompt(),
+        bash = .gate_recheck(ctx, "Bash", list(command = "cat /etc/passwd"))$action,
+        run_r = .gate_recheck(ctx, "RunR", list(code = "readLines('/etc/passwd')"))$action
+      )
+      "child checked"
+    },
+    .package = "codeagent")
+
+  result <- do.call(S7::S7_data(agent), list(
+    description = "verify child sandbox", prompt = "check tools"))
+  expect_match(as.character(result), "child checked")
+  expect_true(decisions$same_shield)
+  expect_match(decisions$prompt, "You are a sub-agent working on behalf of codeagent")
+  expect_match(decisions$prompt, "Task: verify child sandbox")
+  expect_false(grepl("# Tone and style", decisions$prompt, fixed = TRUE))
+  expect_identical(decisions$bash, "block")
+  expect_identical(decisions$run_r, "block")
+})

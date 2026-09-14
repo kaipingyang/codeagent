@@ -222,6 +222,24 @@ test_that("glob_tool: non-** pattern still works via Sys.glob", {
   expect_false(grepl("script\\.txt", .tool_val(result)))
 })
 
+test_that("glob_tool rejects parent and absolute patterns", {
+  tmpdir <- withr::local_tempdir()
+  tool <- codeagent:::glob_tool(cwd = tmpdir)
+  expect_match(.tool_val(tool("../*", path = tmpdir)), "within its base")
+  expect_match(.tool_val(tool("/tmp/*", path = tmpdir)), "within its base")
+})
+
+test_that("glob_tool rejects symlink matches escaping the base", {
+  tmpdir <- withr::local_tempdir()
+  outside <- withr::local_tempdir()
+  writeLines("secret", file.path(outside, "secret.txt"))
+  linked <- suppressWarnings(file.symlink(
+    file.path(outside, "secret.txt"), file.path(tmpdir, "leak.txt")))
+  skip_if_not(isTRUE(linked), "symlink creation unavailable")
+  tool <- codeagent:::glob_tool(cwd = tmpdir)
+  expect_match(.tool_val(tool("*.txt", path = tmpdir)), "escaped")
+})
+
 # ---------------------------------------------------------------------------
 # grep_tool: R fallback separator bug (rg absent)
 # ---------------------------------------------------------------------------
@@ -290,4 +308,25 @@ test_that("grep_tool fallback: count mode returns filepath:N", {
                  output_mode = "count")
 
   expect_match(.tool_val(result), "haystack\\.R:2")
+})
+
+
+test_that("grep_tool rg branch applies offset and head_limit by line", {
+  skip_on_os("windows")
+  tmpdir <- withr::local_tempdir()
+  bindir <- file.path(tmpdir, "bin")
+  dir.create(bindir)
+  shim <- file.path(bindir, "rg")
+  writeLines(c(
+    "#!/bin/sh",
+    "printf '%s\\n' 'matches.txt:1:hit one' 'matches.txt:2:hit two' 'matches.txt:3:hit three'"
+  ), shim)
+  Sys.chmod(shim, "0755")
+  withr::local_path(bindir, action = "prefix")
+  tool <- codeagent:::grep_tool(cwd = tmpdir)
+  result <- tool("hit", path = tmpdir, offset = 1L, head_limit = 1L)
+  value <- .tool_val(result)
+  expect_false(grepl("hit one", value, fixed = TRUE))
+  expect_match(value, "hit two", fixed = TRUE)
+  expect_false(grepl("hit three", value, fixed = TRUE))
 })

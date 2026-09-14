@@ -16,8 +16,14 @@ fake_tool_chat <- function(tools, fail = c("never", "once", "always")) {
   chat <- new.env(parent = emptyenv())
   class(chat) <- c("Chat", "environment")
   chat$tools <- tools
+  chat$prompt <- "fixture prompt"
   chat$set_calls <- 0L
   chat$get_tools <- function() chat$tools
+  chat$get_system_prompt <- function() chat$prompt
+  chat$set_system_prompt <- function(value) {
+    chat$prompt <- value
+    invisible(chat)
+  }
   chat$set_tools <- function(value) {
     chat$set_calls <- chat$set_calls + 1L
     chat$tools <- value
@@ -244,4 +250,50 @@ test_that("settings observer applies an empty tool-group selection", {
   )
   expect_length(replacements, 1L)
   expect_identical(replacements[[1L]], character())
+})
+
+
+test_that("failed permission refresh preserves the dynamic plan state", {
+  testthat::local_mocked_bindings(
+    .register_all_tools = function(chat, ...) {
+      chat$set_system_prompt("partially updated permission prompt")
+      stop("fixture refresh failure")
+    },
+    .ui_toast = function(...) invisible(NULL),
+    list_skills_meta = function(...) list()
+  )
+  chat <- fake_tool_chat(list(fake_tool("Read")))
+  settings <- list(permission_mode = "default", rules = list(), tools = list(),
+                   data_shield_engine = NULL)
+  mode_env <- new.env(parent = emptyenv())
+  mode_env$mode <- "plan"
+  mode_env$plan_exit_allowed <- TRUE
+  mode_env$prev <- "default"
+  ctx <- new.env(parent = emptyenv())
+  ctx$mode_env <- mode_env
+  ctx$policy <- list()
+  ctx$rules <- list()
+  key <- rlang::obj_address(chat)
+  .gate_contexts[[key]] <- ctx
+  on.exit(rm(list = key, envir = .gate_contexts), add = TRUE)
+
+  wrapped_server <- function(input, output, session) {
+    server_settings(input, output, session, chat = chat, settings = settings,
+                    cwd = tempdir(), hooks = NULL, stream_task = NULL)
+  }
+  shiny::testServer(
+    wrapped_server,
+    {
+      session$setInputs(perm_mode = "default")
+      session$flushReact()
+      session$setInputs(perm_mode = "accept_edits")
+      session$flushReact()
+    }
+  )
+
+  expect_identical(settings$permission_mode, "default")
+  expect_identical(chat$get_system_prompt(), "fixture prompt")
+  expect_identical(mode_env$mode, "plan")
+  expect_true(mode_env$plan_exit_allowed)
+  expect_identical(mode_env$prev, "default")
 })

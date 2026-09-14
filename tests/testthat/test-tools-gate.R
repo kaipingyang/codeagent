@@ -25,7 +25,18 @@ test_that(".resolve_tool_policy parses settings$tools with defaults", {
   expect_identical(p2$overrides, list())
 })
 
-test_that(".gate_decide precedence: override > capability > check_permission", {
+test_that(".gate_decide makes explicit deny absolute across policy allows", {
+  deny_write <- list(PermissionRule("Write", "deny"))
+  override_allow <- list(sets = c("A", "B"),
+                         overrides = list(Write = "allow"),
+                         capabilities = list())
+  capability_allow <- list(sets = c("A", "B"), overrides = list(),
+                           capabilities = list(write = "allow"))
+  expect_identical(.gate_decide(
+    "Write", list(), override_allow, "bypass", deny_write, "write"), "deny")
+  expect_identical(.gate_decide(
+    "Write", list(), capability_allow, "bypass", deny_write, "write"), "deny")
+
   pol <- list(sets = c("A", "B"), overrides = list(Write = "deny"),
               capabilities = list(write = "ask"))
   expect_identical(.gate_decide("Write", list(), pol, "bypass", list(), "write"), "deny")
@@ -35,7 +46,6 @@ test_that(".gate_decide precedence: override > capability > check_permission", {
   expect_identical(.gate_decide("Write", list(), pol2, "bypass", list(), "write"), "ask")
 
   pol3 <- list(sets = c("A", "B"), overrides = list(), capabilities = list())
-  # falls back to check_permission; bypass mode -> allow
   expect_identical(.gate_decide("Write", list(), pol3, "bypass", list(), "write"), "allow")
 })
 
@@ -93,15 +103,24 @@ test_that("capability policy 'write=ask' with no ask_fn denies write tools", {
   expect_error(gate(req), class = "ellmer_tool_reject")   # ask + no ask_fn -> deny
 })
 
-test_that("central gate always allows exiting plan mode", {
-  policy <- list(
-    sets = character(),
-    capabilities = list(write = "deny"),
-    overrides = list(ExitPlanMode = "deny"))
+test_that("central gate exits plan only after a trusted in-session transition", {
+  policy <- list(sets = c("A", "B"), capabilities = list(), overrides = list())
   expect_identical(
     codeagent:::.gate_decide(
       "ExitPlanMode", list(), policy, "plan", list()),
+    "deny")
+  expect_identical(
+    codeagent:::.gate_decide(
+      "ExitPlanMode", list(), policy, "plan", list(),
+      allow_plan_exit = TRUE),
     "allow")
+
+  policy$overrides$ExitPlanMode <- "deny"
+  expect_identical(
+    codeagent:::.gate_decide(
+      "ExitPlanMode", list(), policy, "plan", list(),
+      allow_plan_exit = TRUE),
+    "deny")
 })
 
 test_that(".tool_gate_fn takes the async promise branch when ask_fn is async (Shiny)", {

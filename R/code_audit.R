@@ -154,6 +154,37 @@ NULL
 # text-audited") rather than read.
 .AUDIT_READ_EXTS <- c("R", "r", "Rmd", "rmd", "qmd", "cpp", "c", "h", "hpp")
 
+# POSIX `test -f` reliably distinguishes regular files from FIFOs on platforms
+# where base R's file_test("-f") may report a FIFO as regular. Use argv execution
+# and fail closed if the type cannot be verified.
+.audit_is_regular_file <- function(path) {
+  if (.Platform$OS.type == "windows")
+    return(isTRUE(utils::file_test("-f", path)))
+  test_bin <- unname(Sys.which("test"))
+  if (!nzchar(test_bin)) return(FALSE)
+  status <- tryCatch(
+    processx::run(test_bin, c("-f", path), stdout = "|", stderr = "|",
+                  error_on_status = FALSE, timeout = 2)$status,
+    error = function(e) 1L)
+  identical(as.integer(status), 0L)
+}
+
+
+.audit_read_bounded <- function(path, max_bytes, timeout_ms = 5000) {
+  rscript <- file.path(
+    R.home("bin"), if (.Platform$OS.type == "windows") "Rscript.exe" else "Rscript")
+  code <- paste0(
+    "a <- commandArgs(TRUE); ",
+    "con <- file(a[[1L]], 'rb'); on.exit(close(con), add=TRUE); ",
+    "cat(readChar(con, nchars=as.integer(a[[2L]]), useBytes=TRUE))")
+  out <- processx::run(
+    rscript, c("--vanilla", "-e", code, path, as.character(as.integer(max_bytes))),
+    stdout = "|", stderr = "|", timeout = as.numeric(timeout_ms) / 1000,
+    error_on_status = FALSE, cleanup_tree = TRUE)
+  if (!identical(as.integer(out$status), 0L))
+    stop("isolated source read failed", call. = FALSE)
+  out$stdout %||% ""
+}
 # Decide whether a referenced path is safe to read: it must resolve to a real
 # location UNDER project_root (symlink-escape resolved by
 # .data_shield_resolve_path -> normalizePath) AND carry a source-file
@@ -176,11 +207,9 @@ NULL
                 reason = sprintf("non-source extension '%s'", ext)))
   if (!file.exists(resolved))
     return(list(ok = FALSE, resolved = resolved, reason = "file does not exist"))
-  # Must be a regular file, not a directory/FIFO/socket/device. file_test("-f")
-  # performs the platform-specific regular-file check without opening the path.
   if (dir.exists(resolved))
     return(list(ok = FALSE, resolved = resolved, reason = "is a directory"))
-  if (!isTRUE(file_test("-f", resolved)))
+  if (!.audit_is_regular_file(resolved))
     return(list(ok = FALSE, resolved = resolved,
                 reason = "not a regular file (FIFO/socket/device rejected)"))
   list(ok = TRUE, resolved = resolved, reason = NA_character_)
@@ -234,15 +263,16 @@ NULL
     if (inherits(shield, "DataShield")) {
       read_failed <- FALSE
       content <- tryCatch({
-        con <- file(dec$resolved, "rb"); on.exit(close(con), add = TRUE)  # rb: bounded binary read
-        # TOCTOU guard (kiro round-2 #13 + round-3): re-resolve the opened path
-        # and confirm it still matches the vetted target under project_root.
+        # TOCTOU guard before launching the bounded reader. A later regular-file
+        # to FIFO/device swap can still race this check, but it can block only
+        # the isolated child, which processx terminates at the hard timeout.
         recheck <- tryCatch(normalizePath(dec$resolved, winslash = "/", mustWork = TRUE),
                             error = function(e) NA_character_)
         if (is.na(recheck) || !identical(recheck, dec$resolved) ||
-            !.data_shield_path_under(recheck, normalizePath(project_root, winslash = "/", mustWork = FALSE)))
+            !.data_shield_path_under(
+              recheck, normalizePath(project_root, winslash = "/", mustWork = FALSE)))
           stop("path changed after validation (TOCTOU)")
-        readChar(con, nchars = max_bytes, useBytes = TRUE)
+        .audit_read_bounded(dec$resolved, max_bytes)
       }, error = function(e) { read_failed <<- TRUE; NULL })
       # If readChar succeeded, ensure the content is valid UTF-8 by
       # re-encoding it (this also strips any trailing multi-byte char that

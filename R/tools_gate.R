@@ -49,7 +49,7 @@ NULL
   ExitPlanMode = list(set = "A", capability = "write"),
   AuditCode   = list(set = "A", capability = "exec"),
   DescribeData = list(set = "A", capability = "read"),
-  GenerateReport = list(set = "A", capability = "write"),
+  GenerateReport = list(set = "A", capability = "write", path_args = "path"),
   remember    = list(set = "A", capability = "write"),
   use_skill   = list(set = "A", capability = "read"),
   # btw file tools (set B)
@@ -161,22 +161,38 @@ register_tool_meta <- function(name,
   )
 }
 
-# Decide allow/deny/ask for a tool call. Precedence: per-tool override >
-# capability-level policy > mode/rules permission (check_permission).
+# Decide allow/deny/ask for a tool call. Unknown/disabled tools, explicit deny
+# rules, and the plan-mode read-only boundary are absolute. Per-tool and
+# capability policies apply only after those fail-closed checks.
 #' @keywords internal
-.gate_decide <- function(name, input, policy, mode, rules, capability = NULL) {
-  if (identical(mode, "plan") && identical(name, "ExitPlanMode"))
-    return("allow")
+.gate_decide <- function(name, input, policy, mode, rules, capability = NULL,
+                         allow_plan_exit = FALSE) {
   meta <- .tool_metadata(name)
   if (!isTRUE(meta$known)) return("deny")
   enabled_sets <- as.character(policy$sets %||% c("A", "B"))
   if (!meta$set %in% enabled_sets) return("deny")
   capability <- meta$capability
+
+  matched <- vapply(rules, .rule_matches, logical(1L),
+                    tool_name = name, tool_input = input)
+  if (any(matched & vapply(rules, function(rule)
+    identical(rule$behavior, "deny"), logical(1L))))
+    return("deny")
+
+  if (identical(mode, "plan")) {
+    if (identical(name, "ExitPlanMode")) {
+      if (!isTRUE(allow_plan_exit)) return("deny")
+    } else if (!identical(capability, "read")) {
+      return("deny")
+    }
+  }
+
   ov <- policy$overrides[[name]]
   if (!is.null(ov) && nzchar(ov)) return(ov)
   cap <- policy$capabilities[[capability]]
   if (!is.null(cap) && nzchar(cap)) return(cap)
-  check_permission(name, mode, rules, input)
+  check_permission(name, mode, rules, input,
+                   allow_plan_exit = allow_plan_exit)
 }
 
 # Per-chat gate context registry. `.register_all_tools()` may run more than once
@@ -244,8 +260,11 @@ register_tool_meta <- function(name,
   }
   mode <- if (is.environment(ctx$mode_env)) ctx$mode_env$mode %||% "default"
           else (ctx$mode_env %||% "default")
+  allow_plan_exit <- is.environment(ctx$mode_env) &&
+    isTRUE(ctx$mode_env$plan_exit_allowed)
   decision <- tryCatch(
-    .gate_decide(name, input, ctx$policy, mode, ctx$rules, cap),
+    .gate_decide(name, input, ctx$policy, mode, ctx$rules, cap,
+                 allow_plan_exit = allow_plan_exit),
     error = function(e) "deny")   # decision error -> deny (fail-closed, kiro round-3)
   if (identical(decision, "deny")) return(list(action = "deny", input = input))
   if (identical(decision, "ask"))  return(list(action = "deny", input = input))  # ask w/o path -> deny
@@ -323,8 +342,11 @@ register_tool_meta <- function(name,
       # policy, mode + rules (check_permission). Even "read" capability tools
       # MUST go through .gate_decide so that explicit deny/override rules are
       # respected (V-05 remedy: no early return for "read" capability).
+      allow_plan_exit <- is.environment(ctx$mode_env) &&
+        isTRUE(ctx$mode_env$plan_exit_allowed)
       decision <- if (shield_ask) "ask" else tryCatch(
-        .gate_decide(name, input, ctx$policy, resolve_mode(), ctx$rules, cap),
+        .gate_decide(name, input, ctx$policy, resolve_mode(), ctx$rules, cap,
+                     allow_plan_exit = allow_plan_exit),
         error = function(e) "deny")   # decision error -> deny (fail-closed, kiro round-3)
       if (identical(decision, "allow")) return(invisible())
       if (identical(decision, "deny")) return(deny(name, input, cap))
@@ -481,6 +503,7 @@ install_permission_gate <- function(chat, permission_mode = "default",
   }
   mode_env <- new.env(parent = emptyenv())
   mode_env$mode <- permission_mode
+  mode_env$plan_exit_allowed <- FALSE
   settings <- list(permission_mode = permission_mode, tools = tools)
   .install_tool_result_normalizers(chat)
   .install_permission_gate(chat, settings, mode_env, rules = rules,

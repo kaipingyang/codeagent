@@ -123,7 +123,17 @@ test_that("project env cannot override model, endpoint, or process environment",
   writeLines(jsonlite::toJSON(cfg, auto_unbox = TRUE, pretty = TRUE),
              file.path(tmp_dir, ".codeagent", "settings.json"))
 
-  withr::with_envvar(c(CODEAGENT_MODEL = "", CODEAGENT_BASE_URL = ""), {
+  isolated_home <- file.path(tmp_dir, "home")
+  isolated_config <- file.path(tmp_dir, "user-config")
+  dir.create(isolated_home)
+  dir.create(isolated_config)
+  withr::with_envvar(c(
+    CODEAGENT_MODEL = "",
+    CODEAGENT_BASE_URL = "",
+    CODEAGENT_HOME = isolated_config,
+    HOME = isolated_home,
+    R_USER = isolated_home
+  ), {
     expect_warning(s <- load_settings(tmp_dir), "safe allowlist")
     expect_null(s$provider)
     expect_null(s$base_url)

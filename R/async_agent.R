@@ -60,6 +60,7 @@ NULL
   model <- backend$model %||% model %||% Sys.getenv("CODEAGENT_MODEL", "")
   base_url <- if (is.null(backend)) Sys.getenv("CODEAGENT_BASE_URL", "") else ""
   api_key <- if (is.null(backend)) Sys.getenv("CODEAGENT_API_KEY", "") else ""
+  legacy_env <- is.null(backend)
   security_json <- tryCatch(
     .worker_security_context_json(security_context),
     error = function(e) NULL
@@ -84,7 +85,7 @@ NULL
       },
       prompt = prompt, model = model, base_url = base_url,
       api_key = api_key, cwd = cwd, security_json = security_json,
-      legacy_env = is.null(backend),
+      legacy_env = legacy_env,
       .compute = .BG_COMPUTE),
     error = function(e) NULL)
   if (is.null(m))

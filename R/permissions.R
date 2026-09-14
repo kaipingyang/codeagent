@@ -55,26 +55,34 @@ PermissionMode <- list(
 #'
 #' @param tool_name Character(1). Name of the tool (e.g. `"Bash"`, `"Write"`).
 #' @param mode Character(1). One of the values in [PermissionMode].
-#' @param rules List of [PermissionRule()] objects (highest priority first).
+#' @param rules List of [PermissionRule()] objects. Every matching explicit deny
+#'   is absolute; declaration order is preserved only among remaining allow/ask
+#'   rules.
 #' @param tool_input List or NULL. Tool arguments (used for Bash read-only detection).
+#' @param allow_plan_exit Logical. Whether `ExitPlanMode` may restore a mode
+#'   after a trusted in-session `EnterPlanMode` transition.
 #' @return Character(1): `"allow"`, `"deny"`, or `"ask"`.
 #' @export
 check_permission <- function(tool_name, mode = "default",
-                              rules = list(), tool_input = NULL) {
+                              rules = list(), tool_input = NULL,
+                              allow_plan_exit = FALSE) {
   is_readonly <- tool_name %in% .READONLY_TOOLS
 
-  # 1. Plan mode: block all non-read operations immediately
-  if (identical(mode, "plan") && identical(tool_name, "ExitPlanMode"))
-    return("allow")
-  if (identical(mode, "plan") && !is_readonly) return("deny")
-
-  # 2. Explicit deny rules are absolute. Among the remaining matching rules,
+  # 1. Explicit deny rules are absolute. Among the remaining matching rules,
   # preserve declaration order for allow/ask.
   matched <- vapply(rules, .rule_matches, logical(1L),
                     tool_name = tool_name, tool_input = tool_input)
   if (any(matched & vapply(rules, function(rule)
     identical(rule$behavior, "deny"), logical(1L))))
     return("deny")
+
+  # 2. Plan mode is an absolute read-only boundary. Its exit control is enabled
+  # only after this same mode state entered plan mode during the live session;
+  # starting a client in plan mode must not give the model an escape hatch.
+  if (identical(mode, "plan") && identical(tool_name, "ExitPlanMode"))
+    return(if (isTRUE(allow_plan_exit)) "allow" else "deny")
+  if (identical(mode, "plan") && !is_readonly) return("deny")
+
   for (i in which(matched)) return(rules[[i]]$behavior)
 
   # 3. accept_edits: file edit tools auto-allowed

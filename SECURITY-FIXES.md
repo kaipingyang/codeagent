@@ -4,12 +4,14 @@
 第一、二轮包含早期安全审计和一般代码审查记录；第三、四轮针对权限、路径、
 委派、配置和外部内容等核心安全边界进行了系统性加固。
 
-> 修复日期：2026-09-09 ~ 2026-09-11
-> 修复范围：已报告的高危安全漏洞及后续安全边界复审发现
-> 验证方式：多轮独立只读复审、源码定向回归、安装包定向回归
-> 当前结论：原始六项高危安全问题的定向测试均通过；2026-09-11 合并后静态复审
-> 发现的 2 项高影响集成缺陷和 5 项中等可靠性/兼容性问题已完成源码修复和
-> 回归测试补充，但遵照用户要求尚未运行这些新增测试。
+> 修复日期：2026-09-09 ~ 2026-09-14
+> 修复范围：已报告的高危安全漏洞、PR #1 review blocker 及后续独立复审发现
+> 验证方式：多轮独立只读复审、源码定向回归、完整 package/browser 验证门槛
+> 当前结论：PR #1 的权限、plan、Bash 环境、Data Shield、ExploreData、prompt、
+> PreToolUse、model switch 与 Shiny rollback blocker 已全部修复；独立复审已明确给出
+> `SECURITY_BLOCKERS_CLEARED` 和 `READY_FOR_FULL_REGRESSION`，完整 testthat、
+> R CMD check、固定 tarball 安装、installed smoke、pkgdown 与真实 Chromium 双布局
+> 验证均已通过。PR 在提交并推送验证过的 diff 前仍保持 Draft。
 
 ---
 
@@ -41,17 +43,40 @@
 | 项目配置 | 使用严格非安全字段 allowlist，不能控制凭据、权限、sandbox、MCP 或环境 |
 | 外部网页内容 | 网络工具需要相应授权；正文被标记为不可信数据并防止指令注入 |
 
-安全定向测试已分别针对源码包和重新安装到本地的 `codeagent` 0.2.3
-执行并通过。合并后的 79 个 R 源文件通过解析，91/91 个独立源码测试文件和
-18/18 个已安装包安全/可靠性测试文件通过，`pkgdown::check_pkgdown()` 通过。
-首次测试因已安装的 `ellmer`/`btw` 版本低于 `DESCRIPTION` 要求而未进入测试；
-安装锁定 SHA 后重跑全部通过。
+### 2026-09-14 PR #1 owner remediation
 
-修复已通过提交 `ecce4704046a5d0af22b31d415ccb9c0239f269d`
-推送到远程 `process` 分支；未推送到 `main`。该提交包含的最后一轮静态修复
-仍遵照用户要求未运行新增测试、R CMD check、本地重装或 codegraph sync。
+PR #1 的正式 `CHANGES_REQUESTED` 复审确认原始六项 blocker 后，独立复审又发现
+四项高影响集成问题；当前工作树已分别关闭：
 
-### 2026-09-11 合并后静态复审新增待办
+| 问题 | 当前修复 |
+|------|----------|
+| portable policy 下 `Lint` 可执行恶意 `.lintr` | policy backend 阻断所有非 Agent/AuditCode exec，不能再用 path metadata 放行 |
+| Shiny 更新失败破坏动态 plan 状态 | rollback 保存并恢复 live mode、plan exit flag 与 previous mode |
+| Agent/TeamRun prompt 与实际 registry 漂移 | 每次注册、动态工具组更新和 Route B 后按最终 `chat$get_tools()` 重建 prompt |
+| PreToolUse 安装/运行异常 fail-open | `get_tools()`、`set_tools()`、hook callback 异常均失败关闭，原工具不执行 |
+
+上述回归与相关 Data Shield、server settings、prompt/model switch 测试均已通过。
+最终独立安全与集成门禁明确输出 `SECURITY_BLOCKERS_CLEARED` 和
+`READY_FOR_FULL_REGRESSION`。合并前全套验证结果如下：
+
+- `devtools::test(reporter = "summary")`：3342 assertions、0 failures；13 条为当前
+  ASCII locale 下已知的 Shiny UTF-8 source warning，4 项按设计因可选 tesseract/
+  Anthropic 测试凭据缺失而 skip。
+- `devtools::check(error_on = "warning", cran = FALSE, document = FALSE)`：0 errors、
+  0 warnings、4 NOTEs；NOTEs 为可选 tesseract、活动 `.codegraph` socket、安装体积和
+  包内 worker `:::` 调用，R code problems 为 OK，check 内 testthat 为 OK。
+- 从排除运行时 `.codegraph` 目录的精确源码副本构建
+  `codeagent_0.2.3.tar.gz`，SHA-256 为
+  `45f9e000fb80d91a8a47ea3a760580e2757beee162a0b3f2d7c909ec171f856d`；该确切
+  tarball 已安装到专用验证库，installed-package smoke 通过。
+- `pkgdown::check_pkgdown()` 输出 `No problems found`。
+- 真实 headless Chromium installed-package E2E：classic 的
+  `core/pass/redact/block` 全部通过；page_chat 的 `core` 与 chat/panel width 断言通过。
+
+原 PR 提交 `ecce4704046a5d0af22b31d415ccb9c0239f269d` 仍保留为历史基线；
+本次 owner remediation 尚未 commit/push 到远程 `process` 分支。
+
+### 历史：2026-09-11 合并后静态复审新增待办
 
 用户要求停止在本地运行代码后，仅进行了源码静态复审和编辑，未启动 R、测试、
 构建、安装、server 或 codegraph。以下问题已由当前实现交叉确认并完成修复，

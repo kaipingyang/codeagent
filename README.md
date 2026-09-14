@@ -122,7 +122,7 @@ refresh. In that case `chat$get_cost()` may remain zero and a
 | pkg | btw | document, check, test, coverage, load_all |
 | web | btw | URL → Markdown |
 | agent | btw | hierarchical subagent delegation |
-| data | codeagent | `ExploreData` — sandboxed data.frame queries; `DescribeData` — strict protected-data metadata (Data Shield) |
+| data | codeagent | `ExploreData` — arbitrary model-generated R execution over a data.frame (exec-gated, not a sandbox); `DescribeData` — strict protected-data metadata (Data Shield) |
 
 Tool authorization is enforced by one fail-closed central gate. Enabled tool
 sets, capability policies, per-tool overrides, and fine-grained path rules are
@@ -274,11 +274,14 @@ in the central permission gate and can block or request approval before executio
 replaces it, a new name adds to it).
 `shield_tool_policy()` provides exact/glob per-tool `scan`/`bypass`/`deny` rules;
 Shield bypass is audited and never bypasses the separate permission gate.
-`shield_sandbox()` preserves project/temp `rwx` and process execution by default,
-while portable path policy blocks project-external and symlink-escaped paths;
-`backend="auto"` currently reports/falls back to policy unless a full OS adapter
-is available. `shield_reviewer()` is an optional internal rail: a fresh,
-tool-less ellmer Chat reviews only deterministically sanitized code/arguments;
+`shield_sandbox()` permits project/temp operations whose path arguments are
+explicitly declared and verifiable, while blocking project-external and
+symlink-escaped paths. Its portable policy is not an OS sandbox: every
+non-delegated exec tool (including Bash, RunR, ExploreData, and Lint) fails
+closed until a full OS adapter is available, because even path-declared tools
+may execute project configuration or child processes. `shield_reviewer()` is
+an optional internal rail: a fresh, tool-less ellmer Chat reviews only
+deterministically sanitized code/arguments;
 remote reviewers never receive raw data/output, and missing/failed reviewers
 follow configurable ask/block fail-closed policy.
 See the full [Data Shield parameter
@@ -358,7 +361,7 @@ Built-in slash commands: `/compact`, `/plan`, `/verify`, `/simplify`, `/loop`, `
 team_coordinate(c("task 1", "task 2", "task 3"))
 
 # LLM-lead coordinator: decomposes goal into DAG, runs team, re-plans
-team_lead("Refactor the parser and add tests", max_rounds = 3)
+team_lead("Review the parser and report prioritized findings", max_rounds = 3)
 ```
 
 ### MCP server

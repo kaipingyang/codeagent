@@ -59,6 +59,19 @@ test_that(".wrap_tool_pre_hook passes args through unchanged when hook returns N
   expect_identical(seen$got, "clean")
 })
 
+test_that("tool-input-hook installation fails closed when tools cannot be replaced", {
+  hooks <- HookRegistry$new()
+  tool <- ellmer::tool(function(x) x, name = "echo", description = "e",
+                       arguments = list(x = ellmer::type_string("i")))
+  chat <- new.env(parent = emptyenv())
+  chat$get_tools <- function() list(tool)
+  chat$set_tools <- function(tools) stop("replacement failed")
+  expect_error(
+    codeagent:::.install_tool_input_hooks(chat, hooks),
+    "fail-closed"
+  )
+})
+
 # --- Data Shield ingress rewrite ------------------------------------------
 
 make_shield <- function() {
@@ -100,4 +113,35 @@ test_that(".data_shield_wrap_tool redacts protected values in tool args (ingress
   expect_false(grepl("SUBJECT042", seen$got, fixed = TRUE))
   expect_true(grepl("[REDACTED]", seen$got, fixed = TRUE))
   expect_true(grepl("lookup", seen$got, fixed = TRUE))
+})
+
+
+test_that("tool-input-hook installation fails closed when tools cannot be read", {
+  hooks <- HookRegistry$new()
+  chat <- new.env(parent = emptyenv())
+  chat$get_tools <- function() stop("fixture get_tools failure")
+  chat$set_tools <- function(tools) invisible(chat)
+  expect_error(
+    codeagent:::.install_tool_input_hooks(chat, hooks),
+    "get_tools.*fail-closed"
+  )
+})
+
+test_that("a throwing PreToolUse hook rejects before the original tool runs", {
+  hooks <- HookRegistry$new()
+  hooks$register_pre(function(...) stop("fixture hook failure"))
+  executed <- FALSE
+  tool <- ellmer::tool(
+    function(x) { executed <<- TRUE; x },
+    name = "echo", description = "e",
+    arguments = list(x = ellmer::type_string("i")))
+  wrapped <- codeagent:::.wrap_tool_pre_hook(tool, hooks)
+
+  expect_warning(
+    expect_error(
+      do.call(S7::S7_data(wrapped), list(x = "unsafe")),
+      class = "ellmer_tool_reject"),
+    "Hook error: fixture hook failure"
+  )
+  expect_false(executed)
 })

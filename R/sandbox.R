@@ -138,20 +138,22 @@ NULL
 
 #' Compute the environment for a sandboxed command
 #'
-#' When the sandbox is enabled, returns a minimal `character()` env vector
-#' (NAME=VALUE) limited to `keep_env`. When disabled, returns NULL (inherit the
-#' parent environment, the legacy behaviour).
+#' When the sandbox is enabled, returns a minimal named character vector
+#' limited to `keep_env`. `processx` treats a non-NULL `env` as the complete
+#' child environment, unlike base `system2(env=)` which inherits every unlisted
+#' parent variable. When disabled, returns NULL to preserve legacy inheritance.
 #'
 #' @param profile List from [.sandbox_profile()].
-#' @return Character vector of `NAME=VALUE` strings, or NULL.
+#' @return Named character vector, or NULL.
 #' @keywords internal
 .sandbox_env <- function(profile) {
   if (!isTRUE(profile$enabled)) return(NULL)
-  keep <- profile$keep_env
-  vals <- Sys.getenv(keep, unset = NA)
-  vals <- vals[!is.na(vals)]
-  if (!length(vals)) return(character(0))
-  paste0(names(vals), "=", vals)
+  keep <- unique(as.character(profile$keep_env %||% character()))
+  if (.Platform$OS.type == "windows")
+    keep <- unique(c(keep, "SystemRoot", "TEMP", "TMP", "USERPROFILE",
+                     "ComSpec", "PATHEXT"))
+  vals <- Sys.getenv(keep, unset = NA_character_)
+  vals[!is.na(vals)]
 }
 
 # Best-effort policy filters for RunR. These checks are intentionally not

@@ -71,15 +71,134 @@ NULL
 
 # Using your tools: pick the right tool, track the work, parallelize safely.
 .prompt_using_tools <- function(settings = NULL) {
+  has_agent <- if (is.null(settings$foreground_delegation_available))
+    TRUE else isTRUE(settings$foreground_delegation_available)
+  has_team <- isTRUE(settings$process_delegation_available)
+  delegation <- if (has_agent && has_team) {
+    paste0(
+      "- Delegate to the Agent tool when a task suits a specialized agent, or ",
+      "to run independent research and keep bulky results out of the main ",
+      "context. To fan out across many independent items, TeamRun runs several ",
+      "sub-agents in parallel. Do not repeat work a sub-agent is already doing.")
+  } else if (has_agent) {
+    paste0(
+      "- Delegate only to the foreground Agent tool when a task suits a ",
+      "specialized agent. Process-based team/background delegation is ",
+      "unavailable in this session; never call a tool that is not registered.")
+  } else if (has_team) {
+    paste0(
+      "- Foreground Agent delegation is unavailable in this session. TeamRun ",
+      "is registered for parallel independent subtasks; never call Agent or ",
+      "another tool that is not registered.")
+  } else {
+    paste0(
+      "- No delegation tools are registered in this session. Work directly ",
+      "with the available tools and never call Agent, TeamRun, or another tool ",
+      "that is not registered.")
+  }
+
+  live_names <- settings$available_tool_names
+  if (!is.null(live_names)) {
+    live_names <- unique(as.character(live_names[nzchar(live_names)]))
+    if (!length(live_names))
+      return(paste(
+        "# Using your tools",
+        "- No tools are registered in this session. Do not attempt tool calls.",
+        sep = "\n"))
+    preferred <- intersect(
+      c("Read", "Edit", "Write", "MultiEdit", "Glob", "Grep", "LS", "Bash"),
+      live_names)
+    purpose <- if (length(preferred))
+      paste0("- Use only registered tools. Available core tools include: ",
+             paste(preferred, collapse = ", "), ".")
+    else
+      "- Use only tools present in the live registry; never guess a tool name."
+    task_names <- intersect(c("TaskCreate", "TaskList", "TodoWrite"), live_names)
+    task_guidance <- if (length(task_names))
+      paste0("- Track multi-step work with the registered task tools: ",
+             paste(task_names, collapse = ", "), ".") else character()
+    skill_guidance <- if ("use_skill" %in% live_names)
+      "- When the user types /<skill-name>, run it through use_skill only for skills listed in <available_skills>." else character()
+    return(paste(c(
+      "# Using your tools", purpose, task_guidance,
+      "- A single response can issue several tool calls. Fire independent calls together; chain them only when one needs another's result.",
+      delegation, skill_guidance), collapse = "\n"))
+  }
+
   paste(
     "# Using your tools",
     "- Reach for the purpose-built tool before Bash: Read to read, Edit/Write to change, Glob to find files by name, Grep to search contents. Keep Bash for real shell work -- scripts, git, package commands.",
     "- Split multi-step work across the TaskCreate/TaskList tools, or keep a running checklist with TodoWrite, and tick each item off the moment it is done rather than in one batch at the end.",
     "- A single response can issue several tool calls. Fire independent calls together to save round-trips; chain them only when one needs another's result.",
-    "- Delegate to the Agent tool when a task suits a specialized agent, or to run independent research and keep bulky results out of the main context -- but don't reach for it reflexively, and don't repeat work a sub-agent is already doing. To fan out across many independent items, TeamRun runs several sub-agents in parallel.",
+    delegation,
     "- When the user types /<skill-name>, run it through the use_skill tool, and only for skills listed in the <available_skills> block -- never guess a name.",
     sep = "\n"
   )
+}
+
+# Patch only the standard tool-guidance section from the final live registry.
+# Registration can degrade, while runtime hosts may append their own prompt
+# blocks (WEAR) or replace the prompt entirely (sub-agents); those contents must
+# never be discarded by a tool refresh.
+.sync_delegation_prompt <- function(chat, settings, cwd = getwd()) {
+  tools <- tryCatch(
+    chat$get_tools(),
+    error = function(e)
+      stop("system-prompt sync: could not read the live tool registry (fail-closed).",
+           call. = FALSE)
+  )
+  names <- unname(vapply(tools, function(tool)
+    tryCatch(as.character(tool@name), error = function(e) ""), character(1L)))
+  prompt_settings <- settings
+  prompt_settings$available_tool_names <- names
+  prompt_settings$foreground_delegation_available <- "Agent" %in% names
+  prompt_settings$process_delegation_available <- "TeamRun" %in% names
+  current <- tryCatch(
+    chat$get_system_prompt(),
+    error = function(e)
+      stop("system-prompt sync: could not read the current prompt (fail-closed).",
+           call. = FALSE)
+  )
+  if (!is.character(current) || length(current) != 1L)
+    return(invisible(list(
+      foreground_delegation_available =
+        prompt_settings$foreground_delegation_available,
+      process_delegation_available =
+        prompt_settings$process_delegation_available
+    )))
+  start <- regexpr("# Using your tools", current, fixed = TRUE)[[1L]]
+  finish <- regexpr("\n\n# Executing actions with care", current,
+                    fixed = TRUE)[[1L]]
+  # A custom/sub-agent prompt intentionally has no standard section. Leave it
+  # byte-for-byte unchanged rather than replacing its role/task instructions.
+  if (start > 0L && finish > start) {
+    updated <- paste0(
+      substr(current, 1L, start - 1L),
+      .prompt_using_tools(prompt_settings),
+      substr(current, finish, nchar(current)))
+    updated <- sub(
+      "(?m)^Model: [^\\n]*",
+      paste0("Model: ", prompt_settings$model %||% "(auto)"),
+      updated, perl = TRUE)
+    updated <- sub(
+      "(?m)^# Session\\n- Permission mode: [^\\n]*\\n- Max turns: [^\\n]*",
+      paste0("# Session\n- Permission mode: ",
+             prompt_settings$permission_mode %||% "default",
+             "\n- Max turns: ", prompt_settings$max_turns %||% 100L),
+      updated, perl = TRUE)
+    tryCatch(
+      chat$set_system_prompt(updated),
+      error = function(e)
+        stop("system-prompt sync failed; tool guidance may be stale (fail-closed).",
+             call. = FALSE)
+    )
+  }
+  invisible(list(
+    foreground_delegation_available =
+      prompt_settings$foreground_delegation_available,
+    process_delegation_available =
+      prompt_settings$process_delegation_available
+  ))
 }
 
 # Executing actions with care: weigh reversibility and blast radius first.
