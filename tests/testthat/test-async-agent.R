@@ -90,6 +90,13 @@ test_that("bg slash helpers handle empty / no-agent cases", {
   expect_identical(codeagent:::.bg_status_text(), "No background sub-agents.")
 })
 
+test_that("background spawn rejects a non-reconstructible parent Chat", {
+  context <- codeagent:::.worker_security_context(cwd = withr::local_tempdir())
+  result <- codeagent:::.bg_spawn("noop", security_context = context)
+  expect_s3_class(result, "bg_error")
+  expect_match(unclass(result), "cannot be safely reconstructed")
+})
+
 test_that(".chat_command_result routes /bgstatus to an append action", {
   st <- codeagent:::.bg_state
   st$agents <- list()

@@ -110,12 +110,14 @@ NULL
 #'   passed through to [bash_tool()].
 #' @param async Logical. If `TRUE`, register async permission-gated tool variants
 #'   for the Shiny path (UI-gated approvals). Default `FALSE` (synchronous).
+#' @param cwd Character. Fixed base directory for relative file-tool paths.
 #' @return Invisibly returns `chat`.
 #' @export
 register_builtin_tools <- function(chat, mode = "default",
                                     rules = list(), ask_fn = NULL,
                                     skip_file_tools = FALSE,
-                                    sandbox = NULL, async = FALSE) {
+                                    sandbox = NULL, async = FALSE,
+                                    cwd = getwd()) {
   # Async (Shiny) path: build each gated tool with mode="bypass" (so its own
   # checker always passes) and wrap it in .asyncify_gated_tool(), which runs the
   # real permission check + awaits the promise-returning ask_fn. Sync path keeps
@@ -132,13 +134,13 @@ register_builtin_tools <- function(chat, mode = "default",
 
   reg_gated(bash_tool(inner_mode, rules, inner_ask, sandbox = sandbox), "Bash")
   if (!isTRUE(skip_file_tools)) {
-    chat$register_tool(read_tool(mode, rules))
-    reg_gated(write_tool(inner_mode, rules, inner_ask), "Write")
-    reg_gated(edit_tool(inner_mode, rules, inner_ask), "Edit")
-    reg_gated(multi_edit_tool(inner_mode, rules, inner_ask), "MultiEdit")
-    chat$register_tool(glob_tool())
-    chat$register_tool(grep_tool())
-    chat$register_tool(ls_tool())
+    chat$register_tool(read_tool(mode, rules, cwd))
+    reg_gated(write_tool(inner_mode, rules, inner_ask, cwd), "Write")
+    reg_gated(edit_tool(inner_mode, rules, inner_ask, cwd), "Edit")
+    reg_gated(multi_edit_tool(inner_mode, rules, inner_ask, cwd), "MultiEdit")
+    chat$register_tool(glob_tool(cwd))
+    chat$register_tool(grep_tool(cwd))
+    chat$register_tool(ls_tool(cwd))
   }
   invisible(chat)
 }

@@ -8,8 +8,11 @@ team_run(
   tasks,
   model = NULL,
   n_workers = NULL,
-  permission_mode = "bypass",
-  cwd = getwd()
+  permission_mode = "dont_ask",
+  cwd = getwd(),
+  parent_rules = NULL,
+  parent_policy = NULL,
+  security_context = NULL
 )
 }
 \arguments{
@@ -23,9 +26,17 @@ team_run(
 container's cgroup CPU quota (each daemon is a heavy R process).}
 
 \item{permission_mode}{Character. Permission mode for each agent (default
-\code{"bypass"} since parallel agents cannot prompt interactively).}
+\code{"dont_ask"} since parallel agents cannot prompt interactively -- NOT
+"bypass", so user-defined deny rules are still honoured).}
 
 \item{cwd}{Character. Working directory for each agent.}
+
+\item{parent_rules}{List. Permission rules inherited from the parent agent.}
+
+\item{parent_policy}{List. Tool capability policies inherited from parent.}
+
+\item{security_context}{Internal immutable parent security snapshot. When
+supplied it takes precedence over the legacy permission arguments.}
 }
 \value{
 A list (same length/order as \code{tasks}), each element either the

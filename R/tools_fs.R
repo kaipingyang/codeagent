@@ -12,13 +12,15 @@ NULL
 #'
 #' @param mode Character. Permission mode.
 #' @param rules List. Permission rules.
+#' @param cwd Character. Fixed base directory for relative paths.
 #' @return An `ellmer::tool()` object.
 #' @export
-read_tool <- function(mode = "default", rules = list()) {
+read_tool <- function(mode = "default", rules = list(), cwd = getwd()) {
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
   ellmer::tool(
     name = "Read",
     fun = function(file_path, offset = NULL, limit = NULL, `_intent` = NULL) {
-      r <- .safe_normalize_path(file_path)
+      r <- .safe_normalize_path(file_path, root = cwd)
       if (!is.null(r$error)) return(r$error)
       path <- r$path
       tryCatch({
@@ -32,8 +34,11 @@ read_tool <- function(mode = "default", rules = list()) {
         numbered <- paste0(seq.int(start, end), "\t", selected)
         result   <- paste(numbered, collapse = "\n")
         result   <- truncate_tool_result(result, "Read")
-        ext      <- tools::file_ext(path)
-        fname    <- basename(path)
+ext      <- tools::file_ext(path)
+    # Dotfiles (e.g. .gitignore) have a misleading "gitignore" extension from
+    # tools::file_ext. Detect and treat as plain text for markdown language tags.
+    if (grepl("^\\.", basename(path))) ext <- ""
+    fname    <- basename(path)
         range_str <- if (!is.null(offset) || !is.null(limit))
           sprintf(" (lines %d-%d)", start, end) else ""
 
@@ -83,23 +88,30 @@ read_tool <- function(mode = "default", rules = list()) {
 #' @param mode Character. Permission mode.
 #' @param rules List. Permission rules.
 #' @param ask_fn Function or NULL.
+#' @param cwd Character. Fixed base directory for relative paths.
 #' @return An `ellmer::tool()` object.
 #' @export
-write_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
+write_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
+                       cwd = getwd()) {
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
   checker <- .make_permission_checker("Write", mode, rules, ask_fn)
 
   ellmer::tool(
     name = "Write",
     fun = function(file_path, content, `_intent` = NULL) {
-      if (!checker(list(file_path = file_path))) {
+      r <- .safe_normalize_path(
+        file_path, allow_missing = TRUE, root = cwd)
+      if (!is.null(r$error)) return(r$error)
+      path <- r$path
+      if (!checker(list(file_path = path))) {
         ellmer::tool_reject(paste0("Permission denied for Write: ", file_path))
       }
       tryCatch({
-        dir.create(dirname(file_path), showWarnings = FALSE, recursive = TRUE)
-        existed <- file.exists(file_path)
-        writeLines(content, file_path)
+        dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
+        existed <- file.exists(path)
+        writeLines(content, path)
         verb  <- if (existed) "Updated" else "Created"
-        fname <- basename(file_path)
+        fname <- basename(path)
         .artifact_tool_result(
           paste0(verb, ": ", file_path),
           kind    = "diff",
@@ -141,20 +153,23 @@ write_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
 #' @param mode Character. Permission mode.
 #' @param rules List. Permission rules.
 #' @param ask_fn Function or NULL.
+#' @param cwd Character. Fixed base directory for relative paths.
 #' @return An `ellmer::tool()` object.
 #' @export
-edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
+edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
+                      cwd = getwd()) {
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
   checker <- .make_permission_checker("Edit", mode, rules, ask_fn)
 
   ellmer::tool(
     name = "Edit",
     fun = function(file_path, old_string, new_string, replace_all = FALSE, `_intent` = NULL) {
-      if (!checker(list(file_path = file_path))) {
-        ellmer::tool_reject(paste0("Permission denied for Edit: ", file_path))
-      }
-      r <- .safe_normalize_path(file_path)
+      r <- .safe_normalize_path(file_path, root = cwd)
       if (!is.null(r$error)) return(r$error)
       path <- r$path
+      if (!checker(list(file_path = path))) {
+        ellmer::tool_reject(paste0("Permission denied for Edit: ", file_path))
+      }
       tryCatch({
         content <- paste(readLines(path, warn = FALSE), collapse = "\n")
         # Uniqueness check (unless replace_all)
@@ -207,7 +222,7 @@ edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
     annotations = ellmer::tool_annotations(
       title            = "Edit",
       read_only_hint   = FALSE,
-      destructive_hint = FALSE
+      destructive_hint = TRUE
     )
   )
 }
@@ -224,20 +239,23 @@ edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
 #' @param mode Character. Permission mode.
 #' @param rules List. Permission rules.
 #' @param ask_fn Function or NULL.
+#' @param cwd Character. Fixed base directory for relative paths.
 #' @return An `ellmer::tool()` object.
 #' @export
-multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
+multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
+                            cwd = getwd()) {
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
   checker <- .make_permission_checker("MultiEdit", mode, rules, ask_fn)
 
   ellmer::tool(
     name = "MultiEdit",
     fun = function(file_path, edits, `_intent` = NULL) {
-      if (!checker(list(file_path = file_path))) {
-        ellmer::tool_reject(paste0("Permission denied for MultiEdit: ", file_path))
-      }
-      r <- .safe_normalize_path(file_path)
+      r <- .safe_normalize_path(file_path, root = cwd)
       if (!is.null(r$error)) return(r$error)
       path <- r$path
+      if (!checker(list(file_path = path))) {
+        ellmer::tool_reject(paste0("Permission denied for MultiEdit: ", file_path))
+      }
       tryCatch({
         content <- paste(readLines(path, warn = FALSE), collapse = "\n")
         orig_content <- content
@@ -297,7 +315,7 @@ multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
     annotations = ellmer::tool_annotations(
       title            = "MultiEdit",
       read_only_hint   = FALSE,
-      destructive_hint = FALSE
+      destructive_hint = TRUE
     )
   )
 }
@@ -338,4 +356,3 @@ multi_edit_tool <- function(mode = "default", rules = list(), ask_fn = NULL) {
     all_files[grepl(rx, rel_paths)]
   }
 }
-

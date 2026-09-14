@@ -89,6 +89,22 @@ NULL
   identical(px, py)
 }
 
+.stop_model_rollback_failure <- function(message) {
+  condition <- structure(
+    list(message = message, call = NULL),
+    class = c("codeagent_model_rollback_failure", "error", "condition"))
+  stop(condition)
+}
+
+.model_state_matches <- function(chat, provider, model) {
+  tryCatch({
+    current_provider <- chat$get_provider()
+    current_model <- chat$get_model_object()
+    .provider_configuration_equal(provider, current_provider) &&
+      .model_configuration_equal(model, current_model, include_name = TRUE)
+  }, error = function(e) FALSE)
+}
+
 #' Swap only a Chat's model name in place (strict Route A)
 #'
 #' Route A is allowed only when provider configuration is unchanged and the
@@ -100,30 +116,119 @@ NULL
 #' @return Logical. `TRUE` only after the post-switch state is verified.
 #' @keywords internal
 .swap_provider <- function(chat, new_chat) {
-  tryCatch({
-    old_provider <- chat$get_provider()
-    new_provider <- new_chat$get_provider()
-    old_model <- chat$get_model_object()
-    new_model <- new_chat$get_model_object()
-    old_name <- old_model@name
+  snapshot <- tryCatch(list(
+    provider = chat$get_provider(),
+    model = chat$get_model_object(),
+    new_provider = new_chat$get_provider(),
+    new_model = new_chat$get_model_object()),
+    error = function(e) NULL)
+  if (is.null(snapshot)) return(FALSE)
+  old_provider <- snapshot$provider
+  old_model <- snapshot$model
+  new_provider <- snapshot$new_provider
+  new_model <- snapshot$new_model
+  old_name <- old_model@name
 
-    if (!.provider_configuration_equal(old_provider, new_provider) ||
-        !.model_configuration_equal(old_model, new_model, include_name = FALSE) ||
-        !is.function(tryCatch(chat$set_model, error = function(e) NULL)))
-      return(FALSE)
+  if (!.provider_configuration_equal(old_provider, new_provider) ||
+      !.model_configuration_equal(old_model, new_model, include_name = FALSE) ||
+      !is.function(tryCatch(chat$set_model, error = function(e) NULL)))
+    return(FALSE)
 
+  switched <- tryCatch({
     chat$set_model(new_model@name)
     after_provider <- chat$get_provider()
     after_model <- chat$get_model_object()
-    ok <- .provider_configuration_equal(old_provider, after_provider) &&
+    .provider_configuration_equal(old_provider, after_provider) &&
       identical(after_model@name, new_model@name) &&
       .model_configuration_equal(old_model, after_model, include_name = FALSE)
-    if (!isTRUE(ok)) {
-      tryCatch(chat$set_model(old_name), error = function(e) NULL)
-      return(FALSE)
-    }
-    TRUE
   }, error = function(e) FALSE)
+  if (isTRUE(switched)) return(TRUE)
+
+  restored <- tryCatch({
+    chat$set_model(old_name)
+    restored_provider <- chat$get_provider()
+    restored_model <- chat$get_model_object()
+    .provider_configuration_equal(old_provider, restored_provider) &&
+      identical(restored_model@name, old_name) &&
+      .model_configuration_equal(old_model, restored_model, include_name = TRUE)
+  }, error = function(e) FALSE)
+  if (!isTRUE(restored))
+    .stop_model_rollback_failure(paste0(
+      "in-place model switch failed and model rollback also failed; ",
+      "restart the session."))
+  FALSE
+}
+
+.refresh_model_bound_tools <- function(chat, settings, shield = NULL) {
+  old_prompt <- tryCatch(
+    chat$get_system_prompt(),
+    error = function(e)
+      stop("model refresh could not snapshot the current system prompt (fail-closed).",
+           call. = FALSE))
+  settings$model <- chat$get_model_object()@name
+  if (is.null(settings$worker_backend)) {
+    err <- tryCatch({
+      .sync_delegation_prompt(chat, settings, settings$cwd %||% getwd())
+      NULL
+    }, error = identity)
+    if (inherits(err, "error")) {
+      prompt_restored <- tryCatch({
+        chat$set_system_prompt(old_prompt)
+        identical(chat$get_system_prompt(), old_prompt)
+      }, error = function(e) FALSE)
+      if (!isTRUE(prompt_restored))
+        .stop_model_rollback_failure(paste0(
+          "model refresh failed and prompt rollback also failed; restart the ",
+          "session. Original error: ", conditionMessage(err)))
+      stop(err)
+    }
+    return(settings)
+  }
+  settings$worker_backend$model <- settings$model
+  old_tools <- chat$get_tools()
+  gate <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
+  old_gate <- if (is.null(gate)) NULL else list(
+    policy = gate$policy,
+    mode_env = gate$mode_env,
+    mode = gate$mode_env$mode,
+    rules = gate$rules,
+    ask_fn = gate$ask_fn,
+    hooks = gate$hooks,
+    data_shield = gate$data_shield,
+    cwd = gate$cwd
+  )
+  ask_fn <- settings$shiny_ask_fn %||%
+    if (interactive()) .console_ask_fn else NULL
+  tryCatch({
+    .register_all_tools(chat, settings, ask_fn = ask_fn)
+    if (inherits(shield, "DataShield")) shield$install(chat)
+  }, error = function(e) {
+    tools_restored <- tryCatch({
+      chat$set_tools(old_tools)
+      identical(chat$get_tools(), old_tools)
+    }, error = function(restore_error) FALSE)
+    prompt_restored <- tryCatch({
+      chat$set_system_prompt(old_prompt)
+      identical(chat$get_system_prompt(), old_prompt)
+    }, error = function(restore_error) FALSE)
+    if (!is.null(gate) && !is.null(old_gate)) {
+      gate$policy <- old_gate$policy
+      gate$mode_env <- old_gate$mode_env
+      gate$mode_env$mode <- old_gate$mode
+      gate$rules <- old_gate$rules
+      gate$ask_fn <- old_gate$ask_fn
+      gate$hooks <- old_gate$hooks
+      gate$data_shield <- old_gate$data_shield
+      gate$cwd <- old_gate$cwd
+    }
+    if (!isTRUE(tools_restored) || !isTRUE(prompt_restored))
+      .stop_model_rollback_failure(paste0(
+        "model refresh failed and rollback also failed (tools=",
+        tools_restored, ", prompt=", prompt_restored,
+        "); restart the session. Original error: ", conditionMessage(e)))
+    stop(e)
+  })
+  settings
 }
 
 # Rebuild around a fresh Chat without reloading settings or re-merging rules.
@@ -137,11 +242,17 @@ NULL
 
   settings <- client$settings
   settings$model <- new_chat$get_model_object()@name
+  # Route B may change provider configuration. Without a serializable,
+  # verified reconstruction descriptor, process delegates must fail closed;
+  # the clone-based foreground Agent remains available.
+  settings$worker_backend <- NULL
+  settings$process_delegation_available <- FALSE
   shield <- client$data_shield
   ask_fn <- if (interactive()) .console_ask_fn else NULL
 
   .register_all_tools(new_chat, settings, ask_fn = ask_fn)
   tryCatch(.mcp_autoconnect(new_chat, settings), error = function(e) NULL)
+  .sync_delegation_prompt(new_chat, settings, settings$cwd %||% getwd())
   if (inherits(shield, "DataShield")) {
     .bind_data_shield_reviewer_factory(shield, new_chat, settings,
                                        settings$cwd %||% getwd())
@@ -166,12 +277,42 @@ NULL
   if (inherits(new_chat, "error"))
     return(list(ok = FALSE, type = "error",
                 message = paste0("Model switch failed: ", conditionMessage(new_chat))))
-  if (!.swap_provider(chat, new_chat))
-    return(list(ok = FALSE, type = "warning",
+  old_provider <- chat$get_provider()
+  old_model <- chat$get_model_object()
+  old_name <- old_model@name
+  swapped <- tryCatch(.swap_provider(chat, new_chat), error = identity)
+  if (inherits(swapped, "codeagent_model_rollback_failure"))
+    return(list(ok = FALSE, fatal = TRUE, type = "error",
+                message = conditionMessage(swapped)))
+  if (!isTRUE(swapped))
+    return(list(ok = FALSE, fatal = FALSE, type = "warning",
                 message = paste0("This model requires a new provider/configuration. ",
                                  "Start a new session or app to switch to ", model, ".")))
+  refreshed <- tryCatch(
+    .refresh_model_bound_tools(
+      chat, settings, settings$data_shield_engine %||% NULL),
+    error = identity)
+  if (inherits(refreshed, "error")) {
+    refresh_fatal <- inherits(refreshed, "codeagent_model_rollback_failure")
+    model_restored <- tryCatch({
+      chat$set_model(old_name)
+      .model_state_matches(chat, old_provider, old_model)
+    }, error = function(e) FALSE)
+    if (!isTRUE(model_restored))
+      return(list(ok = FALSE, fatal = TRUE, type = "error",
+                  message = paste0(
+                    "Model switch and rollback both failed; restart this session. ",
+                    "Original error: ", conditionMessage(refreshed))))
+    if (isTRUE(refresh_fatal))
+      return(list(ok = FALSE, fatal = TRUE, type = "error",
+                  message = conditionMessage(refreshed)))
+    return(list(ok = FALSE, fatal = FALSE, type = "error",
+                message = paste0("Model switch failed: ",
+                                 conditionMessage(refreshed))))
+  }
   resolved <- chat$get_model_object()@name
   list(ok = TRUE, type = "success", model = resolved,
+       worker_backend = refreshed$worker_backend,
        message = sprintf("Switched to %s -- history preserved.", resolved))
 }
 
@@ -198,8 +339,29 @@ switch_model <- function(client, model) {
   new_model <- tryCatch(new_chat$get_model(), error = function(e) model)
 
   # Route A: in-place provider swap (Chat identity preserved).
+  old_provider <- client$chat$get_provider()
+  old_model <- client$chat$get_model_object()
+  old_name <- old_model@name
+  old_settings <- client$settings
   if (.swap_provider(client$chat, new_chat)) {
-    client$settings$model <- new_model
+    refreshed <- tryCatch({
+      client$settings$model <- new_model
+      .refresh_model_bound_tools(
+        client$chat, client$settings, client$data_shield)
+    }, error = identity)
+    if (inherits(refreshed, "error")) {
+      model_restored <- tryCatch({
+        client$chat$set_model(old_name)
+        .model_state_matches(client$chat, old_provider, old_model)
+      }, error = function(e) FALSE)
+      client$settings <- old_settings
+      if (!isTRUE(model_restored))
+        .stop_model_rollback_failure(paste0(
+          "model switch and rollback both failed; restart the session. ",
+          "Original error: ", conditionMessage(refreshed)))
+      stop(refreshed)
+    }
+    client$settings <- refreshed
     return(client)
   }
 

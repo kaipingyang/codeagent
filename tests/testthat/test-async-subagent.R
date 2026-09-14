@@ -35,6 +35,50 @@ test_that("register_agent_tool accepts the async flag", {
   expect_true("async" %in% names(formals(agent_tool)))
 })
 
+test_that("register_agent_tool builds its default context from cwd", {
+  root <- withr::local_tempdir()
+  other <- withr::local_tempdir()
+  chat <- ellmer::chat_openai_compatible(
+    base_url = "http://x", model = "m", credentials = function() "k")
+  observed <- NULL
+  testthat::local_mocked_bindings(
+    agent_tool = function(..., security_context = NULL) {
+      observed <<- security_context$cwd
+      ellmer::tool(function(description, prompt) "ok", name = "Agent",
+        description = "fixture", arguments = list(
+          description = ellmer::type_string("description"),
+          prompt = ellmer::type_string("prompt")))
+    },
+    .package = "codeagent"
+  )
+  withr::with_dir(other, register_agent_tool(chat, cwd = root))
+  expect_identical(observed, codeagent:::.canonical_security_path(root))
+})
+
+test_that("Agent forwards the parent approval callback to its child gate", {
+  root <- withr::local_tempdir()
+  sub_chat <- ellmer::chat_openai_compatible(
+    base_url = "http://x", model = "m", credentials = function() "k")
+  ask <- function(name, input) TRUE
+  observed <- NULL
+  testthat::local_mocked_bindings(
+    .register_all_tools = function(chat, settings, ask_fn = NULL, ...) {
+      observed <<- ask_fn
+      invisible(chat)
+    },
+    .run_subagent_loop = function(...) "done",
+    .package = "codeagent"
+  )
+  out <- agent_tool(
+    parent_chat = sub_chat,
+    ask_fn = ask,
+    security_context = codeagent:::.worker_security_context(
+      cwd = root, allowed_tools = character())
+  )(description = "approval", prompt = "noop")
+  expect_identical(out, "done")
+  expect_identical(observed, ask)
+})
+
 
 test_that("Agent sub-chat inherits DataShield before its first tool loop", {
   shield <- DataShield$new(strategies=list(shield_describe(), shield_egress(max_rows=0)))
@@ -47,7 +91,7 @@ test_that("Agent sub-chat inherits DataShield before its first tool loop", {
 
   testthat::local_mocked_bindings(
     .make_chat = function(...) sub_chat,
-    register_builtin_tools = function(chat, ...) {
+    .register_all_tools = function(chat, ...) {
       chat$register_tool(ellmer::tool(
         function() "selected CHILD007", name="LeakChild",
         description="d", arguments=list()))
@@ -88,7 +132,7 @@ test_that("async Agent uses the same shielded sub-chat setup", {
     base_url="http://x", model="m", credentials=function() "k")
   testthat::local_mocked_bindings(
     .make_chat = function(...) sub_chat,
-    register_builtin_tools = function(chat, ...) {
+    .register_all_tools = function(chat, ...) {
       chat$register_tool(ellmer::tool(function() mtcars, name="DumpChild",
                                       description="d", arguments=list()))
       invisible(chat)
@@ -104,5 +148,8 @@ test_that("async Agent uses the same shielded sub-chat setup", {
     tryCatch(S7::prop(tool,"name"),error=function(e)""), character(1))
   expect_true("DescribeData" %in% names_now)
   dump <- sub_chat$get_tools()[[which(names_now == "DumpChild")]]
-  expect_match(dump(), "tabular output withheld")
+  dumped <- dump()
+  dumped <- if (S7::S7_inherits(dumped, ellmer::ContentToolResult))
+    as.character(dumped@value) else as.character(dumped)
+  expect_match(dumped, "tabular output withheld")
 })

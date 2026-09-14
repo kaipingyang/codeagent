@@ -20,7 +20,13 @@ enter_plan_mode_tool <- function(mode_env) {
     name = "EnterPlanMode",
     fun = function(reason = NULL) {
       prev <- mode_env$mode %||% "default"
-      mode_env$prev <- prev
+      # Only a real transition from another mode creates an exit capability.
+      # Calling EnterPlanMode while the client already starts in plan mode must
+      # not let the model unlock that user-selected read-only boundary.
+      if (!identical(mode_env$mode, "plan")) {
+        mode_env$prev <- prev
+        mode_env$plan_exit_allowed <- TRUE
+      }
       mode_env$mode <- "plan"
       msg <- paste0(
         "Entered plan mode (read-only). Write, edit, and shell tools are now ",
@@ -57,10 +63,19 @@ exit_plan_mode_tool <- function(mode_env) {
   ellmer::tool(
     name = "ExitPlanMode",
     fun = function() {
+      if (!isTRUE(mode_env$plan_exit_allowed)) {
+        msg <- paste0(
+          "Cannot exit plan mode: this session started in its user-selected ",
+          "read-only mode rather than entering plan mode during the session.")
+        return(.artifact_tool_result(
+          msg, kind = "error", icon = "lock",
+          title = "Plan mode: exit denied", payload = list(message = msg)))
+      }
       restored <- mode_env$prev %||% "default"
-      # Never restore back into "plan" (would be a no-op trap).
       if (identical(restored, "plan")) restored <- "default"
       mode_env$mode <- restored
+      mode_env$prev <- NULL
+      mode_env$plan_exit_allowed <- FALSE
       msg <- paste0("Exited plan mode. Permission mode restored to '",
                     restored, "'. Write/edit/shell tools are available again.")
       .artifact_tool_result(msg, kind = "text", icon = "check",

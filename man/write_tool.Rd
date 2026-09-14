@@ -4,7 +4,7 @@
 \alias{write_tool}
 \title{Create the Write tool}
 \usage{
-write_tool(mode = "default", rules = list(), ask_fn = NULL)
+write_tool(mode = "default", rules = list(), ask_fn = NULL, cwd = getwd())
 }
 \arguments{
 \item{mode}{Character. Permission mode.}
@@ -12,6 +12,8 @@ write_tool(mode = "default", rules = list(), ask_fn = NULL)
 \item{rules}{List. Permission rules.}
 
 \item{ask_fn}{Function or NULL.}
+
+\item{cwd}{Character. Fixed base directory for relative paths.}
 }
 \value{
 An \code{ellmer::tool()} object.

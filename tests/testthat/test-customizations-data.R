@@ -8,7 +8,8 @@ test_that(".extract_yaml_field parses quoted + unquoted values", {
 })
 
 test_that(".load_agents discovers .md agents and parses front matter", {
-  withr::local_envvar(HOME = withr::local_tempdir())   # isolate ~/.claude/agents
+  home <- withr::local_tempdir()
+  withr::local_envvar(HOME = home)
   cwd <- withr::local_tempdir()
   d   <- file.path(cwd, ".claude", "agents")
   dir.create(d, recursive = TRUE, showWarnings = FALSE)
@@ -17,7 +18,7 @@ test_that(".load_agents discovers .md agents and parses front matter", {
   writeLines(c("---", "description: A planner", "---"),
              file.path(d, "planner.md"))
 
-  agents <- codeagent:::.load_agents(cwd)
+  agents <- codeagent:::.load_agents(cwd, user_home = home)
   expect_length(agents, 2L)
   names <- vapply(agents, function(a) a$name, character(1))
   expect_setequal(names, c("reviewer", "planner"))
@@ -45,7 +46,7 @@ test_that(".load_agents follows btw project and user agent directories", {
              file.path(cwd, ".btw", "agent-legacy.md"))
   writeLines("client: anthropic", file.path(cwd, ".btw", "btw.md"))
 
-  agents <- codeagent:::.load_agents(cwd)
+  agents <- codeagent:::.load_agents(cwd, user_home = home)
   expect_setequal(
     vapply(agents, function(agent) agent$name, character(1)),
     c("project-reviewer", "user-planner", "legacy-agent")
@@ -53,9 +54,10 @@ test_that(".load_agents follows btw project and user agent directories", {
   expect_false(any(vapply(agents, function(agent) identical(agent$name, "btw"), logical(1))))
 })
 test_that(".load_agents returns empty when no agent dirs exist", {
-  withr::local_envvar(HOME = withr::local_tempdir())   # isolate ~/.claude/agents
+  home <- withr::local_tempdir()
+  withr::local_envvar(HOME = home)
   cwd <- withr::local_tempdir()
-  expect_equal(codeagent:::.load_agents(cwd), list())
+  expect_equal(codeagent:::.load_agents(cwd, user_home = home), list())
 })
 
 test_that(".load_mcp_servers reads mcp.json into server records", {

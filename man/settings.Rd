@@ -6,9 +6,10 @@
 \description{
 Configuration loading for codeagent.
 Priority (highest to lowest): environment variables >
-\verb{~/.codeagent/settings.json} > \code{.codeagent/settings.json} > CLAUDE.md.
+trusted user settings > non-sensitive project settings > CLAUDE.md.
 
-The \code{env} block in settings.json is applied via \code{Sys.setenv()} before the
-environment-variable layer is read, so it works even under \code{Rscript --vanilla} (which skips \code{.Renviron}). This mirrors Claude Code's behaviour.
+Only the user-level \code{env} block is applied via \code{Sys.setenv()}. Repository
+settings cannot change credentials, endpoints, permissions, hooks, sandbox
+policy, or the registered tool set.
 }
 \keyword{internal}

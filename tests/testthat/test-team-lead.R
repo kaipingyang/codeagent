@@ -74,3 +74,8 @@ test_that(".lead_should_continue stops on max_rounds / done / empty plan", {
   expect_false(codeagent:::.lead_should_continue(1L, 3L, list(done = FALSE, plan = list(tasks = character(0)))))
   expect_true (codeagent:::.lead_should_continue(1L, 3L, list(done = FALSE, plan = list(tasks = "x"))))
 })
+
+
+test_that("team_lead defaults workers to dont_ask", {
+  expect_identical(formals(team_lead)$permission_mode, "dont_ask")
+})

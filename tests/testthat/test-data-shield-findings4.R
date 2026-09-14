@@ -166,6 +166,20 @@ test_that("#9 agent_loop uses the guarded input gate (fail-closed on scan error)
   expect_false(bare)
 })
 
+test_that("#8 AuditCode isolated reader times out on a swapped FIFO", {
+  skip_on_os("windows")
+  if (nchar(Sys.which("mkfifo")) == 0L) skip("mkfifo unavailable")
+  d <- withr::local_tempdir()
+  fifo <- file.path(d, "swapped.R")
+  system2("mkfifo", shQuote(fifo))
+  started <- proc.time()[["elapsed"]]
+  expect_error(
+    codeagent:::.audit_read_bounded(fifo, 1000L, timeout_ms = 500),
+    "timeout|timed out|failed",
+    ignore.case = TRUE)
+  expect_lt(proc.time()[["elapsed"]] - started, 5)
+})
+
 test_that("#8 AuditCode max_files=NA does not error (coerced to safe default)", {
   sh <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
   d <- file.path(tempdir(), paste0("kiromf", as.integer(Sys.time()) %% 100000))

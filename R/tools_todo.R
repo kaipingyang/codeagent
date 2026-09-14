@@ -45,12 +45,15 @@ NULL
   paste0(paste(lines, collapse = "\n"), "\n")
 }
 
-# Coerce the tool's `todos` argument (which arrives from ellmer as a list of
-# lists, or a data.frame, depending on the backend) into a clean list of items.
+# Coerce the tool's `todos` argument into a clean list of items.
+# ellmer deserialises JSON arrays into list() objects, never data.frame,
+# so the data.frame branch is a defensive fallback only.
 .coerce_todos <- function(todos) {
   if (is.null(todos)) return(list())
   if (is.data.frame(todos)) {
-    return(lapply(seq_len(nrow(todos)), function(i) as.list(todos[i, , drop = FALSE])))
+    # data.frame row is defensive — unlikely to be hit but handle correctly.
+    return(lapply(seq_len(nrow(todos)), function(i)
+      as.list(todos[i, , drop = FALSE])))
   }
   if (is.list(todos)) return(todos)
   list()

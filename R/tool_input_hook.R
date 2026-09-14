@@ -15,6 +15,37 @@
 #' @keywords internal
 NULL
 
+.wrap_tool_canonical_paths <- function(tool, cwd) {
+  name <- tryCatch(as.character(tool@name), error = function(e) "")
+  meta <- .tool_metadata(name)
+  if (!length(meta$path_args %||% character()) && !isTRUE(meta$cwd_bound))
+    return(tool)
+  original <- tryCatch(S7::S7_data(tool), error = function(e) NULL)
+  if (!is.function(original)) return(tool)
+  cwd <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
+  body <- quote({
+    args <- .canonicalize_permission_input(name, as.list(environment()), cwd)
+    attr(args, "permission_targets") <- NULL
+    args[[".permission_cwd"]] <- NULL
+    withr::with_dir(cwd, do.call(original, args))
+  })
+  wrapped <- rlang::new_function(formals(original), body, environment())
+  assign(".codeagent_path_original", original, environment(wrapped))
+  S7::S7_data(tool) <- wrapped
+  tool
+}
+
+.install_tool_path_canonicalizers <- function(chat, cwd) {
+  tools <- tryCatch(chat$get_tools(), error = function(e) NULL)
+  if (is.null(tools))
+    stop("path canonicalizer install: could not read tools", call. = FALSE)
+  wrapped <- lapply(tools, .wrap_tool_canonical_paths, cwd = cwd)
+  ok <- tryCatch({ chat$set_tools(wrapped); TRUE }, error = function(e) FALSE)
+  if (!isTRUE(ok))
+    stop("path canonicalizer install: set_tools() failed", call. = FALSE)
+  invisible(chat)
+}
+
 # Wrap one ToolDef so a PreToolUse hook can rewrite its arguments or deny it.
 # Re-wrapping unwraps to the original first (no nested hook layers). No-op when
 # hooks is NULL or the tool has no underlying function.
@@ -45,7 +76,11 @@ NULL
 
   wrapped <- function(...) {
     args <- list(...)
-    r <- tryCatch(hooks$run_pre(tool_name, args), error = function(e) NULL)
+    r <- tryCatch(
+      hooks$run_pre(tool_name, args),
+      error = function(e)
+        ellmer::tool_reject(paste0(
+          "PreToolUse hook failed safely: ", conditionMessage(e))))
     if (!is.null(r)) {
       if (identical(r[["action"]], "deny"))
         return(ellmer::tool_reject(r[["message"]] %||% "Blocked by PreToolUse hook."))
@@ -76,7 +111,12 @@ NULL
          envir = environment(wrapped))
   assign(".codeagent_pre_hook_original", original,
          envir = environment(wrapped))
-  tryCatch({ S7::S7_data(tool) <- wrapped }, error = function(e) NULL)
+  ok <- tryCatch({ S7::S7_data(tool) <- wrapped; TRUE },
+                 error = function(e) FALSE)
+  if (!isTRUE(ok))
+    stop("PreToolUse hook wrapping failed for tool '", tool_name,
+         "': input rewrite/re-check is not active (fail-closed).",
+         call. = FALSE)
   tool
 }
 
@@ -88,11 +128,16 @@ NULL
 #' @keywords internal
 .install_tool_input_hooks <- function(chat, hooks) {
   if (is.null(hooks)) return(invisible(chat))
-  tools <- tryCatch(chat$get_tools(), error = function(e) list())
+  tools <- tryCatch(
+    chat$get_tools(),
+    error = function(e)
+      stop("tool-input-hook install: get_tools() failed; refusing to continue ",
+           "with an unknown tool set (fail-closed).", call. = FALSE)
+  )
   if (!length(tools)) return(invisible(chat))
   recheck_fn <- function(name, input) {
     ctx <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
-    if (is.null(ctx)) return("allow")            # no gate installed -> nothing to enforce
+    if (is.null(ctx)) return(list(action = "allow", input = input))
     .gate_recheck(ctx, name, input)
   }
   wrapped <- lapply(tools, function(t) .wrap_tool_pre_hook(t, hooks, recheck_fn))

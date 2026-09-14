@@ -28,8 +28,8 @@ NULL
   "1. [suggested follow-up 1]\n",
   "2. [suggested follow-up 2]\n",
   "3. [suggested follow-up 3]\n\n",
-  "Always use `ExploreData` rather than `RunR` for data queries -- it is ",
-  "read-only and cannot modify your data.\n",
+  "Use `ExploreData` rather than `RunR` for data queries, but treat it as ",
+  "arbitrary R execution: its child environment is not a security boundary.\n",
   "When the user types `/report`, call `generate_wear_report()` to export ",
   "the session to a Quarto document."
 )
@@ -50,11 +50,11 @@ NULL
 #' | No data registered by default | `data=` argument registers named data.frames |
 #' | No `GenerateReport` tool | `/report` exports session to `.qmd` |
 #' | No WEAR system prompt | Agent instructed to end each turn with **Next steps** |
-#' | General-purpose tools | `ExploreData` tool added (read-only, sandboxed) |
+#' | General-purpose tools | `ExploreData` rebound to `data`; arbitrary R execution remains exec-gated |
 #'
-#' The `ExploreData` and `GenerateReport` tools are **not** registered in the
-#' standard agent loop (`codeagent_app()`) -- use `wear_explore()` to enter
-#' exploration mode explicitly.
+#' Standard clients register `ExploreData` by default. `wear_explore()` replaces
+#' that registration with one bound to its supplied data environment and adds
+#' `GenerateReport`; neither path makes model-generated R code a sandbox.
 #'
 #' @param data Named list, environment, or `NULL`. Data.frames to make
 #'   available for exploration. If `NULL`, uses objects in `.GlobalEnv`.
@@ -88,16 +88,48 @@ wear_explore <- function(data = NULL, client = NULL, mode = c("repl", "shiny"), 
   mode <- match.arg(mode)
 
   # Build or augment the client
-  if (is.null(client)) client <- codeagent_client(permission_mode = "bypass")
+  if (is.null(client)) client <- codeagent_client(permission_mode = "default")
 
   # Register ExploreData with the provided data sources
   envir <- if (is.null(data)) .GlobalEnv
            else if (is.environment(data)) data
            else list2env(as.list(data), parent = .GlobalEnv)
-  register_explore_data_tool(client$chat, envir = envir)
-
-  # Register the /report command as a WEAR report generator
-  register_wear_report_tool(client$chat)
+  # Runtime replacement is prepared before commit through the same wrapper
+  # pipeline as dynamic Shiny tool groups. This preserves canonical paths,
+  # result normalization, PreToolUse/re-check, and Data Shield egress together.
+  old_tools <- tryCatch(
+    client$chat$get_tools(),
+    error = function(e) stop("WEAR setup could not read the current tool set.",
+                             call. = FALSE))
+  old_names <- .tool_names(old_tools)
+  preserved <- old_tools[!old_names %in% c("ExploreData", "GenerateReport")]
+  runtime_settings <- client$settings %||% list()
+  runtime_settings$cwd <- runtime_settings$cwd %||% getwd()
+  setup_error <- tryCatch({
+    additions <- list(explore_data_tool(envir), wear_report_tool(client$chat))
+    additions <- lapply(
+      additions, .wrap_tool_canonical_paths, cwd = runtime_settings$cwd)
+    additions <- .prepare_refreshed_tools(
+      additions, client$chat, runtime_settings)
+    target <- c(preserved, additions)
+    target_names <- .tool_names(target)
+    if (any(!nzchar(target_names)) || anyDuplicated(target_names))
+      stop("WEAR setup produced invalid or duplicate tool names.")
+    client$chat$set_tools(target)
+    if (!identical(.tool_names(client$chat$get_tools()), target_names))
+      stop("WEAR tool replacement did not take effect.")
+    NULL
+  }, error = identity)
+  if (inherits(setup_error, "error")) {
+    restored <- tryCatch({
+      client$chat$set_tools(old_tools)
+      identical(client$chat$get_tools(), old_tools)
+    }, error = function(e) FALSE)
+    if (!isTRUE(restored))
+      stop("WEAR tool setup and rollback both failed; refusing to continue.",
+           call. = FALSE)
+    stop(setup_error)
+  }
 
   # Inject WEAR system prompt hint into the chat
   current_sp <- tryCatch(client$chat$get_system_prompt(), error = function(e) "")
@@ -228,18 +260,16 @@ generate_wear_report <- function(client,
 # WEAR report tool (registers /report as an agent-callable tool)
 # ---------------------------------------------------------------------------
 
-#' Register the WEAR report generation tool on a Chat
-#' @param chat An `ellmer::Chat` object.
-#' @return Invisibly `chat`.
+#' Create the WEAR report generation tool
+#' @param chat An `ellmer::Chat` object captured for its live turns.
+#' @return An `ellmer::ToolDef`.
 #' @keywords internal
-register_wear_report_tool <- function(chat) {
-  # The tool captures the chat by reference so it can read turns at call time
+wear_report_tool <- function(chat) {
   force(chat)
-  t <- ellmer::tool(
+  ellmer::tool(
     fun = function(title = NULL, path = NULL) {
       out_path <- path %||%
         paste0("exploration-", format(Sys.Date(), "%Y%m%d"), ".qmd")
-      # Build a mock client-like object the report generator can use
       fake_client <- list(chat = chat)
       class(fake_client) <- "CodeagentClient"
       tryCatch(
@@ -260,6 +290,13 @@ register_wear_report_tool <- function(chat) {
     annotations = ellmer::tool_annotations(
       title = "GenerateReport", read_only_hint = FALSE)
   )
-  chat$register_tool(t)
+}
+
+#' Register the WEAR report generation tool on a Chat
+#' @param chat An `ellmer::Chat` object.
+#' @return Invisibly `chat`.
+#' @keywords internal
+register_wear_report_tool <- function(chat) {
+  chat$register_tool(wear_report_tool(chat))
   invisible(chat)
 }

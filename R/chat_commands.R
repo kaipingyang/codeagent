@@ -29,7 +29,8 @@ NULL
 .chat_command_result <- function(name, args = "",
                                   n_tokens = 0L, model_limit = 200000L,
                                   n_turns = 0L, sessions = list(),
-                                  data_shield = NULL) {
+                                  data_shield = NULL,
+                                  security_context = NULL) {
   name <- name %||% ""
   args <- args %||% ""
 
@@ -65,7 +66,8 @@ NULL
     sessions = list(action = "append",
                     feedback = .format_sessions_feedback(sessions)),
 
-    bg = list(action = "append", feedback = .bg_slash_spawn(args, data_shield)),
+    bg = list(action = "append", feedback = .bg_slash_spawn(
+      args, data_shield, security_context)),
 
     bgstatus = list(action = "append", feedback = .bg_status_text()),
 

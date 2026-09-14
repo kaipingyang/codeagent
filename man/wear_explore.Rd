@@ -35,13 +35,13 @@ exploration mode} -- it is separate from a normal \code{codeagent_app()} or
    No data registered by default \tab \verb{data=} argument registers named data.frames \cr
    No \code{GenerateReport} tool \tab \verb{/report} exports session to \code{.qmd} \cr
    No WEAR system prompt \tab Agent instructed to end each turn with \strong{Next steps} \cr
-   General-purpose tools \tab \code{ExploreData} tool added (read-only, sandboxed) \cr
+   General-purpose tools \tab \code{ExploreData} rebound to \code{data}; arbitrary R execution remains exec-gated \cr
 }
 
 
-The \code{ExploreData} and \code{GenerateReport} tools are \strong{not} registered in the
-standard agent loop (\code{codeagent_app()}) -- use \code{wear_explore()} to enter
-exploration mode explicitly.
+Standard clients register \code{ExploreData} by default. \code{wear_explore()} replaces
+that registration with one bound to its supplied data environment and adds
+\code{GenerateReport}; neither path makes model-generated R code a sandbox.
 }
 \examples{
 \dontrun{

@@ -310,20 +310,7 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
 }
 
 .data_shield_resolve_path <- function(path, project_root) {
-  absolute <- grepl("^/|^[A-Za-z]:[/\\\\]", path)
-  candidate <- if (absolute) path else file.path(project_root,path)
-  candidate <- path.expand(candidate)
-  if (file.exists(candidate) || dir.exists(candidate))
-    return(normalizePath(candidate,winslash="/",mustWork=TRUE))
-  # Resolve the nearest existing ancestor so symlinked parents cannot escape.
-  tail <- character(); cur <- candidate
-  while (!file.exists(cur) && !dir.exists(cur)) {
-    parent <- dirname(cur); tail <- c(basename(cur),tail)
-    if (identical(parent,cur)) break
-    cur <- parent
-  }
-  base <- normalizePath(cur,winslash="/",mustWork=TRUE)
-  normalizePath(do.call(file.path,as.list(c(base,tail))),winslash="/",mustWork=FALSE)
+  .canonical_security_path(path, project_root, allow_missing = TRUE)
 }
 
 .data_shield_path_under <- function(path, root) {
@@ -336,14 +323,42 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
     !identical(config$backend,"policy")
   fallback_reason <- if (fallback)
     "full OS sandbox adapter unavailable; using portable policy containment" else NULL
-  if (identical(config$resolved_backend,"unavailable-block") && capability %in% c("exec","net"))
-    return(list(action="block",reason="required OS sandbox is unavailable",paths=character(),fallback=FALSE))
-  if (!isTRUE(config$process_exec) && identical(capability,"exec"))
-    return(list(action="block",reason="process execution disabled by sandbox policy",paths=character(),fallback=fallback,fallback_reason=fallback_reason))
-  if (identical(config$network,"deny") && identical(capability,"net"))
-    return(list(action="block",reason="network disabled by sandbox policy",paths=character(),fallback=fallback,fallback_reason=fallback_reason))
+  result <- function(action, reason=NULL, paths=character())
+    list(action=action,reason=reason,paths=paths,fallback=fallback,
+         fallback_reason=fallback_reason)
+
+  if (identical(config$resolved_backend,"unavailable-block") &&
+      capability %in% c("exec","net"))
+    return(result("block","required OS sandbox is unavailable"))
+
   paths <- .data_shield_extract_paths(input)
-  if (!length(paths)) return(list(action="pass",paths=character(),fallback=fallback,fallback_reason=fallback_reason))
+  if (identical(tool_name,"Glob")) {
+    pattern <- input$pattern %||% ""
+    if (!.glob_pattern_is_confined(pattern))
+      return(result("block","glob pattern escapes the sandbox base",pattern))
+    paths <- unique(c(paths,input$path %||% "."))
+  }
+
+  delegated <- tool_name %in% c("Agent","AuditCode")
+  if (identical(capability,"exec") && !isTRUE(config$process_exec))
+    return(result("block","process execution disabled by sandbox policy"))
+  if (identical(config$network,"deny") && identical(capability,"net"))
+    return(result("block","network disabled by sandbox policy"))
+  if (identical(config$network,"deny") && identical(capability,"exec") &&
+      !delegated)
+    return(result("block","network-deny policy cannot confine arbitrary exec tools"))
+
+  # A portable path policy cannot confine arbitrary execution. Even tools with
+  # declared path arguments may execute project configuration (for example,
+  # lintr evaluates .lintr), child processes, network calls, or hidden paths.
+  # Only the dedicated delegated tools have their own inherited security
+  # boundary; every other exec tool requires a real OS sandbox.
+  if (identical(config$resolved_backend,"policy") &&
+      identical(capability,"exec") && !delegated)
+    return(result("block",
+      "portable policy cannot confine exec tools without a real OS sandbox"))
+
+  if (!length(paths)) return(result("pass"))
   roots <- data.frame(
     root=c(config$project_root,config$protected_paths,config$temp_root),
     mode=c(config$modes$project,rep(config$modes$protected_data,length(config$protected_paths)),config$modes$temp),
@@ -351,16 +366,19 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
   roots <- roots[order(nchar(roots$root),decreasing=TRUE),,drop=FALSE]
   required <- switch(capability,read="r",write="w",exec="x",net="r","r")
   for (given in paths) {
-    resolved <- tryCatch(.data_shield_resolve_path(given,config$project_root),error=function(e)NA_character_)
+    resolved <- tryCatch(.data_shield_resolve_path(given,config$project_root),
+                         error=function(e)NA_character_)
     if (is.na(resolved))
-      return(list(action="block",reason="sandbox could not resolve path",paths=given,fallback=fallback,fallback_reason=fallback_reason))
-    hit <- which(vapply(roots$root,function(root).data_shield_path_under(resolved,root),logical(1)))[1L]
+      return(result("block","sandbox could not resolve path",given))
+    hit <- which(vapply(roots$root,function(root)
+      .data_shield_path_under(resolved,root),logical(1)))[1L]
     if (is.na(hit))
-      return(list(action="block",reason="path is outside sandbox roots",paths=given,fallback=fallback,fallback_reason=fallback_reason))
+      return(result("block","path is outside sandbox roots",given))
     if (!grepl(required,roots$mode[[hit]],fixed=TRUE))
-      return(list(action="block",reason=paste0("sandbox root lacks '",required,"' capability"),paths=given,fallback=fallback,fallback_reason=fallback_reason))
+      return(result("block",paste0("sandbox root lacks '",required,
+                                    "' capability"),given))
   }
-  list(action="pass",paths=paths,fallback=fallback,fallback_reason=fallback_reason)
+  result("pass",paths=paths)
 }
 
 .data_shield_asset_defaults <- function(kind) {
@@ -584,18 +602,22 @@ shield_reviewer <- function(
 #' Configure portable sandbox policy
 #'
 #' @description
-#' Restrict explicit tool path arguments to project/protected/session-temp roots
-#' while preserving project `rwx` and process execution by default. This is a
-#' portable policy guard, not a kernel sandbox. `backend="auto"` currently falls
-#' back to policy because no full out-of-process OS adapter is implemented;
-#' `on_unavailable="block"` can fail closed for exec/net tools.
+#' Restrict declared tool path arguments to project/protected/session-temp roots.
+#' This is a portable policy guard, not a kernel sandbox: every non-delegated
+#' exec tool fails closed because project configuration, child processes,
+#' filesystem, or network effects cannot be bounded from path metadata alone.
+#' `backend="auto"` currently falls back to this policy because no full
+#' out-of-process OS adapter is implemented; `on_unavailable="block"` blocks all
+#' exec/net tools when the adapter is absent.
 #'
 #' @param project_root Project root (default current working directory).
 #' @param protected_paths Additional protected data roots.
 #' @param temp_root Session-specific temporary root; NULL creates one.
 #' @param modes Named list using `r`, `rw`, or `rwx` for project,
 #'   protected_data, and temp.
-#' @param process_exec Preserve exec-capability tools (default TRUE).
+#' @param process_exec Permit shield-preserving Agent/AuditCode delegation
+#'   (default TRUE). Non-delegated exec tools require a real OS backend and fail
+#'   closed under the policy backend.
 #' @param network `"tool_policy"` or `"deny"`.
 #' @param symlink_escape Currently only `"deny"`.
 #' @param backend `"policy"`, `"auto"`, or `"required"`.
@@ -2296,7 +2318,20 @@ refresh_data_shield_context <- function(client) {
          envir = environment(wrapped))
   assign(".codeagent_data_shield_original", original,
          envir = environment(wrapped))
-  tryCatch({ S7::S7_data(tool) <- wrapped }, error = function(e) NULL)
+  ok <- tryCatch({ S7::S7_data(tool) <- wrapped; TRUE },
+                 error = function(e) FALSE)
+  if (!isTRUE(ok))
+    stop("data_shield tool wrapping failed for '", tool_name,
+         "'; refusing to install an unprotected tool (fail-closed).",
+         call. = FALSE)
+  live <- tryCatch(S7::S7_data(tool), error = function(e) NULL)
+  live_env <- tryCatch(environment(live), error = function(e) NULL)
+  live_state <- attr(live, "data_shield_state") %||%
+    if (is.environment(live_env))
+      get0(".codeagent_data_shield_state", live_env, inherits = FALSE) else NULL
+  if (!identical(live_state, shield))
+    stop("data_shield tool wrapping verification failed for '", tool_name,
+         "' (fail-closed).", call. = FALSE)
   tool
 }
 

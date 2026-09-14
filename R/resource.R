@@ -44,6 +44,8 @@ persist_large_result <- function(content, tool_id) {
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
   path <- file.path(dir, paste0(tool_id, ".txt"))
   tryCatch(writeLines(content, path), error = function(e) NULL)
+  # NOTE: Files written here are NEVER automatically cleaned up.
+  # TODO: Add a retention/cleanup policy when L2 is wired into production.
 
   preview <- substr(content, 1L, .L2_PREVIEW_LEN)
   paste0(preview, "\n...[full output saved to ", path, "; ",

@@ -84,8 +84,20 @@ mcp_client_tools <- function(config = NULL) {
 register_mcp_client <- function(chat, config = NULL) {
   if (is.null(config)) return(invisible(0L))
   tools <- mcp_client_tools(config)
+  names_new <- vapply(tools, function(t)
+    tryCatch(as.character(t@name), error = function(e) ""), character(1L))
+  if (any(!nzchar(names_new)) || anyDuplicated(names_new))
+    stop("MCP tools contain missing or duplicate names.", call. = FALSE)
+  existing <- tryCatch(.tool_names(chat$get_tools()), error = function(e) character())
+  conflicts <- intersect(names_new, unique(c(existing, names(.TOOL_META))))
+  if (length(conflicts))
+    stop("MCP tool name conflicts with a reserved or registered tool: ",
+         paste(conflicts, collapse = ", "), call. = FALSE)
+
   n <- 0L
-  for (t in tools) {
+  for (i in seq_along(tools)) {
+    t <- tools[[i]]
+    register_tool_meta(names_new[[i]], capability = "exec", set = "A")
     ok <- tryCatch({ chat$register_tool(t); TRUE }, error = function(e) FALSE)
     if (isTRUE(ok)) n <- n + 1L
   }
@@ -98,49 +110,29 @@ register_mcp_client <- function(chat, config = NULL) {
 
 #' Auto-connect MCP servers from settings / project config
 #'
-#' Connects external MCP servers without an explicit `mcp_config` argument, by
-#' looking (in order) at:
-#' 1. `settings$mcpServers` / `settings$mcp_servers` -- an inline server map in
-#'    settings.json.
-#' 2. a project-level `.mcp.json` / `.codeagent/mcp.json` file.
-#'
-#' `enabled_mcp_json_servers` / `disabled_mcp_json_servers` (Claude Code schema)
-#' filter which named servers are connected. Servers already provided via the
-#' `mcp_config` parameter to [codeagent_client()] are handled separately and not
-#' duplicated here.
+#' NOTE: Project-level and merged settings CANNOT authorise MCP startup (V-08
+#' remedy). This function only connects when the host has explicitly provided
+#' `mcp_config` to `codeagent_client()`. Settings-file servers and project
+#' `.mcp.json` are NOT auto-connected -- the caller must migrate to the
+#' explicit `mcp_config` parameter and review the server configurations.
 #'
 #' @param chat An `ellmer::Chat` object.
 #' @param settings List from [load_settings()].
-#' @return Invisibly, the number of tools registered.
+#' @return Invisibly, the number of tools registered (always 0 -- auto-connect
+#'   is disabled).
 #' @keywords internal
 .mcp_autoconnect <- function(chat, settings) {
-  servers <- settings$mcpServers %||% settings$mcp_servers %||% NULL
-
-  # Fall back to a project-level mcp config file.
-  if (is.null(servers)) {
-    cwd <- settings$cwd %||% getwd()
-    for (cand in c(file.path(cwd, ".mcp.json"),
-                   file.path(cwd, ".codeagent", "mcp.json"))) {
-      if (file.exists(cand)) {
-        cfg <- tryCatch(jsonlite::fromJSON(cand, simplifyVector = FALSE),
-                        error = function(e) NULL)
-        servers <- cfg$mcpServers %||% cfg
-        break
-      }
-    }
-  }
-  if (!is.list(servers) || !length(servers)) return(invisible(0L))
-
-  # allow / deny filters (Claude Code schema).
-  enabled  <- settings$enabled_mcp_json_servers  %||% character(0)
-  disabled <- settings$disabled_mcp_json_servers %||% character(0)
-  nms <- names(servers)
-  if (length(enabled))  servers <- servers[nms %in% enabled]
-  if (length(disabled)) servers <- servers[!names(servers) %in% disabled]
-  if (!length(servers)) return(invisible(0L))
-
-  tryCatch(register_mcp_client(chat, list(mcpServers = servers)),
-           error = function(e) invisible(0L))
+  # V-08 remedy: project/merged settings can no longer authorise MCP startup.
+  # Only explicit `mcp_config` in codeagent_client() is honoured. The servers
+  # from settings are ignored to prevent untrusted project config from launching
+  # arbitrary processes before the permission gate is active.
+  #
+  # If you need MCP servers, pass them explicitly:
+  #   codeagent_client(mcp_config = list(mcpServers = list(...)))
+  #
+  # This function is kept as a no-op to avoid breaking callers that expect it
+  # to exist; it no longer connects anything from settings.
+  invisible(0L)
 }
 
 #' Create an R-based MCP server entry

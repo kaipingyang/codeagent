@@ -9,6 +9,21 @@ test_that(".build_file_preview renders Markdown to HTML", {
   expect_true(grepl("<strong>bold</strong>", html))
 })
 
+test_that("Markdown preview removes executable HTML and unsafe URLs", {
+  hostile <- paste0(
+    "<img src=x onerror=alert(1)>",
+    "<svg><circle onload=alert(1)></circle></svg>",
+    "<a href=javascript:alert(1)>bad</a>",
+    "<a href='java&#x73;cript:alert(1)'>encoded</a>",
+    "<a href='https://example.com'>safe</a>"
+  )
+  out <- codeagent:::.sanitize_markdown_html(hostile)
+  expect_false(grepl("onerror|onload|javascript:|<svg|<img",
+                     out, ignore.case = TRUE))
+  expect_match(out, "https://example.com", fixed = TRUE)
+  expect_match(out, "noopener noreferrer", fixed = TRUE)
+})
+
 test_that(".build_file_preview renders CSV via reactable when available", {
   skip_if_not_installed("reactable")
   f <- withr::local_tempfile(fileext = ".csv")

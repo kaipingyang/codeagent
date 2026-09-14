@@ -43,6 +43,25 @@ test_that("explore_data_tool is a valid ellmer ToolDef", {
   expect_true(inherits(t, "ellmer::ToolDef"))
 })
 
+test_that("explore_data_tool advertises arbitrary execution risk", {
+  tool <- explore_data_tool(envir = new.env(parent = baseenv()))
+  expect_false(tool@annotations$read_only_hint)
+  expect_true(tool@annotations$destructive_hint)
+  expect_true(tool@annotations$open_world_hint)
+  expect_identical(codeagent:::.tool_capability("ExploreData"), "exec")
+})
+
+test_that("explore_data_tool child environment is not a security sandbox", {
+  e <- new.env(parent = baseenv())
+  e$df <- data.frame(x = 1:3)
+  marker <- tempfile("explore-side-effect-")
+  on.exit(unlink(marker), add = TRUE)
+  tool <- explore_data_tool(envir = e)
+  tool(data_name = "df", code = sprintf(
+    "writeLines('side effect', %s); nrow(df)", deparse(marker)))
+  expect_true(file.exists(marker))
+})
+
 test_that("explore_data_tool returns schema when called without code", {
   e <- new.env(parent = baseenv())
   e$mydf <- mtcars

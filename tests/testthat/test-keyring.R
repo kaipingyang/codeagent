@@ -71,7 +71,10 @@ test_that(".keyring_store_key with backend=renviron writes to .Renviron", {
   dir.create(tmp_home)
   on.exit(unlink(tmp_home, recursive = TRUE), add = TRUE)
 
-  withr::with_envvar(c(HOME = tmp_home), {
+  withr::with_envvar(c(
+    HOME = tmp_home,
+    R_ENVIRON_USER = file.path(tmp_home, ".Renviron")
+  ), {
     codeagent:::.keyring_store_key("STORE_TEST_KEY", "store_val",
                                     backend = "renviron")
     renv_path <- file.path(tmp_home, ".Renviron")
@@ -90,7 +93,10 @@ test_that(".keyring_store_key auto backend uses renviron when keyring unavailabl
   dir.create(tmp_home)
   on.exit(unlink(tmp_home, recursive = TRUE), add = TRUE)
 
-  withr::with_envvar(c(HOME = tmp_home), {
+  withr::with_envvar(c(
+    HOME = tmp_home,
+    R_ENVIRON_USER = file.path(tmp_home, ".Renviron")
+  ), {
     backend_used <- codeagent:::.keyring_store_key(
       "AUTO_BACKEND_KEY", "auto_val", backend = "auto")
     expect_equal(backend_used, "renviron")

@@ -14,7 +14,7 @@ and \code{CLAUDE.md}). Defaults to \code{getwd()}.}
 A named list of settings.
 }
 \description{
-Merges configuration from all sources in priority order and applies the
-\code{env} block from settings.json so that environment variables are available
-even when running under \code{Rscript --vanilla}.
+Merges configuration from all sources in priority order. The trusted
+user-level \code{env} block is applied before the environment-variable layer;
+security-sensitive project settings are ignored.
 }

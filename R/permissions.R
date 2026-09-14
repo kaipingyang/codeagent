@@ -33,9 +33,11 @@ PermissionMode <- list(
   BUBBLE       = "bubble"
 )
 
-# Tools that are always read-only (safe to auto-allow in all non-plan modes)
+# Tools that are local read-only operations and safe to auto-allow. Network
+# tools are intentionally excluded: outbound requests require approval even
+# when they do not modify the local filesystem.
 .READONLY_TOOLS <- c(
-  "Read", "Glob", "Grep", "LS", "WebFetch", "WebSearch",
+  "Read", "Glob", "Grep", "LS",
   "TaskGet", "TaskList", "NotebookRead", "AskUserQuestion"
 )
 
@@ -53,21 +55,35 @@ PermissionMode <- list(
 #'
 #' @param tool_name Character(1). Name of the tool (e.g. `"Bash"`, `"Write"`).
 #' @param mode Character(1). One of the values in [PermissionMode].
-#' @param rules List of [PermissionRule()] objects (highest priority first).
+#' @param rules List of [PermissionRule()] objects. Every matching explicit deny
+#'   is absolute; declaration order is preserved only among remaining allow/ask
+#'   rules.
 #' @param tool_input List or NULL. Tool arguments (used for Bash read-only detection).
+#' @param allow_plan_exit Logical. Whether `ExitPlanMode` may restore a mode
+#'   after a trusted in-session `EnterPlanMode` transition.
 #' @return Character(1): `"allow"`, `"deny"`, or `"ask"`.
 #' @export
 check_permission <- function(tool_name, mode = "default",
-                              rules = list(), tool_input = NULL) {
+                              rules = list(), tool_input = NULL,
+                              allow_plan_exit = FALSE) {
   is_readonly <- tool_name %in% .READONLY_TOOLS
 
-  # 1. Plan mode: block all non-read operations immediately
+  # 1. Explicit deny rules are absolute. Among the remaining matching rules,
+  # preserve declaration order for allow/ask.
+  matched <- vapply(rules, .rule_matches, logical(1L),
+                    tool_name = tool_name, tool_input = tool_input)
+  if (any(matched & vapply(rules, function(rule)
+    identical(rule$behavior, "deny"), logical(1L))))
+    return("deny")
+
+  # 2. Plan mode is an absolute read-only boundary. Its exit control is enabled
+  # only after this same mode state entered plan mode during the live session;
+  # starting a client in plan mode must not give the model an escape hatch.
+  if (identical(mode, "plan") && identical(tool_name, "ExitPlanMode"))
+    return(if (isTRUE(allow_plan_exit)) "allow" else "deny")
   if (identical(mode, "plan") && !is_readonly) return("deny")
 
-  # 2. User-defined rules (evaluated in order, first match wins)
-  for (rule in rules) {
-    if (.rule_matches(rule, tool_name, tool_input)) return(rule$behavior)
-  }
+  for (i in which(matched)) return(rules[[i]]$behavior)
 
   # 3. accept_edits: file edit tools auto-allowed
   if (identical(mode, "accept_edits") && tool_name %in% .EDIT_TOOLS)
@@ -90,13 +106,11 @@ check_permission <- function(tool_name, mode = "default",
   if (identical(mode, "auto")) return(.auto_classify_tool(tool_name, tool_input))
 
   # 8. default: read-only tools auto-allow, rest ask
+  # Note: Bash is NOT auto-allowed by prefix matching here -- that was a security
+  # risk (V-03 remedy). Bash always requires "ask" in default mode unless a
+  # user-defined rule matches first. The concurrent-safety hint in executor.R
+  # is a scheduling hint, not a permission decision.
   if (is_readonly) return("allow")
-
-  # Bash read-only optimisation: ls, cat, grep etc. auto-allow in default mode
-  if (identical(tool_name, "Bash") && !is.null(tool_input)) {
-    cmd <- tool_input[["command"]] %||% ""
-    if (.is_bash_readonly(cmd)) return("allow")
-  }
 
   "ask"
 }
@@ -109,27 +123,38 @@ check_permission <- function(tool_name, mode = "default",
 .glob_match <- function(pattern, text) {
   if (!nzchar(pattern %||% "")) return(TRUE)
   if (!grepl("*", pattern, fixed = TRUE)) return(identical(pattern, text))
-  regex <- paste0("^", gsub("*", ".*", pattern, fixed = TRUE), "$")
-  grepl(regex, text, perl = TRUE)
+  grepl(utils::glob2rx(pattern), text, perl = TRUE)
 }
 
 # Map tool name -> the key inside tool_input that represents the "target"
 # (the thing the permission rule's content is matched against).
 .rule_target_arg <- function(tool_name, tool_input) {
   if (is.null(tool_input)) return(NULL)
+  path_targets <- attr(tool_input, "permission_targets", exact = TRUE)
+  if (length(path_targets)) return(path_targets)
   key <- switch(tool_name,
     Bash      = "command",
     Read      = "file_path",
     Write     = "file_path",
     Edit      = "file_path",
     MultiEdit = "file_path",
+    LS        = "path",
+    NotebookRead = "notebook_path",
+    NotebookEdit = "notebook_path",
+    Lint      = "path",
+    Format    = "path",
+    btw_tool_files_read = "path",
+    btw_tool_files_list = "path",
+    btw_tool_files_write = "path",
+    btw_tool_files_edit = "path",
+    btw_tool_files_replace = "path",
     Glob      = "pattern",
     Grep      = "pattern",
     NULL
   )
   if (is.null(key)) return(NULL)
   val <- tool_input[[key]]
-  if (is.character(val) && length(val) == 1L) val else NULL
+  if (is.character(val) && length(val) >= 1L) val else NULL
 }
 
 # Check if a PermissionRule matches a given tool call.
@@ -145,12 +170,26 @@ check_permission <- function(tool_name, mode = "default",
   if (is.null(rc) || !nzchar(rc)) return(TRUE)   # tool-level rule: name match is enough
 
   arg <- .rule_target_arg(tool_name, tool_input)
-  if (is.null(arg)) return(FALSE)                  # content rule but no target arg -> no match
-  .glob_match(rc, arg)
+  if (is.null(arg))
+    return(identical(rule$behavior, "deny"))
+  if (length(.tool_metadata(tool_name)$path_args %||% character())) {
+    root <- tool_input[[".permission_cwd"]] %||% getwd()
+    arg <- tryCatch(vapply(arg, .canonical_security_path, character(1L),
+                          root = root, allow_missing = TRUE),
+                    error = function(e) return(identical(rule$behavior, "deny")))
+    rc <- tryCatch(.canonicalize_path_pattern(rc, root),
+                   error = function(e) return(identical(rule$behavior, "deny")))
+  }
+  matched <- vapply(arg, function(value) .glob_match(rc, value), logical(1L))
+  if (identical(rule$behavior, "allow") && length(matched) > 1L)
+    all(matched)
+  else
+    any(matched)
 }
 
 # ---------------------------------------------------------------------------
-# Bash read-only detection
+# Bash read-only detection (used ONLY as a concurrent-safety hint for the
+# executor scheduling, NOT as a permission decision -- see V-03 remedy).
 # ---------------------------------------------------------------------------
 
 .BASH_READONLY_PATTERNS <- c(

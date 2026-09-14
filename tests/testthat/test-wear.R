@@ -59,3 +59,92 @@ test_that("codeagent already prefers ellmer::df_schema over the self-written fal
   # path with .df_schema() only as a fallback. If ellmer drops it, flag here.
   expect_true(exists("df_schema", where = asNamespace("ellmer")))
 })
+
+
+test_that("wear_explore preserves Data Shield on runtime ExploreData replacement", {
+  ids <- paste0("WEARSECRET", sprintf("%03d", 1:12))
+  data <- data.frame(id = ids, stringsAsFactors = FALSE)
+  shield <- DataShield$new(strategies = list(shield_egress(max_rows = 0)))
+  shield$register_data(data, name = "study", sensitivity = c(id = "identifier"))
+  chat <- ellmer::chat_anthropic(model = "fixture")
+  client <- codeagent_client(chat, permission_mode = "bypass",
+                             data_shield = shield, cwd = tempdir())
+
+  testthat::local_mocked_bindings(
+    codeagent_console = function(client, ...) invisible(client),
+    .package = "codeagent")
+  suppressMessages(suppressWarnings(
+    wear_explore(data = list(study = data), client = client, mode = "repl")))
+
+  names <- vapply(client$chat$get_tools(), function(tool) tool@name, character(1L))
+  explore <- client$chat$get_tools()[[match("ExploreData", names)]]
+  outer <- S7::S7_data(explore)
+  expect_identical(get0(".codeagent_data_shield_state", environment(outer),
+                        inherits = FALSE), shield)
+  result <- do.call(outer, list(
+    data_name = "study", code = "study$id[[1]]"))
+  value <- as.character(result@value)
+  expect_false(grepl(ids[[1L]], value, fixed = TRUE))
+  expect_match(value, "withheld|blocked")
+})
+
+
+test_that("wear_explore preserves PreToolUse on runtime ExploreData replacement", {
+  data <- data.frame(id = paste0("HOOKSECRET", sprintf("%03d", 1:12)))
+  shield <- DataShield$new(strategies = list(shield_egress(max_rows = 0)))
+  shield$register_data(data, name = "study", sensitivity = c(id = "identifier"))
+  hooks <- HookRegistry$new()
+  hooks$register_pre(function(tool_name, tool_input) {
+    if (identical(tool_name, "ExploreData"))
+      list(action = "deny", message = "blocked by fixture hook") else NULL
+  })
+  chat <- ellmer::chat_anthropic(model = "fixture")
+  client <- codeagent_client(chat, permission_mode = "bypass",
+                             data_shield = shield, cwd = tempdir())
+  client$settings$hooks_registry <- hooks
+  marker <- tempfile("wear-hook-side-effect-")
+  on.exit(unlink(marker), add = TRUE)
+
+  testthat::local_mocked_bindings(
+    codeagent_console = function(client, ...) invisible(client),
+    .package = "codeagent")
+  suppressMessages(suppressWarnings(
+    wear_explore(data = list(study = data), client = client, mode = "repl")))
+
+  names <- vapply(client$chat$get_tools(), function(tool) tool@name, character(1L))
+  explore <- client$chat$get_tools()[[match("ExploreData", names)]]
+  outer <- S7::S7_data(explore)
+  inner <- get0(".codeagent_data_shield_original", environment(outer),
+                inherits = FALSE)
+  expect_identical(get0(".codeagent_pre_hook_state", environment(inner),
+                        inherits = FALSE), hooks)
+  expect_warning(
+    expect_error(
+      do.call(outer, list(
+        data_name = "study",
+        code = sprintf("writeLines('executed', %s)",
+                       encodeString(marker, quote = "\"")))),
+      class = "ellmer_tool_reject"),
+    "tool 'ExploreData' errored"
+  )
+  expect_false(file.exists(marker))
+})
+
+
+test_that("wear_explore rolls back when a runtime Shield wrapper cannot install", {
+  data <- data.frame(id = paste0("ROLLBACK", sprintf("%03d", 1:12)))
+  shield <- DataShield$new(strategies = list(shield_egress(max_rows = 0)))
+  shield$register_data(data, name = "study", sensitivity = c(id = "identifier"))
+  chat <- ellmer::chat_anthropic(model = "fixture")
+  client <- codeagent_client(chat, permission_mode = "bypass",
+                             data_shield = shield, cwd = tempdir())
+  old_tools <- client$chat$get_tools()
+
+  testthat::local_mocked_bindings(
+    .data_shield_wrap_tool = function(...) stop("fixture Shield wrap failure"),
+    .package = "codeagent")
+  expect_error(
+    wear_explore(data = list(study = data), client = client, mode = "repl"),
+    "fixture Shield wrap failure")
+  expect_identical(client$chat$get_tools(), old_tools)
+})

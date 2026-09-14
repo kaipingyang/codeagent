@@ -52,10 +52,8 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     shield <- settings$data_shield_engine %||%
       tryCatch(attr(chat, "codeagent_data_shield"), error = function(e) NULL)
     if (!inherits(shield, "DataShield")) return(invisible())
-    ok <- tryCatch({ shield$install(chat); TRUE }, error = function(e) FALSE)
-    if (!isTRUE(ok))
-      .ui_toast("Data Shield re-install failed after tool refresh -- output filtering may be OFF.",
-                "error")
+    shield$install(chat)
+    invisible()
   }
 
   shiny::observeEvent(input$perm_mode, {
@@ -63,11 +61,51 @@ server_settings <- function(input, output, session, chat, settings, cwd,
       .ui_toast("Permission mode cannot change while a response is running.", "warning")
       return()
     }
-    settings$permission_mode <<- input$perm_mode
-    ok <- tryCatch({ .register_all_tools(chat, settings); TRUE }, error = function(e) FALSE)
-    if (!isTRUE(ok))
-      .ui_toast("Tool re-registration failed after permission-mode change.", "warning")
-    reinstall_shield()
+    new_mode <- input$perm_mode
+    # Input validation: reject unexpected permission mode values
+    valid_modes <- unlist(PermissionMode, use.names = FALSE)
+    if (!is.character(new_mode) || length(new_mode) != 1L ||
+        !new_mode %in% valid_modes) {
+      .ui_toast("Invalid permission mode.", "warning")
+      return()
+    }
+    old_mode <- settings$permission_mode
+    old_tools <- tryCatch(chat$get_tools(), error = function(e) NULL)
+    old_prompt <- tryCatch(chat$get_system_prompt(), error = function(e) NULL)
+    live_ctx <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
+    old_live_mode <- if (!is.null(live_ctx))
+      live_ctx$mode_env$mode else old_mode
+    old_plan_exit_allowed <- if (!is.null(live_ctx))
+      isTRUE(live_ctx$mode_env$plan_exit_allowed) else FALSE
+    old_plan_prev <- if (!is.null(live_ctx)) live_ctx$mode_env$prev else NULL
+    settings$permission_mode <<- new_mode
+    if (!is.null(live_ctx)) {
+      live_ctx$mode_env$mode <- new_mode
+      live_ctx$mode_env$plan_exit_allowed <- FALSE
+      live_ctx$mode_env$prev <- NULL
+    }
+    err <- tryCatch({
+      .register_all_tools(chat, settings)
+      reinstall_shield()
+      NULL
+    }, error = identity)
+    if (inherits(err, "error")) {
+      settings$permission_mode <<- old_mode
+      if (!is.null(old_tools)) chat$set_tools(old_tools)
+      if (!is.null(old_prompt)) chat$set_system_prompt(old_prompt)
+      ctx <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
+      if (!is.null(ctx)) {
+        ctx$mode_env$mode <- old_live_mode
+        ctx$mode_env$plan_exit_allowed <- old_plan_exit_allowed
+        ctx$mode_env$prev <- old_plan_prev
+        ctx$policy <- .resolve_tool_policy(settings)
+        ctx$rules <- settings$rules %||% list()
+      }
+      .ui_toast(
+        paste0("Permission-mode update failed and was rolled back: ",
+               conditionMessage(err)),
+        "error")
+    }
   }, ignoreInit = TRUE)
 
   shiny::observeEvent(input$btw_groups_input, {
@@ -75,9 +113,15 @@ server_settings <- function(input, output, session, chat, settings, cwd,
       .ui_toast("Tool groups cannot change while a response is running.", "warning")
       return()
     }
-    result <- .replace_btw_tool_groups(chat, input$btw_groups_input, settings)
+    new_groups <- input$btw_groups_input
+    # Validate: must be character vector
+    if (!is.null(new_groups) && !is.character(new_groups)) {
+      .ui_toast("Invalid tool group selection.", "warning")
+      return()
+    }
+    result <- .replace_btw_tool_groups(chat, new_groups, settings)
     if (isTRUE(result$ok)) {
-      settings$btw_groups <<- input$btw_groups_input
+      settings$btw_groups <<- new_groups
       .ui_toast("btw tool groups updated.", "message")
       return()
     }
@@ -98,7 +142,12 @@ server_settings <- function(input, output, session, chat, settings, cwd,
     running <- !is.null(stream_task) &&
       identical(tryCatch(stream_task$status(), error = function(e) ""), "running")
     result <- .shiny_switch_model(chat, settings, new_spec, cwd, running)
-    if (isTRUE(result$ok)) settings$model <<- result$model
+    if (isTRUE(result$ok)) {
+      settings$model <<- result$model
+      settings$worker_backend <<- result$worker_backend
+    }
+    if (isTRUE(result$fatal))
+      session$sendCustomMessage("ca_input_busy", list(busy = TRUE))
     .ui_toast(result$message, result$type)
   })
 }

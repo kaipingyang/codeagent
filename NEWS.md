@@ -1,7 +1,19 @@
 # codeagent 0.2.3
 
-This backward-compatible patch release adds optional Liquid Glass theming and
-fixes default tool-card expansion without changing public APIs.
+This patch release adds optional Liquid Glass theming, fixes tool-card behavior,
+and closes security/integration blockers found during PR review. It includes one
+intentional safe-default change: `team_lead()` now defaults to `"dont_ask"`.
+
+## Security and reliability
+
+* Made matching explicit deny rules absolute across capability allows, per-tool overrides, modes, and read fast paths; initial plan sessions can no longer invoke `ExitPlanMode` without a trusted in-session `EnterPlanMode` transition.
+* Replaced sandboxed Bash `system2()` execution with `processx` argv execution and a full replacement environment, confined Glob patterns and symlink results, and made the Data Shield portable policy block every non-delegated exec tool—including path-declared `Lint`, whose project `.lintr` may execute R code—until a real OS sandbox is available.
+* Made PreToolUse installation and runtime exceptions fail closed, and rebuilt delegation guidance from the final live tool registry so missing/failed Agent or TeamRun registration is never advertised.
+* Preserved dynamic plan-mode state when a Shiny permission/tool refresh rolls back.
+
+## Behavior changes
+
+* Changed `team_lead()`'s default `permission_mode` from `"bypass"` to `"dont_ask"`. Existing trusted write workflows must now opt in explicitly to a more permissive mode; read-only review workflows continue to work with the safer default.
 
 ## Shiny UI
 
@@ -273,13 +285,14 @@ upstream integrations, Shiny presentation, safety, and documentation.
   payloads/audit contain metadata only, never the raw result.
 
 * **Portable sandbox policy**: new `shield_sandbox()` keeps project/session-temp
-  `rwx` and process execution by default while the central gate validates all
-  explicit path arguments against project/protected/temp roots, follows real
-  paths to reject symlink escape, enforces per-root `r/rw/rwx`, and can deny
-  network/exec capabilities. `backend="auto"` honestly falls back to policy (or
-  blocks in required mode) because a full OS process adapter is not yet wired;
-  coverage/audit report the fallback. btw file tools are also covered (their cwd
-  guard permits symlink escape), and btw RunR is not treated as an OS sandbox.
+  path capabilities at `rwx` while the central gate validates explicit path
+  arguments against project/protected/temp roots, follows real paths to reject
+  symlink escape, and enforces per-root `r/rw/rwx`. Because portable path policy
+  is not process isolation, every non-delegated exec tool fails closed until a
+  full OS adapter is available; this includes path-declared tools that can run
+  project configuration. `backend="auto"` honestly falls back to policy (or
+  blocks in required mode); coverage/audit report the fallback. btw file tools
+  are also covered, and btw RunR is not treated as an OS sandbox.
 
 * **Per-tool/agent Shield policy**: new `shield_tool_policy()` supports exact or
   `*`-glob rules with `scan` (default), explicit audited `bypass`, and `deny`

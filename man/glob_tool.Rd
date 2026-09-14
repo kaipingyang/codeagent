@@ -4,7 +4,10 @@
 \alias{glob_tool}
 \title{Create the Glob tool}
 \usage{
-glob_tool()
+glob_tool(cwd = getwd())
+}
+\arguments{
+\item{cwd}{Character. Fixed base directory for relative paths.}
 }
 \value{
 An \code{ellmer::tool()} object.

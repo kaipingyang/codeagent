@@ -1,12 +1,13 @@
 #' @title Data Exploration Tool
 #' @description An ellmer tool that lets the agent answer natural-language
 #'   questions about data.frames in the user's R session. The agent generates
-#'   dplyr/base R code to answer the question, executes it in a sandboxed
-#'   sub-environment, and returns the result as a formatted table.
+#'   dplyr/base R code, evaluates it in a child environment, and returns the
+#'   result as a formatted table.
 #'
-#'   Unlike the general RunR tool (which runs arbitrary code), `explore_data`
-#'   is scoped to read-only queries on a named data.frame. It never modifies
-#'   the source data.
+#'   `ExploreData` executes arbitrary model-provided R code. The child binding
+#'   usually protects the selected data.frame through copy-on-modify, but it is
+#'   not a security sandbox or a read-only boundary: code may access parent
+#'   environments, files, processes, or networks available to the R process.
 #' @name tools_data
 #' @keywords internal
 NULL
@@ -20,7 +21,7 @@ NULL
 explore_data_tool <- function(envir = .GlobalEnv) {
   force(envir)
   ellmer::tool(
-    fun = function(data_name, question, code = NULL) {
+    fun = function(data_name, question = NULL, code = NULL) {
       # Resolve the data.frame
       df <- tryCatch(get(data_name, envir = envir, inherits = TRUE),
                      error = function(e) NULL)
@@ -85,8 +86,10 @@ explore_data_tool <- function(envir = .GlobalEnv) {
     description = paste0(
       "Answer natural-language questions about a data.frame in the R session. ",
       "First call with only data_name to get the schema, then call again with ",
-      "dplyr/base R code to execute the query. Never modifies the source data. ",
-      "Use for: filtering, aggregating, summarising, counting, finding patterns."
+      "dplyr/base R code to execute the query. ",
+      "Use for: filtering, aggregating, summarising, counting, finding patterns. ",
+      "Note: this tool executes R code and can have side effects; it is gated ",
+      "by the central permission system like RunR."
     ),
     arguments = list(
       data_name = ellmer::type_string(
@@ -99,10 +102,10 @@ explore_data_tool <- function(envir = .GlobalEnv) {
         required = FALSE)
     ),
     annotations = ellmer::tool_annotations(
-      title          = "ExploreData",
-      read_only_hint = TRUE,
-      destructive_hint = FALSE,
-      open_world_hint  = FALSE
+      title            = "ExploreData",
+      read_only_hint   = FALSE,
+      destructive_hint = TRUE,
+      open_world_hint  = TRUE
     )
   )
 }

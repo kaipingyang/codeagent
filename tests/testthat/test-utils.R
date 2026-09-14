@@ -35,6 +35,32 @@ test_that(".validate_uuid accepts valid UUIDs and rejects invalid ones", {
   expect_null(codeagent:::.validate_uuid("550e8400-e29b-41d4-a716"))
 })
 
+test_that(".replace_file_checked overwrites an existing destination", {
+  dir <- withr::local_tempdir()
+  dest <- file.path(dir, "value.txt")
+  tmp <- tempfile(tmpdir = dir)
+  writeLines("old", dest)
+  writeLines("new", tmp)
+
+  expect_no_error(codeagent:::.replace_file_checked(tmp, dest))
+  expect_identical(readLines(dest, warn = FALSE), "new")
+  expect_false(file.exists(tmp))
+})
+
+test_that(".replace_file_checked restores an interrupted recovery copy", {
+  dir <- withr::local_tempdir()
+  dest <- file.path(dir, "value.txt")
+  recovery <- paste0(dest, ".recovery.bak")
+  tmp <- tempfile(tmpdir = dir)
+  writeLines("partial", dest)
+  writeLines("old", recovery)
+  writeLines("new", tmp)
+
+  expect_no_error(codeagent:::.replace_file_checked(tmp, dest))
+  expect_identical(readLines(dest, warn = FALSE), "new")
+  expect_false(file.exists(recovery))
+})
+
 test_that("truncate_tool_result truncates at per-tool limits", {
   long_text <- paste(rep("a", 40000L), collapse = "")
   result <- truncate_tool_result(long_text, "Bash")

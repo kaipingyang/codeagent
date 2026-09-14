@@ -2,10 +2,11 @@
 # Tests for auto-memory (M6): write / list / recall / remember tool / injection.
 
 .with_temp_home <- function(code) {
-  old <- Sys.getenv("HOME")
   tmp <- withr::local_tempdir()
-  Sys.setenv(HOME = tmp)
-  on.exit(Sys.setenv(HOME = old), add = TRUE)
+  withr::local_envvar(c(HOME = tmp, CODEAGENT_HOME = file.path(tmp, "codeagent")))
+  old_migrated <- getOption("codeagent._migrated")
+  options(codeagent._migrated = FALSE)
+  on.exit(options(codeagent._migrated = old_migrated), add = TRUE)
   force(code)
 }
 
@@ -34,6 +35,47 @@ test_that("write_memory replaces an existing slug entry (no duplicates)", {
     expect_match(ms[[which(slugs == "topic")]]$content, "second version")
     idx_lines <- readLines(file.path(codeagent:::.memory_dir(), "MEMORY.md"))
     expect_equal(sum(grepl("\\(topic\\.md\\)", idx_lines)), 1L)
+  })
+})
+
+test_that("write_memory preserves distinct titles with the same slug", {
+    .with_temp_home({
+      write_memory("A B", "first", "d1")
+      write_memory("A-B", "second", "d2")
+      ms <- list_memories()
+      expect_length(ms, 2L)
+      expect_equal(length(unique(vapply(ms, `[[`, character(1), "slug"))), 2L)
+  })
+})
+
+test_that("write_memory updates legacy slug-only memories", {
+  .with_temp_home({
+    dir <- codeagent:::.ensure_memory_dir()
+    path <- file.path(dir, "my-project.md")
+    writeLines(c(
+      "---",
+      "name: my-project",
+      "description: legacy",
+      "---",
+      "",
+      "old"
+    ), path)
+    write_memory("My Project", "new", "updated")
+    files <- list.files(dir, pattern = "^my-project.*\\.md$")
+    expect_identical(files, "my-project.md")
+    expect_match(paste(readLines(path), collapse = "\n"), "new")
+  })
+})
+
+test_that("write_memory updates an existing suffixed collision entry", {
+    .with_temp_home({
+      write_memory("A B", "first", "d1")
+      second <- write_memory("A-B", "second", "d2")
+      updated <- write_memory("A-B", "updated", "d3")
+      expect_identical(updated, second)
+      files <- list.files(codeagent:::.memory_dir(), pattern = "^a-b.*\\.md$")
+      expect_length(files, 2L)
+      expect_match(paste(readLines(updated), collapse = "\n"), "updated")
   })
 })
 

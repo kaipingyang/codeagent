@@ -41,7 +41,13 @@ test_that(".repl_dispatch routes non-meta slash commands to skill", {
 .mk_client <- function() {
   ch <- chat_anthropic(model = "claude-sonnet-4-6")
   ch$set_turns(list(Turn("user", "old"), Turn("assistant", "reply")))
-  codeagent_client(ch, permission_mode = "bypass", btw_groups = NULL, cwd = getwd())
+  codeagent_client(
+    ch,
+    permission_mode = "bypass",
+    btw_groups = character(),
+    cwd = getwd(),
+    register_tools = FALSE
+  )
 }
 
 test_that("codeagent_console rejects non-clients", {

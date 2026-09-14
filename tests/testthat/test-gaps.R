@@ -82,20 +82,23 @@ test_that("enter/exit_plan_mode tools flip mode_env$mode", {
   # ellmer ToolDef objects are callable directly.
   res_in <- enter(reason = "thinking")
   expect_identical(mode_env$mode, "plan")
+  expect_true(mode_env$plan_exit_allowed)
   expect_true(S7::S7_inherits(res_in, ellmer::ContentToolResult))
 
   res_out <- exit()
   expect_identical(mode_env$mode, "default")
+  expect_false(mode_env$plan_exit_allowed)
   expect_true(S7::S7_inherits(res_out, ellmer::ContentToolResult))
 })
 
-test_that("exit_plan_mode never restores into 'plan'", {
+test_that("a client that starts in plan mode cannot exit autonomously", {
   mode_env <- new.env(parent = emptyenv())
   mode_env$mode <- "plan"
-  mode_env$prev <- "plan"            # pathological
   exit <- codeagent:::exit_plan_mode_tool(mode_env)
-  exit()
-  expect_identical(mode_env$mode, "default")
+  result <- exit()
+  expect_identical(mode_env$mode, "plan")
+  expect_false(isTRUE(mode_env$plan_exit_allowed))
+  expect_true(S7::S7_inherits(result, ellmer::ContentToolResult))
 })
 
 test_that("plan mode blocks writes but allows reads via the same checker", {

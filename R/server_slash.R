@@ -97,27 +97,14 @@ NULL
   invisible(TRUE)
 }
 
-#' Wire the official slash-command typeahead for a chat input
+#' Convert a skill prompt to shinychat slash-command content
 #'
-#' @param input,session Standard Shiny server args.
-#' @param cwd Character. Working directory (for skill discovery).
-#' @param id Character. The `chat_ui()` id (default `"chat"`).
-#' @param stream_task The `ExtendedTask` returned by [server_chat()], used to
-#'   run skill/normal slash commands through the harness (compaction, skill
-#'   injection, streaming). Required for skill commands to reach the LLM.
-#' @param chat,settings,state Harness handles for executing local commands
-#'   directly (via `.handle_chat_command()`).
-#' @return Invisibly NULL.
-#' @details
-#'   Slash commands are dispatched **directly inside this handler** -- we do NOT
-#'   re-submit `/command` through `update_chat_user_input()`. Re-submitting is
-#'   broken: shinychat re-recognises the re-submitted `/command` as a slash
-#'   command and fires `input$<id>_slash_command` again with the *same* value,
-#'   which Shiny's `observeEvent` de-dupes into a no-op -- so the command never
-#'   reaches `input$<id>_user_input` / `.preprocess_input` and silently dies.
-#'   Instead we mirror `server_chat`'s routing here: local commands run via
-#'   `.handle_chat_command()`, skills/normal go through the shared `stream_task`
-#'   (which injects the skill prompt internally).
+#' @param input Character input or a list whose first element is text.
+#' @param parsed Parsed slash-command metadata.
+#' @param redact_user_text Whether to replace the user arguments with a
+#'   redaction marker.
+#' @return The input with its text converted to `ContentSlashCommand` when the
+#'   command is a skill and shinychat provides the constructor.
 #' @keywords internal
 .as_skill_slash_content <- function(input, parsed, redact_user_text = FALSE) {
   constructor <- .shinychat_export("ContentSlashCommand")
@@ -159,8 +146,11 @@ server_slash <- function(input, session, cwd = getwd(), id = "chat",
       # (or opens a dialog, e.g. /model).
       echo_val <- paste0("/", parsed$name,
                          if (nzchar(parsed$args)) paste0(" ", parsed$args) else "")
+      # Escape for safe markdown rendering: use backticks so the command text
+      # is rendered as inline code and cannot inject HTML/markdown.
       tryCatch(
-        shinychat::chat_append(id, echo_val, role = "user", session = session),
+        shinychat::chat_append(id, sprintf("`%s`", echo_val), role = "user",
+                               session = session),
         error = function(e) NULL)
       if (!is.null(chat))
         tryCatch(.handle_chat_command(parsed, chat, settings, state, session, cwd),

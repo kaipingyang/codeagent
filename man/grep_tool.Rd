@@ -4,7 +4,10 @@
 \alias{grep_tool}
 \title{Create the Grep tool}
 \usage{
-grep_tool()
+grep_tool(cwd = getwd())
+}
+\arguments{
+\item{cwd}{Character. Fixed base directory for relative paths.}
 }
 \value{
 An \code{ellmer::tool()} object.

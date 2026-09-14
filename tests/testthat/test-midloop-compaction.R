@@ -532,7 +532,7 @@ test_that("compaction lifecycle fires only for a selected action", {
   ) %in% names(events[[2L]]$context)))
 })
 
-test_that("post-compact still-large failures open the circuit breaker", {
+test_that("post-compact still-large outcomes do not open the circuit breaker", {
   summary_calls <- 0L
   local_mocked_bindings(
     .build_outgoing_snapshot = function(...) list(
@@ -561,15 +561,15 @@ test_that("post-compact still-large failures open the circuit breaker", {
     )
     expect_identical(decision$reason, "post_compact_still_large")
   }
-  expect_identical(ctrl$failure_count(), limit)
+  expect_identical(ctrl$failure_count(), 0L)
   calls_before <- summary_calls
   blocked <- ctrl$adaptive_compact(
     chat = list(),
     settings = list(midloop_threshold = 100L),
     full_enabled = TRUE
   )
-  expect_identical(blocked$reason, "circuit_open")
-  expect_identical(summary_calls, calls_before)
+  expect_identical(blocked$reason, "post_compact_still_large")
+  expect_identical(summary_calls, calls_before + 2L)
 })
 
 test_that("resource mutations request a fresh structural initial count", {

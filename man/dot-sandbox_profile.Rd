@@ -8,11 +8,12 @@
 }
 \arguments{
 \item{settings}{List or NULL. Reads \code{settings$sandbox} (a list with optional
-\code{enabled}, \code{allow_network}, \code{keep_env}).}
+\code{enabled}, \code{allow_network}, \code{keep_env}, \code{run_r_backend}).}
 }
 \value{
-A normalised profile list: \code{enabled}, \code{allow_network}, \code{keep_env}
-(character vector of env var names to preserve).
+A normalised profile list. \code{run_r_backend = "required"} fails closed
+because codeagent currently has no OS sandbox backend for arbitrary R;
+\code{"process"} explicitly opts into best-effort callr process isolation.
 }
 \description{
 Build a sandbox profile from settings

@@ -100,15 +100,18 @@ NULL
 #' Build a sandbox profile from settings
 #'
 #' @param settings List or NULL. Reads `settings$sandbox` (a list with optional
-#'   `enabled`, `allow_network`, `keep_env`).
-#' @return A normalised profile list: `enabled`, `allow_network`, `keep_env`
-#'   (character vector of env var names to preserve).
+#'   `enabled`, `allow_network`, `keep_env`, `run_r_backend`).
+#' @return A normalised profile list. `run_r_backend = "required"` fails closed
+#'   because codeagent currently has no OS sandbox backend for arbitrary R;
+#'   `"process"` explicitly opts into best-effort callr process isolation.
 #' @keywords internal
 .sandbox_profile <- function(settings = NULL) {
   sb <- tryCatch(settings$sandbox, error = function(e) NULL)
   list(
     enabled       = isTRUE(sb$enabled),
     allow_network = if (is.null(sb$allow_network)) TRUE else isTRUE(sb$allow_network),
+    run_r_backend = match.arg(
+      sb$run_r_backend %||% "required", c("required", "process")),
     keep_env      = sb$keep_env %||% c("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR",
                                        "TERM", "USER", "SHELL")
   )
@@ -135,26 +138,27 @@ NULL
 
 #' Compute the environment for a sandboxed command
 #'
-#' When the sandbox is enabled, returns a minimal `character()` env vector
-#' (NAME=VALUE) limited to `keep_env`. When disabled, returns NULL (inherit the
-#' parent environment, the legacy behaviour).
+#' When the sandbox is enabled, returns a minimal named character vector
+#' limited to `keep_env`. `processx` treats a non-NULL `env` as the complete
+#' child environment, unlike base `system2(env=)` which inherits every unlisted
+#' parent variable. When disabled, returns NULL to preserve legacy inheritance.
 #'
 #' @param profile List from [.sandbox_profile()].
-#' @return Character vector of `NAME=VALUE` strings, or NULL.
+#' @return Named character vector, or NULL.
 #' @keywords internal
 .sandbox_env <- function(profile) {
   if (!isTRUE(profile$enabled)) return(NULL)
-  keep <- profile$keep_env
-  vals <- Sys.getenv(keep, unset = NA)
-  vals <- vals[!is.na(vals)]
-  if (!length(vals)) return(character(0))
-  paste0(names(vals), "=", vals)
+  keep <- unique(as.character(profile$keep_env %||% character()))
+  if (.Platform$OS.type == "windows")
+    keep <- unique(c(keep, "SystemRoot", "TEMP", "TMP", "USERPROFILE",
+                     "ComSpec", "PATHEXT"))
+  vals <- Sys.getenv(keep, unset = NA_character_)
+  vals[!is.na(vals)]
 }
 
-# R functions that reach the network or otherwise escape the sandbox. RunR runs
-# IN-PROCESS, so we cannot scrub the environment (the eval shares this R
-# session); the practical control is to refuse code that calls network /
-# process-spawning / env-mutating functions when the sandbox forbids them.
+# Best-effort policy filters for RunR. These checks are intentionally not
+# treated as a sandbox boundary: dynamic lookup and reflection can bypass any
+# finite source-code blacklist.
 .SANDBOX_R_NETWORK_FNS <- c(
   "httr2::request", "httr::GET", "httr::POST", "download.file", "url\\(",
   "curl::curl", "curl::curl_fetch", "RCurl::getURL", "readLines\\(url",

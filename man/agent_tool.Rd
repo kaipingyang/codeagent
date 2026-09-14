@@ -14,7 +14,8 @@ agent_tool(
   ask_fn = NULL,
   async = FALSE,
   data_shield = NULL,
-  parent_chat = NULL
+  parent_chat = NULL,
+  security_context = NULL
 )
 }
 \arguments{
@@ -46,6 +47,9 @@ the sub-agent's own tools are wrapped before its first LLM request.}
 
 \item{parent_chat}{Optional parent \code{ellmer::Chat}. The owned Agent path clones
 this Chat, clears history/tools, and verifies provider + Model inheritance.}
+
+\item{security_context}{Internal immutable parent security snapshot used to
+preserve tool sets, capabilities, overrides and sandbox settings.}
 }
 \value{
 An \code{ellmer::tool()} object.

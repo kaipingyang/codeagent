@@ -4,12 +4,14 @@
 \alias{read_tool}
 \title{Create the Read tool}
 \usage{
-read_tool(mode = "default", rules = list())
+read_tool(mode = "default", rules = list(), cwd = getwd())
 }
 \arguments{
 \item{mode}{Character. Permission mode.}
 
 \item{rules}{List. Permission rules.}
+
+\item{cwd}{Character. Fixed base directory for relative paths.}
 }
 \value{
 An \code{ellmer::tool()} object.

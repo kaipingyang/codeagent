@@ -484,8 +484,11 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
   on.exit(if (!is.null(watch_handle))
     tryCatch(watch_handle$stop(), error = function(e) NULL), add = TRUE)
   repeat {
-    line <- .console_read_line(prompt_str, history, con, cancel_env,
-                               pump_later = pump_later)
+    line <- .console_read_line(
+      prompt_str, history, con, cancel_env,
+      pump_later = pump_later,
+      use_keypress = owns_con
+    )
     if (is.null(line)) { .fire_session_end("prompt_input_exit"); break }  # EOF
     if (nzchar(trimws(line))) history <- c(history, line)
     act <- .repl_dispatch(line)
@@ -518,7 +521,13 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
         TRUE
       },
       budget = { .repl_budget_line(client$chat, settings, force = TRUE); TRUE },
-      bg = { cat(.bg_slash_spawn(act$arg, client$data_shield), "\n", sep = ""); TRUE },
+      bg = {
+        cat(.bg_slash_spawn(
+          act$arg, client$data_shield,
+          .worker_security_context_from_settings(settings, client$chat)),
+          "\n", sep = "")
+        TRUE
+      },
       bgstatus = { cat(.bg_status_text(), "\n", sep = ""); TRUE },
       cost = {
         n     <- tryCatch(token_count_with_estimation(client$chat, allow_network = FALSE),
@@ -904,8 +913,9 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 # calls from the same REPL session so double-Ctrl+C can be detected.
 .console_read_line <- function(prompt, history = character(0), con = stdin(),
                                 cancel_env = new.env(parent = emptyenv()),
-                                pump_later = FALSE) {
-  supported <- tryCatch(keypress::has_keypress_support(), error = function(e) FALSE)
+                                pump_later = FALSE, use_keypress = TRUE) {
+  supported <- isTRUE(use_keypress) &&
+    tryCatch(keypress::has_keypress_support(), error = function(e) FALSE)
   if (!isTRUE(supported)) {
     # Cooked-mode fallback (pipes, tests, unsupported terminals).
     cat(prompt)

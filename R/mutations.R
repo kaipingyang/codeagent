@@ -128,6 +128,15 @@ fork_session <- function(session_id, directory = NULL) {
 
   new_id   <- .generate_uuid_v4()
   dest_dir <- dirname(src_path)
+  # Path traversal guard: verify dest_dir is a legitimate session directory
+  session_dir <- if (is.null(directory))
+    file.path(.get_codeagent_dir(), "projects")
+  else
+    .get_project_session_dir(directory)
+  dest_dir_norm <- normalizePath(dest_dir, winslash = "/", mustWork = FALSE)
+  session_dir_norm <- normalizePath(session_dir, winslash = "/", mustWork = FALSE)
+  if (!.path_is_within(dest_dir_norm, session_dir_norm))
+    stop("Fork destination is outside the session directory.", call. = FALSE)
   dest_path <- file.path(dest_dir, paste0(new_id, ".jsonl"))
 
   # Read source lines and prepend a fork-provenance record

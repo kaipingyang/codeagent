@@ -19,10 +19,11 @@ NULL
 #' @param rules List. [PermissionRule()] objects.
 #' @param ask_fn Function or NULL. `function(tool_name, input) -> logical`.
 #'   Called when permission resolves to `"ask"`.
-#' @param sandbox List or NULL. Sandbox profile (see [.sandbox_profile()]). RunR
-#'   runs in-process so the environment cannot be scrubbed, but when the sandbox
-#'   is enabled, code calling shell/process/env or (when network is disabled)
-#'   network functions is refused.
+#' @param sandbox List or NULL. Sandbox profile (see [.sandbox_profile()]).
+#'   Enabling sandboxing fails closed unless `run_r_backend = "process"` is
+#'   explicitly selected. That fallback uses a separate `callr` process with a
+#'   timeout and best-effort environment hygiene, but is not an OS security
+#'   boundary and does not restrict filesystem, network, or process access.
 #' @return An `ellmer::tool()` object, or `NULL` if btw is unavailable.
 #' @export
 run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
@@ -39,18 +40,26 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
       if (!checker(list(code = code))) {
         ellmer::tool_reject(paste0("Permission denied for RunR. Code:\n", code))
       }
-      # Sandbox: two levels.
-      #  (a) Always: refuse obvious shell/env patterns (cheap first line).
-      #  (b) If sandbox enabled + callr available: execute in a SEPARATE R
-      #      process with a scrubbed environment (real isolation -- the child
-      #      cannot see this process's API keys) and a wall-clock timeout.
-      #      This is the true isolation the in-process regex cannot provide.
       blocked <- .sandbox_block_r_code(code, sb_prof)
       if (!is.null(blocked)) {
         ellmer::tool_reject(paste0("Sandbox blocked: ", blocked))
       }
-      if (isTRUE(sb_prof$enabled) && requireNamespace("callr", quietly = TRUE)) {
+      if (isTRUE(sb_prof$enabled) &&
+          identical(sb_prof$run_r_backend, "required")) {
+        ellmer::tool_reject(paste0(
+          "Sandbox blocked: no supported OS sandbox backend is available for ",
+          "arbitrary R execution. Set sandbox$run_r_backend = 'process' only ",
+          "to explicitly accept best-effort callr process isolation."))
+      }
+      if (isTRUE(sb_prof$enabled) &&
+          identical(sb_prof$run_r_backend, "process") &&
+          requireNamespace("callr", quietly = TRUE)) {
         return(.runr_sandboxed_exec(code, sb_prof))
+      }
+      if (isTRUE(sb_prof$enabled)) {
+        ellmer::tool_reject(paste0(
+          "Process-isolated RunR requires the callr package. Install callr or ",
+          "use the default fail-closed sandbox backend."))
       }
       tryCatch(
         {
@@ -69,9 +78,10 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
       "printed output, messages, warnings, errors, and plots. Execution stops ",
       "at the first error. Use for data inspection, quick computations, ",
       "plotting, and exercising package functions. ",
-      "When sandboxing is enabled, code runs in an isolated subprocess with a ",
-      "scrubbed environment (no API keys visible) and a timeout; otherwise it ",
-      "runs in-process and is permission-gated (may require user confirmation)."
+      "Sandbox-enabled execution fails closed unless the caller explicitly ",
+      "selects the best-effort callr process backend. callr provides timeout, ",
+      "output capture, and environment hygiene, but does not isolate filesystem, ",
+      "network, credentials stored in files, or child processes."
     ),
     arguments = list(
       code = ellmer::type_string(
@@ -89,13 +99,12 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
 }
 
 # ---------------------------------------------------------------------------
-# Sandboxed RunR execution via a separate R process (callr)
+# Best-effort RunR process isolation via callr
 # ---------------------------------------------------------------------------
 
-# Run R code in a fresh callr subprocess with a scrubbed environment and a
-# wall-clock timeout. Unlike the in-process path, the child cannot read this
-# process's environment variables (API keys), so a scrubbed env is real -- and
-# a runaway loop is killed at the timeout. Returns a codeagent tool result.
+# Run R code in a fresh callr subprocess with selected environment variables
+# cleared and a wall-clock timeout. This is process hygiene, not a security
+# sandbox: the child retains the current OS user's filesystem and network access.
 .runr_sandboxed_exec <- function(code, profile, timeout = 30) {
   keep <- profile$keep_env %||% c("PATH", "HOME", "LANG", "LC_ALL", "TMPDIR")
   vals <- Sys.getenv(keep, unset = NA)
@@ -135,8 +144,8 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
     if (grepl("timed out|timeout", msg, ignore.case = TRUE))
       msg <- paste0("execution timed out after ", timeout, "s")
     return(.tool_result(
-      paste0("[Sandbox RunR error] ", msg),
-      title = "RunR (sandboxed) -- error"))
+      paste0("[Process-isolated RunR error] ", msg),
+      title = "RunR (process isolation) -- error"))
   }
 
   text <- if (is.character(res) && nzchar(res)) res else "(no output)"
@@ -147,7 +156,7 @@ run_r_tool <- function(mode = "default", rules = list(), ask_fn = NULL,
     b64 <- base64enc::base64encode(plot_file)
     md  <- paste0(md, "\n\n![plot](data:image/png;base64,", b64, ")")
   }
-  .tool_result(text, title = "RunR (sandboxed)", markdown = md)
+  .tool_result(text, title = "RunR (process isolation)", markdown = md)
 }
 
 #' Register the RunR tool to a Chat
@@ -274,5 +283,4 @@ register_run_r_tool <- function(chat, mode = "default", rules = list(),
     )
   }
 }
-
 
