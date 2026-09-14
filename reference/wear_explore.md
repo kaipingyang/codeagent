@@ -56,12 +56,12 @@ manually).
 | No data registered by default | `data=` argument registers named data.frames |
 | No `GenerateReport` tool | `/report` exports session to `.qmd` |
 | No WEAR system prompt | Agent instructed to end each turn with **Next steps** |
-| General-purpose tools | `ExploreData` tool added (read-only, sandboxed) |
+| General-purpose tools | `ExploreData` rebound to `data`; arbitrary R execution remains exec-gated |
 
-The `ExploreData` and `GenerateReport` tools are **not** registered in
-the standard agent loop
-([`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md))
-– use `wear_explore()` to enter exploration mode explicitly.
+Standard clients register `ExploreData` by default. `wear_explore()`
+replaces that registration with one bound to its supplied data
+environment and adds `GenerateReport`; neither path makes
+model-generated R code a sandbox.
 
 ## See also
 

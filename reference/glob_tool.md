@@ -5,8 +5,14 @@ Create the Glob tool
 ## Usage
 
 ``` r
-glob_tool()
+glob_tool(cwd = getwd())
 ```
+
+## Arguments
+
+- cwd:
+
+  Character. Fixed base directory for relative paths.
 
 ## Value
 

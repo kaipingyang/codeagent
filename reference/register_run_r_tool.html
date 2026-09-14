@@ -106,10 +106,11 @@ Called when permission resolves to <code>"ask"</code>.</p></dd>
 
 
 <dt id="arg-sandbox">sandbox<a class="anchor" aria-label="anchor" href="#arg-sandbox"></a></dt>
-<dd><p>List or NULL. Sandbox profile (see <code><a href="dot-sandbox_profile.html">.sandbox_profile()</a></code>). RunR
-runs in-process so the environment cannot be scrubbed, but when the sandbox
-is enabled, code calling shell/process/env or (when network is disabled)
-network functions is refused.</p></dd>
+<dd><p>List or NULL. Sandbox profile (see <code><a href="dot-sandbox_profile.html">.sandbox_profile()</a></code>).
+Enabling sandboxing fails closed unless <code>run_r_backend = "process"</code> is
+explicitly selected. That fallback uses a separate <code>callr</code> process with a
+timeout and best-effort environment hygiene, but is not an OS security
+boundary and does not restrict filesystem, network, or process access.</p></dd>
 
 </dl></div>
     <div class="section level2">

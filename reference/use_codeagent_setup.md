@@ -14,9 +14,11 @@ use_codeagent_setup(scope = c("user", "project"))
 
 - scope:
 
-  Character. `"user"` writes to `~/.codeagent/settings.json`;
-  `"project"` writes to `.codeagent/settings.json` in the current
-  directory.
+  Character. Must be `"user"` for provider setup. Project files cannot
+  configure providers, endpoints, or credentials; pass an explicit Chat
+  to
+  [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md)
+  for project-specific backends.
 
 ## Value
 

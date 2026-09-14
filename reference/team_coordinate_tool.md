@@ -8,7 +8,7 @@ task sizes auto-balanced), distinct from TeamRun's fixed fan-out.
 ## Usage
 
 ``` r
-team_coordinate_tool(model = NULL, cwd = getwd())
+team_coordinate_tool(model = NULL, cwd = getwd(), security_context = NULL)
 ```
 
 ## Arguments
@@ -20,6 +20,10 @@ team_coordinate_tool(model = NULL, cwd = getwd())
 - cwd:
 
   Character. Working directory.
+
+- security_context:
+
+  Internal immutable parent security snapshot.
 
 ## Value
 

@@ -6,5 +6,5 @@ Spawn a background sub-agent. Returns the task id immediately
 ## Usage
 
 ``` r
-.bg_spawn(prompt, model = NULL, cwd = getwd())
+.bg_spawn(prompt, model = NULL, cwd = getwd(), security_context = NULL)
 ```

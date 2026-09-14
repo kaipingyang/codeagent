@@ -265,7 +265,7 @@ bypass egress； 而 `btw_tool_docs_*`
 可以拿到一条更宽的信任规则。这条策略**永远不会**绕过 codeagent
 独立的权限系统。
 
-### `shield_sandbox()` —— 便携式容纳，不阉割 agent 能力
+### `shield_sandbox()` —— 失败关闭的便携路径策略
 
 | 参数 | 默认值 | 实际效果 |
 |----|----|----|
@@ -273,16 +273,17 @@ bypass egress； 而 `btw_tool_docs_*`
 | `protected_paths` | 无 | 额外注册的数据根目录；匹配最长的根目录决定模式 |
 | `temp_root` | 新建的 session 临时目录 | 隔离的临时根目录 |
 | `modes` | 项目 `rwx`、数据 `rw`、临时 `rwx` | 逻辑上的盾能力（不是 chmod 位） |
-| `process_exec` | `TRUE` | 保留 RunR/Bash/Python；FALSE 会拦所有执行类工具 |
+| `process_exec` | `TRUE` | 允许继承同一盾的 Agent/AuditCode；所有非委派 exec 工具仍要求 OS backend |
 | `network` | `"tool_policy"` | 交给工具策略决定；`"deny"` 直接拦网络能力 |
 | `symlink_escape` | `"deny"` | 解析真实路径，拒绝逃逸出允许根目录的软链接 |
 | `backend` | `"auto"` | `policy`、`auto`、或 `required` |
 | `on_unavailable` | `"policy"` | 完整 OS 适配器不可用时降级为策略；`block` 对 exec/net 严格拒绝 |
 
-当前实现是一个便携式的中央门路径/能力策略，**不**对外宣称是内核级隔离：
-能力探测发现有 user/network/mount namespace，但没有 bubblewrap/容器，
-普通 `unshare`
-仍能看到宿主文件系统。未来完整适配器需要把执行类工具挪出进程。
+当前实现是便携式中央门路径/能力策略，**不是**内核级隔离。它只放行能解析
+到配置根目录的非 exec 路径操作。所有非委派 exec 工具（包括 Bash、RunR、
+ExploreData 和 Lint）都会失败关闭：路径 metadata
+无法约束代码字符串、子进程、 网络访问或 `.lintr`
+这类可执行项目配置。未来完整适配器必须把这些工具放入 真正的 OS 沙箱。
 
 ### `shield_reviewer()` —— 可选的脱敏代码语义审查
 
@@ -663,10 +664,12 @@ base64/pickle/JSON 序列化、上传风格的 curl/requests 调用、shell 里�
 ## C5 便携式沙箱与 btw 边界
 
 [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
-刻意保留编码能力：项目目录和 session 临时目录默认 `rwx`，受保护数据默认
-`rw` 但可设为 `rwx`，进程执行能力保持开启。当前
-便携式后端会拦截允许根目录之外的显式路径、拒绝符号链接逃逸、并在中央
-门里应用网络/进程能力策略。
+保留可验证路径的非 exec 编码操作：项目目录和 session 临时 目录默认
+`rwx`，受保护数据默认 `rw`。便携式后端会拦截允许根目录之外的路径并
+拒绝符号链接逃逸；由于路径 metadata
+无法约束代码或可执行项目配置，所有非委派 exec 工具（包括
+Bash、RunR、ExploreData 和 Lint）都会失败关闭，继承同一盾的
+Agent/AuditCode 仍可使用。
 
 btw 不被假定提供 OS 级隔离。它的文件工具用
 [`fs::path_has_parent()`](https://fs.r-lib.org/reference/path_math.html)
@@ -692,11 +695,12 @@ cwd/options/环境变量。 因此数据盾对 native、btw、MCP
   [`shield_describe()`](https://kaipingyang.github.io/codeagent/reference/shield_describe.md)
   时注册（或直接构造函数使用
   默认策略时注册）。它返回上面的过滤后元数据契约，也能看到之后注册的数据集。
-- **`ExploreData`** 是通用的只读数据查询工具，不是保密边界，也不是 OS
-  沙箱。 它在子环境中执行传入的 R 代码；数据盾开启时，其参数仍经过中央
-  ingress gate， 面向模型的结果仍经过 egress 过滤。data.frame
-  结果只向模型给出 shape 字符串， 丰富的行数据留在 UI artifact
-  中；标量文本仍可被 `value_match`/regex 命中。
+- **`ExploreData`** 是执行任意 R
+  的数据查询工具，不是只读工具、保密边界或 OS 沙箱。
+  它在子环境中执行传入的 R 代码；数据盾开启时，其参数仍经过中央 ingress
+  gate， 面向模型的结果仍经过 egress 过滤。data.frame 结果只向模型给出
+  shape 字符串， 丰富的行数据留在 UI artifact 中；标量文本仍可被
+  `value_match`/regex 命中。
 - **`audit_code_tool(shield, project_root)`** 是宿主可在执行 R
   代码前选择注册的 `AuditCode` 工具。它解析静态引用，只读取
   `project_root` 内扩展名获准的普通 source
@@ -723,8 +727,8 @@ cwd/options/环境变量。 因此数据盾对 native、btw、MCP
   确定性的高置信度规则会拦截或强制审批。
 - **C5 —— 便携式
   [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)（已实现）**：项目/临时目录默认
-  `rwx`，受保护数据默认 `rw`，具备 realpath/符号链接容纳和策略降级；
-  完整 OS 进程适配器仍是路线图项。
+  `rwx`，受保护数据默认 `rw`，具备 realpath/符号链接容纳，并对无法约束的
+  exec 失败关闭；完整 OS 进程适配器仍是路线图项。
 - **C4 ——
   [`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)（已实现）**：可选的脱敏
   ingress 代码语义 审查，使用一个全新的小模型 Chat；远程 raw

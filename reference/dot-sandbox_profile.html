@@ -83,13 +83,14 @@
 
 <dl><dt id="arg-settings">settings<a class="anchor" aria-label="anchor" href="#arg-settings"></a></dt>
 <dd><p>List or NULL. Reads <code>settings$sandbox</code> (a list with optional
-<code>enabled</code>, <code>allow_network</code>, <code>keep_env</code>).</p></dd>
+<code>enabled</code>, <code>allow_network</code>, <code>keep_env</code>, <code>run_r_backend</code>).</p></dd>
 
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>A normalised profile list: <code>enabled</code>, <code>allow_network</code>, <code>keep_env</code>
-(character vector of env var names to preserve).</p>
+    <p>A normalised profile list. <code>run_r_backend = "required"</code> fails closed
+because codeagent currently has no OS sandbox backend for arbitrary R;
+<code>"process"</code> explicitly opts into best-effort callr process isolation.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

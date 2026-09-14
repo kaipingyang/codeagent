@@ -2,9 +2,11 @@
 
 An ellmer tool that lets the agent answer natural-language questions
 about data.frames in the user's R session. The agent generates
-dplyr/base R code to answer the question, executes it in a sandboxed
-sub-environment, and returns the result as a formatted table.
+dplyr/base R code, evaluates it in a child environment, and returns the
+result as a formatted table.
 
-Unlike the general RunR tool (which runs arbitrary code), `explore_data`
-is scoped to read-only queries on a named data.frame. It never modifies
-the source data.
+`ExploreData` executes arbitrary model-provided R code. The child
+binding usually protects the selected data.frame through copy-on-modify,
+but it is not a security sandbox or a read-only boundary: code may
+access parent environments, files, processes, or networks available to
+the R process.

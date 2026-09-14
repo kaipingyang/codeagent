@@ -80,7 +80,7 @@ or indexing yields nothing.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">register_rag_tool</span><span class="op">(</span><span class="va">chat</span>, cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, store <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">register_rag_tool</span><span class="op">(</span><span class="va">chat</span>, cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, store <span class="op">=</span> <span class="cn">NULL</span>, allow_network <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -97,6 +97,12 @@ or indexing yields nothing.</p>
 
 <dt id="arg-store">store<a class="anchor" aria-label="anchor" href="#arg-store"></a></dt>
 <dd><p>Optional pre-built ragnar store (skips rebuilding).</p></dd>
+
+
+<dt id="arg-allow-network">allow_network<a class="anchor" aria-label="anchor" href="#arg-allow-network"></a></dt>
+<dd><p>Logical. Whether registration may build a store through
+a network embedding backend. The central registration path enables this
+only when network capability is already allowed.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -189,7 +189,7 @@ different timing:
 | Layer | Timing and limitation |
 |----|----|
 | `settings$tools$overrides` deny | Denies before prompting; use this for unconditional per-tool policy, including read tools |
-| A deny `PermissionRule` | Denies before prompting when fallback rule evaluation is reached; it is bypassed by stronger policy and the read fast path |
+| A deny `PermissionRule` | Absolute deny before allow/ask rules, per-tool overrides, capability allows, mode shortcuts, and the read fast path |
 | Data Shield ingress/tool policy with a blocking result | Runs before the read fast path and before prompting |
 | `PreToolUse` returning deny | Runs after gate/human authorization but still before tool execution |
 

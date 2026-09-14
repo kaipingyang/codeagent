@@ -81,7 +81,8 @@
 <span>  ask_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  skip_file_tools <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  sandbox <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  async <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -121,6 +122,10 @@ passed through to <code><a href="bash_tool.html">bash_tool()</a></code>.</p></dd
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>
 <dd><p>Logical. If <code>TRUE</code>, register async permission-gated tool variants
 for the Shiny path (UI-gated approvals). Default <code>FALSE</code> (synchronous).</p></dd>
+
+
+<dt id="arg-cwd">cwd<a class="anchor" aria-label="anchor" href="#arg-cwd"></a></dt>
+<dd><p>Character. Fixed base directory for relative file-tool paths.</p></dd>
 
 </dl></div>
     <div class="section level2">

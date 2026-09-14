@@ -1,8 +1,8 @@
 # Load codeagent settings
 
-Merges configuration from all sources in priority order and applies the
-`env` block from settings.json so that environment variables are
-available even when running under `Rscript --vanilla`.
+Merges configuration from all sources in priority order. The trusted
+user-level `env` block is applied before the environment-variable layer;
+security-sensitive project settings are ignored.
 
 ## Usage
 

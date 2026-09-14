@@ -17,7 +17,8 @@ agent_tool(
   ask_fn = NULL,
   async = FALSE,
   data_shield = NULL,
-  parent_chat = NULL
+  parent_chat = NULL,
+  security_context = NULL
 )
 ```
 
@@ -76,6 +77,11 @@ agent_tool(
   [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html).
   The owned Agent path clones this Chat, clears history/tools, and
   verifies provider + Model inheritance.
+
+- security_context:
+
+  Internal immutable parent security snapshot used to preserve tool
+  sets, capabilities, overrides and sandbox settings.
 
 ## Value
 

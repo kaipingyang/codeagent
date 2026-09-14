@@ -5,8 +5,14 @@ Create the LS tool
 ## Usage
 
 ``` r
-ls_tool()
+ls_tool(cwd = getwd())
 ```
+
+## Arguments
+
+- cwd:
+
+  Character. Fixed base directory for relative paths.
 
 ## Value
 

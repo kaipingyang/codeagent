@@ -315,7 +315,8 @@ Shield 检查，此时若 结果为 <code>ask</code>
 <tr class="even">
 <td>deny <code>PermissionRule</code>
 </td>
-<td>在到达回退规则求值时于提示前拒绝；更高优先级策略和读取快速路径会绕过它</td>
+<td>绝对拒绝，先于 allow/ask 规则、逐工具 override、能力
+allow、模式快捷路径和读取快速路径</td>
 </tr>
 <tr class="odd">
 <td>返回 block 的 Data Shield 入口/工具策略</td>

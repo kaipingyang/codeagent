@@ -369,10 +369,11 @@ data.frame.</p>
 sandbox</strong>. The evaluated code can resolve functions through
 parent environments and can potentially use explicit parent assignment,
 mutable/reference objects, filesystem functions, process execution, or
-network functions available in the R process. The
-<code>read_only_hint = TRUE</code> and
-<code>open_world_hint = FALSE</code> annotations are metadata, not
-enforcement. Use only with a trusted model and environment, add an
+network functions available in the R process. The tool therefore
+advertises <code>read_only_hint = FALSE</code>,
+<code>destructive_hint = TRUE</code>, and
+<code>open_world_hint = TRUE</code>; these annotations are risk signals,
+not enforcement. Use only with a trusted model and environment, add an
 explicit permission override if required by the host, and use Data
 Shield/ <code>DescribeData</code> rather than <code>ExploreData</code>
 for protected data. The general <code>RunR</code> tool remains

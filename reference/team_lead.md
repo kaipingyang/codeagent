@@ -22,7 +22,7 @@ team_lead(
   cwd = getwd(),
   max_rounds = 3L,
   n_workers = NULL,
-  permission_mode = "bypass",
+  permission_mode = "dont_ask",
   worktree = FALSE,
   decompose_fn = NULL,
   review_fn = NULL,

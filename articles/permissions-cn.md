@@ -184,7 +184,7 @@ Allow/Deny 审批条；promise 解析后才恢复执行。CLI
 | 层 | 时机与限制 |
 |----|----|
 | `settings$tools$overrides` deny | 在提示前拒绝；适合无条件的逐工具策略，包括读取工具 |
-| deny `PermissionRule` | 在到达回退规则求值时于提示前拒绝；更高优先级策略和读取快速路径会绕过它 |
+| deny `PermissionRule` | 绝对拒绝，先于 allow/ask 规则、逐工具 override、能力 allow、模式快捷路径和读取快速路径 |
 | 返回 block 的 Data Shield 入口/工具策略 | 在读取快速路径和提示之前运行 |
 | 返回 deny 的 `PreToolUse` | 在权限门/人类授权之后、工具执行之前运行 |
 

@@ -132,66 +132,9 @@ registration message is simply ignored and the footer <code>pickerInput</code> r
 as the fallback slash UI. REPL is unaffected (uses <code>.preprocess_input</code>).</p>
     </div>
 
-    <div class="section level2">
-    <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">server_slash</span><span class="op">(</span></span>
-<span>  <span class="va">input</span>,</span>
-<span>  <span class="va">session</span>,</span>
-<span>  cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  id <span class="op">=</span> <span class="st">"chat"</span>,</span>
-<span>  stream_task <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  chat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  settings <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  state <span class="op">=</span> <span class="cn">NULL</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-    </div>
-
-    <div class="section level2">
-    <h2 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h2>
 
 
-<dl><dt id="arg-input-session">input, session<a class="anchor" aria-label="anchor" href="#arg-input-session"></a></dt>
-<dd><p>Standard Shiny server args.</p></dd>
-
-
-<dt id="arg-cwd">cwd<a class="anchor" aria-label="anchor" href="#arg-cwd"></a></dt>
-<dd><p>Character. Working directory (for skill discovery).</p></dd>
-
-
-<dt id="arg-id">id<a class="anchor" aria-label="anchor" href="#arg-id"></a></dt>
-<dd><p>Character. The <code>chat_ui()</code> id (default <code>"chat"</code>).</p></dd>
-
-
-<dt id="arg-stream-task">stream_task<a class="anchor" aria-label="anchor" href="#arg-stream-task"></a></dt>
-<dd><p>The <code>ExtendedTask</code> returned by <code><a href="server_chat.html">server_chat()</a></code>, used to
-run skill/normal slash commands through the harness (compaction, skill
-injection, streaming). Required for skill commands to reach the LLM.</p></dd>
-
-
-<dt id="arg-chat-settings-state">chat, settings, state<a class="anchor" aria-label="anchor" href="#arg-chat-settings-state"></a></dt>
-<dd><p>Harness handles for executing local commands
-directly (via <code>.handle_chat_command()</code>).</p></dd>
-
-</dl></div>
-    <div class="section level2">
-    <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
-    <p>Invisibly NULL.</p>
-    </div>
-    <div class="section level2">
-    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
-    <p>Slash commands are dispatched <strong>directly inside this handler</strong> – we do NOT
-re-submit <code>/command</code> through <code>update_chat_user_input()</code>. Re-submitting is
-broken: shinychat re-recognises the re-submitted <code>/command</code> as a slash
-command and fires <code>input$&lt;id&gt;_slash_command</code> again with the <em>same</em> value,
-which Shiny's <code>observeEvent</code> de-dupes into a no-op – so the command never
-reaches <code>input$&lt;id&gt;_user_input</code> / <code>.preprocess_input</code> and silently dies.
-Instead we mirror <code>server_chat</code>'s routing here: local commands run via
-<code>.handle_chat_command()</code>, skills/normal go through the shared <code>stream_task</code>
-(which injects the skill prompt internally).</p>
-    </div>
-
-  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
-    </nav></aside></div>
+  </main></div>
 
 
     <footer><div class="pkgdown-footer-left">

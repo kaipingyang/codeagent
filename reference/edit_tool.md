@@ -5,7 +5,7 @@ Create the Edit tool
 ## Usage
 
 ``` r
-edit_tool(mode = "default", rules = list(), ask_fn = NULL)
+edit_tool(mode = "default", rules = list(), ask_fn = NULL, cwd = getwd())
 ```
 
 ## Arguments
@@ -21,6 +21,10 @@ edit_tool(mode = "default", rules = list(), ask_fn = NULL)
 - ask_fn:
 
   Function or NULL.
+
+- cwd:
+
+  Character. Fixed base directory for relative paths.
 
 ## Value
 

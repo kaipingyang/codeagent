@@ -118,9 +118,9 @@ or calling <code><a href="generate_wear_report.html">generate_wear_report()</a><
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
 
-<table class="table table"><tr><td>Normal session</td><td>WEAR session (<code>wear_explore()</code>)</td></tr><tr><td>No data registered by default</td><td><code>data=</code> argument registers named data.frames</td></tr><tr><td>No <code>GenerateReport</code> tool</td><td><code>/report</code> exports session to <code>.qmd</code></td></tr><tr><td>No WEAR system prompt</td><td>Agent instructed to end each turn with <strong>Next steps</strong></td></tr><tr><td>General-purpose tools</td><td><code>ExploreData</code> tool added (read-only, sandboxed)</td></tr></table><p>The <code>ExploreData</code> and <code>GenerateReport</code> tools are <strong>not</strong> registered in the
-standard agent loop (<code><a href="codeagent_app.html">codeagent_app()</a></code>) – use <code>wear_explore()</code> to enter
-exploration mode explicitly.</p>
+<table class="table table"><tr><td>Normal session</td><td>WEAR session (<code>wear_explore()</code>)</td></tr><tr><td>No data registered by default</td><td><code>data=</code> argument registers named data.frames</td></tr><tr><td>No <code>GenerateReport</code> tool</td><td><code>/report</code> exports session to <code>.qmd</code></td></tr><tr><td>No WEAR system prompt</td><td>Agent instructed to end each turn with <strong>Next steps</strong></td></tr><tr><td>General-purpose tools</td><td><code>ExploreData</code> rebound to <code>data</code>; arbitrary R execution remains exec-gated</td></tr></table><p>Standard clients register <code>ExploreData</code> by default. <code>wear_explore()</code> replaces
+that registration with one bound to its supplied data environment and adds
+<code>GenerateReport</code>; neither path makes model-generated R code a sandbox.</p>
     </div>
     <div class="section level2">
     <h2 id="see-also">See also<a class="anchor" aria-label="anchor" href="#see-also"></a></h2>

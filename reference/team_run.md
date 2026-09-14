@@ -9,8 +9,11 @@ team_run(
   tasks,
   model = NULL,
   n_workers = NULL,
-  permission_mode = "bypass",
-  cwd = getwd()
+  permission_mode = "dont_ask",
+  cwd = getwd(),
+  parent_rules = NULL,
+  parent_policy = NULL,
+  security_context = NULL
 )
 ```
 
@@ -33,12 +36,26 @@ team_run(
 
 - permission_mode:
 
-  Character. Permission mode for each agent (default `"bypass"` since
-  parallel agents cannot prompt interactively).
+  Character. Permission mode for each agent (default `"dont_ask"` since
+  parallel agents cannot prompt interactively – NOT "bypass", so
+  user-defined deny rules are still honoured).
 
 - cwd:
 
   Character. Working directory for each agent.
+
+- parent_rules:
+
+  List. Permission rules inherited from the parent agent.
+
+- parent_policy:
+
+  List. Tool capability policies inherited from parent.
+
+- security_context:
+
+  Internal immutable parent security snapshot. When supplied it takes
+  precedence over the legacy permission arguments.
 
 ## Value
 

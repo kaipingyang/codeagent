@@ -221,8 +221,9 @@ data.frame 会绑定到该子环境。像 `df$x <- ...`
 data.frame。
 
 但是，这只是命名空间隔离，**不是安全沙箱**。被求值的代码可以通过父环境解析函数，并可能使用显式父环境赋值、可变/引用对象、文件系统函数、进程执行或当前
-R 进程可用的网络函数。`read_only_hint = TRUE` 和
-`open_world_hint = FALSE`
-只是元数据，不是强制机制。只应与可信模型和环境一起使用；如宿主有需要，应添加显式权限覆盖；受保护数据应使用
+R 进程可用的网络函数。因此工具明确标注
+`read_only_hint = FALSE`、`destructive_hint = TRUE` 和
+`open_world_hint = TRUE`；这些 annotation
+是风险信号，不是强制机制。只应与可信模型和环境一起使用；如宿主有需要，应添加显式权限覆盖；受保护数据应使用
 Data Shield/`DescribeData` 而不是 `ExploreData`。通用 `RunR`
 工具仍被单独归类为可执行工具，并经过自己的权限决策。

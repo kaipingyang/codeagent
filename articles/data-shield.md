@@ -278,7 +278,7 @@ developer guarantees all outputs are LLM-safe, while `btw_tool_docs_*`
 can receive a broader trusted rule. This policy never bypasses
 codeagent’s independent permission system.
 
-### `shield_sandbox()` — portable containment without crippling the agent
+### `shield_sandbox()` — fail-closed portable path policy
 
 | Parameter | Default | Actual effect |
 |----|----|----|
@@ -286,17 +286,19 @@ codeagent’s independent permission system.
 | `protected_paths` | none | Extra registered data roots; longest matching root controls mode |
 | `temp_root` | new session temp | Isolated temporary root |
 | `modes` | project `rwx`, data `rw`, temp `rwx` | Logical Shield capabilities (not chmod bits) |
-| `process_exec` | `TRUE` | Preserve RunR/Bash/Python; FALSE blocks exec tools |
+| `process_exec` | `TRUE` | Permit shield-preserving Agent/AuditCode; every non-delegated exec tool still requires an OS backend |
 | `network` | `"tool_policy"` | Let tool policy decide; `"deny"` blocks net capability |
 | `symlink_escape` | `"deny"` | Resolve real paths and reject links escaping allowed roots |
 | `backend` | `"auto"` | `policy`, `auto`, or `required` |
 | `on_unavailable` | `"policy"` | Full OS adapter unavailable → policy fallback; `block` fails closed for exec/net |
 
 Current implementation is a portable central-gate path/capability
-policy. It is not advertised as kernel isolation: the capability probe
-found user/network/ mount namespaces but no bubblewrap/container, and
-plain `unshare` still sees the host filesystem. A future full adapter
-must move exec tools out of process.
+policy, not kernel isolation. It permits declared non-exec path
+operations that resolve under configured roots. Every non-delegated exec
+tool, including Bash, RunR, ExploreData, and Lint, fails closed: path
+metadata cannot bound code strings, child processes, network access, or
+executable project configuration such as `.lintr`. A future full adapter
+must move those tools into a real OS sandbox.
 
 ### `shield_reviewer()` — optional sanitized-code semantic rail
 
@@ -697,11 +699,13 @@ blocked.
 ## C5 portable sandbox and btw boundary
 
 [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
-deliberately preserves coding capability: project and session-temp
-default to `rwx`, protected data defaults to `rw` but may be `rwx`, and
-process execution stays enabled. Its current portable backend blocks
-explicit paths outside allowed roots, rejects symlink escape, and
-applies network/process capability policy in the central gate.
+preserves non-exec path-declared coding operations: project and
+session-temp default to `rwx`, and protected data defaults to `rw`. Its
+portable backend blocks paths outside allowed roots and rejects symlink
+escape. Because path metadata cannot constrain code or executable
+project configuration, every non-delegated exec tool, including Bash,
+RunR, ExploreData, and Lint, fails closed; shield-preserving
+Agent/AuditCode remain usable.
 
 btw is not assumed to provide OS isolation. Its file tools enforce cwd
 with
@@ -730,13 +734,13 @@ block when no approval channel exists.
   is enabled (or when the direct constructor uses its default
   strategies). It returns the filtered metadata contract above and sees
   datasets registered later.
-- **`ExploreData`** is a general read-only data-query tool, not a
-  confidentiality boundary or OS sandbox. It evaluates supplied R code
-  in a child environment; under Data Shield its arguments still pass the
-  central ingress gate and its model-facing result still passes egress
-  filtering. Data-frame results expose a shape string to the model while
-  rich rows remain a UI artifact; scalar text can still be caught by
-  `value_match`/regex.
+- **`ExploreData`** is an arbitrary-R data-query tool, not a
+  confidentiality boundary, read-only tool, or OS sandbox. It evaluates
+  supplied R code in a child environment; under Data Shield its
+  arguments still pass the central ingress gate and its model-facing
+  result still passes egress filtering. Data-frame results expose a
+  shape string to the model while rich rows remain a UI artifact; scalar
+  text can still be caught by `value_match`/regex.
 - **`audit_code_tool(shield, project_root)`** is an opt-in `AuditCode`
   tool that a host may register before executing R code. It parses
   static references, reads only regular source files with allowed
@@ -770,8 +774,8 @@ block when no approval channel exists.
 - **C5 — portable
   [`shield_sandbox()`](https://kaipingyang.github.io/codeagent/reference/shield_sandbox.md)
   (available)**: project/temp `rwx`, protected data `rw` by default,
-  realpath/symlink containment and policy fallback; full OS process
-  adapter remains roadmap.
+  realpath/symlink containment, and fail-closed handling of unconfined
+  exec; a full OS process adapter remains roadmap.
 - **C4 —
   [`shield_reviewer()`](https://kaipingyang.github.io/codeagent/reference/shield_reviewer.md)
   (available)**: optional sanitized ingress-code semantic rail using a

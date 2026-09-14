@@ -125,8 +125,10 @@ DAG，也适合耗时不均的任务。</li>
 </ul>
 <p><code><a href="../reference/team_run.html">team_run()</a></code> 和 <code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> 需要
 <code>mirai</code>；任务板操作需要 <code>DBI</code> 和
-<code>RSQLite</code>。工作进程的权限模式默认为
-<code>"bypass"</code>，因为守护进程无法响应交互式审批。只应对可信任务和可信环境使用这一默认值。</p>
+<code>RSQLite</code>。这两个底层 API 的工作进程权限模式仍默认为
+<code>"bypass"</code>，因为守护进程无法响应交互式审批；只应对可信任务和环境使用。<code><a href="../reference/team_lead.html">team_lead()</a></code>
+现默认使用
+<code>"dont_ask"</code>，需要审批的操作会被拒绝，除非调用方显式选择其他模式。</p>
 </div>
 <div class="section level2">
 <h2 id="协调方式速览">协调方式速览<a class="anchor" aria-label="anchor" href="#%E5%8D%8F%E8%B0%83%E6%96%B9%E5%BC%8F%E9%80%9F%E8%A7%88"></a>
@@ -296,7 +298,7 @@ detached Git worktree：</p>
 <div class="section level2">
 <h2 id="llm-负责人轮次team_lead">LLM 负责人轮次：<code>team_lead()</code><a class="anchor" aria-label="anchor" href="#llm-%E8%B4%9F%E8%B4%A3%E4%BA%BA%E8%BD%AE%E6%AC%A1team_lead"></a>
 </h2>
-<p><code>team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "bypass", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)</code>
+<p><code>team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "dont_ask", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)</code>
 首先要求负责人模型给出结构化任务和依赖关系。三个回调参数是可注入接口，主要用于测试或自定义编排。每个协调轮次结束后，它会判断目标是否完成；如未完成，仅运行后续计划。非空的已执行任务板会按行合并并添加
 <code>round</code>
 列；若首次分解就没有任务，空返回值只包含基础任务板列。<code>max_rounds</code>
@@ -304,7 +306,7 @@ detached Git worktree：</p>
 1。复核过程报错时会按“已完成”处理，从而停止而不是无限重试。</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lead_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/team_lead.html">team_lead</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Review the parser, fix confirmed defects, and verify the focused tests"</span>,</span>
+<span>  <span class="st">"Review the parser and report prioritized findings with verification advice"</span>,</span>
 <span>  max_rounds <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  n_workers <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  worktree <span class="op">=</span> <span class="cn">TRUE</span></span>

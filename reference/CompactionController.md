@@ -1,5 +1,11 @@
 # Context compaction controller
 
+Context compaction controller
+
+Context compaction controller
+
+## Details
+
 Monitors token usage and dispatches the appropriate compaction level.
 Includes a circuit breaker that silences compaction after 3 consecutive
 failures to prevent infinite compaction loops.
@@ -24,7 +30,7 @@ failures to prevent infinite compaction loops.
 
 ------------------------------------------------------------------------
 
-### `CompactionController$adaptive_compact()`
+### Method `adaptive_compact()`
 
 Run adaptive compaction with circuit-breaker protection.
 
@@ -87,7 +93,7 @@ A sanitized internal compaction decision.
 
 ------------------------------------------------------------------------
 
-### `CompactionController$maybe_compact()`
+### Method `maybe_compact()`
 
 Check token usage and compact if needed.
 
@@ -135,7 +141,7 @@ Invisibly the internal compaction decision, or NULL when disabled.
 
 ------------------------------------------------------------------------
 
-### `CompactionController$compact_now()`
+### Method `compact_now()`
 
 Force the adaptive summary chain for manual compaction.
 
@@ -161,7 +167,7 @@ decision is attached as a `decision` attribute.
 
 ------------------------------------------------------------------------
 
-### `CompactionController$handle_ptl_error()`
+### Method `handle_ptl_error()`
 
 Handle a prompt-too-long (PTL) error by dropping turns.
 
@@ -187,7 +193,7 @@ Handle a prompt-too-long (PTL) error by dropping turns.
 
 ------------------------------------------------------------------------
 
-### `CompactionController$reset_failures()`
+### Method `reset_failures()`
 
 Reset the failure counter (e.g. after a successful turn).
 
@@ -197,7 +203,7 @@ Reset the failure counter (e.g. after a successful turn).
 
 ------------------------------------------------------------------------
 
-### `CompactionController$failure_count()`
+### Method `failure_count()`
 
 Return current failure count.
 
@@ -207,7 +213,7 @@ Return current failure count.
 
 ------------------------------------------------------------------------
 
-### `CompactionController$clone()`
+### Method `clone()`
 
 The objects of this class are cloneable with this method.
 

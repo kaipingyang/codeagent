@@ -81,7 +81,8 @@ relevant rules in priority order.</p>
 <span>  <span class="va">tool_name</span>,</span>
 <span>  mode <span class="op">=</span> <span class="st">"default"</span>,</span>
 <span>  rules <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  tool_input <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  tool_input <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  allow_plan_exit <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -98,11 +99,18 @@ relevant rules in priority order.</p>
 
 
 <dt id="arg-rules">rules<a class="anchor" aria-label="anchor" href="#arg-rules"></a></dt>
-<dd><p>List of <code><a href="PermissionRule.html">PermissionRule()</a></code> objects (highest priority first).</p></dd>
+<dd><p>List of <code><a href="PermissionRule.html">PermissionRule()</a></code> objects. Every matching explicit deny
+is absolute; declaration order is preserved only among remaining allow/ask
+rules.</p></dd>
 
 
 <dt id="arg-tool-input">tool_input<a class="anchor" aria-label="anchor" href="#arg-tool-input"></a></dt>
 <dd><p>List or NULL. Tool arguments (used for Bash read-only detection).</p></dd>
+
+
+<dt id="arg-allow-plan-exit">allow_plan_exit<a class="anchor" aria-label="anchor" href="#arg-allow-plan-exit"></a></dt>
+<dd><p>Logical. Whether <code>ExitPlanMode</code> may restore a mode
+after a trusted in-session <code>EnterPlanMode</code> transition.</p></dd>
 
 </dl></div>
     <div class="section level2">

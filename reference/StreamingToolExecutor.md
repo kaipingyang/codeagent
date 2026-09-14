@@ -1,13 +1,25 @@
 # Concurrent tool execution scheduler
 
+Concurrent tool execution scheduler
+
+Concurrent tool execution scheduler
+
+## Details
+
 Manages parallel execution of concurrent-safe tools while serialising
 non-concurrent-safe tools. Mirrors Claude Code's
 `StreamingToolExecutor`.
 
+**IMPORTANT**: The synchronous path (`submit()` + `drain_queue()`)
+executes ALL tools serially — even concurrent-safe ones. True
+parallelism is only achieved via `execute_batch_async()`
+(promises-based, for Shiny/async contexts). The serial path is preserved
+for backward compatibility with synchronous `chat$chat()` loops.
+
 Rules:
 
 - Concurrent-safe tools run immediately (in parallel with other safe
-  tools).
+  tools) in the async path; they run serially in the sync path.
 
 - Non-concurrent-safe tools wait for all running tools to finish,
   execute exclusively, then release the queue.
@@ -19,7 +31,7 @@ Rules:
 
 ### Public methods
 
-- [`StreamingToolExecutor$new()`](#method-StreamingToolExecutor-initialize)
+- [`StreamingToolExecutor$new()`](#method-StreamingToolExecutor-new)
 
 - [`StreamingToolExecutor$submit()`](#method-StreamingToolExecutor-submit)
 
@@ -35,7 +47,7 @@ Rules:
 
 ------------------------------------------------------------------------
 
-### `StreamingToolExecutor$new()`
+### Method `new()`
 
 Create a new executor.
 
@@ -45,7 +57,7 @@ Create a new executor.
 
 ------------------------------------------------------------------------
 
-### `StreamingToolExecutor$submit()`
+### Method `submit()`
 
 Submit a tool call for execution.
 
@@ -70,7 +82,7 @@ Invisibly NULL (result will appear in `collect_results()`).
 
 ------------------------------------------------------------------------
 
-### `StreamingToolExecutor$drain_queue()`
+### Method `drain_queue()`
 
 Drain the queue for any unsafe tool that was running. Call this after
 marking the unsafe tool as complete.
@@ -79,9 +91,15 @@ marking the unsafe tool as complete.
 
     StreamingToolExecutor$drain_queue()
 
+#### Arguments
+
+- `exec_fn`:
+
+  Function `(tool_call) -> character`. Executor function.
+
 ------------------------------------------------------------------------
 
-### `StreamingToolExecutor$collect_results()`
+### Method `collect_results()`
 
 Collect all completed results and reset the accumulator.
 
@@ -95,7 +113,7 @@ List of result objects (each with `id`, `name`, `result`).
 
 ------------------------------------------------------------------------
 
-### `StreamingToolExecutor$execute_batch()`
+### Method `execute_batch()`
 
 Execute a batch of tool calls, respecting concurrency rules.
 
@@ -119,7 +137,7 @@ List of result objects.
 
 ------------------------------------------------------------------------
 
-### `StreamingToolExecutor$execute_batch_async()`
+### Method `execute_batch_async()`
 
 Async variant of `execute_batch()` for use inside
 [`coro::async`](https://coro.r-lib.org/reference/async.html) / Shiny
@@ -159,7 +177,7 @@ directly when `promises` is unavailable.
 
 ------------------------------------------------------------------------
 
-### `StreamingToolExecutor$clone()`
+### Method `clone()`
 
 The objects of this class are cloneable with this method.
 

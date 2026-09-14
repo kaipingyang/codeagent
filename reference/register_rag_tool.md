@@ -7,7 +7,7 @@ missing or indexing yields nothing.
 ## Usage
 
 ``` r
-register_rag_tool(chat, cwd = getwd(), store = NULL)
+register_rag_tool(chat, cwd = getwd(), store = NULL, allow_network = FALSE)
 ```
 
 ## Arguments
@@ -24,6 +24,12 @@ register_rag_tool(chat, cwd = getwd(), store = NULL)
 - store:
 
   Optional pre-built ragnar store (skips rebuilding).
+
+- allow_network:
+
+  Logical. Whether registration may build a store through a network
+  embedding backend. The central registration path enables this only
+  when network capability is already allowed.
 
 ## Value
 

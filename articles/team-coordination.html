@@ -126,10 +126,13 @@ fire-and-forget paths whose results are surfaced on a later turn.</li>
 </ul>
 <p><code><a href="../reference/team_run.html">team_run()</a></code> and <code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> require
 <code>mirai</code>. Board operations require <code>DBI</code> and
-<code>RSQLite</code>. Their worker permission mode defaults to
+<code>RSQLite</code>. <code><a href="../reference/team_run.html">team_run()</a></code> and
+<code><a href="../reference/team_coordinate.html">team_coordinate()</a></code> retain a worker permission default of
 <code>"bypass"</code> because daemon processes cannot answer interactive
-approval prompts; use that default only for tasks and environments you
-trust.</p>
+approval prompts; use it only for trusted tasks and environments.
+<code><a href="../reference/team_lead.html">team_lead()</a></code> now defaults to <code>"dont_ask"</code>, so
+operations that would require approval are rejected unless callers
+explicitly choose a different mode.</p>
 </div>
 <div class="section level2">
 <h2 id="coordination-at-a-glance">Coordination at a glance<a class="anchor" aria-label="anchor" href="#coordination-at-a-glance"></a>
@@ -314,7 +317,7 @@ job.</p>
 <div class="section level2">
 <h2 id="llm-led-rounds-team_lead">LLM-led rounds: <code>team_lead()</code><a class="anchor" aria-label="anchor" href="#llm-led-rounds-team_lead"></a>
 </h2>
-<p><code>team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "bypass", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)</code>
+<p><code>team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "dont_ask", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)</code>
 first asks the lead model for structured tasks and dependencies. The
 three callback arguments are injectable seams primarily used for testing
 or custom orchestration. After each coordinated round it asks whether
@@ -326,7 +329,7 @@ coerced to at least one. A review error is handled as “done,” so it
 stops rather than retrying indefinitely.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lead_result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/team_lead.html">team_lead</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Review the parser, fix confirmed defects, and verify the focused tests"</span>,</span>
+<span>  <span class="st">"Review the parser and report prioritized findings with verification advice"</span>,</span>
 <span>  max_rounds <span class="op">=</span> <span class="fl">3</span>,</span>
 <span>  n_workers <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>  worktree <span class="op">=</span> <span class="cn">TRUE</span></span>

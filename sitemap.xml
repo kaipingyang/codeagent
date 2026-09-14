@@ -3,6 +3,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/AGENTS.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/CLAUDE.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/LICENSE-text.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/SECURITY-FIXES.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/backend-integration-cn.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/backend-integration.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/articles/compaction-cn.html</loc></url>
@@ -101,6 +102,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_memory.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/delete_session.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-adapt_tool_result.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-as_skill_slash_content.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-audit_code_impl.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-audit_r_code_refs.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-auto_compact_threshold.html</loc></url>

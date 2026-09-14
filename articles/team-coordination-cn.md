@@ -27,9 +27,11 @@ codeagent
 [`team_run()`](https://kaipingyang.github.io/codeagent/reference/team_run.md)
 和
 [`team_coordinate()`](https://kaipingyang.github.io/codeagent/reference/team_coordinate.md)
-需要 `mirai`；任务板操作需要 `DBI` 和
-`RSQLite`。工作进程的权限模式默认为
-`"bypass"`，因为守护进程无法响应交互式审批。只应对可信任务和可信环境使用这一默认值。
+需要 `mirai`；任务板操作需要 `DBI` 和 `RSQLite`。这两个底层 API
+的工作进程权限模式仍默认为
+`"bypass"`，因为守护进程无法响应交互式审批；只应对可信任务和环境使用。[`team_lead()`](https://kaipingyang.github.io/codeagent/reference/team_lead.md)
+现默认使用
+`"dont_ask"`，需要审批的操作会被拒绝，除非调用方显式选择其他模式。
 
 ## 协调方式速览
 
@@ -215,7 +217,7 @@ team_dashboard(db)
 
 ## LLM 负责人轮次：`team_lead()`
 
-`team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "bypass", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)`
+`team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "dont_ask", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)`
 首先要求负责人模型给出结构化任务和依赖关系。三个回调参数是可注入接口，主要用于测试或自定义编排。每个协调轮次结束后，它会判断目标是否完成；如未完成，仅运行后续计划。非空的已执行任务板会按行合并并添加
 `round`
 列；若首次分解就没有任务，空返回值只包含基础任务板列。`max_rounds`
@@ -225,7 +227,7 @@ team_dashboard(db)
 ``` r
 
 lead_result <- team_lead(
-  "Review the parser, fix confirmed defects, and verify the focused tests",
+  "Review the parser and report prioritized findings with verification advice",
   max_rounds = 3,
   n_workers = 2,
   worktree = TRUE

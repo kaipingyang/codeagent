@@ -5,7 +5,7 @@ Create the Read tool
 ## Usage
 
 ``` r
-read_tool(mode = "default", rules = list())
+read_tool(mode = "default", rules = list(), cwd = getwd())
 ```
 
 ## Arguments
@@ -17,6 +17,10 @@ read_tool(mode = "default", rules = list())
 - rules:
 
   List. Permission rules.
+
+- cwd:
+
+  Character. Fixed base directory for relative paths.
 
 ## Value
 

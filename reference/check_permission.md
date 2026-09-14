@@ -10,7 +10,8 @@ check_permission(
   tool_name,
   mode = "default",
   rules = list(),
-  tool_input = NULL
+  tool_input = NULL,
+  allow_plan_exit = FALSE
 )
 ```
 
@@ -29,11 +30,17 @@ check_permission(
 
   List of
   [`PermissionRule()`](https://kaipingyang.github.io/codeagent/reference/PermissionRule.md)
-  objects (highest priority first).
+  objects. Every matching explicit deny is absolute; declaration order
+  is preserved only among remaining allow/ask rules.
 
 - tool_input:
 
   List or NULL. Tool arguments (used for Bash read-only detection).
+
+- allow_plan_exit:
+
+  Logical. Whether `ExitPlanMode` may restore a mode after a trusted
+  in-session `EnterPlanMode` transition.
 
 ## Value
 

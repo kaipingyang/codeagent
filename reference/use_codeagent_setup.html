@@ -88,8 +88,9 @@
 
 
 <dl><dt id="arg-scope">scope<a class="anchor" aria-label="anchor" href="#arg-scope"></a></dt>
-<dd><p>Character. <code>"user"</code> writes to <code>~/.codeagent/settings.json</code>;
-<code>"project"</code> writes to <code>.codeagent/settings.json</code> in the current directory.</p></dd>
+<dd><p>Character. Must be <code>"user"</code> for provider setup. Project files
+cannot configure providers, endpoints, or credentials; pass an explicit
+Chat to <code><a href="codeagent_client.html">codeagent_client()</a></code> for project-specific backends.</p></dd>
 
 </dl></div>
     <div class="section level2">

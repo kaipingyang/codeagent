@@ -89,7 +89,8 @@ discovered from <code>.btw/agent-*.md</code>, <code>.claude/agents/</code>, etc.
 <span>  data_shield <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  parent_chat <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  hooks <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  hooks <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  security_context <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -148,6 +149,10 @@ sub-agent lifecycle integration.</p></dd>
 <dt id="arg-hooks">hooks<a class="anchor" aria-label="anchor" href="#arg-hooks"></a></dt>
 <dd><p>Optional <a href="HookRegistry.html">HookRegistry</a> used for SubagentStart/Stop lifecycle
 events on the owned codeagent Agent path.</p></dd>
+
+
+<dt id="arg-security-context">security_context<a class="anchor" aria-label="anchor" href="#arg-security-context"></a></dt>
+<dd><p>Internal immutable parent security snapshot.</p></dd>
 
 </dl></div>
     <div class="section level2">

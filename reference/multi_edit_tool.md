@@ -6,7 +6,7 @@ a single file in one call.
 ## Usage
 
 ``` r
-multi_edit_tool(mode = "default", rules = list(), ask_fn = NULL)
+multi_edit_tool(mode = "default", rules = list(), ask_fn = NULL, cwd = getwd())
 ```
 
 ## Arguments
@@ -22,6 +22,10 @@ multi_edit_tool(mode = "default", rules = list(), ask_fn = NULL)
 - ask_fn:
 
   Function or NULL.
+
+- cwd:
+
+  Character. Fixed base directory for relative paths.
 
 ## Value
 

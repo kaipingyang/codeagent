@@ -5,7 +5,14 @@ Register the TeamRun tool on a chat
 ## Usage
 
 ``` r
-register_team_tool(chat, model = NULL, cwd = getwd())
+register_team_tool(
+  chat,
+  model = NULL,
+  cwd = getwd(),
+  parent_rules = NULL,
+  parent_policy = NULL,
+  security_context = NULL
+)
 ```
 
 ## Arguments
@@ -22,6 +29,18 @@ register_team_tool(chat, model = NULL, cwd = getwd())
 - cwd:
 
   Character. Working directory.
+
+- parent_rules:
+
+  List. Permission rules inherited from parent.
+
+- parent_policy:
+
+  List. Tool capability policies inherited from parent.
+
+- security_context:
+
+  Internal immutable parent security snapshot.
 
 ## Value
 

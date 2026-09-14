@@ -7,13 +7,12 @@ This is the client side (consuming external tools);
 [`codeagent_mcp_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mcp_server.md)
 is the server side (exposing codeagent's tools).
 
-Transport: mcptools (\>= 0.2.1) launches stdio MCP servers as child
-processes (`command` + `args` + `env` per the config) on the **client**
-side. Remote HTTP/SSE *client* connections are not yet supported
-upstream (mcptools `mcp_tools()` is stdio-only); codeagent can however
-*serve* over HTTP – see
-[`codeagent_mcp_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mcp_server.md)
-with `transport = "http"`.
+Transport: mcptools (\>= 1.0.2.9000) launches stdio MCP servers as child
+processes (`command` + `args` + `env`) and connects directly to remote
+Streamable HTTP servers configured with `url`. Static headers and MCP
+OAuth discovery/PKCE/token refresh are handled upstream by
+`mcp_tools()`; codeagent passes the config through without persisting
+credentials.
 
 Config format (JSON file or inline list), e.g.:
 

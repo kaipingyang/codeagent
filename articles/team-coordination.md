@@ -29,10 +29,16 @@ foreground, or truly non-blocking:
 [`team_run()`](https://kaipingyang.github.io/codeagent/reference/team_run.md)
 and
 [`team_coordinate()`](https://kaipingyang.github.io/codeagent/reference/team_coordinate.md)
-require `mirai`. Board operations require `DBI` and `RSQLite`. Their
-worker permission mode defaults to `"bypass"` because daemon processes
-cannot answer interactive approval prompts; use that default only for
-tasks and environments you trust.
+require `mirai`. Board operations require `DBI` and `RSQLite`.
+[`team_run()`](https://kaipingyang.github.io/codeagent/reference/team_run.md)
+and
+[`team_coordinate()`](https://kaipingyang.github.io/codeagent/reference/team_coordinate.md)
+retain a worker permission default of `"bypass"` because daemon
+processes cannot answer interactive approval prompts; use it only for
+trusted tasks and environments.
+[`team_lead()`](https://kaipingyang.github.io/codeagent/reference/team_lead.md)
+now defaults to `"dont_ask"`, so operations that would require approval
+are rejected unless callers explicitly choose a different mode.
 
 ## Coordination at a glance
 
@@ -232,7 +238,7 @@ team_dashboard(db)
 
 ## LLM-led rounds: `team_lead()`
 
-`team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "bypass", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)`
+`team_lead(goal, model = NULL, cwd = getwd(), max_rounds = 3L, n_workers = NULL, permission_mode = "dont_ask", worktree = FALSE, decompose_fn = NULL, review_fn = NULL, coordinate_fn = NULL)`
 first asks the lead model for structured tasks and dependencies. The
 three callback arguments are injectable seams primarily used for testing
 or custom orchestration. After each coordinated round it asks whether
@@ -246,7 +252,7 @@ indefinitely.
 ``` r
 
 lead_result <- team_lead(
-  "Review the parser, fix confirmed defects, and verify the focused tests",
+  "Review the parser and report prioritized findings with verification advice",
   max_rounds = 3,
   n_workers = 2,
   worktree = TRUE

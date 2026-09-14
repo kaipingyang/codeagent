@@ -17,13 +17,14 @@ team_coordinate(
   tasks,
   model = NULL,
   n_workers = NULL,
-  permission_mode = "bypass",
+  permission_mode = "dont_ask",
   cwd = getwd(),
   blocked_by = NULL,
   worktree = FALSE,
   backoff = 0.5,
   reclaim_timeout = 300,
-  db_path = tempfile(fileext = ".sqlite")
+  db_path = tempfile(fileext = ".sqlite"),
+  security_context = NULL
 )
 ```
 
@@ -44,8 +45,9 @@ team_coordinate(
 
 - permission_mode:
 
-  Character. Permission mode for workers (default `"bypass"`; parallel
-  workers cannot prompt).
+  Character. Permission mode for workers (default `"dont_ask"`; parallel
+  workers cannot prompt interactively so "bypass" would silently
+  escalate privileges inherited from the parent).
 
 - cwd:
 
@@ -74,6 +76,10 @@ team_coordinate(
 - db_path:
 
   Character. Board path (created if missing).
+
+- security_context:
+
+  Internal immutable parent security snapshot.
 
 ## Value
 

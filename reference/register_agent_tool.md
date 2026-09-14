@@ -18,7 +18,8 @@ register_agent_tool(
   data_shield = NULL,
   cwd = getwd(),
   parent_chat = NULL,
-  hooks = NULL
+  hooks = NULL,
+  security_context = NULL
 )
 ```
 
@@ -83,6 +84,10 @@ register_agent_tool(
   [HookRegistry](https://kaipingyang.github.io/codeagent/reference/HookRegistry.md)
   used for SubagentStart/Stop lifecycle events on the owned codeagent
   Agent path.
+
+- security_context:
+
+  Internal immutable parent security snapshot.
 
 ## Value
 

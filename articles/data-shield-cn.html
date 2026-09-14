@@ -603,8 +603,8 @@ glob 生效。例如， 当开发者能保证 <code>KMPlot</code> 的所有输�
 codeagent 独立的权限系统。</p>
 </div>
 <div class="section level3">
-<h3 id="shield_sandbox-便携式容纳不阉割-agent-能力">
-<code>shield_sandbox()</code> —— 便携式容纳，不阉割 agent 能力<a class="anchor" aria-label="anchor" href="#shield_sandbox-%E4%BE%BF%E6%90%BA%E5%BC%8F%E5%AE%B9%E7%BA%B3%E4%B8%8D%E9%98%89%E5%89%B2-agent-%E8%83%BD%E5%8A%9B"></a>
+<h3 id="shield_sandbox-失败关闭的便携路径策略">
+<code>shield_sandbox()</code> —— 失败关闭的便携路径策略<a class="anchor" aria-label="anchor" href="#shield_sandbox-%E5%A4%B1%E8%B4%A5%E5%85%B3%E9%97%AD%E7%9A%84%E4%BE%BF%E6%90%BA%E8%B7%AF%E5%BE%84%E7%AD%96%E7%95%A5"></a>
 </h3>
 <table class="table">
 <colgroup>
@@ -643,7 +643,8 @@ codeagent 独立的权限系统。</p>
 <tr class="odd">
 <td><code>process_exec</code></td>
 <td><code>TRUE</code></td>
-<td>保留 RunR/Bash/Python；FALSE 会拦所有执行类工具</td>
+<td>允许继承同一盾的 Agent/AuditCode；所有非委派 exec 工具仍要求 OS
+backend</td>
 </tr>
 <tr class="even">
 <td><code>network</code></td>
@@ -671,10 +672,12 @@ codeagent 独立的权限系统。</p>
 </tr>
 </tbody>
 </table>
-<p>当前实现是一个便携式的中央门路径/能力策略，<strong>不</strong>对外宣称是内核级隔离：
-能力探测发现有 user/network/mount namespace，但没有 bubblewrap/容器，
-普通 <code>unshare</code>
-仍能看到宿主文件系统。未来完整适配器需要把执行类工具挪出进程。</p>
+<p>当前实现是便携式中央门路径/能力策略，<strong>不是</strong>内核级隔离。它只放行能解析
+到配置根目录的非 exec 路径操作。所有非委派 exec 工具（包括 Bash、RunR、
+ExploreData 和 Lint）都会失败关闭：路径 metadata
+无法约束代码字符串、子进程、 网络访问或 <code>.lintr</code>
+这类可执行项目配置。未来完整适配器必须把这些工具放入 真正的 OS
+沙箱。</p>
 </div>
 <div class="section level3">
 <h3 id="shield_reviewer-可选的脱敏代码语义审查">
@@ -1309,11 +1312,14 @@ CLI/Shiny 的审批回调， 包括 tool-call id 的关联。</p>
 <div class="section level2">
 <h2 id="c5-便携式沙箱与-btw-边界">C5 便携式沙箱与 btw 边界<a class="anchor" aria-label="anchor" href="#c5-%E4%BE%BF%E6%90%BA%E5%BC%8F%E6%B2%99%E7%AE%B1%E4%B8%8E-btw-%E8%BE%B9%E7%95%8C"></a>
 </h2>
-<p><code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code> 刻意保留编码能力：项目目录和 session
-临时目录默认 <code>rwx</code>，受保护数据默认 <code>rw</code> 但可设为
-<code>rwx</code>，进程执行能力保持开启。当前
-便携式后端会拦截允许根目录之外的显式路径、拒绝符号链接逃逸、并在中央
-门里应用网络/进程能力策略。</p>
+<p><code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code> 保留可验证路径的非 exec
+编码操作：项目目录和 session 临时 目录默认
+<code>rwx</code>，受保护数据默认
+<code>rw</code>。便携式后端会拦截允许根目录之外的路径并
+拒绝符号链接逃逸；由于路径 metadata
+无法约束代码或可执行项目配置，所有非委派 exec 工具（包括
+Bash、RunR、ExploreData 和 Lint）都会失败关闭，继承同一盾的
+Agent/AuditCode 仍可使用。</p>
 <p>btw 不被假定提供 OS 级隔离。它的文件工具用
 <code><a href="https://fs.r-lib.org/reference/path_math.html" class="external-link">fs::path_has_parent()</a></code> 强制限定
 cwd，但我们的探测发现一个项目内指向外部文件的符号链接能够通过； 它的
@@ -1342,8 +1348,8 @@ cwd/options/环境变量。 因此数据盾对 native、btw、MCP
 <code><a href="../reference/shield_describe.html">shield_describe()</a></code> 时注册（或直接构造函数使用
 默认策略时注册）。它返回上面的过滤后元数据契约，也能看到之后注册的数据集。</li>
 <li>
-<strong><code>ExploreData</code></strong>
-是通用的只读数据查询工具，不是保密边界，也不是 OS 沙箱。
+<strong><code>ExploreData</code></strong> 是执行任意 R
+的数据查询工具，不是只读工具、保密边界或 OS 沙箱。
 它在子环境中执行传入的 R 代码；数据盾开启时，其参数仍经过中央 ingress
 gate， 面向模型的结果仍经过 egress 过滤。data.frame 结果只向模型给出
 shape 字符串， 丰富的行数据留在 UI artifact 中；标量文本仍可被
@@ -1391,7 +1397,8 @@ closed。</li>
 <strong>C5 —— 便携式
 <code><a href="../reference/shield_sandbox.html">shield_sandbox()</a></code>（已实现）</strong>：项目/临时目录默认
 <code>rwx</code>，受保护数据默认 <code>rw</code>，具备
-realpath/符号链接容纳和策略降级； 完整 OS 进程适配器仍是路线图项。</li>
+realpath/符号链接容纳，并对无法约束的 exec 失败关闭；完整 OS
+进程适配器仍是路线图项。</li>
 <li>
 <strong>C4 ——
 <code><a href="../reference/shield_reviewer.html">shield_reviewer()</a></code>（已实现）</strong>：可选的脱敏 ingress

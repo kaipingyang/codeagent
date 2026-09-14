@@ -110,7 +110,7 @@ Important defaults include:
 | `file_tools` | `"core"` | Core tools; alternatives are `"btw"` and `"both"`. |
 | `midloop_compact` | `TRUE` | Cheap near-limit tool-result snipping between rounds. |
 | `midloop_full_compact` | `FALSE` | Do not make a blocking full compaction call mid-stream. |
-| `explore_data` | `TRUE` | Register the read-only `ExploreData` tool. |
+| `explore_data` | `TRUE` | Register the exec-gated `ExploreData` arbitrary-R tool. |
 | `rag` | `FALSE` | Do not build/use codebase RAG. |
 | `inject_r_env` | `FALSE` | Do not inject `.GlobalEnv` object summaries. |
 | `auto_continue` | `FALSE` | Start a fresh Shiny conversation. |

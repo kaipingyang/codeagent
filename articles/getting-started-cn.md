@@ -266,7 +266,7 @@ team_run(c("review R/a.R", "review R/b.R"))
 team_coordinate(c("task 1", "task 2", "task 3", "task 4"))
 
 # LLM-led decomposition and replanning
-team_lead("Refactor the parser and add tests", max_rounds = 3)
+team_lead("Review the parser and report prioritized findings", max_rounds = 3)
 ```
 
 ## 后续阅读

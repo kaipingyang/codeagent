@@ -1,9 +1,10 @@
 # Compute the environment for a sandboxed command
 
-When the sandbox is enabled, returns a minimal
-[`character()`](https://rdrr.io/r/base/character.html) env vector
-(NAME=VALUE) limited to `keep_env`. When disabled, returns NULL (inherit
-the parent environment, the legacy behaviour).
+When the sandbox is enabled, returns a minimal named character vector
+limited to `keep_env`. `processx` treats a non-NULL `env` as the
+complete child environment, unlike base `system2(env=)` which inherits
+every unlisted parent variable. When disabled, returns NULL to preserve
+legacy inheritance.
 
 ## Usage
 
@@ -20,4 +21,4 @@ the parent environment, the legacy behaviour).
 
 ## Value
 
-Character vector of `NAME=VALUE` strings, or NULL.
+Named character vector, or NULL.

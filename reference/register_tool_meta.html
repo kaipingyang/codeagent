@@ -3,19 +3,17 @@
 attaches to the chat (via chat$register_tool()), so codeagent's central
 permission gate governs it like a native tool.
 codeagent classifies every tool call by capability. Built-in tools are known;
-any unregistered tool defaults to &quot;read&quot; and is therefore allowed
-without gating. If a host tool performs sensitive actions (writing files,
-executing code, network access), declare it here so the gate can ask/deny
-it under the active permission mode and settings$tools policy.
+any unregistered tool defaults to &quot;exec&quot; and is therefore gated as a
+sensitive operation. If a host tool is read-only and benign, declare it as
+&quot;read&quot; so the gate will allow it without prompting under default mode.
 Built-in tool metadata stays authoritative – this only classifies tools not
 already known to codeagent. Registrations persist for the R session."><meta property="og:description" content="Register the permission capability of a tool that a host application
 attaches to the chat (via chat$register_tool()), so codeagent's central
 permission gate governs it like a native tool.
 codeagent classifies every tool call by capability. Built-in tools are known;
-any unregistered tool defaults to &quot;read&quot; and is therefore allowed
-without gating. If a host tool performs sensitive actions (writing files,
-executing code, network access), declare it here so the gate can ask/deny
-it under the active permission mode and settings$tools policy.
+any unregistered tool defaults to &quot;exec&quot; and is therefore gated as a
+sensitive operation. If a host tool is read-only and benign, declare it as
+&quot;read&quot; so the gate will allow it without prompting under default mode.
 Built-in tool metadata stays authoritative – this only classifies tools not
 already known to codeagent. Registrations persist for the R session."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -91,10 +89,9 @@ already known to codeagent. Registrations persist for the R session."></head><bo
 attaches to the chat (via <code>chat$register_tool()</code>), so codeagent's central
 permission gate governs it like a native tool.</p>
 <p>codeagent classifies every tool call by capability. Built-in tools are known;
-any <strong>unregistered</strong> tool defaults to <code>"read"</code> and is therefore allowed
-<strong>without gating</strong>. If a host tool performs sensitive actions (writing files,
-executing code, network access), declare it here so the gate can <code>ask</code>/<code>deny</code>
-it under the active permission mode and <code>settings$tools</code> policy.</p>
+any <strong>unregistered</strong> tool defaults to <code>"exec"</code> and is therefore gated as a
+sensitive operation. If a host tool is read-only and benign, declare it as
+<code>"read"</code> so the gate will allow it without prompting under default mode.</p>
 <p>Built-in tool metadata stays authoritative – this only classifies tools not
 already known to codeagent. Registrations persist for the R session.</p>
     </div>
@@ -123,8 +120,8 @@ for read-only/benign tools (allowed without prompting); <code>"write"</code>/<co
 
 
 <dt id="arg-set">set<a class="anchor" aria-label="anchor" href="#arg-set"></a></dt>
-<dd><p>Character(1). Optional grouping label for reporting (default <code>"C"</code>
-= host/custom). Not used in gate decisions.</p></dd>
+<dd><p>Character(1). Tool-set label used by the central gate (default
+<code>"C"</code> = host/custom). The set must be enabled in <code>settings$tools$sets</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

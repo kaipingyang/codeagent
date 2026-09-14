@@ -12,7 +12,8 @@ register_builtin_tools(
   ask_fn = NULL,
   skip_file_tools = FALSE,
   sandbox = NULL,
-  async = FALSE
+  async = FALSE,
+  cwd = getwd()
 )
 ```
 
@@ -58,6 +59,10 @@ register_builtin_tools(
 
   Logical. If `TRUE`, register async permission-gated tool variants for
   the Shiny path (UI-gated approvals). Default `FALSE` (synchronous).
+
+- cwd:
+
+  Character. Fixed base directory for relative file-tool paths.
 
 ## Value
 

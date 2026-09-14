@@ -42,9 +42,11 @@ register_run_r_tool(
 
   List or NULL. Sandbox profile (see
   [`.sandbox_profile()`](https://kaipingyang.github.io/codeagent/reference/dot-sandbox_profile.md)).
-  RunR runs in-process so the environment cannot be scrubbed, but when
-  the sandbox is enabled, code calling shell/process/env or (when
-  network is disabled) network functions is refused.
+  Enabling sandboxing fails closed unless `run_r_backend = "process"` is
+  explicitly selected. That fallback uses a separate `callr` process
+  with a timeout and best-effort environment hygiene, but is not an OS
+  security boundary and does not restrict filesystem, network, or
+  process access.
 
 ## Value
 

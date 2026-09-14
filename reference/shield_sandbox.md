@@ -1,11 +1,13 @@
 # Configure portable sandbox policy
 
-Restrict explicit tool path arguments to project/protected/session-temp
-roots while preserving project `rwx` and process execution by default.
-This is a portable policy guard, not a kernel sandbox. `backend="auto"`
-currently falls back to policy because no full out-of-process OS adapter
-is implemented; `on_unavailable="block"` can fail closed for exec/net
-tools.
+Restrict declared tool path arguments to project/protected/session-temp
+roots. This is a portable policy guard, not a kernel sandbox: every
+non-delegated exec tool fails closed because project configuration,
+child processes, filesystem, or network effects cannot be bounded from
+path metadata alone. `backend="auto"` currently falls back to this
+policy because no full out-of-process OS adapter is implemented;
+`on_unavailable="block"` blocks all exec/net tools when the adapter is
+absent.
 
 ## Usage
 
@@ -44,7 +46,9 @@ shield_sandbox(
 
 - process_exec:
 
-  Preserve exec-capability tools (default TRUE).
+  Permit shield-preserving Agent/AuditCode delegation (default TRUE).
+  Non-delegated exec tools require a real OS backend and fail closed
+  under the policy backend.
 
 - network:
 

@@ -8,6 +8,10 @@ Named list of lifecycle event names that can be hooked.
 HookEvent
 ```
 
+## Format
+
+An object of class `list` of length 29.
+
 ## Details
 
 - `PRE_TOOL_USE` – Before tool execution (can allow/deny/modify input)

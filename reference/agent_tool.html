@@ -90,7 +90,8 @@ codeagent's own sub-agent loop otherwise.</p>
 <span>  ask_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  async <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  data_shield <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  parent_chat <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  parent_chat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  security_context <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -145,6 +146,11 @@ the sub-agent's own tools are wrapped before its first LLM request.</p></dd>
 <dt id="arg-parent-chat">parent_chat<a class="anchor" aria-label="anchor" href="#arg-parent-chat"></a></dt>
 <dd><p>Optional parent <code><a href="https://ellmer.tidyverse.org/reference/Chat.html" class="external-link">ellmer::Chat</a></code>. The owned Agent path clones
 this Chat, clears history/tools, and verifies provider + Model inheritance.</p></dd>
+
+
+<dt id="arg-security-context">security_context<a class="anchor" aria-label="anchor" href="#arg-security-context"></a></dt>
+<dd><p>Internal immutable parent security snapshot used to
+preserve tool sets, capabilities, overrides and sandbox settings.</p></dd>
 
 </dl></div>
     <div class="section level2">

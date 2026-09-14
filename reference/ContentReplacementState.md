@@ -1,5 +1,11 @@
 # Global context budget manager (Layer 3)
 
+Global context budget manager (Layer 3)
+
+Global context budget manager (Layer 3)
+
+## Details
+
 Tracks total estimated token usage across all turns and replaces the
 largest tool results with a placeholder when the soft ceiling is
 exceeded. This mirrors Claude Code's `ContentReplacementState`.
@@ -8,7 +14,7 @@ exceeded. This mirrors Claude Code's `ContentReplacementState`.
 
 ### Public methods
 
-- [`ContentReplacementState$new()`](#method-ContentReplacementState-initialize)
+- [`ContentReplacementState$new()`](#method-ContentReplacementState-new)
 
 - [`ContentReplacementState$freeze()`](#method-ContentReplacementState-freeze)
 
@@ -22,7 +28,7 @@ exceeded. This mirrors Claude Code's `ContentReplacementState`.
 
 ------------------------------------------------------------------------
 
-### `ContentReplacementState$new()`
+### Method `new()`
 
 Create a new state object.
 
@@ -38,7 +44,7 @@ Create a new state object.
 
 ------------------------------------------------------------------------
 
-### `ContentReplacementState$freeze()`
+### Method `freeze()`
 
 Freeze a result (exclude it from replacement).
 
@@ -54,7 +60,7 @@ Freeze a result (exclude it from replacement).
 
 ------------------------------------------------------------------------
 
-### `ContentReplacementState$maybe_replace()`
+### Method `maybe_replace()`
 
 Check usage and replace large old results if over ceiling.
 
@@ -75,7 +81,7 @@ Invisibly TRUE when history changed, FALSE otherwise.
 
 ------------------------------------------------------------------------
 
-### `ContentReplacementState$replaced_ids()`
+### Method `replaced_ids()`
 
 Return IDs of replaced results.
 
@@ -85,7 +91,7 @@ Return IDs of replaced results.
 
 ------------------------------------------------------------------------
 
-### `ContentReplacementState$reset()`
+### Method `reset()`
 
 Reset state.
 
@@ -95,7 +101,7 @@ Reset state.
 
 ------------------------------------------------------------------------
 
-### `ContentReplacementState$clone()`
+### Method `clone()`
 
 The objects of this class are cloneable with this method.
 

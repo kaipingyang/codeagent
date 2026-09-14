@@ -8,7 +8,13 @@ all results back at once.
 ## Usage
 
 ``` r
-team_run_tool(model = NULL, cwd = getwd())
+team_run_tool(
+  model = NULL,
+  cwd = getwd(),
+  parent_rules = NULL,
+  parent_policy = NULL,
+  security_context = NULL
+)
 ```
 
 ## Arguments
@@ -20,6 +26,18 @@ team_run_tool(model = NULL, cwd = getwd())
 - cwd:
 
   Character. Working directory.
+
+- parent_rules:
+
+  List. Permission rules inherited from the parent.
+
+- parent_policy:
+
+  List. Tool capability policies inherited from parent.
+
+- security_context:
+
+  Internal immutable parent security snapshot.
 
 ## Value
 
