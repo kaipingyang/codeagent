@@ -1,0 +1,44 @@
+digraph "entrypoint-call-map" {
+  graph [rankdir=LR, bgcolor="transparent", pad="0.3", nodesep="0.48", ranksep="0.75", splines=polyline, fontname="Arial", labeljust="l"];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=11.5, margin="0.16,0.10", penwidth=1.3];
+  edge [fontname="Arial", fontsize=9.5, color="#667085", fontcolor="#475467", arrowsize=0.75, penwidth=1.2];
+  subgraph cluster_0 {
+    label="Construction";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "client" [label="codeagent_client()\nR/query.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "chat" [label="ellmer Chat + settings\nexternal / CodeagentClient", fillcolor="#F3ECFF", color="#7A4CC2", fontcolor="#43256F"];
+    "tools" [label="tool registration + gate\nR/query.R / R/tools_gate.R", fillcolor="#FFF4E5", color="#C77800", fontcolor="#6B3E00"];
+  }
+  subgraph cluster_1 {
+    label="Entrypoints";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "oneshot" [label="codeagent()\nR/query.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "console" [label="codeagent_console()\nR/repl.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "stream" [label="codeagent_stream_async()\nR/stream.R", fillcolor="#E8F8F7", color="#17877F", fontcolor="#125A55"];
+    "app" [label="codeagent_app()\nR/ui.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "server" [label="server_chat()\nR/server_chat.R", fillcolor="#E8F8F7", color="#17877F", fontcolor="#125A55"];
+  }
+  subgraph cluster_2 {
+    label="Shared turn services";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "turn" [label="turn setup / teardown\nR/turn_pipeline.R", fillcolor="#EAF8F0", color="#2D7A50", fontcolor="#194A30"];
+    "model" [label="provider + tool rounds\nellmer Chat", fillcolor="#F3ECFF", color="#7A4CC2", fontcolor="#43256F"];
+    "artifact" [label="artifact normalization\nR/tool_display.R", fillcolor="#F4F6F8", color="#667085", fontcolor="#344054"];
+    "session" [label="session persistence\nR/sessions.R", fillcolor="#F4F6F8", color="#667085", fontcolor="#344054"];
+  }
+  "client" -> "chat" [label="owns", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "client" -> "tools" [label="configures", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "chat" -> "oneshot" [label="used by", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "chat" -> "console" [label="used by", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "chat" -> "stream" [label="used by", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "chat" -> "app" [label="template / per-session", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "console" -> "stream" [label="drives", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "app" -> "server" [label="session adapter", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "server" -> "turn" [label="setup / teardown", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "stream" -> "turn" [label="setup / teardown", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "oneshot" -> "model" [label="chat", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "turn" -> "model" [label="request", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "model" -> "artifact" [label="tool results", style="dashed", color="#2D7A50", fontcolor="#2D7A50"];
+  "turn" -> "session" [label="save", style="dashed", color="#667085", fontcolor="#667085"];
+  labelloc="t"; label="Entrypoints converge on shared turn machinery\nConstruction is centralized; one-shot, CLI, host streaming, and Shiny adapt the same Chat and turn services.";
+}

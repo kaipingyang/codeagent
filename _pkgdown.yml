@@ -252,6 +252,12 @@ articles:
       - compaction
       - skills-usage
 
+  - title: "Architecture"
+    navbar: "Architecture"
+    contents:
+      - architecture-concepts
+      - architecture-code-map
+
   - title: "Advanced"
     navbar: "Advanced"
     contents:
@@ -273,6 +279,8 @@ articles:
     navbar: "中文"
     contents:
       - getting-started-cn
+      - architecture-concepts-cn
+      - architecture-code-map-cn
       - configuration-cn
       - shiny-themes-cn
       - permissions-cn

@@ -1,0 +1,50 @@
+digraph "multi-agent-ownership" {
+  graph [rankdir=LR, bgcolor="transparent", pad="0.3", nodesep="0.48", ranksep="0.75", splines=polyline, fontname="Arial", labeljust="l"];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=11.5, margin="0.16,0.10", penwidth=1.3];
+  edge [fontname="Arial", fontsize=9.5, color="#667085", fontcolor="#475467", arrowsize=0.75, penwidth=1.2];
+  subgraph cluster_0 {
+    label="Parent session";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "parent" [label="Parent CodeagentClient\nR/query.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "parentchat" [label="Parent Chat + actual tools\nellmer / R/tools_gate.R", fillcolor="#F3ECFF", color="#7A4CC2", fontcolor="#43256F"];
+    "parentshield" [label="Live DataShield\nR/data_shield.R", fillcolor="#FDECEC", color="#B42318", fontcolor="#7A271A"];
+  }
+  subgraph cluster_1 {
+    label="Foreground / same process";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "foreground" [label="Foreground Agent clone\nR/tools_agent.R", fillcolor="#EAF8F0", color="#2D7A50", fontcolor="#194A30"];
+    "fgreply" [label="reply output gate\nR/tools_agent.R", fillcolor="#FFF4E5", color="#C77800", fontcolor="#6B3E00"];
+  }
+  subgraph cluster_2 {
+    label="Process workers";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "teamlead" [label="team_lead() rounds\nR/team_lead.R", fillcolor="#F3ECFF", color="#7A4CC2", fontcolor="#43256F"];
+    "teamrun" [label="team_run() / team_coordinate()\nR/team.R / R/team_board.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "snapshot" [label="immutable security snapshot\nR/tools_agent.R / R/team.R", fillcolor="#FFF4E5", color="#C77800", fontcolor="#6B3E00"];
+    "mirai" [label="mirai worker clients\nR/team.R", fillcolor="#EAF8F0", color="#2D7A50", fontcolor="#194A30"];
+    "board" [label="SQLite task board\nR/team_board.R", fillcolor="#F4F6F8", color="#667085", fontcolor="#344054"];
+  }
+  subgraph cluster_3 {
+    label="Background";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "background" [label="BackgroundAgent process\nR/async_agent.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "bgfail" [label="fail closed when Shield active\nor backend not reconstructable\nR/tools_agent.R / R/async_agent.R", fillcolor="#FDECEC", color="#B42318", fontcolor="#7A271A"];
+  }
+  "parent" -> "parentchat" [label="owns", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "parent" -> "parentshield" [label="optional live engine", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "parentchat" -> "foreground" [label="clone + tool allowlist", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "parentshield" -> "foreground" [label="same live Shield", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "foreground" -> "fgreply" [label="safe reply", style="bold", color="#B42318", fontcolor="#B42318"];
+  "fgreply" -> "parentchat" [label="parent tool result", style="dashed", color="#2D7A50", fontcolor="#2D7A50"];
+  "parent" -> "teamlead" [label="decompose / review", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "teamlead" -> "teamrun" [label="coordinate rounds", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "parent" -> "snapshot" [label="serialize policy + allowed tools", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "teamrun" -> "mirai" [label="fresh clients", style="bold", color="#C77800", fontcolor="#C77800"];
+  "snapshot" -> "mirai" [label="cannot expand authority", style="bold", color="#B42318", fontcolor="#B42318"];
+  "teamrun" -> "board" [label="tasks / deps / messages", style="dashed", color="#667085", fontcolor="#667085"];
+  "mirai" -> "board" [label="atomic claim / complete", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "parent" -> "background" [label="only reconstructable backend", style="bold", color="#C77800", fontcolor="#C77800"];
+  "parentshield" -> "bgfail" [label="Shield blocks cross-process", style="bold", color="#B42318", fontcolor="#B42318"];
+  "background" -> "bgfail" [label="reject unsupported launch", style="bold", color="#B42318", fontcolor="#B42318"];
+  labelloc="t"; label="Multi-agent execution and ownership boundaries\nForeground clones, mirai team workers, and background processes have different state, tool, credential, and Shield rules.";
+}

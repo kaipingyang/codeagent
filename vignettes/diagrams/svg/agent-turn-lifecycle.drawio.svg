@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1660" height="900" viewBox="0 0 1660 900" role="img" aria-labelledby="title desc">
+<title id="title">One codeagent turn</title>
+<desc id="desc">Input safety, turn setup, model and tool rounds, final response safety, and persistence. Audience: User / Integrator. Scope: One foreground turn; UI adapters are outside the core flow.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 z" fill="context-stroke"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#101828" flood-opacity="0.08"/></filter></defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="25.0" y="105.0" width="1610.0" height="250.0" rx="16" fill="#F4F6F8" fill-opacity="0.45" stroke="#667085" stroke-width="1.2"/>
+<text x="830.0" y="127.5" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700"><tspan x="830.0" dy="0.0">TURN PIPELINE</tspan></text>
+<rect x="435.0" y="405.0" width="830.0" height="300.0" rx="16" fill="#F3ECFF" fill-opacity="0.45" stroke="#7A4CC2" stroke-width="1.2"/>
+<text x="850.0" y="427.6" text-anchor="middle" fill="#43256F" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700"><tspan x="850.0" dy="0.0">MODEL-REQUEST TOOL LOOP</tspan></text>
+<rect x="1020.0" y="720.0" width="540.0" height="165.0" rx="16" fill="#F4F6F8" fill-opacity="0.45" stroke="#667085" stroke-width="1.2"/>
+<text x="1290.0" y="742.5" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700"><tspan x="1290.0" dy="0.0">STATE / PERSISTENCE</tspan></text>
+<path d="M 225.0 230.0 L 247.5 230.0 L 247.5 230.0 L 270.0 230.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 460.0 230.0 L 482.5 230.0 L 482.5 230.0 L 505.0 230.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 695.0 230.0 L 722.5 230.0 L 722.5 230.0 L 750.0 230.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 950.0 230.0 L 980.0 230.0 L 980.0 230.0 L 1010.0 230.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="937.8" y="218.0" width="84.5" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="980.0" y="232.0" text-anchor="middle" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11.5">no more tools</text>
+<path d="M 1220.0 230.0 L 1242.5 230.0 L 1242.5 230.0 L 1265.0 230.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 1455.0 230.0 L 1475.0 230.0 L 1475.0 230.0 L 1495.0 230.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 850.0 280.0 L 850.0 370.0 L 560.0 370.0 L 560.0 485.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="501.5" y="358.0" width="117.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="560.0" y="372.0" text-anchor="middle" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11.5">ContentToolRequest</text>
+<path d="M 645.0 521.0 L 667.5 521.0 L 667.5 520.0 L 690.0 520.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 920.0 520.0 L 942.5 520.0 L 942.5 521.0 L 965.0 521.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="907.5" y="509.0" width="70.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="942.5" y="523.0" text-anchor="middle" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11.5">allow</text>
+<path d="M 965.0 521.0 L 942.5 521.0 L 942.5 650.0 L 920.0 650.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 805.0 610.0 L 805.0 585.0 L 805.0 330.0 L 850.0 330.0 L 850.0 280.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="736.8" y="318.0" width="136.5" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="805.0" y="332.0" text-anchor="middle" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11.5">next provider request</text>
+<path d="M 1115.0 270.0 L 1115.0 330.0 L 1165.0 700.0 L 1158.0 780.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<rect x="1130.0" y="688.0" width="70.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="1165.0" y="702.0" text-anchor="middle" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11.5">final text</text>
+<path d="M 1219.2 850.0 L 1265.0 875.0 L 1410.0 875.0 L 1410.0 860.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<text x="30.0" y="54.4" text-anchor="start" fill="#1D2939" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">One codeagent turn</text>
+<text x="30.0" y="86.0" text-anchor="start" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="400">Input safety, turn setup, model and tool rounds, final response safety, and persistence.</text>
+<rect x="55.0" y="190.0" width="170.0" height="80.0" rx="14" fill="#EAF2FF" stroke="#3266CC" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="140.0" y="226.3" text-anchor="middle" fill="#173B75" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="140.0" dy="0.0">User input</tspan><tspan x="140.0" dy="16.9">+ attachments</tspan></text>
+<rect x="270.0" y="190.0" width="190.0" height="80.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="365.0" y="226.3" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="365.0" dy="0.0">Input gate</tspan><tspan x="365.0" dy="16.9">scan / redact / block</tspan></text>
+<rect x="505.0" y="190.0" width="190.0" height="80.0" rx="14" fill="#E8F8F7" stroke="#17877F" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="600.0" y="226.3" text-anchor="middle" fill="#125A55" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="600.0" dy="0.0">Turn setup</tspan><tspan x="600.0" dy="16.9">context + reminders</tspan></text>
+<rect x="750.0" y="180.0" width="200.0" height="100.0" rx="14" fill="#F3ECFF" stroke="#7A4CC2" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="850.0" y="226.3" text-anchor="middle" fill="#43256F" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="850.0" dy="0.0">ellmer Chat</tspan><tspan x="850.0" dy="16.9">provider request</tspan></text>
+<rect x="1010.0" y="190.0" width="210.0" height="80.0" rx="14" fill="#E8F8F7" stroke="#17877F" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1115.0" y="226.3" text-anchor="middle" fill="#125A55" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1115.0" dy="0.0">Finalize</tspan><tspan x="1115.0" dy="16.9">finish reason + citations</tspan></text>
+<rect x="1265.0" y="190.0" width="190.0" height="80.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1360.0" y="226.3" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1360.0" dy="0.0">Output gate</tspan><tspan x="1360.0" dy="16.9">scan final response</tspan></text>
+<rect x="1495.0" y="190.0" width="130.0" height="80.0" rx="14" fill="#EAF8F0" stroke="#2D7A50" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1560.0" y="226.3" text-anchor="middle" fill="#194A30" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1560.0" dy="0.0">Safe reply</tspan><tspan x="1560.0" dy="16.9">UI / host callback</tspan></text>
+<rect x="475.0" y="485.0" width="170.0" height="72.0" rx="14" fill="#F4F6F8" stroke="#667085" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="560.0" y="517.3" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="560.0" dy="0.0">Tool preview</tspan><tspan x="560.0" dy="16.9">not approval</tspan></text>
+<rect x="690.0" y="470.0" width="230.0" height="100.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="805.0" y="516.3" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="805.0" dy="0.0">Tool safety chain</tspan><tspan x="805.0" dy="16.9">permission + Shield + hooks</tspan></text>
+<rect x="965.0" y="485.0" width="150.0" height="72.0" rx="14" fill="#EAF8F0" stroke="#2D7A50" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1040.0" y="525.7" text-anchor="middle" fill="#194A30" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1040.0" dy="0.0">Tool execution</tspan></text>
+<rect x="690.0" y="610.0" width="230.0" height="80.0" rx="14" fill="#EAF2FF" stroke="#3266CC" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="805.0" y="646.3" text-anchor="middle" fill="#173B75" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="805.0" dy="0.0">Result normalization</tspan><tspan x="805.0" dy="16.9">value + artifact + display</tspan></text>
+<rect x="1060.0" y="780.0" width="190.0" height="70.0" rx="14" fill="#F4F6F8" stroke="#667085" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1155.0" y="811.3" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1155.0" dy="0.0">Turn teardown</tspan><tspan x="1155.0" dy="16.9">usage + hooks</tspan></text>
+<rect x="1300.0" y="770.0" width="220.0" height="90.0" rx="14" fill="#F4F6F8" stroke="#667085" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1410.0" y="802.9" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1410.0" dy="0.0">Session save</tspan><tspan x="1410.0" dy="16.9">lossless state</tspan><tspan x="1410.0" dy="16.9">+ presentation</tspan></text>
+<text x="30" y="876" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11">Verified 4dc479d2 · User / Integrator · R/stream.R · R/turn_pipeline.R · R/input_gate.R · R/output_gate.R · R/sessions.R</text>
+</svg>

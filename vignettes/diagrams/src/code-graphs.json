@@ -1,0 +1,132 @@
+{
+  "schema": "codeagent.architecture-code-graphs",
+  "version": 1,
+  "verified_commit": "4dc479d2212c26685c24154da164b2928481bfb1",
+  "edge_types": {
+    "calls": "direct/shared call path",
+    "callback": "callback or event registration",
+    "state": "owns, carries, or shares mutable/immutable state",
+    "spawns": "creates a process, daemon, or worker",
+    "persists": "writes durable state",
+    "guards": "security or authorization boundary",
+    "returns": "returns a result to a parent path"
+  },
+  "graphs": [
+    {
+      "id": "entrypoint-call-map",
+      "title": "Entrypoints converge on shared turn machinery",
+      "desc": "Construction is centralized; one-shot, CLI, host streaming, and Shiny adapt the same Chat and turn services.",
+      "audience": "Maintainer / Integrator",
+      "scope": "Top-level entrypoints and major shared services, not every helper.",
+      "nodes": [
+        {"id":"client","label":"codeagent_client()","file":"R/query.R","symbol":"codeagent_client","group":"Construction","color":"blue"},
+        {"id":"chat","label":"ellmer Chat + settings","file":"external / CodeagentClient","group":"Construction","color":"purple"},
+        {"id":"tools","label":"tool registration + gate","file":"R/query.R / R/tools_gate.R","group":"Construction","color":"amber"},
+        {"id":"oneshot","label":"codeagent()","file":"R/query.R","symbol":"codeagent","group":"Entrypoints","color":"blue"},
+        {"id":"console","label":"codeagent_console()","file":"R/repl.R","symbol":"codeagent_console","group":"Entrypoints","color":"blue"},
+        {"id":"stream","label":"codeagent_stream_async()","file":"R/stream.R","symbol":"codeagent_stream_async","group":"Entrypoints","color":"teal"},
+        {"id":"app","label":"codeagent_app()","file":"R/ui.R","symbol":"codeagent_app","group":"Entrypoints","color":"blue"},
+        {"id":"server","label":"server_chat()","file":"R/server_chat.R","symbol":"server_chat","group":"Entrypoints","color":"teal"},
+        {"id":"turn","label":"turn setup / teardown","file":"R/turn_pipeline.R","symbol":".turn_setup","group":"Shared turn services","color":"green"},
+        {"id":"model","label":"provider + tool rounds","file":"ellmer Chat","group":"Shared turn services","color":"purple"},
+        {"id":"artifact","label":"artifact normalization","file":"R/tool_display.R","symbol":"tool_result_artifact","group":"Shared turn services","color":"gray"},
+        {"id":"session","label":"session persistence","file":"R/sessions.R","symbol":"save_session","group":"Shared turn services","color":"gray"}
+      ],
+      "edges": [
+        {"from":"client","to":"chat","type":"state","label":"owns"},
+        {"from":"client","to":"tools","type":"calls","label":"configures"},
+        {"from":"chat","to":"oneshot","type":"state","label":"used by"},
+        {"from":"chat","to":"console","type":"state","label":"used by"},
+        {"from":"chat","to":"stream","type":"state","label":"used by"},
+        {"from":"chat","to":"app","type":"state","label":"template / per-session"},
+        {"from":"console","to":"stream","type":"calls","label":"drives"},
+        {"from":"app","to":"server","type":"calls","label":"session adapter"},
+        {"from":"server","to":"turn","type":"calls","label":"setup / teardown"},
+        {"from":"stream","to":"turn","type":"calls","label":"setup / teardown"},
+        {"from":"oneshot","to":"model","type":"calls","label":"chat"},
+        {"from":"turn","to":"model","type":"calls","label":"request"},
+        {"from":"model","to":"artifact","type":"returns","label":"tool results"},
+        {"from":"turn","to":"session","type":"persists","label":"save"}
+      ]
+    },
+    {
+      "id": "core-module-dependencies",
+      "rankdir": "TB",
+      "title": "Core turn pipeline and cross-cutting modules",
+      "desc": "Security, context management, presentation, and persistence remain separate cross-cutting services around the Chat.",
+      "audience": "Maintainer",
+      "scope": "Files and key subsystem entrypoints used by foreground turns.",
+      "nodes": [
+        {"id":"query","label":"agent loop / one-shot","file":"R/query.R","symbol":"agent_loop","group":"Turn core","color":"blue"},
+        {"id":"stream","label":"typed stream callbacks","file":"R/stream.R","symbol":"codeagent_stream_async","group":"Turn core","color":"blue"},
+        {"id":"turn","label":"turn lifecycle","file":"R/turn_pipeline.R","symbol":".turn_setup","group":"Turn core","color":"teal"},
+        {"id":"input","label":"input gate","file":"R/input_gate.R","symbol":".input_gate_guarded","group":"Safety","color":"amber"},
+        {"id":"toolgate","label":"central tool gate","file":"R/tools_gate.R","symbol":".install_permission_gate","group":"Safety","color":"amber"},
+        {"id":"hooks","label":"lifecycle hooks","file":"R/hooks.R","symbol":"HookRegistry","group":"Safety","color":"teal"},
+        {"id":"shield","label":"Data Shield","file":"R/data_shield.R","symbol":"DataShield","group":"Safety","color":"red"},
+        {"id":"compact","label":"request compaction","file":"R/compaction.R","symbol":"register_midloop_compaction","group":"Context","color":"purple"},
+        {"id":"resource","label":"large-result replacement","file":"R/resource.R","symbol":"ContentReplacementState","group":"Context","color":"purple"},
+        {"id":"artifact","label":"tool artifact contract","file":"R/tool_display.R","symbol":"tool_result_artifact","group":"Presentation","color":"green"},
+        {"id":"citation","label":"source registry + citations","file":"R/web_citations.R","symbol":".new_citation_registry","group":"Presentation","color":"green"},
+        {"id":"output","label":"output gate","file":"R/output_gate.R","symbol":".output_gate_guarded","group":"Presentation","color":"amber"},
+        {"id":"sessions","label":"lossless state + presentation","file":"R/sessions.R","symbol":"save_session","group":"Persistence","color":"gray"}
+      ],
+      "edges": [
+        {"from":"query","to":"input","type":"guards","label":"edge 1"},
+        {"from":"stream","to":"input","type":"guards","label":"edge 1"},
+        {"from":"query","to":"turn","type":"calls","label":"lifecycle"},
+        {"from":"stream","to":"turn","type":"calls","label":"lifecycle"},
+        {"from":"turn","to":"compact","type":"calls","label":"request boundary"},
+        {"from":"turn","to":"resource","type":"calls","label":"cheap controls"},
+        {"from":"query","to":"toolgate","type":"callback","label":"on_tool_request"},
+        {"from":"toolgate","to":"hooks","type":"calls","label":"pre / permission"},
+        {"from":"toolgate","to":"shield","type":"guards","label":"ingress"},
+        {"from":"shield","to":"artifact","type":"guards","label":"egress before model"},
+        {"from":"stream","to":"artifact","type":"returns","label":"tool event"},
+        {"from":"artifact","to":"citation","type":"state","label":"sources"},
+        {"from":"citation","to":"output","type":"guards","label":"safe final"},
+        {"from":"stream","to":"output","type":"guards","label":"edge 3"},
+        {"from":"turn","to":"sessions","type":"persists","label":"teardown"}
+      ]
+    },
+    {
+      "id": "multi-agent-ownership",
+      "title": "Multi-agent execution and ownership boundaries",
+      "desc": "Foreground clones, mirai team workers, and background processes have different state, tool, credential, and Shield rules.",
+      "audience": "Maintainer / Security reviewer",
+      "scope": "Ownership and process boundaries; task-level prompts are omitted.",
+      "nodes": [
+        {"id":"parent","label":"Parent CodeagentClient","file":"R/query.R","symbol":"codeagent_client","group":"Parent session","color":"blue"},
+        {"id":"parentchat","label":"Parent Chat + actual tools","file":"ellmer / R/tools_gate.R","group":"Parent session","color":"purple"},
+        {"id":"parentshield","label":"Live DataShield","file":"R/data_shield.R","symbol":"DataShield","group":"Parent session","color":"red"},
+        {"id":"foreground","label":"Foreground Agent clone","file":"R/tools_agent.R","symbol":"agent_tool","group":"Foreground / same process","color":"green"},
+        {"id":"fgreply","label":"reply output gate","file":"R/tools_agent.R","symbol":".subagent_safe_response","group":"Foreground / same process","color":"amber"},
+        {"id":"teamlead","label":"team_lead() rounds","file":"R/team_lead.R","symbol":"team_lead","group":"Process workers","color":"purple"},
+        {"id":"teamrun","label":"team_run() / team_coordinate()","file":"R/team.R / R/team_board.R","symbol":"team_run","group":"Process workers","color":"blue"},
+        {"id":"snapshot","label":"immutable security snapshot","file":"R/tools_agent.R / R/team.R","symbol":".worker_security_context","group":"Process workers","color":"amber"},
+        {"id":"mirai","label":"mirai worker clients","file":"R/team.R","symbol":"run_one","group":"Process workers","color":"green"},
+        {"id":"board","label":"SQLite task board","file":"R/team_board.R","symbol":"board_claim","group":"Process workers","color":"gray"},
+        {"id":"background","label":"BackgroundAgent process","file":"R/async_agent.R","group":"Background","color":"blue"},
+        {"id":"bgfail","label":"fail closed when Shield active\nor backend not reconstructable","file":"R/tools_agent.R / R/async_agent.R","group":"Background","color":"red"}
+      ],
+      "edges": [
+        {"from":"parent","to":"parentchat","type":"state","label":"owns"},
+        {"from":"parent","to":"parentshield","type":"state","label":"optional live engine"},
+        {"from":"parentchat","to":"foreground","type":"calls","label":"clone + tool allowlist"},
+        {"from":"parentshield","to":"foreground","type":"state","label":"same live Shield"},
+        {"from":"foreground","to":"fgreply","type":"guards","label":"safe reply"},
+        {"from":"fgreply","to":"parentchat","type":"returns","label":"parent tool result"},
+        {"from":"parent","to":"teamlead","type":"calls","label":"decompose / review"},
+        {"from":"teamlead","to":"teamrun","type":"calls","label":"coordinate rounds"},
+        {"from":"parent","to":"snapshot","type":"state","label":"serialize policy + allowed tools"},
+        {"from":"teamrun","to":"mirai","type":"spawns","label":"fresh clients"},
+        {"from":"snapshot","to":"mirai","type":"guards","label":"cannot expand authority"},
+        {"from":"teamrun","to":"board","type":"persists","label":"tasks / deps / messages"},
+        {"from":"mirai","to":"board","type":"state","label":"atomic claim / complete"},
+        {"from":"parent","to":"background","type":"spawns","label":"only reconstructable backend"},
+        {"from":"parentshield","to":"bgfail","type":"guards","label":"Shield blocks cross-process"},
+        {"from":"background","to":"bgfail","type":"guards","label":"reject unsupported launch"}
+      ]
+    }
+  ]
+}

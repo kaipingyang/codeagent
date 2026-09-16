@@ -1,0 +1,54 @@
+digraph "core-module-dependencies" {
+  graph [rankdir=TB, bgcolor="transparent", pad="0.3", nodesep="0.48", ranksep="0.75", splines=polyline, fontname="Arial", labeljust="l"];
+  node [shape=box, style="rounded,filled", fontname="Arial", fontsize=11.5, margin="0.16,0.10", penwidth=1.3];
+  edge [fontname="Arial", fontsize=9.5, color="#667085", fontcolor="#475467", arrowsize=0.75, penwidth=1.2];
+  subgraph cluster_0 {
+    label="Turn core";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "query" [label="agent loop / one-shot\nR/query.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "stream" [label="typed stream callbacks\nR/stream.R", fillcolor="#EAF2FF", color="#3266CC", fontcolor="#173B75"];
+    "turn" [label="turn lifecycle\nR/turn_pipeline.R", fillcolor="#E8F8F7", color="#17877F", fontcolor="#125A55"];
+  }
+  subgraph cluster_1 {
+    label="Safety";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "input" [label="input gate\nR/input_gate.R", fillcolor="#FFF4E5", color="#C77800", fontcolor="#6B3E00"];
+    "toolgate" [label="central tool gate\nR/tools_gate.R", fillcolor="#FFF4E5", color="#C77800", fontcolor="#6B3E00"];
+    "hooks" [label="lifecycle hooks\nR/hooks.R", fillcolor="#E8F8F7", color="#17877F", fontcolor="#125A55"];
+    "shield" [label="Data Shield\nR/data_shield.R", fillcolor="#FDECEC", color="#B42318", fontcolor="#7A271A"];
+  }
+  subgraph cluster_2 {
+    label="Context";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "compact" [label="request compaction\nR/compaction.R", fillcolor="#F3ECFF", color="#7A4CC2", fontcolor="#43256F"];
+    "resource" [label="large-result replacement\nR/resource.R", fillcolor="#F3ECFF", color="#7A4CC2", fontcolor="#43256F"];
+  }
+  subgraph cluster_3 {
+    label="Presentation";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "artifact" [label="tool artifact contract\nR/tool_display.R", fillcolor="#EAF8F0", color="#2D7A50", fontcolor="#194A30"];
+    "citation" [label="source registry + citations\nR/web_citations.R", fillcolor="#EAF8F0", color="#2D7A50", fontcolor="#194A30"];
+    "output" [label="output gate\nR/output_gate.R", fillcolor="#FFF4E5", color="#C77800", fontcolor="#6B3E00"];
+  }
+  subgraph cluster_4 {
+    label="Persistence";
+    color="#D0D5DD"; style="rounded,dashed"; fontcolor="#475467"; fontsize=11;
+    "sessions" [label="lossless state + presentation\nR/sessions.R", fillcolor="#F4F6F8", color="#667085", fontcolor="#344054"];
+  }
+  "query" -> "input" [label="edge 1", style="bold", color="#B42318", fontcolor="#B42318"];
+  "stream" -> "input" [label="edge 1", style="bold", color="#B42318", fontcolor="#B42318"];
+  "query" -> "turn" [label="lifecycle", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "stream" -> "turn" [label="lifecycle", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "turn" -> "compact" [label="request boundary", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "turn" -> "resource" [label="cheap controls", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "query" -> "toolgate" [label="on_tool_request", style="dashed", color="#7A4CC2", fontcolor="#7A4CC2"];
+  "toolgate" -> "hooks" [label="pre / permission", style="solid", color="#3266CC", fontcolor="#3266CC"];
+  "toolgate" -> "shield" [label="ingress", style="bold", color="#B42318", fontcolor="#B42318"];
+  "shield" -> "artifact" [label="egress before model", style="bold", color="#B42318", fontcolor="#B42318"];
+  "stream" -> "artifact" [label="tool event", style="dashed", color="#2D7A50", fontcolor="#2D7A50"];
+  "artifact" -> "citation" [label="sources", style="dotted", color="#17877F", fontcolor="#17877F"];
+  "citation" -> "output" [label="safe final", style="bold", color="#B42318", fontcolor="#B42318"];
+  "stream" -> "output" [label="edge 3", style="bold", color="#B42318", fontcolor="#B42318"];
+  "turn" -> "sessions" [label="teardown", style="dashed", color="#667085", fontcolor="#667085"];
+  labelloc="t"; label="Core turn pipeline and cross-cutting modules\nSecurity, context management, presentation, and persistence remain separate cross-cutting services around the Chat.";
+}
