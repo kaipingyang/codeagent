@@ -18,6 +18,13 @@
 - [Skills and slash
   commands](https://kaipingyang.github.io/codeagent/articles/skills-usage.md):
 
+### Architecture
+
+- [How codeagent works: concepts and
+  boundaries](https://kaipingyang.github.io/codeagent/articles/architecture-concepts.md):
+- [Code architecture
+  map](https://kaipingyang.github.io/codeagent/articles/architecture-code-map.md):
+
 ### Advanced
 
 - [Multi-agent team
@@ -41,6 +48,9 @@
 
 - [codeagent
   入门（简体中文）](https://kaipingyang.github.io/codeagent/articles/getting-started-cn.md):
+- [codeagent
+  如何工作：技术概念与边界（简体中文）](https://kaipingyang.github.io/codeagent/articles/architecture-concepts-cn.md):
+- [代码架构地图（简体中文）](https://kaipingyang.github.io/codeagent/articles/architecture-code-map-cn.md):
 - [配置（简体中文）](https://kaipingyang.github.io/codeagent/articles/configuration-cn.md):
 - [Shiny
   应用主题（简体中文）](https://kaipingyang.github.io/codeagent/articles/shiny-themes-cn.md):

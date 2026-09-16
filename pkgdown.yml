@@ -2,6 +2,10 @@ pandoc: 3.8.3
 pkgdown: 2.2.1
 pkgdown_sha: ~
 articles:
+  architecture-code-map-cn: architecture-code-map-cn.html
+  architecture-code-map: architecture-code-map.html
+  architecture-concepts-cn: architecture-concepts-cn.html
+  architecture-concepts: architecture-concepts.html
   backend-integration-cn: backend-integration-cn.html
   backend-integration: backend-integration.html
   compaction-cn: compaction-cn.html
@@ -26,7 +30,7 @@ articles:
   team-coordination: team-coordination.html
   tool-artifacts-cn: tool-artifacts-cn.html
   tool-artifacts: tool-artifacts.html
-last_built: 2026-09-14T04:44Z
+last_built: 2026-09-16T02:45Z
 urls:
   reference: https://kaipingyang.github.io/codeagent/reference
   article: https://kaipingyang.github.io/codeagent/articles
