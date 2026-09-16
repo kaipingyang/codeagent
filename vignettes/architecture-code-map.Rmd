@@ -39,7 +39,14 @@ call graph.
 
 ## Entrypoints converge on shared turn machinery
 
-<img src="diagrams/svg/entrypoint-call-map.svg" alt="Code map from codeagent_client through one-shot, console, streaming, and Shiny entrypoints to shared turn, provider, artifact, and session services" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/entrypoint-call-map.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the entrypoint call map at full size in a new tab">View full-size diagram ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/entrypoint-call-map.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the entrypoint call map at full size in a new tab">
+<img src="diagrams/svg/entrypoint-call-map.svg" alt="Code map from codeagent_client through one-shot, console, streaming, and Shiny entrypoints to shared turn, provider, artifact, and session services" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **Audience:** Maintainer / Integrator
 
@@ -71,7 +78,14 @@ separate service.
 
 ## Core modules around a foreground turn
 
-<img src="diagrams/svg/core-module-dependencies.svg" alt="Code dependency map showing query, stream, and turn lifecycle surrounded by context, safety, presentation, and persistence modules" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/core-module-dependencies.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the core module dependency map at full size in a new tab">View full-size diagram ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/core-module-dependencies.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the core module dependency map at full size in a new tab">
+<img src="diagrams/svg/core-module-dependencies.svg" alt="Code dependency map showing query, stream, and turn lifecycle surrounded by context, safety, presentation, and persistence modules" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **Audience:** Maintainer
 
@@ -95,7 +109,14 @@ session replay.
 
 ## Multi-agent and process ownership
 
-<img src="diagrams/svg/multi-agent-ownership.svg" alt="Ownership map for the parent client, foreground Agent clone, live Data Shield, team workers and SQLite board, and background process fail-closed rules" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/multi-agent-ownership.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the multi-agent ownership map at full size in a new tab">View full-size diagram ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/multi-agent-ownership.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the multi-agent ownership map at full size in a new tab">
+<img src="diagrams/svg/multi-agent-ownership.svg" alt="Ownership map for the parent client, foreground Agent clone, live Data Shield, team workers and SQLite board, and background process fail-closed rules" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **Audience:** Maintainer / Security reviewer
 

@@ -36,7 +36,14 @@ reference.
 
 ## One foreground turn
 
-<img src="diagrams/svg/agent-turn-lifecycle.drawio.svg" alt="One codeagent turn from user input through input safety, turn setup, provider and tool rounds, response finalization, output safety, and session persistence" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/agent-turn-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the agent turn lifecycle diagram at full size in a new tab">View full-size diagram ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/agent-turn-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the agent turn lifecycle diagram at full size in a new tab">
+<img src="diagrams/svg/agent-turn-lifecycle.drawio.svg" alt="One codeagent turn from user input through input safety, turn setup, provider and tool rounds, response finalization, output safety, and session persistence" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **Audience:** User / Integrator
 **Sources:** `R/stream.R`, `R/turn_pipeline.R`, `R/input_gate.R`,
@@ -80,7 +87,14 @@ Related articles:
 
 ## Tool-call safety pipeline
 
-<img src="diagrams/svg/tool-safety-pipeline.drawio.svg" alt="Tool request safety pipeline showing pre-gate preview, central permission authority, Data Shield ingress, approval, PreToolUse rewrite and recheck, execution, result filtering, PostToolUse, and normalization" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/tool-safety-pipeline.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the tool safety pipeline diagram at full size in a new tab">View full-size diagram ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/tool-safety-pipeline.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the tool safety pipeline diagram at full size in a new tab">
+<img src="diagrams/svg/tool-safety-pipeline.drawio.svg" alt="Tool request safety pipeline showing pre-gate preview, central permission authority, Data Shield ingress, approval, PreToolUse rewrite and recheck, execution, result filtering, PostToolUse, and normalization" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **Audience:** Integrator / Maintainer
 **Sources:** `R/tools_gate.R`, `R/tool_input_hook.R`, `R/hooks.R`,
@@ -116,7 +130,14 @@ parse `display` HTML.
 
 ## Request-boundary context management
 
-<img src="diagrams/svg/context-compaction-lifecycle.drawio.svg" alt="Context management before each provider request: pending turn snapshot, resource replacement, token accounting, micro-snip, history rebuild, fresh recount, optional summaries, validation, provider request, and prompt-too-long recovery" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/context-compaction-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the context compaction lifecycle diagram at full size in a new tab">View full-size diagram ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/context-compaction-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the context compaction lifecycle diagram at full size in a new tab">
+<img src="diagrams/svg/context-compaction-lifecycle.drawio.svg" alt="Context management before each provider request: pending turn snapshot, resource replacement, token accounting, micro-snip, history rebuild, fresh recount, optional summaries, validation, provider request, and prompt-too-long recovery" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **Audience:** Integrator / Maintainer
 **Sources:** `R/compaction.R`, `R/resource.R`, `R/turn_pipeline.R`

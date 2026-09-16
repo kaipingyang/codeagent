@@ -33,7 +33,14 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 
 ## 各入口汇聚到共享 turn machinery
 
-<img src="diagrams/svg/entrypoint-call-map.svg" alt="从codeagent_client到one-shot、console、stream和Shiny入口，再到共享turn、provider、artifact和session服务的代码地图" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/entrypoint-call-map.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开入口调用地图">全尺寸查看 ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/entrypoint-call-map.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开入口调用地图">
+<img src="diagrams/svg/entrypoint-call-map.svg" alt="从codeagent_client到one-shot、console、stream和Shiny入口，再到共享turn、provider、artifact和session服务的代码地图" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **读者：** 维护者 / 集成者
 
@@ -60,7 +67,14 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 
 ## 前台 turn 周围的核心模块
 
-<img src="diagrams/svg/core-module-dependencies.svg" alt="query、stream和turn lifecycle周围的context、安全、presentation和persistence模块依赖图" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/core-module-dependencies.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开核心模块依赖图">全尺寸查看 ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/core-module-dependencies.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开核心模块依赖图">
+<img src="diagrams/svg/core-module-dependencies.svg" alt="query、stream和turn lifecycle周围的context、安全、presentation和persistence模块依赖图" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **读者：** 维护者
 
@@ -75,7 +89,14 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 
 ## Multi-agent 与 process ownership
 
-<img src="diagrams/svg/multi-agent-ownership.svg" alt="Parent client、foreground Agent clone、live Data Shield、team workers和SQLite board、background process fail-closed规则的ownership地图" style="width:100%;height:auto;" loading="lazy" />
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<a class="btn btn-outline-primary btn-sm" href="diagrams/svg/multi-agent-ownership.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开多 Agent ownership 地图">全尺寸查看 ↗</a>
+</div>
+<a class="architecture-diagram-link d-block" href="diagrams/svg/multi-agent-ownership.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开多 Agent ownership 地图">
+<img src="diagrams/svg/multi-agent-ownership.svg" alt="Parent client、foreground Agent clone、live Data Shield、team workers和SQLite board、background process fail-closed规则的ownership地图" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy" />
+</a>
+</div>
 
 **读者：** 维护者 / 安全审阅者
 
