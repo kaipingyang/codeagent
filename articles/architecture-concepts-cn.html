@@ -150,7 +150,14 @@ provider request 前的上下文生命周期。文件和函数级结构见 <a hr
 <div class="section level2">
 <h2 id="一次前台-agent-turn">一次前台 Agent turn<a class="anchor" aria-label="anchor" href="#%E4%B8%80%E6%AC%A1%E5%89%8D%E5%8F%B0-agent-turn"></a>
 </h2>
-<p><img src="diagrams/svg/agent-turn-lifecycle.drawio.svg" alt="codeagent 一轮交互：用户输入、输入安全、turn setup、provider与工具轮次、回复finalize、输出安全和session持久化" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/agent-turn-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开Agent turn 生命周期图">全尺寸查看
+↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/agent-turn-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开Agent turn 生命周期图">
+<img src="diagrams/svg/agent-turn-lifecycle.drawio.svg" alt="codeagent 一轮交互：用户输入、输入安全、turn setup、provider与工具轮次、回复finalize、输出安全和session持久化" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>读者：</strong> 用户 / 集成者 <strong>源码：</strong>
 <code>R/stream.R</code>、<code>R/turn_pipeline.R</code>、<code>R/input_gate.R</code>、
 <code>R/output_gate.R</code>、<code>R/sessions.R</code></p>
@@ -201,7 +208,14 @@ entrypoint 绕过 central gate。 -Shield/citation buffering
 <div class="section level2">
 <h2 id="工具调用安全链">工具调用安全链<a class="anchor" aria-label="anchor" href="#%E5%B7%A5%E5%85%B7%E8%B0%83%E7%94%A8%E5%AE%89%E5%85%A8%E9%93%BE"></a>
 </h2>
-<p><img src="diagrams/svg/tool-safety-pipeline.drawio.svg" alt="工具调用安全链：pre-gate preview、中央权限门、Data Shield ingress、审批、PreToolUse改参和重新检查、执行、结果过滤、PostToolUse与normalization" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/tool-safety-pipeline.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开工具安全链路图">全尺寸查看
+↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/tool-safety-pipeline.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开工具安全链路图">
+<img src="diagrams/svg/tool-safety-pipeline.drawio.svg" alt="工具调用安全链：pre-gate preview、中央权限门、Data Shield ingress、审批、PreToolUse改参和重新检查、执行、结果过滤、PostToolUse与normalization" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>读者：</strong> 集成者 / 维护者 <strong>源码：</strong>
 <code>R/tools_gate.R</code>、<code>R/tool_input_hook.R</code>、<code>R/hooks.R</code>、
 <code>R/data_shield.R</code>、<code>R/stream.R</code></p>
@@ -236,7 +250,14 @@ display HTML。</p>
 <div class="section level2">
 <h2 id="request-boundary-上下文管理">Request-boundary 上下文管理<a class="anchor" aria-label="anchor" href="#request-boundary-%E4%B8%8A%E4%B8%8B%E6%96%87%E7%AE%A1%E7%90%86"></a>
 </h2>
-<p><img src="diagrams/svg/context-compaction-lifecycle.drawio.svg" alt="每个provider request前的上下文管理：pending turn、资源替换、token accounting、micro-snip、history重建、fresh recount、可选摘要、结构验证和PTL恢复" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/context-compaction-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开上下文压缩生命周期图">全尺寸查看
+↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/context-compaction-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="在新标签页中全尺寸打开上下文压缩生命周期图">
+<img src="diagrams/svg/context-compaction-lifecycle.drawio.svg" alt="每个provider request前的上下文管理：pending turn、资源替换、token accounting、micro-snip、history重建、fresh recount、可选摘要、结构验证和PTL恢复" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>读者：</strong> 集成者 / 维护者 <strong>源码：</strong>
 <code>R/compaction.R</code>、<code>R/resource.R</code>、<code>R/turn_pipeline.R</code></p>
 <p>当前 compaction 挂在 ellmer

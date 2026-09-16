@@ -26,8 +26,11 @@ provider request 前的上下文生命周期。文件和函数级结构见
 
 ## 一次前台 Agent turn
 
-![codeagent 一轮交互：用户输入、输入安全、turn
-setup、provider与工具轮次、回复finalize、输出安全和session持久化](diagrams/svg/agent-turn-lifecycle.drawio.svg)
+[全尺寸查看
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/agent-turn-lifecycle.drawio.svg)
+
+[![codeagent 一轮交互：用户输入、输入安全、turn
+setup、provider与工具轮次、回复finalize、输出安全和session持久化](diagrams/svg/agent-turn-lifecycle.drawio.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/agent-turn-lifecycle.drawio.svg)
 
 **读者：** 用户 / 集成者 **源码：**
 `R/stream.R`、`R/turn_pipeline.R`、`R/input_gate.R`、
@@ -70,8 +73,11 @@ presentation，Chat/turn services 拥有模型和工具状态。
 
 ## 工具调用安全链
 
-![工具调用安全链：pre-gate preview、中央权限门、Data Shield
-ingress、审批、PreToolUse改参和重新检查、执行、结果过滤、PostToolUse与normalization](diagrams/svg/tool-safety-pipeline.drawio.svg)
+[全尺寸查看
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/tool-safety-pipeline.drawio.svg)
+
+[![工具调用安全链：pre-gate preview、中央权限门、Data Shield
+ingress、审批、PreToolUse改参和重新检查、执行、结果过滤、PostToolUse与normalization](diagrams/svg/tool-safety-pipeline.drawio.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/tool-safety-pipeline.drawio.svg)
 
 **读者：** 集成者 / 维护者 **源码：**
 `R/tools_gate.R`、`R/tool_input_hook.R`、`R/hooks.R`、
@@ -106,9 +112,12 @@ HTML。
 
 ## Request-boundary 上下文管理
 
-![每个provider request前的上下文管理：pending turn、资源替换、token
+[全尺寸查看
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/context-compaction-lifecycle.drawio.svg)
+
+[![每个provider request前的上下文管理：pending turn、资源替换、token
 accounting、micro-snip、history重建、fresh
-recount、可选摘要、结构验证和PTL恢复](diagrams/svg/context-compaction-lifecycle.drawio.svg)
+recount、可选摘要、结构验证和PTL恢复](diagrams/svg/context-compaction-lifecycle.drawio.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/context-compaction-lifecycle.drawio.svg)
 
 **读者：** 集成者 / 维护者 **源码：**
 `R/compaction.R`、`R/resource.R`、`R/turn_pipeline.R`

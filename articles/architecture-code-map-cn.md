@@ -28,7 +28,10 @@ edge，避免把动态 R 架构伪装成普通静态调用图。
 
 ## 各入口汇聚到共享 turn machinery
 
-![从codeagent_client到one-shot、console、stream和Shiny入口，再到共享turn、provider、artifact和session服务的代码地图](diagrams/svg/entrypoint-call-map.svg)
+[全尺寸查看
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/entrypoint-call-map.svg)
+
+[![从codeagent_client到one-shot、console、stream和Shiny入口，再到共享turn、provider、artifact和session服务的代码地图](diagrams/svg/entrypoint-call-map.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/entrypoint-call-map.svg)
 
 **读者：** 维护者 / 集成者
 
@@ -61,8 +64,11 @@ rounds；`tool_display.R`规范tool result，session persistence单独存在。
 
 ## 前台 turn 周围的核心模块
 
-![query、stream和turn
-lifecycle周围的context、安全、presentation和persistence模块依赖图](diagrams/svg/core-module-dependencies.svg)
+[全尺寸查看
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/core-module-dependencies.svg)
+
+[![query、stream和turn
+lifecycle周围的context、安全、presentation和persistence模块依赖图](diagrams/svg/core-module-dependencies.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/core-module-dependencies.svg)
 
 **读者：** 维护者
 
@@ -86,9 +92,12 @@ display、citation source extraction、Shield egress和session replay。
 
 ## Multi-agent 与 process ownership
 
-![Parent client、foreground Agent clone、live Data Shield、team
+[全尺寸查看
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/multi-agent-ownership.svg)
+
+[![Parent client、foreground Agent clone、live Data Shield、team
 workers和SQLite board、background process
-fail-closed规则的ownership地图](diagrams/svg/multi-agent-ownership.svg)
+fail-closed规则的ownership地图](diagrams/svg/multi-agent-ownership.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/multi-agent-ownership.svg)
 
 **读者：** 维护者 / 安全审阅者
 

@@ -27,9 +27,13 @@ API reference.
 
 ## One foreground turn
 
-![One codeagent turn from user input through input safety, turn setup,
+[View full-size diagram
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/agent-turn-lifecycle.drawio.svg)
+
+[![One codeagent turn from user input through input safety, turn setup,
 provider and tool rounds, response finalization, output safety, and
-session persistence](diagrams/svg/agent-turn-lifecycle.drawio.svg)
+session
+persistence](diagrams/svg/agent-turn-lifecycle.drawio.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/agent-turn-lifecycle.drawio.svg)
 
 **Audience:** User / Integrator **Sources:** `R/stream.R`,
 `R/turn_pipeline.R`, `R/input_gate.R`, `R/output_gate.R`, `R/sessions.R`
@@ -82,10 +86,13 @@ Related articles:
 
 ## Tool-call safety pipeline
 
-![Tool request safety pipeline showing pre-gate preview, central
+[View full-size diagram
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/tool-safety-pipeline.drawio.svg)
+
+[![Tool request safety pipeline showing pre-gate preview, central
 permission authority, Data Shield ingress, approval, PreToolUse rewrite
 and recheck, execution, result filtering, PostToolUse, and
-normalization](diagrams/svg/tool-safety-pipeline.drawio.svg)
+normalization](diagrams/svg/tool-safety-pipeline.drawio.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/tool-safety-pipeline.drawio.svg)
 
 **Audience:** Integrator / Maintainer **Sources:** `R/tools_gate.R`,
 `R/tool_input_hook.R`, `R/hooks.R`, `R/data_shield.R`, `R/stream.R`
@@ -122,11 +129,14 @@ not parse `display` HTML.
 
 ## Request-boundary context management
 
-![Context management before each provider request: pending turn
+[View full-size diagram
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/context-compaction-lifecycle.drawio.svg)
+
+[![Context management before each provider request: pending turn
 snapshot, resource replacement, token accounting, micro-snip, history
 rebuild, fresh recount, optional summaries, validation, provider
 request, and prompt-too-long
-recovery](diagrams/svg/context-compaction-lifecycle.drawio.svg)
+recovery](diagrams/svg/context-compaction-lifecycle.drawio.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/context-compaction-lifecycle.drawio.svg)
 
 **Audience:** Integrator / Maintainer **Sources:** `R/compaction.R`,
 `R/resource.R`, `R/turn_pipeline.R`

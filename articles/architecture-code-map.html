@@ -154,7 +154,14 @@ is a plain static call graph.</p>
 <div class="section level2">
 <h2 id="entrypoints-converge-on-shared-turn-machinery">Entrypoints converge on shared turn machinery<a class="anchor" aria-label="anchor" href="#entrypoints-converge-on-shared-turn-machinery"></a>
 </h2>
-<p><img src="diagrams/svg/entrypoint-call-map.svg" alt="Code map from codeagent_client through one-shot, console, streaming, and Shiny entrypoints to shared turn, provider, artifact, and session services" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/entrypoint-call-map.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the entrypoint call map at full size in a new tab">View
+full-size diagram ↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/entrypoint-call-map.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the entrypoint call map at full size in a new tab">
+<img src="diagrams/svg/entrypoint-call-map.svg" alt="Code map from codeagent_client through one-shot, console, streaming, and Shiny entrypoints to shared turn, provider, artifact, and session services" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>Audience:</strong> Maintainer / Integrator</p>
 <p><code><a href="../reference/codeagent_client.html">codeagent_client()</a></code> centralizes provider/model
 resolution, settings, prompt, tool registration, and the permission
@@ -226,7 +233,14 @@ service.</p>
 <div class="section level2">
 <h2 id="core-modules-around-a-foreground-turn">Core modules around a foreground turn<a class="anchor" aria-label="anchor" href="#core-modules-around-a-foreground-turn"></a>
 </h2>
-<p><img src="diagrams/svg/core-module-dependencies.svg" alt="Code dependency map showing query, stream, and turn lifecycle surrounded by context, safety, presentation, and persistence modules" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/core-module-dependencies.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the core module dependency map at full size in a new tab">View
+full-size diagram ↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/core-module-dependencies.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the core module dependency map at full size in a new tab">
+<img src="diagrams/svg/core-module-dependencies.svg" alt="Code dependency map showing query, stream, and turn lifecycle surrounded by context, safety, presentation, and persistence modules" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>Audience:</strong> Maintainer</p>
 <p>The core turn is deliberately small. Cross-cutting concerns remain
 separate:</p>
@@ -258,7 +272,14 @@ extraction, Shield egress, and session replay.</p>
 <div class="section level2">
 <h2 id="multi-agent-and-process-ownership">Multi-agent and process ownership<a class="anchor" aria-label="anchor" href="#multi-agent-and-process-ownership"></a>
 </h2>
-<p><img src="diagrams/svg/multi-agent-ownership.svg" alt="Ownership map for the parent client, foreground Agent clone, live Data Shield, team workers and SQLite board, and background process fail-closed rules" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/multi-agent-ownership.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the multi-agent ownership map at full size in a new tab">View
+full-size diagram ↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/multi-agent-ownership.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the multi-agent ownership map at full size in a new tab">
+<img src="diagrams/svg/multi-agent-ownership.svg" alt="Ownership map for the parent client, foreground Agent clone, live Data Shield, team workers and SQLite board, and background process fail-closed rules" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>Audience:</strong> Maintainer / Security reviewer</p>
 <p>The three execution families have different guarantees:</p>
 <div class="section level3">

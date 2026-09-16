@@ -153,7 +153,14 @@ and API reference.</p>
 <div class="section level2">
 <h2 id="one-foreground-turn">One foreground turn<a class="anchor" aria-label="anchor" href="#one-foreground-turn"></a>
 </h2>
-<p><img src="diagrams/svg/agent-turn-lifecycle.drawio.svg" alt="One codeagent turn from user input through input safety, turn setup, provider and tool rounds, response finalization, output safety, and session persistence" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/agent-turn-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the agent turn lifecycle diagram at full size in a new tab">View
+full-size diagram ↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/agent-turn-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the agent turn lifecycle diagram at full size in a new tab">
+<img src="diagrams/svg/agent-turn-lifecycle.drawio.svg" alt="One codeagent turn from user input through input safety, turn setup, provider and tool rounds, response finalization, output safety, and session persistence" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>Audience:</strong> User / Integrator
 <strong>Sources:</strong> <code>R/stream.R</code>,
 <code>R/turn_pipeline.R</code>, <code>R/input_gate.R</code>,
@@ -212,7 +219,14 @@ concern.</li>
 <div class="section level2">
 <h2 id="tool-call-safety-pipeline">Tool-call safety pipeline<a class="anchor" aria-label="anchor" href="#tool-call-safety-pipeline"></a>
 </h2>
-<p><img src="diagrams/svg/tool-safety-pipeline.drawio.svg" alt="Tool request safety pipeline showing pre-gate preview, central permission authority, Data Shield ingress, approval, PreToolUse rewrite and recheck, execution, result filtering, PostToolUse, and normalization" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/tool-safety-pipeline.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the tool safety pipeline diagram at full size in a new tab">View
+full-size diagram ↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/tool-safety-pipeline.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the tool safety pipeline diagram at full size in a new tab">
+<img src="diagrams/svg/tool-safety-pipeline.drawio.svg" alt="Tool request safety pipeline showing pre-gate preview, central permission authority, Data Shield ingress, approval, PreToolUse rewrite and recheck, execution, result filtering, PostToolUse, and normalization" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>Audience:</strong> Integrator / Maintainer
 <strong>Sources:</strong> <code>R/tools_gate.R</code>,
 <code>R/tool_input_hook.R</code>, <code>R/hooks.R</code>,
@@ -250,7 +264,14 @@ display    optional shinychat adapter</code></pre>
 <div class="section level2">
 <h2 id="request-boundary-context-management">Request-boundary context management<a class="anchor" aria-label="anchor" href="#request-boundary-context-management"></a>
 </h2>
-<p><img src="diagrams/svg/context-compaction-lifecycle.drawio.svg" alt="Context management before each provider request: pending turn snapshot, resource replacement, token accounting, micro-snip, history rebuild, fresh recount, optional summaries, validation, provider request, and prompt-too-long recovery" style="width:100%;height:auto;" loading="lazy"></p>
+<div class="architecture-diagram mb-4">
+<div class="d-flex justify-content-end mb-2">
+<p><a class="btn btn-outline-primary btn-sm" href="diagrams/svg/context-compaction-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the context compaction lifecycle diagram at full size in a new tab">View
+full-size diagram ↗</a></p>
+</div>
+<p><a class="architecture-diagram-link d-block" href="diagrams/svg/context-compaction-lifecycle.drawio.svg" target="_blank" rel="noopener noreferrer" aria-label="Open the context compaction lifecycle diagram at full size in a new tab">
+<img src="diagrams/svg/context-compaction-lifecycle.drawio.svg" alt="Context management before each provider request: pending turn snapshot, resource replacement, token accounting, micro-snip, history rebuild, fresh recount, optional summaries, validation, provider request, and prompt-too-long recovery" style="width:100%;height:auto;cursor:zoom-in;" loading="lazy"></a></p>
+</div>
 <p><strong>Audience:</strong> Integrator / Maintainer
 <strong>Sources:</strong> <code>R/compaction.R</code>,
 <code>R/resource.R</code>, <code>R/turn_pipeline.R</code></p>

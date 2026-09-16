@@ -30,9 +30,12 @@ is a plain static call graph.
 
 ## Entrypoints converge on shared turn machinery
 
-![Code map from codeagent_client through one-shot, console, streaming,
+[View full-size diagram
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/entrypoint-call-map.svg)
+
+[![Code map from codeagent_client through one-shot, console, streaming,
 and Shiny entrypoints to shared turn, provider, artifact, and session
-services](diagrams/svg/entrypoint-call-map.svg)
+services](diagrams/svg/entrypoint-call-map.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/entrypoint-call-map.svg)
 
 **Audience:** Maintainer / Integrator
 
@@ -70,9 +73,12 @@ persistence remains a separate service.
 
 ## Core modules around a foreground turn
 
-![Code dependency map showing query, stream, and turn lifecycle
+[View full-size diagram
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/core-module-dependencies.svg)
+
+[![Code dependency map showing query, stream, and turn lifecycle
 surrounded by context, safety, presentation, and persistence
-modules](diagrams/svg/core-module-dependencies.svg)
+modules](diagrams/svg/core-module-dependencies.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/core-module-dependencies.svg)
 
 **Audience:** Maintainer
 
@@ -98,9 +104,13 @@ extraction, Shield egress, and session replay.
 
 ## Multi-agent and process ownership
 
-![Ownership map for the parent client, foreground Agent clone, live Data
-Shield, team workers and SQLite board, and background process
-fail-closed rules](diagrams/svg/multi-agent-ownership.svg)
+[View full-size diagram
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/multi-agent-ownership.svg)
+
+[![Ownership map for the parent client, foreground Agent clone, live
+Data Shield, team workers and SQLite board, and background process
+fail-closed
+rules](diagrams/svg/multi-agent-ownership.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/multi-agent-ownership.svg)
 
 **Audience:** Maintainer / Security reviewer
 
