@@ -8,7 +8,7 @@
  viewBox="0.00 0.00 1477.00 566.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-labelledby="multi-agent-ownership-title multi-agent-ownership-desc" style="max-width:100%;height:auto;background:transparent">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(21.6 544.2)">
 <title id="multi-agent-ownership-title">Multi-agent execution and ownership boundaries</title>
-<desc id="multi-agent-ownership-desc">Foreground clones, mirai team workers, and background processes have different state, tool, credential, and Shield rules. Audience: Maintainer / Security reviewer. Scope: Ownership and process boundaries; task-level prompts are omitted.. Verified commit 4dc479d2212c26685c24154da164b2928481bfb1.</desc>
+<desc id="multi-agent-ownership-desc">Foreground clones, mirai team workers, and background processes have different state, tool, credential, and Shield rules. Audience: Maintainer / Security reviewer. Scope: Ownership and process boundaries; task-level prompts are omitted.. Verified commit 28c4ae6d5d9273a3a422575adeae448918edd097.</desc>
 <text xml:space="preserve" text-anchor="middle" x="384.26" y="-506" font-family="Arial" font-size="14.00">Multi&#45;agent execution and ownership boundaries</text>
 <text xml:space="preserve" text-anchor="middle" x="384.26" y="-489.2" font-family="Arial" font-size="14.00">Foreground clones, mirai team workers, and background processes have different state, tool, credential, and Shield rules.</text>
 <g id="clust1" class="cluster">

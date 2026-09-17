@@ -52,21 +52,20 @@ sub-agents.
 
 ### Architecture at a glance
 
-     Host/user registers protected data (local only)
-         │ shield$register_data(df, name, sensitivity)
-         ├────────► filtered schema block / DescribeData ───────────────┐
-         └────────► local high-entropy value index                      │
-                                                                       ▼
-     user text + text attachments ─► [edge 1 input gate] ───────────► model
-                                                                       │
-     tool call ─► [edge 2 ingress: policy → patterns → reviewer] ─► execute
-                                                                       │
-     model ◄── [edge 2 egress: row_cap → value_match → scanners] ◄── result
-       │
-       └──────── final reply ─► [edge 3 output gate] ─► user/browser
+[View full-size diagram
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/data-shield-end-to-end.drawio.svg)
 
-     Sandbox and tool narrowing are defense-in-depth. The permission gate remains
-     independent, and a Shield bypass never bypasses permission checks.
+[![Data Shield end-to-end safety loop showing automatic LLM input and
+output gates, tool ingress and egress, optional human callbacks,
+argument rewrite rechecks, and model tool
+rounds](diagrams/svg/data-shield-end-to-end.drawio.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/data-shield-end-to-end.drawio.svg)
+
+The **solid path is automatic**. Blue dashed branches run only when an
+`ask` decision has a live host callback. Without one, tool ingress
+denies and tool egress redacts; input/output `ask` also degrades to
+redaction. Red dashed paths reject or fail closed. `Raw once` is opt-in
+and audited. The central permission gate remains independent, and a
+Shield bypass never bypasses permission checks.
 
 ### Setup used by every snippet below
 

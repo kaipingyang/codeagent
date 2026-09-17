@@ -53,20 +53,18 @@ RAG 内容、附件和错误都必须经过其中一条边。相同策略会递�
 
 ### 技术架构一览
 
-     宿主/用户注册受保护数据（只留在本地）
-         │ shield$register_data(df, name, sensitivity)
-         ├────────► 过滤后的 schema block / DescribeData ──────────────┐
-         └────────► 本地高熵值索引                                      │
-                                                                       ▼
-     用户文本 + 含文本附件 ─► [边 1 input gate] ─────────────────────► 模型
-                                                                       │
-     工具调用 ─► [边 2 ingress：策略 → 模式 → reviewer] ─► 执行
-                                                                       │
-     模型 ◄── [边 2 egress：row_cap → value_match → scanners] ◄── 结果
-       │
-       └──────── 最终回复 ─► [边 3 output gate] ─► 用户/浏览器
+[全尺寸查看
+↗](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/data-shield-end-to-end.drawio.svg)
 
-     沙箱和工具收窄属于纵深防御。权限门保持独立，Shield bypass 永远不会绕过权限检查。
+[![Data Shield 端到端安全闭环：自动 LLM 输入输出 gate、工具
+ingress/egress、可选人工回调、参数改写复检和模型工具循环](diagrams/svg/data-shield-end-to-end.drawio.svg)](https://kaipingyang.github.io/codeagent/articles/diagrams/svg/data-shield-end-to-end.drawio.svg)
+
+**实线主干是自动流程。** 蓝色虚线只在 `ask` 且存在宿主 callback
+时进入人工 旁路；没有 callback 时，tool ingress 自动 deny、tool egress
+自动 redact，input/ output 的 `ask` 也降级为 redact。红色虚线表示 reject
+或 fail closed。`Raw once`
+必须显式启用并写入审计。中央权限门保持独立，Shield bypass
+永远不会绕过权限检查。
 
 ### 下面每个代码片段共用的起手式
 
