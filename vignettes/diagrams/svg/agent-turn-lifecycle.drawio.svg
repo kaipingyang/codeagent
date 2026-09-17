@@ -60,5 +60,5 @@
 <text x="1155.0" y="811.3" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1155.0" dy="0.0">Turn teardown</tspan><tspan x="1155.0" dy="16.9">usage + hooks</tspan></text>
 <rect x="1300.0" y="770.0" width="220.0" height="90.0" rx="14" fill="#F4F6F8" stroke="#667085" stroke-width="1.5" filter="url(#shadow)"/>
 <text x="1410.0" y="802.9" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1410.0" dy="0.0">Session save</tspan><tspan x="1410.0" dy="16.9">lossless state</tspan><tspan x="1410.0" dy="16.9">+ presentation</tspan></text>
-<text x="30" y="876" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11">Verified 4dc479d2 · User / Integrator · R/stream.R · R/turn_pipeline.R · R/input_gate.R · R/output_gate.R · R/sessions.R</text>
+<text x="30" y="876" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11">Verified 28c4ae6d · User / Integrator · R/stream.R · R/turn_pipeline.R · R/input_gate.R · R/output_gate.R · R/sessions.R</text>
 </svg>

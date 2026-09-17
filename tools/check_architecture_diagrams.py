@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import runpy
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -103,23 +104,58 @@ def symbol_exists(symbol, file_hint):
     return any(pattern.search(p.read_text(encoding="utf-8", errors="replace")) for p in candidates)
 
 
+def declared_primary_sources(manifest):
+    namespace = runpy.run_path(str(ROOT / "tools" / "render_architecture_diagrams.py"))
+    sources = {
+        source
+        for spec in namespace["CONCEPTS"].values()
+        for source in spec.get("sources", [])
+        if (ROOT / source).is_file()
+    }
+    for graph in manifest["graphs"]:
+        for node in graph["nodes"]:
+            for source in node.get("file", "").split(" / "):
+                if source.startswith("R/") and (ROOT / source).is_file():
+                    sources.add(source)
+    return sorted(sources)
+
+
 def main():
     errors = 0
     concept_files = sorted(SRC.glob("*.drawio"))
-    if len(concept_files) != 3:
-        errors += fail(f"expected 3 concept drawio files, found {len(concept_files)}")
+    if len(concept_files) != 4:
+        errors += fail(f"expected 4 concept drawio files, found {len(concept_files)}")
     for path in concept_files:
         errors += check_drawio(path)
         errors += check_svg(SVG / f"{path.stem}.drawio.svg")
 
     manifest_path = SRC / "code-graphs.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    verified = manifest["verified_commit"]
     head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    if manifest["verified_commit"] != head:
-        errors += fail(
-            f"manifest verified_commit {manifest['verified_commit']} != HEAD {head}; "
-            "review diagrams and update deliberately"
-        )
+    commit_exists = subprocess.run(
+        ["git", "cat-file", "-e", f"{verified}^{{commit}}"], cwd=ROOT,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode == 0
+    if not commit_exists:
+        errors += fail(f"verified_commit is not a commit: {verified}")
+    elif subprocess.run(
+        ["git", "merge-base", "--is-ancestor", verified, head], cwd=ROOT,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    ).returncode != 0:
+        errors += fail(f"verified_commit {verified} is not an ancestor of HEAD {head}")
+    else:
+        sources = declared_primary_sources(manifest)
+        changed = subprocess.check_output(
+            ["git", "diff", "--name-only", verified, "--", *sources],
+            cwd=ROOT, text=True,
+        ).splitlines()
+        if changed:
+            errors += fail(
+                "declared primary sources changed since verified_commit; "
+                "review diagrams and update the baseline deliberately: "
+                + ", ".join(changed)
+            )
     if len(manifest["graphs"]) != 3:
         errors += fail("expected 3 code graphs")
     for graph in manifest["graphs"]:

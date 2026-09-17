@@ -1,0 +1,243 @@
+<mxfile host="app.diagrams.net" agent="codeagent" version="24.7.17">
+  <diagram id="data-shield-end-to-end" name="Page-1">
+    <mxGraphModel dx="1900" dy="1200" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1900" pageHeight="1200" math="0" shadow="0" defaultFontFamily="Helvetica">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="diagram-title" value="Data Shield: end-to-end LLM and tool safety loop" style="text;html=1;strokeColor=none;fillColor=none;fontSize=26;fontStyle=1;fontColor=#1D2939;align=left;verticalAlign=middle;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="30" y="25" width="1840" height="42" as="geometry" />
+        </mxCell>
+        <mxCell id="diagram-subtitle" value="Automatic policy is the main path; human approval is an optional ask + callback branch; missing callbacks fail safe." style="text;html=1;strokeColor=none;fillColor=none;fontSize=13;fontColor=#667085;align=left;verticalAlign=middle;fontFamily=Helvetica;" vertex="1" parent="1">
+          <mxGeometry x="30" y="65" width="1840" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="edge1-frame" value="EDGE 1 · LLM INPUT" style="swimlane;html=1;rounded=1;startSize=34;horizontal=1;fillColor=#EAF2FF;strokeColor=#3266CC;fontColor=#173B75;fontStyle=1;fontSize=14;opacity=35;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="30" y="115" width="1200" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="state-frame" value="LOCAL SHIELD STATE · RAW DATA NEVER ENTERS THE MODEL DIRECTLY" style="swimlane;html=1;rounded=1;startSize=34;horizontal=1;fillColor=#F4F6F8;strokeColor=#667085;fontColor=#344054;fontStyle=1;fontSize=14;opacity=35;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="115" width="610" height="260" as="geometry" />
+        </mxCell>
+        <mxCell id="edge2-frame" value="EDGE 2 · TOOL LOOP" style="swimlane;html=1;rounded=1;startSize=34;horizontal=1;fillColor=#FFF4E5;strokeColor=#C77800;fontColor=#6B3E00;fontStyle=1;fontSize=14;opacity=35;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="300" y="395" width="1570" height="500" as="geometry" />
+        </mxCell>
+        <mxCell id="edge3-frame" value="EDGE 3 · LLM OUTPUT" style="swimlane;html=1;rounded=1;startSize=34;horizontal=1;fillColor=#F3ECFF;strokeColor=#7A4CC2;fontColor=#43256F;fontStyle=1;fontSize=14;opacity=35;whiteSpace=wrap;" vertex="1" parent="1">
+          <mxGeometry x="30" y="920" width="1200" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="human-input" value="Human / host input&lt;br&gt;text + text attachments" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#EAF2FF;strokeColor=#3266CC;fontColor=#173B75;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="60" y="185" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="input-gate" value="LLM INPUT GATE&lt;br&gt;value_match + regex&lt;br&gt;pass / redact / block&lt;br&gt;ask → redact (no dialog)" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#C77800;fontColor=#6B3E00;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="340" y="165" width="300" height="130" as="geometry" />
+        </mxCell>
+        <mxCell id="safe-prompt" value="Model-bound input&lt;br&gt;unchanged or redacted" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#E8F8F7;strokeColor=#17877F;fontColor=#125A55;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="700" y="185" width="220" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="input-block" value="Turn stops&lt;br&gt;safe blocked notice" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FDECEC;strokeColor=#B42318;fontColor=#7A271A;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="700" y="295" width="220" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="llm" value="LLM / provider round&lt;br&gt;sees only&lt;br&gt;model-bound content&lt;br&gt;chooses:&lt;br&gt;tool call or final reply" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#F3ECFF;strokeColor=#7A4CC2;fontColor=#43256F;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="990" y="155" width="220" height="160" as="geometry" />
+        </mxCell>
+        <mxCell id="protected-data" value="Registered protected data&lt;br&gt;local R memory only" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#F4F6F8;strokeColor=#667085;fontColor=#344054;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="165" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="schema-only" value="Filtered schema block&lt;br&gt;+ DescribeData metadata" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#E8F8F7;strokeColor=#17877F;fontColor=#125A55;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1580" y="165" width="250" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="value-index" value="Local value index&lt;br&gt;prompt + tool args&lt;br&gt;result + reply scans" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#F4F6F8;strokeColor=#667085;fontColor=#344054;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1430" y="280" width="270" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="tool-request" value="LLM tool request&lt;br&gt;name + arguments" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#F3ECFF;strokeColor=#7A4CC2;fontColor=#43256F;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="990" y="445" width="220" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ingress-gate" value="TOOL INGRESS + AUTHORITY · AUTOMATIC&lt;br&gt;Shield policy → patterns → reviewer&lt;br&gt;then permission mode + rules&lt;br&gt;allow / deny stay on main path&lt;br&gt;ask without ask_fn → deny" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#C77800;fontColor=#6B3E00;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="650" y="440" width="300" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="permission-human" value="OPTIONAL human permission&lt;br&gt;only ask + ask_fn&lt;br&gt;Approve / Deny" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#EAF2FF;strokeColor=#3266CC;fontColor=#173B75;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="350" y="445" width="240" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="pre-hook" value="PreToolUse&lt;br&gt;allow / deny / rewrite" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#C77800;fontColor=#6B3E00;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="670" y="620" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="rewrite-check" value="Rewrite re-check&lt;br&gt;scrub + ingress + permission&lt;br&gt;non-allow / ask → reject" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#C77800;fontColor=#6B3E00;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="350" y="610" width="240" height="115" as="geometry" />
+        </mxCell>
+        <mxCell id="arg-scrub" value="Final argument scrub&lt;br&gt;scan_tool_args&lt;br&gt;redact or reject" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#C77800;fontColor=#6B3E00;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="970" y="620" width="240" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="execute" value="Execute tool&lt;br&gt;with final scanned args" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#EAF8F0;strokeColor=#2D7A50;fontColor=#194A30;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1260" y="620" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="egress-gate" value="TOOL EGRESS · AUTOMATIC&lt;br&gt;tool policy → row cap / value match&lt;br&gt;→ custom scanners&lt;br&gt;pass / redact / block use main path&lt;br&gt;ask without callback / timeout&lt;br&gt;→ automatic Redact" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#C77800;fontColor=#6B3E00;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="535" width="290" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="egress-human" value="OPTIONAL human egress review&lt;br&gt;only ask + live callback&lt;br&gt;Redact / Block / Raw once*" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#EAF2FF;strokeColor=#3266CC;fontColor=#173B75;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1530" y="750" width="290" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="post-hook" value="PostToolUse&lt;br&gt;observes gated result" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#F4F6F8;strokeColor=#667085;fontColor=#344054;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1230" y="760" width="240" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="rejected" value="Rejected call&lt;br&gt;fixed safe tool result" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FDECEC;strokeColor=#B42318;fontColor=#7A271A;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="640" y="770" width="210" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="model-result" value="Normalized model-bound result&lt;br&gt;pass / filtered / blocked notice&lt;br&gt;or explicitly approved raw once*" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#E8F8F7;strokeColor=#17877F;fontColor=#125A55;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="900" y="750" width="260" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="final-reply" value="Final LLM reply&lt;br&gt;buffered — not shown yet" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#F3ECFF;strokeColor=#7A4CC2;fontColor=#43256F;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="930" y="970" width="260" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="output-gate" value="LLM OUTPUT GATE&lt;br&gt;value_match + regex&lt;br&gt;pass / redact / block&lt;br&gt;ask → redact (no dialog)" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#FFF4E5;strokeColor=#C77800;fontColor=#6B3E00;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="620" y="960" width="250" height="120" as="geometry" />
+        </mxCell>
+        <mxCell id="visible-response" value="User-visible response&lt;br&gt;emitted once after scan" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#E8F8F7;strokeColor=#17877F;fontColor=#125A55;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="340" y="970" width="220" height="100" as="geometry" />
+        </mxCell>
+        <mxCell id="human-output" value="Human / browser&lt;br&gt;sees gated response" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#EAF2FF;strokeColor=#3266CC;fontColor=#173B75;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="70" y="975" width="210" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="legend" value="SOLID main path = automatic handling&lt;br&gt;BLUE dashed = optional human callback&lt;br&gt;AMBER = Shield / authorization&lt;br&gt;PURPLE = LLM content&lt;br&gt;TEAL = model-bound transformed value&lt;br&gt;RED dashed = reject / fail-closed&lt;br&gt;* Raw once is opt-in and audited" style="rounded=1;arcSize=16;whiteSpace=wrap;html=1;fillColor=#F4F6F8;strokeColor=#667085;fontColor=#344054;strokeWidth=1.5;fontFamily=Helvetica;fontSize=14;align=center;verticalAlign=middle;spacing=8;" vertex="1" parent="1">
+          <mxGeometry x="1290" y="935" width="540" height="175" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3266CC;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#3266CC;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="human-input" target="input-gate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#17877F;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#17877F;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="input-gate" target="safe-prompt">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" value="LLM input" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#17877F;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#17877F;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="safe-prompt" target="llm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B42318;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#B42318;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="input-gate" target="input-block">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#667085;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#667085;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="protected-data" target="schema-only">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#667085;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#667085;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="protected-data" target="value-index">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#17877F;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#17877F;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="schema-only" target="llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1705" y="150" />
+              <mxPoint x="1240" y="150" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e8" value="tool call" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7A4CC2;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#7A4CC2;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="llm" target="tool-request">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e9" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7A4CC2;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#7A4CC2;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="tool-request" target="ingress-gate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10" value="automatic allow" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2D7A50;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#2D7A50;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="ingress-gate" target="pre-hook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e10b" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B42318;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#B42318;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="ingress-gate" target="rejected">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="950" y="500" />
+              <mxPoint x="950" y="730" />
+              <mxPoint x="850" y="730" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e11" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3266CC;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#3266CC;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="ingress-gate" target="permission-human">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" value="approve" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3266CC;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#3266CC;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="permission-human" target="pre-hook">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" value="deny" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B42318;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#B42318;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="permission-human" target="rejected">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="320" y="480" />
+              <mxPoint x="320" y="810" />
+              <mxPoint x="620" y="810" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e14" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2D7A50;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#2D7A50;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="pre-hook" target="arg-scrub">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e15" value="rewrite" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#C77800;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#C77800;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="pre-hook" target="rewrite-check">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e16" value="recheck allow" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2D7A50;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#2D7A50;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rewrite-check" target="arg-scrub">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="620" y="735" />
+              <mxPoint x="940" y="735" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e17" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B42318;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#B42318;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="pre-hook" target="rejected">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e18" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B42318;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#B42318;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="rewrite-check" target="rejected">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e19" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#B42318;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#B42318;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="rejected" target="model-result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e20" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2D7A50;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#2D7A50;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="arg-scrub" target="execute">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e21" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#2D7A50;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#2D7A50;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="execute" target="egress-gate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e22" value="auto result" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#17877F;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#17877F;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="egress-gate" target="post-hook">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1490" y="700" />
+              <mxPoint x="1490" y="735" />
+              <mxPoint x="1470" y="735" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e23" value="ask + callback" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3266CC;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#3266CC;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="egress-gate" target="egress-human">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e24" value="human choice" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3266CC;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#3266CC;labelBackgroundColor=#FFFFFF;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="egress-human" target="post-hook">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1500" y="875" />
+              <mxPoint x="1490" y="875" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e25" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#667085;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#667085;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="post-hook" target="model-result">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e26" value="next provider round" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7A4CC2;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#7A4CC2;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="model-result" target="llm">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1220" y="815" />
+              <mxPoint x="1220" y="345" />
+              <mxPoint x="1120" y="345" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e27" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7A4CC2;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#7A4CC2;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="llm" target="final-reply">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1240" y="340" />
+              <mxPoint x="1240" y="385" />
+              <mxPoint x="1880" y="385" />
+              <mxPoint x="1880" y="910" />
+              <mxPoint x="1060" y="910" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e28" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#7A4CC2;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#7A4CC2;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="final-reply" target="output-gate">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e29" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#17877F;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#17877F;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="output-gate" target="visible-response">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e30" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#3266CC;strokeWidth=1.6;endArrow=block;endFill=1;fontSize=12;fontColor=#3266CC;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="visible-response" target="human-output">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

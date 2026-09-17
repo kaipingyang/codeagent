@@ -78,5 +78,5 @@
 <text x="605.0" y="856.3" text-anchor="middle" fill="#173B75" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="605.0" dy="0.0">Normalize result</tspan><tspan x="605.0" dy="16.9">value + artifact + display</tspan></text>
 <rect x="150.0" y="825.0" width="190.0" height="72.0" rx="14" fill="#F3ECFF" stroke="#7A4CC2" stroke-width="1.5" filter="url(#shadow)"/>
 <text x="245.0" y="857.3" text-anchor="middle" fill="#43256F" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="245.0" dy="0.0">Return to model</tspan><tspan x="245.0" dy="16.9">then UI callback</tspan></text>
-<text x="30" y="956" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11">Verified 4dc479d2 · Integrator / Maintainer · R/tools_gate.R · R/tool_input_hook.R · R/hooks.R · R/data_shield.R · R/stream.R</text>
+<text x="30" y="956" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11">Verified 28c4ae6d · Integrator / Maintainer · R/tools_gate.R · R/tool_input_hook.R · R/hooks.R · R/data_shield.R · R/stream.R</text>
 </svg>

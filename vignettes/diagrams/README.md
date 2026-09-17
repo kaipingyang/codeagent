@@ -60,6 +60,7 @@ must remain legible without color.
 |---|---|---|---|
 | `agent-turn-lifecycle` | User / Integrator | one foreground turn | `R/stream.R`, `R/turn_pipeline.R`, gates, sessions |
 | `tool-safety-pipeline` | Integrator / Maintainer | one tool call | `R/tools_gate.R`, hooks, Data Shield |
+| `data-shield-end-to-end` | User / Integrator / Security reviewer | model-bound input/output, tool loop, automatic fallbacks, optional human callbacks | input/output gates, tool gate, tool-input hook, Data Shield, stream |
 | `context-compaction-lifecycle` | Integrator / Maintainer | request-boundary context controls | `R/compaction.R`, `R/resource.R` |
 | `entrypoint-call-map` | Maintainer / Integrator | top-level entrypoints | query, repl, stream, ui, sessions |
 | `core-module-dependencies` | Maintainer | foreground turn modules | turn core + cross-cutting modules |
@@ -69,8 +70,9 @@ must remain legible without color.
 
 1. Do not encode volatile counts, model names, package versions, or thresholds in
    a diagram.
-2. Each diagram records a verified commit. A source-file change does not imply
-   the diagram changed, but it requires an explicit review.
+2. Each diagram records a verified commit. That commit must remain an ancestor
+   of `HEAD`; the checker fails when any declared primary source differs from
+   the verified baseline, so source changes require an explicit diagram review.
 3. Edge types describe semantics (`calls`, `callback`, `state`, `spawns`,
    `persists`, `guards`, `returns`); they are not all direct static calls.
 4. Codegraph/LSP is authoring evidence, not a build dependency. Dynamic R6,

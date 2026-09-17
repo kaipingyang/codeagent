@@ -1,7 +1,7 @@
 {
   "schema": "codeagent.architecture-code-graphs",
   "version": 1,
-  "verified_commit": "4dc479d2212c26685c24154da164b2928481bfb1",
+  "verified_commit": "28c4ae6d5d9273a3a422575adeae448918edd097",
   "edge_types": {
     "calls": "direct/shared call path",
     "callback": "callback or event registration",

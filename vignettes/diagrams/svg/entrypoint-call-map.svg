@@ -8,7 +8,7 @@
  viewBox="0.00 0.00 1717.00 346.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-labelledby="entrypoint-call-map-title entrypoint-call-map-desc" style="max-width:100%;height:auto;background:transparent">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(21.6 324.6)">
 <title id="entrypoint-call-map-title">Entrypoints converge on shared turn machinery</title>
-<desc id="entrypoint-call-map-desc">Construction is centralized; one-shot, CLI, host streaming, and Shiny adapt the same Chat and turn services. Audience: Maintainer / Integrator. Scope: Top-level entrypoints and major shared services, not every helper.. Verified commit 4dc479d2212c26685c24154da164b2928481bfb1.</desc>
+<desc id="entrypoint-call-map-desc">Construction is centralized; one-shot, CLI, host streaming, and Shiny adapt the same Chat and turn services. Audience: Maintainer / Integrator. Scope: Top-level entrypoints and major shared services, not every helper.. Verified commit 28c4ae6d5d9273a3a422575adeae448918edd097.</desc>
 <text xml:space="preserve" text-anchor="middle" x="344.95" y="-286.4" font-family="Arial" font-size="14.00">Entrypoints converge on shared turn machinery</text>
 <text xml:space="preserve" text-anchor="middle" x="344.95" y="-269.6" font-family="Arial" font-size="14.00">Construction is centralized; one&#45;shot, CLI, host streaming, and Shiny adapt the same Chat and turn services.</text>
 <g id="clust1" class="cluster">

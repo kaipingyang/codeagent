@@ -8,7 +8,7 @@
  viewBox="0.00 0.00 995.00 748.00" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" role="img" aria-labelledby="core-module-dependencies-title core-module-dependencies-desc" style="max-width:100%;height:auto;background:transparent">
 <g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(21.6 726)">
 <title id="core-module-dependencies-title">Core turn pipeline and cross-cutting modules</title>
-<desc id="core-module-dependencies-desc">Security, context management, presentation, and persistence remain separate cross-cutting services around the Chat. Audience: Maintainer. Scope: Files and key subsystem entrypoints used by foreground turns.. Verified commit 4dc479d2212c26685c24154da164b2928481bfb1.</desc>
+<desc id="core-module-dependencies-desc">Security, context management, presentation, and persistence remain separate cross-cutting services around the Chat. Audience: Maintainer. Scope: Files and key subsystem entrypoints used by foreground turns.. Verified commit 28c4ae6d5d9273a3a422575adeae448918edd097.</desc>
 <text xml:space="preserve" text-anchor="middle" x="374.14" y="-687.8" font-family="Arial" font-size="14.00">Core turn pipeline and cross&#45;cutting modules</text>
 <text xml:space="preserve" text-anchor="middle" x="374.14" y="-671" font-family="Arial" font-size="14.00">Security, context management, presentation, and persistence remain separate cross&#45;cutting services around the Chat.</text>
 <g id="clust1" class="cluster">

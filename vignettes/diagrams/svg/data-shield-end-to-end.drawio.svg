@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1900" height="1200" viewBox="0 0 1900 1200" role="img" aria-labelledby="title desc">
+<title id="title">Data Shield: end-to-end LLM and tool safety loop</title>
+<desc id="desc">Automatic policy is the main path; human approval is an optional ask + callback branch; missing callbacks fail safe. Audience: User / Integrator / Security reviewer. Scope: Model-bound input and output, tool ingress and egress, optional human callbacks, and the provider tool loop.</desc>
+<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto" markerUnits="strokeWidth"><path d="M0,0 L8,4 L0,8 z" fill="context-stroke"/></marker><filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#101828" flood-opacity="0.08"/></filter></defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<rect x="30.0" y="115.0" width="1200.0" height="260.0" rx="16" fill="#EAF2FF" fill-opacity="0.45" stroke="#3266CC" stroke-width="1.2"/>
+<text x="630.0" y="137.6" text-anchor="middle" fill="#173B75" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700"><tspan x="630.0" dy="0.0">EDGE 1 · LLM INPUT</tspan></text>
+<rect x="1260.0" y="115.0" width="610.0" height="260.0" rx="16" fill="#F4F6F8" fill-opacity="0.45" stroke="#667085" stroke-width="1.2"/>
+<text x="1565.0" y="137.6" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700"><tspan x="1565.0" dy="0.0">LOCAL SHIELD STATE · RAW DATA NEVER ENTERS THE MODEL DIRECTLY</tspan></text>
+<rect x="300.0" y="395.0" width="1570.0" height="500.0" rx="16" fill="#FFF4E5" fill-opacity="0.45" stroke="#C77800" stroke-width="1.2"/>
+<text x="1085.0" y="417.6" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700"><tspan x="1085.0" dy="0.0">EDGE 2 · TOOL LOOP</tspan></text>
+<rect x="30.0" y="920.0" width="1200.0" height="220.0" rx="16" fill="#F3ECFF" fill-opacity="0.45" stroke="#7A4CC2" stroke-width="1.2"/>
+<text x="630.0" y="942.5" text-anchor="middle" fill="#43256F" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="700"><tspan x="630.0" dy="0.0">EDGE 3 · LLM OUTPUT</tspan></text>
+<path d="M 280.0 230.0 L 310.0 230.0 L 310.0 230.0 L 340.0 230.0" fill="none" stroke="#3266CC" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 640.0 230.0 L 670.0 230.0 L 670.0 230.0 L 700.0 230.0" fill="none" stroke="#17877F" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 920.0 230.0 L 955.0 230.0 L 955.0 235.0 L 990.0 235.0" fill="none" stroke="#17877F" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="920.0" y="223.0" width="70.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="955.0" y="237.0" text-anchor="middle" fill="#17877F" font-family="Inter,Arial,sans-serif" font-size="11.5">LLM input</text>
+<path d="M 640.0 230.0 L 670.0 230.0 L 670.0 325.0 L 700.0 325.0" fill="none" stroke="#B42318" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 1540.0 215.0 L 1560.0 215.0 L 1560.0 215.0 L 1580.0 215.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 1540.0 215.0 L 1485.0 215.0 L 1485.0 320.0 L 1430.0 320.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 1705.0 165.0 L 1705.0 150.0 L 1240.0 150.0 L 1210.0 168.2" fill="none" stroke="#17877F" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 1100.0 315.0 L 1100.0 380.0 L 1100.0 380.0 L 1100.0 445.0" fill="none" stroke="#7A4CC2" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1065.0" y="368.0" width="70.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="1100.0" y="382.0" text-anchor="middle" fill="#7A4CC2" font-family="Inter,Arial,sans-serif" font-size="11.5">tool call</text>
+<path d="M 990.0 485.0 L 970.0 485.0 L 970.0 510.0 L 950.0 510.0" fill="none" stroke="#7A4CC2" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 800.0 580.0 L 800.0 600.0 L 790.0 600.0 L 790.0 620.0" fill="none" stroke="#2D7A50" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="741.2" y="588.0" width="97.5" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="790.0" y="602.0" text-anchor="middle" fill="#2D7A50" font-family="Inter,Arial,sans-serif" font-size="11.5">automatic allow</text>
+<path d="M 950.0 500.0 L 950.0 500.0 L 950.0 730.0 L 850.0 730.0 L 797.5 770.0" fill="none" stroke="#B42318" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 650.0 510.0 L 620.0 510.0 L 620.0 500.0 L 590.0 500.0" fill="none" stroke="#3266CC" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 590.0 500.0 L 630.0 500.0 L 630.0 670.0 L 670.0 670.0" fill="none" stroke="#3266CC" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<rect x="595.0" y="658.0" width="70.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="630.0" y="672.0" text-anchor="middle" fill="#3266CC" font-family="Inter,Arial,sans-serif" font-size="11.5">approve</text>
+<path d="M 350.0 484.0 L 320.0 480.0 L 320.0 810.0 L 620.0 810.0 L 640.0 810.0" fill="none" stroke="#B42318" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<rect x="285.0" y="798.0" width="70.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="320.0" y="812.0" text-anchor="middle" fill="#B42318" font-family="Inter,Arial,sans-serif" font-size="11.5">deny</text>
+<path d="M 910.0 670.0 L 940.0 670.0 L 940.0 670.0 L 970.0 670.0" fill="none" stroke="#2D7A50" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 670.0 670.0 L 630.0 670.0 L 630.0 667.5 L 590.0 667.5" fill="none" stroke="#C77800" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="595.0" y="655.5" width="70.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="630.0" y="669.5" text-anchor="middle" fill="#C77800" font-family="Inter,Arial,sans-serif" font-size="11.5">rewrite</text>
+<path d="M 590.0 721.5 L 620.0 735.0 L 940.0 735.0 L 974.6 720.0" fill="none" stroke="#2D7A50" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="897.8" y="723.0" width="84.5" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="940.0" y="737.0" text-anchor="middle" fill="#2D7A50" font-family="Inter,Arial,sans-serif" font-size="11.5">recheck allow</text>
+<path d="M 790.0 720.0 L 790.0 745.0 L 745.0 745.0 L 745.0 770.0" fill="none" stroke="#B42318" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 590.0 667.5 L 615.0 667.5 L 615.0 810.0 L 640.0 810.0" fill="none" stroke="#B42318" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<path d="M 850.0 810.0 L 875.0 810.0 L 875.0 805.0 L 900.0 805.0" fill="none" stroke="#B42318" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 1210.0 670.0 L 1235.0 670.0 L 1235.0 670.0 L 1260.0 670.0" fill="none" stroke="#2D7A50" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 1480.0 670.0 L 1505.0 670.0 L 1505.0 622.5 L 1530.0 622.5" fill="none" stroke="#2D7A50" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 1530.0 683.2 L 1490.0 700.0 L 1490.0 735.0 L 1470.0 735.0 L 1427.1 760.0" fill="none" stroke="#17877F" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1454.2" y="723.0" width="71.5" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="1490.0" y="737.0" text-anchor="middle" fill="#17877F" font-family="Inter,Arial,sans-serif" font-size="11.5">auto result</text>
+<path d="M 1675.0 710.0 L 1675.0 730.0 L 1675.0 730.0 L 1675.0 750.0" fill="none" stroke="#3266CC" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<rect x="1629.5" y="718.0" width="91.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="1675.0" y="732.0" text-anchor="middle" fill="#3266CC" font-family="Inter,Arial,sans-serif" font-size="11.5">ask + callback</text>
+<path d="M 1537.5 860.0 L 1500.0 875.0 L 1490.0 875.0 L 1440.0 850.0" fill="none" stroke="#3266CC" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)" stroke-dasharray="7 5"/>
+<rect x="1451.0" y="863.0" width="78.0" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="1490.0" y="877.0" text-anchor="middle" fill="#3266CC" font-family="Inter,Arial,sans-serif" font-size="11.5">human choice</text>
+<path d="M 1230.0 805.0 L 1195.0 805.0 L 1195.0 805.0 L 1160.0 805.0" fill="none" stroke="#667085" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 1160.0 811.8 L 1220.0 815.0 L 1220.0 345.0 L 1120.0 345.0 L 1114.5 315.0" fill="none" stroke="#7A4CC2" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<rect x="1158.2" y="333.0" width="123.5" height="20" rx="6" fill="#FFFFFF" fill-opacity="0.94"/>
+<text x="1220.0" y="347.0" text-anchor="middle" fill="#7A4CC2" font-family="Inter,Arial,sans-serif" font-size="11.5">next provider round</text>
+<path d="M 1206.7 315.0 L 1240.0 340.0 L 1240.0 385.0 L 1880.0 385.0 L 1880.0 910.0 L 1060.0 910.0 L 1060.0 970.0" fill="none" stroke="#7A4CC2" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 930.0 1020.0 L 900.0 1020.0 L 900.0 1020.0 L 870.0 1020.0" fill="none" stroke="#7A4CC2" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 620.0 1020.0 L 590.0 1020.0 L 590.0 1020.0 L 560.0 1020.0" fill="none" stroke="#17877F" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<path d="M 340.0 1020.0 L 310.0 1020.0 L 310.0 1020.0 L 280.0 1020.0" fill="none" stroke="#3266CC" stroke-width="1.7" stroke-linejoin="round" marker-end="url(#arrow)"/>
+<text x="30.0" y="54.4" text-anchor="start" fill="#1D2939" font-family="Inter,Arial,sans-serif" font-size="26" font-weight="700">Data Shield: end-to-end LLM and tool safety loop</text>
+<text x="30.0" y="86.0" text-anchor="start" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="13" font-weight="400">Automatic policy is the main path; human approval is an optional ask + callback branch; missing callbacks fail safe.</text>
+<rect x="60.0" y="185.0" width="220.0" height="90.0" rx="14" fill="#EAF2FF" stroke="#3266CC" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="170.0" y="226.3" text-anchor="middle" fill="#173B75" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="170.0" dy="0.0">Human / host input</tspan><tspan x="170.0" dy="16.9">text + text attachments</tspan></text>
+<rect x="340.0" y="165.0" width="300.0" height="130.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="490.0" y="209.4" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="490.0" dy="0.0">LLM INPUT GATE</tspan><tspan x="490.0" dy="16.9">value_match + regex</tspan><tspan x="490.0" dy="16.9">pass / redact / block</tspan><tspan x="490.0" dy="16.9">ask → redact (no dialog)</tspan></text>
+<rect x="700.0" y="185.0" width="220.0" height="90.0" rx="14" fill="#E8F8F7" stroke="#17877F" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="810.0" y="226.3" text-anchor="middle" fill="#125A55" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="810.0" dy="0.0">Model-bound input</tspan><tspan x="810.0" dy="16.9">unchanged or redacted</tspan></text>
+<rect x="700.0" y="295.0" width="220.0" height="60.0" rx="14" fill="#FDECEC" stroke="#B42318" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="810.0" y="321.3" text-anchor="middle" fill="#7A271A" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="810.0" dy="0.0">Turn stops</tspan><tspan x="810.0" dy="16.9">safe blocked notice</tspan></text>
+<rect x="990.0" y="155.0" width="220.0" height="160.0" rx="14" fill="#F3ECFF" stroke="#7A4CC2" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1100.0" y="206.0" text-anchor="middle" fill="#43256F" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1100.0" dy="0.0">LLM / provider round</tspan><tspan x="1100.0" dy="16.9">sees only</tspan><tspan x="1100.0" dy="16.9">model-bound content</tspan><tspan x="1100.0" dy="16.9">chooses:</tspan><tspan x="1100.0" dy="16.9">tool call or final reply</tspan></text>
+<rect x="1290.0" y="165.0" width="250.0" height="100.0" rx="14" fill="#F4F6F8" stroke="#667085" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1415.0" y="211.3" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1415.0" dy="0.0">Registered protected data</tspan><tspan x="1415.0" dy="16.9">local R memory only</tspan></text>
+<rect x="1580.0" y="165.0" width="250.0" height="100.0" rx="14" fill="#E8F8F7" stroke="#17877F" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1705.0" y="211.3" text-anchor="middle" fill="#125A55" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1705.0" dy="0.0">Filtered schema block</tspan><tspan x="1705.0" dy="16.9">+ DescribeData metadata</tspan></text>
+<rect x="1430.0" y="280.0" width="270.0" height="80.0" rx="14" fill="#F4F6F8" stroke="#667085" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1565.0" y="307.9" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1565.0" dy="0.0">Local value index</tspan><tspan x="1565.0" dy="16.9">prompt + tool args</tspan><tspan x="1565.0" dy="16.9">result + reply scans</tspan></text>
+<rect x="990.0" y="445.0" width="220.0" height="80.0" rx="14" fill="#F3ECFF" stroke="#7A4CC2" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1100.0" y="481.3" text-anchor="middle" fill="#43256F" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1100.0" dy="0.0">LLM tool request</tspan><tspan x="1100.0" dy="16.9">name + arguments</tspan></text>
+<rect x="650.0" y="440.0" width="300.0" height="140.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="800.0" y="481.0" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="800.0" dy="0.0">TOOL INGRESS + AUTHORITY · AUTOMATIC</tspan><tspan x="800.0" dy="16.9">Shield policy → patterns → reviewer</tspan><tspan x="800.0" dy="16.9">then permission mode + rules</tspan><tspan x="800.0" dy="16.9">allow / deny stay on main path</tspan><tspan x="800.0" dy="16.9">ask without ask_fn → deny</tspan></text>
+<rect x="350.0" y="445.0" width="240.0" height="110.0" rx="14" fill="#EAF2FF" stroke="#3266CC" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="470.0" y="487.9" text-anchor="middle" fill="#173B75" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="470.0" dy="0.0">OPTIONAL human permission</tspan><tspan x="470.0" dy="16.9">only ask + ask_fn</tspan><tspan x="470.0" dy="16.9">Approve / Deny</tspan></text>
+<rect x="670.0" y="620.0" width="240.0" height="100.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="790.0" y="666.3" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="790.0" dy="0.0">PreToolUse</tspan><tspan x="790.0" dy="16.9">allow / deny / rewrite</tspan></text>
+<rect x="350.0" y="610.0" width="240.0" height="115.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="470.0" y="655.4" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="470.0" dy="0.0">Rewrite re-check</tspan><tspan x="470.0" dy="16.9">scrub + ingress + permission</tspan><tspan x="470.0" dy="16.9">non-allow / ask → reject</tspan></text>
+<rect x="970.0" y="620.0" width="240.0" height="100.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1090.0" y="657.9" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1090.0" dy="0.0">Final argument scrub</tspan><tspan x="1090.0" dy="16.9">scan_tool_args</tspan><tspan x="1090.0" dy="16.9">redact or reject</tspan></text>
+<rect x="1260.0" y="620.0" width="220.0" height="100.0" rx="14" fill="#EAF8F0" stroke="#2D7A50" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1370.0" y="666.3" text-anchor="middle" fill="#194A30" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1370.0" dy="0.0">Execute tool</tspan><tspan x="1370.0" dy="16.9">with final scanned args</tspan></text>
+<rect x="1530.0" y="535.0" width="290.0" height="175.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1675.0" y="585.0" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1675.0" dy="0.0">TOOL EGRESS · AUTOMATIC</tspan><tspan x="1675.0" dy="16.9">tool policy → row cap / value match</tspan><tspan x="1675.0" dy="16.9">→ custom scanners</tspan><tspan x="1675.0" dy="16.9">pass / redact / block use main path</tspan><tspan x="1675.0" dy="16.9">ask without callback / timeout</tspan><tspan x="1675.0" dy="16.9">→ automatic Redact</tspan></text>
+<rect x="1530.0" y="750.0" width="290.0" height="110.0" rx="14" fill="#EAF2FF" stroke="#3266CC" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1675.0" y="792.9" text-anchor="middle" fill="#173B75" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1675.0" dy="0.0">OPTIONAL human egress review</tspan><tspan x="1675.0" dy="16.9">only ask + live callback</tspan><tspan x="1675.0" dy="16.9">Redact / Block / Raw once*</tspan></text>
+<rect x="1230.0" y="760.0" width="240.0" height="90.0" rx="14" fill="#F4F6F8" stroke="#667085" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1350.0" y="801.3" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1350.0" dy="0.0">PostToolUse</tspan><tspan x="1350.0" dy="16.9">observes gated result</tspan></text>
+<rect x="640.0" y="770.0" width="210.0" height="80.0" rx="14" fill="#FDECEC" stroke="#B42318" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="745.0" y="806.3" text-anchor="middle" fill="#7A271A" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="745.0" dy="0.0">Rejected call</tspan><tspan x="745.0" dy="16.9">fixed safe tool result</tspan></text>
+<rect x="900.0" y="750.0" width="260.0" height="110.0" rx="14" fill="#E8F8F7" stroke="#17877F" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1030.0" y="792.9" text-anchor="middle" fill="#125A55" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1030.0" dy="0.0">Normalized model-bound result</tspan><tspan x="1030.0" dy="16.9">pass / filtered / blocked notice</tspan><tspan x="1030.0" dy="16.9">or explicitly approved raw once*</tspan></text>
+<rect x="930.0" y="970.0" width="260.0" height="100.0" rx="14" fill="#F3ECFF" stroke="#7A4CC2" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1060.0" y="1016.3" text-anchor="middle" fill="#43256F" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1060.0" dy="0.0">Final LLM reply</tspan><tspan x="1060.0" dy="16.9">buffered — not shown yet</tspan></text>
+<rect x="620.0" y="960.0" width="250.0" height="120.0" rx="14" fill="#FFF4E5" stroke="#C77800" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="745.0" y="999.4" text-anchor="middle" fill="#6B3E00" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="745.0" dy="0.0">LLM OUTPUT GATE</tspan><tspan x="745.0" dy="16.9">value_match + regex</tspan><tspan x="745.0" dy="16.9">pass / redact / block</tspan><tspan x="745.0" dy="16.9">ask → redact (no dialog)</tspan></text>
+<rect x="340.0" y="970.0" width="220.0" height="100.0" rx="14" fill="#E8F8F7" stroke="#17877F" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="450.0" y="1016.3" text-anchor="middle" fill="#125A55" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="450.0" dy="0.0">User-visible response</tspan><tspan x="450.0" dy="16.9">emitted once after scan</tspan></text>
+<rect x="70.0" y="975.0" width="210.0" height="90.0" rx="14" fill="#EAF2FF" stroke="#3266CC" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="175.0" y="1016.3" text-anchor="middle" fill="#173B75" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="175.0" dy="0.0">Human / browser</tspan><tspan x="175.0" dy="16.9">sees gated response</tspan></text>
+<rect x="1290.0" y="935.0" width="540.0" height="175.0" rx="14" fill="#F4F6F8" stroke="#667085" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1560.0" y="976.6" text-anchor="middle" fill="#344054" font-family="Inter,Arial,sans-serif" font-size="13.5" font-weight="700"><tspan x="1560.0" dy="0.0">SOLID main path = automatic handling</tspan><tspan x="1560.0" dy="16.9">BLUE dashed = optional human callback</tspan><tspan x="1560.0" dy="16.9">AMBER = Shield / authorization</tspan><tspan x="1560.0" dy="16.9">PURPLE = LLM content</tspan><tspan x="1560.0" dy="16.9">TEAL = model-bound transformed value</tspan><tspan x="1560.0" dy="16.9">RED dashed = reject / fail-closed</tspan><tspan x="1560.0" dy="16.9">* Raw once is opt-in and audited</tspan></text>
+<text x="30" y="1176" fill="#667085" font-family="Inter,Arial,sans-serif" font-size="11">Verified 28c4ae6d · User / Integrator / Security reviewer · R/input_gate.R · R/output_gate.R · R/tools_gate.R · R/tool_input_hook.R · R/data_shield.R · R/stream.R</text>
+</svg>
