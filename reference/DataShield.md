@@ -16,7 +16,7 @@ create a new object for an independent user/thread boundary.
 
 ### Public methods
 
-- [`DataShield$new()`](#method-DataShield-new)
+- [`DataShield$new()`](#method-DataShield-initialize)
 
 - [`DataShield$register_data()`](#method-DataShield-register_data)
 
@@ -68,7 +68,7 @@ create a new object for an independent user/thread boundary.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `DataShield$new()`
 
 Create a Data Shield.
 
@@ -145,7 +145,7 @@ Create a Data Shield.
 
 ------------------------------------------------------------------------
 
-### Method `register_data()`
+### `DataShield$register_data()`
 
 Register one protected data.frame.
 
@@ -207,7 +207,7 @@ Register one protected data.frame.
 
 ------------------------------------------------------------------------
 
-### Method `register_asset()`
+### `DataShield$register_asset()`
 
 Register a typed data/document/spec asset and its LLM access policy.
 
@@ -256,7 +256,7 @@ Register a typed data/document/spec asset and its LLM access policy.
 
 ------------------------------------------------------------------------
 
-### Method `asset_policy()`
+### `DataShield$asset_policy()`
 
 Return non-sensitive policy metadata for one registered asset.
 
@@ -266,7 +266,7 @@ Return non-sensitive policy metadata for one registered asset.
 
 ------------------------------------------------------------------------
 
-### Method `tool_policy()`
+### `DataShield$tool_policy()`
 
 Resolve effective Shield policy for one tool/agent name.
 
@@ -276,7 +276,7 @@ Resolve effective Shield policy for one tool/agent name.
 
 ------------------------------------------------------------------------
 
-### Method `prompt_content()`
+### `DataShield$prompt_content()`
 
 Return prompt-safe content according to an asset policy.
 
@@ -286,7 +286,7 @@ Return prompt-safe content according to an asset policy.
 
 ------------------------------------------------------------------------
 
-### Method `trusted_result()`
+### `DataShield$trusted_result()`
 
 Tag one result with registered provenance for raw egress.
 
@@ -296,7 +296,7 @@ Tag one result with registered provenance for raw egress.
 
 ------------------------------------------------------------------------
 
-### Method `install()`
+### `DataShield$install()`
 
 Install/refresh this shield on an ellmer Chat.
 
@@ -306,7 +306,7 @@ Install/refresh this shield on an ellmer Chat.
 
 ------------------------------------------------------------------------
 
-### Method `describe()`
+### `DataShield$describe()`
 
 Return strict safe metadata for a registered dataset.
 
@@ -316,7 +316,7 @@ Return strict safe metadata for a registered dataset.
 
 ------------------------------------------------------------------------
 
-### Method `schema_block()`
+### `DataShield$schema_block()`
 
 Build a system-prompt block listing every registered protected dataset
 with its filtered schema (the same per-dataset output `DescribeData`
@@ -332,7 +332,7 @@ is disabled.
 
 ------------------------------------------------------------------------
 
-### Method `dp_budget_remaining()`
+### `DataShield$dp_budget_remaining()`
 
 Return remaining DP privacy budget (epsilon units) for a registered
 dataset, or a named vector for all datasets when `name` is NULL.
@@ -350,7 +350,7 @@ dataset, or a named vector for all datasets when `name` is NULL.
 
 ------------------------------------------------------------------------
 
-### Method `scan_egress()`
+### `DataShield$scan_egress()`
 
 Apply the ordered egress strategy pipeline to a tool result.
 
@@ -370,7 +370,7 @@ Apply the ordered egress strategy pipeline to a tool result.
 
 ------------------------------------------------------------------------
 
-### Method `scan_ingress()`
+### `DataShield$scan_ingress()`
 
 Scan one tool request before execution.
 
@@ -407,7 +407,7 @@ List with action (`pass`, `block`, or `ask`), reason, matches and score.
 
 ------------------------------------------------------------------------
 
-### Method `scan_tool_args()`
+### `DataShield$scan_tool_args()`
 
 Redact protected values inside a tool's arguments before the tool
 executes (ingress rewrite). Complements `scan_ingress` (which decides
@@ -437,7 +437,7 @@ List: `action` (`"pass"`/`"redact"`), `args` (possibly-redacted).
 
 ------------------------------------------------------------------------
 
-### Method `scan_prompt()`
+### `DataShield$scan_prompt()`
 
 Scan a user prompt BEFORE it reaches the model (edge 1). This is the
 Data Shield half of the prompt gate: it detects protected data the user
@@ -501,7 +501,7 @@ redacted prompt), `matches` (count), `score`.
 
 ------------------------------------------------------------------------
 
-### Method `scan_response()`
+### `DataShield$scan_response()`
 
 Scan the model's final reply BEFORE it reaches the user (edge 3, the
 output gate). Symmetric to `scan_prompt` (edge 1): the model may
@@ -548,7 +548,7 @@ Same shape as `scan_prompt`.
 
 ------------------------------------------------------------------------
 
-### Method `review_code_public()`
+### `DataShield$review_code_public()`
 
 Public bridge to the internal code reviewer rail (kiro round-2 \#7). The
 reviewer logic lives in `private$review_code`, so an external caller
@@ -577,7 +577,7 @@ when no reviewer is configured.
 
 ------------------------------------------------------------------------
 
-### Method `add_scanner()`
+### `DataShield$add_scanner()`
 
 Add a custom scanner function to the end of the egress pipeline.
 
@@ -587,7 +587,7 @@ Add a custom scanner function to the end of the egress pipeline.
 
 ------------------------------------------------------------------------
 
-### Method `set_egress_ask()`
+### `DataShield$set_egress_ask()`
 
 Set the sync/promise egress approval callback.
 
@@ -604,7 +604,7 @@ Set the sync/promise egress approval callback.
 
 ------------------------------------------------------------------------
 
-### Method `bind_reviewer_factory()`
+### `DataShield$bind_reviewer_factory()`
 
 Bind codeagent's parent-provider reviewer Chat factory.
 
@@ -620,7 +620,7 @@ Bind codeagent's parent-provider reviewer Chat factory.
 
 ------------------------------------------------------------------------
 
-### Method `audit()`
+### `DataShield$audit()`
 
 Return a copy of non-sensitive decision events.
 
@@ -636,7 +636,7 @@ Return a copy of non-sensitive decision events.
 
 ------------------------------------------------------------------------
 
-### Method `clear_audit()`
+### `DataShield$clear_audit()`
 
 Remove all in-memory audit events.
 
@@ -646,7 +646,7 @@ Remove all in-memory audit events.
 
 ------------------------------------------------------------------------
 
-### Method `clear()`
+### `DataShield$clear()`
 
 Remove one dataset, or all datasets when name is NULL.
 
@@ -656,7 +656,7 @@ Remove one dataset, or all datasets when name is NULL.
 
 ------------------------------------------------------------------------
 
-### Method [`close()`](https://rdrr.io/r/base/connections.html)
+### `DataShield$close()`
 
 Clear sensitive state and close the shield.
 
@@ -666,7 +666,7 @@ Clear sensitive state and close the shield.
 
 ------------------------------------------------------------------------
 
-### Method `coverage()`
+### `DataShield$coverage()`
 
 Summarise non-sensitive runtime coverage.
 

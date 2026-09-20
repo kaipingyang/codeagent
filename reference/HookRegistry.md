@@ -1,11 +1,5 @@
 # Tool hook registry
 
-Tool hook registry
-
-Tool hook registry
-
-## Details
-
 Manages lifecycle hooks. Hooks are registered per event type and run in
 registration order.
 
@@ -68,7 +62,7 @@ Return value ignored (informational only).
 
 ### Public methods
 
-- [`HookRegistry$new()`](#method-HookRegistry-new)
+- [`HookRegistry$new()`](#method-HookRegistry-initialize)
 
 - [`HookRegistry$register()`](#method-HookRegistry-register)
 
@@ -132,7 +126,7 @@ Return value ignored (informational only).
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `HookRegistry$new()`
 
 Create a new registry.
 
@@ -142,7 +136,7 @@ Create a new registry.
 
 ------------------------------------------------------------------------
 
-### Method `register()`
+### `HookRegistry$register()`
 
 Register a hook for an event.
 
@@ -173,7 +167,7 @@ Register a hook for an event.
 
 ------------------------------------------------------------------------
 
-### Method `register_pre()`
+### `HookRegistry$register_pre()`
 
 Register a PreToolUse hook (legacy shorthand).
 
@@ -183,7 +177,7 @@ Register a PreToolUse hook (legacy shorthand).
 
 ------------------------------------------------------------------------
 
-### Method `register_post()`
+### `HookRegistry$register_post()`
 
 Register a PostToolUse hook (legacy shorthand).
 
@@ -193,7 +187,7 @@ Register a PostToolUse hook (legacy shorthand).
 
 ------------------------------------------------------------------------
 
-### Method `run_pre()`
+### `HookRegistry$run_pre()`
 
 Fire PreToolUse hooks.
 
@@ -203,7 +197,7 @@ Fire PreToolUse hooks.
 
 ------------------------------------------------------------------------
 
-### Method `run_post()`
+### `HookRegistry$run_post()`
 
 Fire PostToolUse hooks.
 
@@ -213,7 +207,7 @@ Fire PostToolUse hooks.
 
 ------------------------------------------------------------------------
 
-### Method `run_failure()`
+### `HookRegistry$run_failure()`
 
 Fire PostToolUseFailure hooks (informational).
 
@@ -223,7 +217,7 @@ Fire PostToolUseFailure hooks (informational).
 
 ------------------------------------------------------------------------
 
-### Method `run_permission_denied()`
+### `HookRegistry$run_permission_denied()`
 
 Fire PermissionDenied hooks (informational).
 
@@ -233,7 +227,7 @@ Fire PermissionDenied hooks (informational).
 
 ------------------------------------------------------------------------
 
-### Method `run_permission_request()`
+### `HookRegistry$run_permission_request()`
 
 Fire PermissionRequest hooks. Returns "allow", "deny", or NULL (fall
 through to ask_fn).
@@ -244,7 +238,7 @@ through to ask_fn).
 
 ------------------------------------------------------------------------
 
-### Method `run_user_prompt_submit()`
+### `HookRegistry$run_user_prompt_submit()`
 
 Fire UserPromptSubmit hooks (before the prompt reaches the model).
 Aligns with Claude Code's `UserPromptSubmit`: a hook may `block` the
@@ -259,7 +253,7 @@ if any hook blocked, else
 
 ------------------------------------------------------------------------
 
-### Method `run_user_message()`
+### `HookRegistry$run_user_message()`
 
 Deprecated alias for `run_user_prompt_submit()` (kiro round-2 \#14). The
 event was renamed to align with Claude Code's public `UserPromptSubmit`;
@@ -272,7 +266,7 @@ callers do not break. Prefer `run_user_prompt_submit()`.
 
 ------------------------------------------------------------------------
 
-### Method `run_assistant_message()`
+### `HookRegistry$run_assistant_message()`
 
 Fire AssistantMessage hooks (informational).
 
@@ -282,7 +276,7 @@ Fire AssistantMessage hooks (informational).
 
 ------------------------------------------------------------------------
 
-### Method `run_session_start()`
+### `HookRegistry$run_session_start()`
 
 Fire SessionStart hooks at the top of a session/turn. Callback:
 `function(context)`. Return value ignored.
@@ -293,7 +287,7 @@ Fire SessionStart hooks at the top of a session/turn. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_stop()`
+### `HookRegistry$run_stop()`
 
 Fire Stop hooks when the agent loop terminates. Callback:
 `function(stop_reason, context)`. Return value ignored.
@@ -304,7 +298,7 @@ Fire Stop hooks when the agent loop terminates. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_pre_compact()`
+### `HookRegistry$run_pre_compact()`
 
 Fire PreCompact hooks before context compaction. Callback:
 `function(level, context)`. Return value ignored.
@@ -315,7 +309,7 @@ Fire PreCompact hooks before context compaction. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_subagent_start()`
+### `HookRegistry$run_subagent_start()`
 
 Fire SubagentStart hooks when a sub-agent is launched. Callback:
 `function(description, context)`. Return value ignored.
@@ -326,7 +320,7 @@ Fire SubagentStart hooks when a sub-agent is launched. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_subagent_stop()`
+### `HookRegistry$run_subagent_stop()`
 
 Fire SubagentStop hooks when a sub-agent completes. Callback:
 `function(description, result, context)`. Return ignored.
@@ -341,7 +335,7 @@ Fire SubagentStop hooks when a sub-agent completes. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_session_end()`
+### `HookRegistry$run_session_end()`
 
 Fire SessionEnd hooks when the agent loop terminates. Callback:
 `function(reason, context)`. Return value ignored. `reason` mirrors CC's
@@ -354,7 +348,7 @@ exit reasons where they map (e.g. "completed", "max_turns",
 
 ------------------------------------------------------------------------
 
-### Method `run_post_compact()`
+### `HookRegistry$run_post_compact()`
 
 Fire PostCompact hooks after context compaction completes. Callback:
 `function(trigger, compact_summary, context)`. Return ignored.
@@ -369,7 +363,7 @@ Fire PostCompact hooks after context compaction completes. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_stop_failure()`
+### `HookRegistry$run_stop_failure()`
 
 Fire StopFailure hooks when the loop ends on an error. Callback:
 `function(error, context)`. Return value ignored.
@@ -380,7 +374,7 @@ Fire StopFailure hooks when the loop ends on an error. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_notification()`
+### `HookRegistry$run_notification()`
 
 Fire Notification hooks for user-facing notifications. Callback:
 `function(message, notification_type, context)`. Return ignored.
@@ -395,7 +389,7 @@ Fire Notification hooks for user-facing notifications. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_task_created()`
+### `HookRegistry$run_task_created()`
 
 Fire TaskCreated hooks when a task is created. Callback:
 `function(task_id, task_subject, context)`. Return ignored.
@@ -410,7 +404,7 @@ Fire TaskCreated hooks when a task is created. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_task_completed()`
+### `HookRegistry$run_task_completed()`
 
 Fire TaskCompleted hooks when a task becomes completed. Callback:
 `function(task_id, task_subject, context)`. Return ignored.
@@ -425,7 +419,7 @@ Fire TaskCompleted hooks when a task becomes completed. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_worktree_create()`
+### `HookRegistry$run_worktree_create()`
 
 Fire WorktreeCreate hooks when a sub-agent worktree is made. Callback:
 `function(name, context)`. Return value ignored.
@@ -436,7 +430,7 @@ Fire WorktreeCreate hooks when a sub-agent worktree is made. Callback:
 
 ------------------------------------------------------------------------
 
-### Method `run_worktree_remove()`
+### `HookRegistry$run_worktree_remove()`
 
 Fire WorktreeRemove hooks when a sub-agent worktree is removed.
 Callback: `function(worktree_path, context)`. Return value ignored.
@@ -447,7 +441,7 @@ Callback: `function(worktree_path, context)`. Return value ignored.
 
 ------------------------------------------------------------------------
 
-### Method `run_instructions_loaded()`
+### `HookRegistry$run_instructions_loaded()`
 
 Fire InstructionsLoaded hooks when a CLAUDE.md file loads. Callback:
 `function(file_path, memory_type, load_reason, context)`. Return
@@ -467,7 +461,7 @@ load paths, so these fields are NOT field-for-field equal to CC.
 
 ------------------------------------------------------------------------
 
-### Method `run_file_changed()`
+### `HookRegistry$run_file_changed()`
 
 Fire FileChanged hooks (Shiny-only; watcher-driven). Callback:
 `function(file_path, event, context)` where `event` is one of
@@ -484,7 +478,7 @@ the synchronous CLI loop cannot pump the `later` queue watcher needs.
 
 ------------------------------------------------------------------------
 
-### Method `run_config_change()`
+### `HookRegistry$run_config_change()`
 
 Fire ConfigChange hooks (Shiny-only; watcher-driven). Callback:
 `function(source, file_path, context)`. Return value ignored. Not fired
@@ -500,7 +494,7 @@ on the CLI (see the `run_file_changed()` method note).
 
 ------------------------------------------------------------------------
 
-### Method `clear()`
+### `HookRegistry$clear()`
 
 Remove all registered hooks.
 
@@ -510,7 +504,7 @@ Remove all registered hooks.
 
 ------------------------------------------------------------------------
 
-### Method `count()`
+### `HookRegistry$count()`
 
 Count total registered hooks across all events.
 
@@ -520,7 +514,7 @@ Count total registered hooks across all events.
 
 ------------------------------------------------------------------------
 
-### Method `has_hooks()`
+### `HookRegistry$has_hooks()`
 
 TRUE if at least one hook is registered for `event`.
 

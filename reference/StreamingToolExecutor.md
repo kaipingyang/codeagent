@@ -1,11 +1,5 @@
 # Concurrent tool execution scheduler
 
-Concurrent tool execution scheduler
-
-Concurrent tool execution scheduler
-
-## Details
-
 Manages parallel execution of concurrent-safe tools while serialising
 non-concurrent-safe tools. Mirrors Claude Code's
 `StreamingToolExecutor`.
@@ -31,7 +25,7 @@ Rules:
 
 ### Public methods
 
-- [`StreamingToolExecutor$new()`](#method-StreamingToolExecutor-new)
+- [`StreamingToolExecutor$new()`](#method-StreamingToolExecutor-initialize)
 
 - [`StreamingToolExecutor$submit()`](#method-StreamingToolExecutor-submit)
 
@@ -47,7 +41,7 @@ Rules:
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `StreamingToolExecutor$new()`
 
 Create a new executor.
 
@@ -57,7 +51,7 @@ Create a new executor.
 
 ------------------------------------------------------------------------
 
-### Method `submit()`
+### `StreamingToolExecutor$submit()`
 
 Submit a tool call for execution.
 
@@ -82,7 +76,7 @@ Invisibly NULL (result will appear in `collect_results()`).
 
 ------------------------------------------------------------------------
 
-### Method `drain_queue()`
+### `StreamingToolExecutor$drain_queue()`
 
 Drain the queue for any unsafe tool that was running. Call this after
 marking the unsafe tool as complete.
@@ -91,15 +85,9 @@ marking the unsafe tool as complete.
 
     StreamingToolExecutor$drain_queue()
 
-#### Arguments
-
-- `exec_fn`:
-
-  Function `(tool_call) -> character`. Executor function.
-
 ------------------------------------------------------------------------
 
-### Method `collect_results()`
+### `StreamingToolExecutor$collect_results()`
 
 Collect all completed results and reset the accumulator.
 
@@ -113,7 +101,7 @@ List of result objects (each with `id`, `name`, `result`).
 
 ------------------------------------------------------------------------
 
-### Method `execute_batch()`
+### `StreamingToolExecutor$execute_batch()`
 
 Execute a batch of tool calls, respecting concurrency rules.
 
@@ -137,7 +125,7 @@ List of result objects.
 
 ------------------------------------------------------------------------
 
-### Method `execute_batch_async()`
+### `StreamingToolExecutor$execute_batch_async()`
 
 Async variant of `execute_batch()` for use inside
 [`coro::async`](https://coro.r-lib.org/reference/async.html) / Shiny
@@ -177,7 +165,7 @@ directly when `promises` is unavailable.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `StreamingToolExecutor$clone()`
 
 The objects of this class are cloneable with this method.
 

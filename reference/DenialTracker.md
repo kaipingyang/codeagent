@@ -1,11 +1,5 @@
 # Track permission denials and emit warnings at thresholds
 
-Track permission denials and emit warnings at thresholds
-
-Track permission denials and emit warnings at thresholds
-
-## Details
-
 Mirrors Claude Code's `denialTracking.ts` behaviour:
 
 - 3 consecutive denials -\> warning to reconsider permission mode
@@ -26,7 +20,7 @@ Mirrors Claude Code's `denialTracking.ts` behaviour:
 
 ------------------------------------------------------------------------
 
-### Method `record_denial()`
+### `DenialTracker$record_denial()`
 
 Record a denial event.
 
@@ -36,7 +30,7 @@ Record a denial event.
 
 ------------------------------------------------------------------------
 
-### Method `record_success()`
+### `DenialTracker$record_success()`
 
 Record a successful tool execution (resets consecutive count).
 
@@ -46,7 +40,7 @@ Record a successful tool execution (resets consecutive count).
 
 ------------------------------------------------------------------------
 
-### Method `counts()`
+### `DenialTracker$counts()`
 
 Return current counts.
 
@@ -56,7 +50,7 @@ Return current counts.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `DenialTracker$clone()`
 
 The objects of this class are cloneable with this method.
 

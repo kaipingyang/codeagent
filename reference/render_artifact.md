@@ -20,9 +20,12 @@ render_artifact(artifact, mode = c("panel", "bubble"))
 
 - mode:
 
-  `"bubble"` (compact, in-chat) or `"panel"` (full, right Output). Step
-  1: accepted but not yet branched – both render identically. Step 2
-  will split compact vs full. (plan 35 B1.)
+  `"bubble"` (compact, in-chat) or `"panel"` (full, right Output).
+  `bubble` drops the card header and chrome that the surrounding
+  shinychat tool card already provides, keeping only the copy action;
+  `panel` renders the full standalone card for the Output workspace.
+  Both share the same per-kind renderers and the same official
+  code-block surface.
 
 ## Value
 
