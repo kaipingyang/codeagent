@@ -9,7 +9,7 @@ use_codeagent_setup(scope = c("user", "project"))
 \arguments{
 \item{scope}{Character. Must be \code{"user"} for provider setup. Project files
 cannot configure providers, endpoints, or credentials; pass an explicit
-Chat to \code{codeagent_client()} for project-specific backends.}
+Chat to \code{\link[=codeagent_client]{codeagent_client()}} for project-specific backends.}
 }
 \value{
 Invisibly, the path to the settings file that was written.

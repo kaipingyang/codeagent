@@ -63,15 +63,37 @@ SDK 公开 hooks 接口 / 公开行为**"，不写"源码"。历史遗留的风�
   避免再次同名漂移。
 
 **每次改完代码必须重装包并更新 codegraph：**
-```r
-pak::local_install(".", ask = FALSE, upgrade = FALSE)
-```
 ```bash
-codegraph sync   # 更新符号索引，让 kiro/AI 工具看到最新代码
+bash tools/install-local.sh   # 停 daemon -> pak::local_install(".") -> codegraph sync
 ```
 这确保 `codeagent chat` / `codeagent_app()` 等用安装版运行的入口点使用最新代码。`devtools::load_all()` 只在当前 R session 里生效，launcher（`--vanilla`）和 CLI 用的是已装的包。codegraph 不会自动同步，手动 sync 后 kiro 的 codegraph 审核才能看到新符号。
 
-> **测试无误 = 要装到本地才算数。** 每次改完代码、跑完测试后，务必 `pak::local_install(".", ask = FALSE, upgrade = FALSE)` 把**当前版本装到本地**——`load_all()` 只在当前 session 生效，真实验证/CLI/launcher 跑的是已安装的包。
+⚠️ **先停 CodeGraph daemon，再装包** —— 脚本已经帮你做了，但要知道为什么：
+
+daemon 运行时会在 `.codegraph/daemon.sock` 监听一个 **Unix domain socket**。
+这一个节点同时打破两条打包路径，而且 **`.Rbuildignore` 救不了它们**：
+
+| 工具 | 实际发生的事 |
+|---|---|
+| `pak::local_install(".")` | `pkgdepends:::download_remote_local()` 用 `file.copy(recursive = TRUE)` **先复制整棵树**，发生在任何 `.Rbuildignore` 过滤之前。`file.copy()` 复制不了 socket → 返回 `FALSE` → 报误导性的 `Failed to download <pkg> from file:///...`（跟网络、缓存都无关） |
+| `R CMD build` | 它 **确实** 枚举到了 `.codegraph`（`dir(include.dirs = TRUE)`），**也确实** 被 `^\.codegraph` 匹配上，然后用 `unlink(recursive = TRUE, force = TRUE)` 删 —— 而该调用在含 socket 的目录上 **返回 1（失败）**，返回值又没人检查，于是 `.codegraph/` 静默地活进了 tarball |
+
+隔离最小包 A/B 实验（同一棵树，只差一个 socket）：
+
+```text
+有 socket → pak 失败；tarball 里有 bpkg/.codegraph/ 与 .../daemon.sock/
+无 socket → pak 成功；tarball 只剩 5 个预期条目，.codegraph/ 被干净排除
+unlink(".codegraph", recursive=TRUE, force=TRUE)  有 socket 时 rc=1，无 socket 时 rc=0
+```
+
+**结论：`.Rbuildignore` 写法完全正确，匹配也完全正确；问题在“删不掉”，不在“没匹配”。**
+所以不要去改 `.Rbuildignore` 规则，也不要绕路；直接消除 socket 即可。
+
+daemon **只服务 MCP 共享模式**：`codegraph sync` / `explore` 等 CLI 命令不需要它（实测停掉后
+仍正常返回结果），MCP 下次连接会自己重建 daemon 或 fallback 到 direct mode，所以停它的代价很小。
+想彻底不要 daemon：在 shell 里设 `CODEGRAPH_NO_DAEMON=1`（官方 opt-out，MCP 走 direct mode）。
+
+> **测试无误 = 要装到本地才算数。** 每次改完代码、跑完测试后，务必 `bash tools/install-local.sh` 把**当前版本装到本地**——`load_all()` 只在当前 session 生效，真实验证/CLI/launcher 跑的是已安装的包。
 
 **新增功能必须同步更新 README.md：**
 - 新导出函数/新 feature → 在 README 对应 section 补一行

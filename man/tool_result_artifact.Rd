@@ -7,7 +7,7 @@
 tool_result_artifact(result, version = 1L)
 }
 \arguments{
-\item{result}{An \link[ellmer:Content]{ellmer::ContentToolResult}, \code{on_tool_result} event list, or
+\item{result}{An \link[ellmer:ContentToolResult]{ellmer::ContentToolResult}, \code{on_tool_result} event list, or
 artifact list.}
 
 \item{version}{Supported artifact version(s). Defaults to version 1. Use
@@ -19,7 +19,7 @@ malformed, or unsupported.
 }
 \description{
 Returns codeagent's UI-neutral structured artifact from an
-\link[ellmer:Content]{ellmer::ContentToolResult}, an \code{on_tool_result} event, or an artifact itself.
+\link[ellmer:ContentToolResult]{ellmer::ContentToolResult}, an \code{on_tool_result} event, or an artifact itself.
 A renderer should consume supported artifacts first and fall back to
 \code{\link[=tool_result_value]{tool_result_value()}} when this function returns \code{NULL}. The shinychat
 \code{extra$display} object is an optional presentation adapter, not the portable
