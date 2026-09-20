@@ -15,10 +15,15 @@ head_assets <- function() {
     # few raw `fa fa-*` classes (tree folder/file, model icon).
     #
     # Prism.js -- syntax highlighting for code/diff tool cards. Vendored locally
-    # under inst/www/vendor/prism (core + autoloader + theme + common language
-    # grammars) so there is no CDN dependency (offline-safe, CSP-friendly).
-    htmltools::tags$link(rel = "stylesheet", type = "text/css",
-                         href = "codeagent-www/vendor/prism/prism.min.css"),
+    # under inst/www/vendor/prism (core + autoloader + common language grammars)
+    # so there is no CDN dependency (offline-safe, CSP-friendly).
+    #
+    # The Prism CLASSIC THEME stylesheet is deliberately NOT loaded. It styles
+    # every `code[class*="language-"]` on the page -- including the blocks
+    # shinychat renders inside chat messages -- forcing pure black text, a white
+    # emboss text-shadow and Consolas over shinychat's Atom One palette, which
+    # is unreadable in dark mode. Token colours live in styles.css, scoped to
+    # `.toolcard`; the block surface comes from shinychat's `pre:has(>code.hljs)`.
     htmltools::tags$script(src = "codeagent-www/vendor/prism/prism-core.min.js"),
     htmltools::tags$script(src = "codeagent-www/vendor/prism/prism-autoloader.min.js"),
     # Point the autoloader at the locally vendored grammars (runs synchronously

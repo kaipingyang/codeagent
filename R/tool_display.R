@@ -328,7 +328,7 @@ tool_result_value <- function(result, default = "") {
     label = NULL, value_preview = NULL) {
   rich <- artifact$kind %in% c("code", "image", "table", "diff", "error")
   rendered <- if (rich) tryCatch(
-    render_artifact(artifact, mode = "panel"), error = function(e) NULL) else NULL
+    render_artifact(artifact, mode = "bubble"), error = function(e) NULL) else NULL
   title <- .safe_tool_display_title(display_title)
   .new_tool_result_display(
     title = title,
@@ -484,8 +484,10 @@ tool_result <- function(value,
 #'   payload)` from `extra$codeagent$artifact`. (Also tolerates being handed a
 #'   whole `display` list carrying a legacy `$toolcard`, for backward-compat.)
 #' @param mode `"bubble"` (compact, in-chat) or `"panel"` (full, right Output).
-#'   Step 1: accepted but not yet branched -- both render identically. Step 2
-#'   will split compact vs full. (plan 35 B1.)
+#'   `bubble` drops the card header and chrome that the surrounding shinychat
+#'   tool card already provides, keeping only the copy action; `panel` renders
+#'   the full standalone card for the Output workspace. Both share the same
+#'   per-kind renderers and the same official code-block surface.
 #' @return An htmltools tag.
 #' @keywords internal
 render_artifact <- function(artifact, mode = c("panel", "bubble")) {
@@ -505,18 +507,19 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
 
   body <- switch(
     artifact$kind,
-    code  = .render_code(artifact$payload),
-    image = .render_image(artifact$payload),
-    table = .render_table(artifact$payload),
-    diff  = .render_diff(artifact$payload),
-    error = .render_error(artifact$payload),
-    text  = .render_text(artifact$payload),
-    .render_text(artifact$payload)  # default
+    code  = .render_code(artifact$payload, mode = mode),
+    image = .render_image(artifact$payload, mode = mode),
+    table = .render_table(artifact$payload, mode = mode),
+    diff  = .render_diff(artifact$payload, mode = mode),
+    error = .render_error(artifact$payload, mode = mode),
+    text  = .render_text(artifact$payload, mode = mode),
+    .render_text(artifact$payload, mode = mode)  # default
   )
 
   status_class <- paste0("toolcard-status-", artifact$status %||% "success")
+  mode_class <- paste0("toolcard-mode-", mode)
   htmltools::tags$div(
-    class            = paste("toolcard", status_class),
+    class            = paste("toolcard", status_class, mode_class),
     `data-toolcard-kind`   = artifact$kind,
     `data-toolcard-status` = artifact$status %||% "success",
     body
@@ -527,9 +530,61 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
 # Per-kind renderers
 # ---------------------------------------------------------------------------
 
-# Header row: icon + title + copy button (copies from target pre)
+# Code / output block.
+#
+# Emits shinychat's own `<pre><code class="hljs ...">` shape so the block
+# inherits the official Atom One surface (`pre:has(>code.hljs)`) in both light
+# and dark mode instead of codeagent re-declaring background, foreground, font
+# and padding. A `language-*` class is added only when the text should be
+# syntax-highlighted; plain console output stays unhighlighted but still gets
+# the same official surface.
+.code_block <- function(text, lang = NULL, id = NULL, class = NULL) {
+  code_class <- if (!is.null(lang) && nzchar(lang)) {
+    paste0("hljs language-", lang)
+  } else {
+    "hljs"
+  }
+  # `.noWS` matters here: htmltools pretty-prints children on their own lines,
+  # and inside `<pre>` (white-space: pre) that indentation becomes REAL blank
+  # lines, padding every block with phantom rows. Collapse the whitespace around
+  # the <code> so the rendered height matches the content.
+  htmltools::tags$pre(
+    class = paste(c("toolcard-pre", class), collapse = " "),
+    htmltools::tags$code(id = id, class = code_class, text %||% "",
+                         .noWS = "outside"),
+    .noWS = c("after-begin", "before-end")
+  )
+}
+
+# Header row: icon + title + copy button (copies from target pre).
+#
+# In `bubble` mode the surrounding shinychat tool card already shows the icon,
+# title, argument preview and the expand chevron, so repeating them would give
+# the reader two headers for one result. Bubble mode therefore keeps only the
+# copy action, positioned like shinychat's own `.code-copy-button`.
 .card_header <- function(icon, title, copy_target = NULL, lang = NULL,
-                         extra_actions = NULL) {
+                         extra_actions = NULL, mode = "panel") {
+  if (identical(mode, "bubble")) {
+    if (is.null(copy_target) && is.null(extra_actions)) return(NULL)
+    return(htmltools::tags$div(
+      class = "toolcard-header toolcard-header-bubble",
+      htmltools::tags$span(class = "toolcard-spacer"),
+      extra_actions,
+      if (!is.null(copy_target))
+        htmltools::tags$button(
+          type  = "button",
+          class = "toolcard-copy-btn",
+          `data-toolcard-copy` = copy_target,
+          title = "Copy",
+          .icon_tag("clipboard")
+        )
+    ))
+  }
+  .card_header_panel(icon, title, copy_target, lang, extra_actions)
+}
+
+.card_header_panel <- function(icon, title, copy_target = NULL, lang = NULL,
+                               extra_actions = NULL) {
   htmltools::tags$div(
     class = "toolcard-header",
     if (!is.null(icon)) .icon_tag(icon),
@@ -549,34 +604,26 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
   )
 }
 
-.render_code <- function(p) {
+.render_code <- function(p, mode = "panel") {
   lang     <- p$lang %||% "text"
   cid      <- paste0("tccode_", .rand_id())
   htmltools::tagList(
     .card_header(p$icon %||% "file-text", p$filename %||% "Code",
-                 copy_target = paste0("#", cid), lang = lang),
-    htmltools::tags$pre(
-      class = "toolcard-pre",
-      htmltools::tags$code(id = cid, class = paste0("language-", lang),
-                           p$text %||% "")
-    ),
+                 copy_target = paste0("#", cid), lang = lang, mode = mode),
+    .code_block(p$text %||% "", lang = lang, id = cid),
     if (!is.null(p$output) && nzchar(p$output))
-      htmltools::tags$pre(class = "toolcard-pre toolcard-pre-output", p$output)
+      .code_block(p$output, class = "toolcard-pre-output")
   )
 }
 
-.render_text <- function(p) {
+.render_text <- function(p, mode = "panel") {
   lang <- p$lang %||% NULL
   tid  <- paste0("tctext_", .rand_id())
   # With a language hint -> syntax-highlighted <pre><code>.
   # Without -> render as markdown so rich content (tables, bold, links)
   # displays properly rather than appearing as raw markup in a <pre>.
   content <- if (!is.null(lang)) {
-    htmltools::tags$pre(
-      class = "toolcard-pre",
-      htmltools::tags$code(id = tid,
-                           class = paste0("language-", lang),
-                           p$text %||% ""))
+    .code_block(p$text %||% "", lang = lang, id = tid)
   } else {
     htmltools::div(
       id = tid, class = "toolcard-md",
@@ -584,24 +631,25 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
   }
   htmltools::tagList(
     .card_header(p$icon %||% "text-left", p$title %||% "Output",
-                 copy_target = paste0("#", tid)),
+                 copy_target = paste0("#", tid), mode = mode),
     content
   )
 }
 
-.render_error <- function(p) {
+.render_error <- function(p, mode = "panel") {
   htmltools::tagList(
-    .card_header(p$icon %||% "exclamation-triangle", p$title %||% "Error"),
+    .card_header(p$icon %||% "exclamation-triangle", p$title %||% "Error",
+                 mode = mode),
     htmltools::tags$div(
       class = "toolcard-error-box",
       htmltools::tags$div(class = "toolcard-error-msg", p$message %||% "Error"),
       if (!is.null(p$detail) && nzchar(p$detail))
-        htmltools::tags$pre(class = "toolcard-pre toolcard-pre-output", p$detail)
+        .code_block(p$detail, class = "toolcard-pre-output")
     )
   )
 }
 
-.render_image <- function(p) {
+.render_image <- function(p, mode = "panel") {
   images <- p$images %||% list()
   frames <- lapply(images, function(im) {
     src <- paste0("data:", im$mime %||% "image/png", ";base64,", im$b64 %||% "")
@@ -628,17 +676,16 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
     )
   })
   htmltools::tagList(
-    .card_header(p$icon %||% "image", p$title %||% "Plot"),
+    .card_header(p$icon %||% "image", p$title %||% "Plot", mode = mode),
     if (!is.null(p$code) && nzchar(p$code))
-      htmltools::tags$pre(class = "toolcard-pre",
-        htmltools::tags$code(class = "language-r", p$code)),
+      .code_block(p$code, lang = "r"),
     frames,
     if (!is.null(p$output) && nzchar(p$output))
-      htmltools::tags$pre(class = "toolcard-pre toolcard-pre-output", p$output)
+      .code_block(p$output, class = "toolcard-pre-output")
   )
 }
 
-.render_table <- function(p) {
+.render_table <- function(p, mode = "panel") {
   df   <- p$df %||% NULL
   html <- p$html %||% NULL
   body <- if (!is.null(df) && is.data.frame(df) &&
@@ -655,15 +702,15 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
   } else if (!is.null(df) && is.data.frame(df)) {
     .html_table(df)
   } else {
-    htmltools::tags$pre(class = "toolcard-pre", p$text %||% "(no table)")
+    .code_block(p$text %||% "(no table)")
   }
   htmltools::tagList(
-    .card_header(p$icon %||% "table", p$title %||% "Table"),
+    .card_header(p$icon %||% "table", p$title %||% "Table", mode = mode),
     htmltools::tags$div(class = "toolcard-table-wrap", body)
   )
 }
 
-.render_diff <- function(p) {
+.render_diff <- function(p, mode = "panel") {
   path <- p$path %||% ""
   verb <- p$verb %||% "Edited"
   old  <- p$old %||% NULL
@@ -680,7 +727,7 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
     })
     return(htmltools::tagList(
       .card_header(p$icon %||% "pencil",
-                   sprintf("%s %s", verb, basename(path))),
+                   sprintf("%s %s", verb, basename(path)), mode = mode),
       htmltools::tags$div(class = "toolcard-diff", rows)
     ))
   }
@@ -688,11 +735,11 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
   # Only verb/path known -> compact status chip + (optional) new content.
   htmltools::tagList(
     .card_header(p$icon %||% "file-earmark-plus",
-                 sprintf("%s %s", verb, basename(path))),
+                 sprintf("%s %s", verb, basename(path)), mode = mode),
     htmltools::tags$div(class = "toolcard-diff-chip",
       sprintf("%s: %s", verb, path)),
     if (!is.null(new) && nzchar(new))
-      htmltools::tags$pre(class = "toolcard-pre", htmltools::tags$code(new))
+      .code_block(new)
   )
 }
 
@@ -805,8 +852,8 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
 
   # Pre-migration session: a typed card sits under extra$display$toolcard (which
   # shinychat now warns on + drops). Promote it to extra$codeagent$artifact,
-  # strip it from display, and re-render the panel html into the official
-  # display$html field so old sessions render rich + warning-free.
+  # strip it from display, and re-render the in-chat bubble html into the
+  # official display$html field so old sessions render rich + warning-free.
   legacy_card <- tryCatch(result@extra$display$toolcard, error = function(e) NULL)
   artifact <- .upgrade_tool_artifact(legacy_card)
   if (.valid_tool_artifact(artifact) &&
@@ -819,7 +866,7 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
     disp <- ex$display %||% list()
     disp$toolcard <- NULL
     disp$right_output <- NULL
-    rendered <- tryCatch(render_artifact(artifact, mode = "panel"),
+    rendered <- tryCatch(render_artifact(artifact, mode = "bubble"),
                          error = function(e) NULL)
     if (!is.null(rendered)) {
       disp$html <- rendered

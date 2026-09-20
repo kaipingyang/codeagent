@@ -105,6 +105,23 @@ shiny-chat-page
 .toolcard.toolcard-status-error  { border-color: var(--bs-danger, #dc3545); }
 .toolcard.toolcard-status-denied { border-color: var(--bs-warning, #fd7e14); }
 
+/* Bubble mode sits INSIDE a shinychat tool card, which already draws the
+   frame, the title row and the expand chevron. Drawing a second frame and a
+   second header there is the "card in a card" look; strip both and let the
+   official card own the chrome. The copy action is kept and placed like
+   shinychat's own `.code-copy-button`. */
+.toolcard.toolcard-mode-bubble {
+  border: 0;
+  border-radius: 0;
+  margin: 0;
+  background: transparent;
+  position: relative;
+}
+.toolcard.toolcard-mode-bubble.toolcard-status-error,
+.toolcard.toolcard-mode-bubble.toolcard-status-denied {
+  border: 0;
+}
+
 .toolcard-header {
   display: flex;
   align-items: center;
@@ -143,20 +160,28 @@ shiny-chat-page
 }
 .toolcard-copy-btn.toolcard-copied { color: var(--bs-success, #198754); }
 
-/* Prism adds language-* to the parent <pre>. These scoped selectors are more
-   specific than Prism's classic theme, keeping artifact code on bslib's white
-   surface while reusing shinychat's modern Atom One syntax palette. */
-.toolcard pre.toolcard-pre,
-.toolcard pre.toolcard-pre[class*="language-"] {
+/* Declared after `.toolcard-header` so the transparent background wins: this
+   header floats over the code block the way shinychat's own
+   `.code-copy-button` does, and must not paint a panel behind itself. */
+.toolcard .toolcard-header.toolcard-header-bubble {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 2;
+  padding: 5px;
+  border-bottom: 0;
+  background: transparent;
+}
+
+/* Code surface comes from shinychat: every artifact code block is emitted as
+   `<pre><code class="hljs ...">`, so `pre:has(> code.hljs)` supplies the
+   background, foreground and dark-mode pair (Atom One Light / Dark). Only
+   layout that shinychat does not set is declared here. Syntax colours below
+   still need local rules because Prism emits `.token.*`, not `.hljs-*`. */
+.toolcard pre.toolcard-pre {
   margin: 0;
-  padding: 10px 12px;
+  padding: 0;
   overflow: auto;
-  background: var(--bs-body-bg, #fff);
-  color: var(--ca-code-fg);
-  text-shadow: none;
-  font-family: var(--bs-font-monospace, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
-  font-size: 0.8125rem;
-  line-height: 1.55;
   text-align: left;
   white-space: pre;
   word-spacing: normal;
@@ -165,13 +190,7 @@ shiny-chat-page
   tab-size: 2;
   border-radius: 0;
 }
-.toolcard pre.toolcard-pre code,
-.toolcard pre.toolcard-pre code[class*="language-"] {
-  padding: 0;
-  background: transparent;
-  color: inherit;
-  text-shadow: none;
-  font: inherit;
+.toolcard pre.toolcard-pre code {
   white-space: inherit;
 }
 .toolcard .token.comment,
@@ -205,13 +224,17 @@ shiny-chat-page
 .toolcard .token.entity,
 .toolcard .token.url,
 .toolcard .token.punctuation { color: var(--ca-code-fg); }
+.toolcard .token.constant { color: var(--ca-code-cyan); }
+.toolcard .token.char { color: var(--ca-code-green); }
+.toolcard .token.namespace { opacity: 0.75; }
 .toolcard .token.bold,
 .toolcard .token.important { font-weight: 700; }
 .toolcard .token.italic { font-style: italic; }
 
 .toolcard-pre-output {
   border-top: 1px solid var(--bs-border-color, #dee2e6);
-  background: var(--bs-body-bg, #fff);
+}
+.toolcard pre.toolcard-pre-output code {
   color: var(--bs-secondary-color, #6c757d);
 }
 
@@ -284,7 +307,6 @@ shiny-chat-page
   font-size: 0.78rem;
   color: var(--bs-secondary-color, #6c757d);
 }
-
 
 /* --- Fill the main output navset so the Files tree tracks panel height --- */
 /* The navset_tab wrapper is .tabbable; make it (and its tab-content + active

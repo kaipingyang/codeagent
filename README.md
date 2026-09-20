@@ -453,6 +453,14 @@ and shinychat receives its official `tool_result_display()` adapter in
 `extra$display`, including compact labels/value previews and framed rich cards.
 Successful tool cards start collapsed regardless of output length; error cards
 start expanded so failures remain immediately visible.
+
+The same renderer serves both surfaces through `render_artifact(artifact, mode=)`.
+In the chat bubble it renders in `"bubble"` mode, which omits the frame and
+header that the surrounding shinychat tool card already draws and keeps only the
+copy action; the right Output workspace uses `"panel"` mode for the full
+standalone card. Code blocks are emitted as `<pre><code class="hljs ...">` so
+their background, foreground and light/dark pair come from shinychat's own
+stylesheet rather than a second theme maintained here.
 See the [tool-result artifact guide](https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html)
 for the v1 schema, version negotiation, trust boundary, and migration checklist.
 The streaming `on_tool_result` event exposes all three as `artifact`, `display`,

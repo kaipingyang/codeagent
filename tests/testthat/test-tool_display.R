@@ -139,18 +139,75 @@ test_that("render_artifact: code kind renders highlighted pre + copy", {
   expect_match(h, "toolcard")
 })
 
-test_that("toolcard code theme overrides Prism with bslib white surfaces", {
+test_that("code blocks use shinychat's official hljs surface", {
+  d <- list(toolcard = list(kind = "code", status = "success",
+                      payload = list(text = "x<-1", lang = "r", filename = "a.R")))
+  h <- .html(codeagent:::render_artifact(d))
+  # `pre:has(> code.hljs)` is what supplies background/foreground in both
+  # colour modes, so the `hljs` class must be present alongside `language-*`.
+  expect_match(h, 'class="hljs language-r"', fixed = TRUE)
+
+  # Unhighlighted output keeps the same surface without a language class.
+  d2 <- list(toolcard = list(kind = "code", status = "success",
+                       payload = list(text = "x<-1", lang = "r", output = "[1] 1")))
+  h2 <- .html(codeagent:::render_artifact(d2))
+  expect_match(h2, 'class="hljs"', fixed = TRUE)
+  expect_match(h2, "toolcard-pre-output", fixed = TRUE)
+})
+
+test_that("Prism classic theme stylesheet is not loaded", {
+  # Loading it would restyle EVERY `code[class*="language-"]` on the page,
+  # including the blocks shinychat renders inside chat messages: pure black
+  # text, a white emboss shadow and Consolas over the Atom One palette.
+  head <- htmltools::doRenderTags(codeagent:::head_assets())
+  expect_false(grepl("prism.min.css", head, fixed = TRUE))
+  expect_true(grepl("prism-core.min.js", head, fixed = TRUE))
+})
+
+test_that("toolcard keeps local token colours for Prism output", {
   css_path <- system.file("www/styles.css", package = "codeagent")
   expect_true(nzchar(css_path) && file.exists(css_path))
   css <- paste(readLines(css_path, warn = FALSE), collapse = "\n")
 
-  expect_match(
-    css, '.toolcard pre.toolcard-pre[class*="language-"]', fixed = TRUE)
-  expect_match(css, "background: var(--bs-body-bg, #fff);", fixed = TRUE)
+  # Prism emits `.token.*`, shinychat colours `.hljs-*`, so the palette has to
+  # stay local even though the surface is official.
   expect_match(css, "--ca-code-keyword: #a626a4;", fixed = TRUE)
   expect_match(css, "--ca-code-green: #50a14f;", fixed = TRUE)
-  expect_match(css, "text-shadow: none;", fixed = TRUE)
+  expect_match(css, ".toolcard .token.constant", fixed = TRUE)
+  expect_match(css, ".toolcard .token.char", fixed = TRUE)
+  expect_match(css, ".toolcard .token.namespace", fixed = TRUE)
   expect_false(grepl("#f5f2f0", css, fixed = TRUE))
+})
+
+test_that("bubble mode drops chrome the shinychat card already draws", {
+  d <- list(toolcard = list(kind = "code", status = "success",
+                      payload = list(text = "x<-1", lang = "r", filename = "a.R")))
+  panel  <- .html(codeagent:::render_artifact(d, mode = "panel"))
+  bubble <- .html(codeagent:::render_artifact(d, mode = "bubble"))
+
+  expect_match(panel,  "toolcard-mode-panel", fixed = TRUE)
+  expect_match(bubble, "toolcard-mode-bubble", fixed = TRUE)
+
+  # Panel is standalone: it owns icon, title and language badge.
+  expect_match(panel, "toolcard-title", fixed = TRUE)
+  expect_match(panel, "toolcard-lang-badge", fixed = TRUE)
+
+  # Bubble sits inside a shinychat tool card that already shows those, so it
+  # only keeps the copy action.
+  expect_false(grepl("toolcard-title", bubble, fixed = TRUE))
+  expect_false(grepl("toolcard-lang-badge", bubble, fixed = TRUE))
+  expect_match(bubble, "toolcard-header-bubble", fixed = TRUE)
+  expect_match(bubble, "data-toolcard-copy", fixed = TRUE)
+
+  # Both still render the actual content.
+  expect_match(bubble, "language-r", fixed = TRUE)
+})
+
+test_that("bubble css removes the nested frame", {
+  css_path <- system.file("www/styles.css", package = "codeagent")
+  css <- paste(readLines(css_path, warn = FALSE), collapse = "\n")
+  expect_match(css, ".toolcard.toolcard-mode-bubble", fixed = TRUE)
+  expect_match(css, ".toolcard-header-bubble", fixed = TRUE)
 })
 
 test_that("render_artifact: image kind embeds base64 + zoom toolbar", {

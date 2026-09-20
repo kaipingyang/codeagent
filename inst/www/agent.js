@@ -4,6 +4,55 @@
   "use strict";
 
   // ---------------------------------------------------------------------------
+  // Syntax-highlight artifact cards that arrive inside chat bubbles
+  //
+  // The Prism autoloader only highlights what exists at page load. Tool cards
+  // are pushed later by shinychat over the WebSocket, so their code blocks were
+  // never highlighted and rendered as flat single-colour text. Watch for newly
+  // inserted `.toolcard` subtrees and highlight just those.
+  //
+  // Scope matters: highlightAllUnder() on a whole chat message would also hit
+  // the code blocks shinychat already highlighted with highlight.js and replace
+  // their `.hljs-*` spans with Prism `.token` spans. Only `.toolcard` subtrees
+  // -- which codeagent owns -- are ever passed in.
+  // ---------------------------------------------------------------------------
+  (function () {
+    function highlightCards(root) {
+      if (!window.Prism || !Prism.highlightAllUnder) return;
+      if (!root || root.nodeType !== 1) return;
+      var cards = root.classList && root.classList.contains("toolcard")
+        ? [root]
+        : (root.querySelectorAll ? root.querySelectorAll(".toolcard") : []);
+      for (var i = 0; i < cards.length; i++) {
+        if (cards[i].getAttribute("data-toolcard-highlighted")) continue;
+        cards[i].setAttribute("data-toolcard-highlighted", "1");
+        (function (card) {
+          setTimeout(function () {
+            try { Prism.highlightAllUnder(card); } catch (e) {}
+          }, 0);
+        })(cards[i]);
+      }
+    }
+
+    if (typeof MutationObserver === "undefined") return;
+    var observer = new MutationObserver(function (records) {
+      for (var i = 0; i < records.length; i++) {
+        var added = records[i].addedNodes;
+        for (var j = 0; j < added.length; j++) highlightCards(added[j]);
+      }
+    });
+    function start() {
+      observer.observe(document.body, { childList: true, subtree: true });
+      highlightCards(document.body);
+    }
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", start);
+    } else {
+      start();
+    }
+  })();
+
+  // ---------------------------------------------------------------------------
   // ESC key → interrupt_flag
   // ---------------------------------------------------------------------------
   document.addEventListener("keydown", function (e) {
