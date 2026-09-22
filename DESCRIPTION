@@ -78,15 +78,15 @@ Suggests:
     pkgload
 Config/testthat/edition: 3
 Remotes:
-    tidyverse/ellmer@92cfa7f48270048105ea1bfb44d23a2e59c2df6e,
+    tidyverse/ellmer@64abe4cc238d296b52e50194f4ee8257c0a320b4,
     posit-dev/btw@473d1d8e3114ed9136692ff3fb6b88ed0474ba66,
-    posit-dev/shinychat/pkg-r@826c799994c32611629236bbc73516dbc14ff2ab,
+    posit-dev/shinychat/pkg-r@fc50706f914290bceba5ccf6712a83af38e00ede,
     ericrayanderson/shinyglass@e07c0ae7b9cdf7959eace05c7ac32481f06d5a7c,
     rstudio/shiny@81844600fc15f1952838546faa6699d0506ce7f9,
-    rstudio/bslib@7d9e2dbdd636706f40619954b6b559c283d4eae2,
-    posit-dev/mcptools@079e011e6f2a515565f903dc8a5b7c4d793746f1,
+    rstudio/bslib@e3b761696003bdd65cea93ae6a8eefa9281ad1b5,
+    posit-dev/mcptools@8a07faae095755afd7160432a12a85cce3cb8cde,
     r-lib/Rapp@489655f24945042791ddb083d0d5518c4a905d9f,
-    r-lib/httr2@7ce699f813e662850ea21d9f87e242e0c699f9fe
+    r-lib/httr2@6313956a3202e3d8fdecf713777711d0d8140ec5
 URL: https://kaipingyang.github.io/codeagent, https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues
 Config/roxygen2/version: 8.0.0
