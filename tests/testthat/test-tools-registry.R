@@ -305,3 +305,72 @@ test_that("an unregistered tool is still denied in every mode", {
       info = mode)
   }
 })
+
+test_that("the worker security snapshot carries the parent's tools= selection", {
+  settings <- list(permission_mode = "default", cwd = getwd(),
+                   tools_spec = .resolve_tool_spec(c("files", "shell")))
+  ctx <- .worker_security_context_from_settings(settings, chat = NULL)
+  spec <- ctx$tool_config$tools_spec
+  expect_false(is.null(spec))
+  expect_false(isTRUE(spec$all))
+  expect_setequal(unlist(spec$native, use.names = FALSE),
+                  c("Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS",
+                    "Bash"))
+})
+
+test_that("the tools= selection survives the snapshot's JSON round trip", {
+  settings <- list(permission_mode = "default", cwd = getwd(),
+                   tools_spec = .resolve_tool_spec(c("lint", "docs")))
+  ctx  <- .worker_security_context_from_settings(settings, chat = NULL)
+  back <- jsonlite::fromJSON(jsonlite::toJSON(ctx, auto_unbox = TRUE, null = "null"),
+                             simplifyVector = FALSE)
+  spec <- .rehydrate_tool_spec(back$tool_config$tools_spec)
+  expect_setequal(spec$native, c("Lint", "Format"))
+  expect_setequal(spec$btw_groups, "docs")
+  expect_false(spec$all)
+})
+
+test_that("a snapshot without tools_spec keeps the historical register-all behaviour", {
+  expect_null(.rehydrate_tool_spec(NULL))
+})
+
+test_that("disallowed_tools survives the snapshot's JSON round trip", {
+  settings <- list(
+    permission_mode = "default", cwd = getwd(),
+    disallowed_tools = .resolve_disallowed_tools(c("lint", "Bash(rm *)")))
+  ctx  <- .worker_security_context_from_settings(settings, chat = NULL)
+  back <- jsonlite::fromJSON(jsonlite::toJSON(ctx, auto_unbox = TRUE, null = "null"),
+                             simplifyVector = FALSE)
+  d <- .rehydrate_disallowed_tools(back$tool_config$disallowed_tools)
+  expect_true(is.character(d$remove))
+  expect_setequal(d$remove, c("Lint", "Format"))
+  # The scoped deny rule travels in the snapshot's own rules list, not here,
+  # so it must not be duplicated into the worker's disallowed set.
+  expect_identical(d$rules, list())
+})
+
+test_that("a rehydrated disallowed set can be applied to a Chat", {
+  chat <- .registry_test_chat()
+  register_builtin_tools(chat, mode = "bypass")
+  register_lint_tools(chat)
+  before <- .registered_names(chat)
+  expect_true("Lint" %in% before)
+  d <- .rehydrate_disallowed_tools(list(remove = list("Lint", "Format")))
+  .apply_disallowed_tools(chat, d$remove)
+  expect_false(any(c("Lint", "Format") %in% .registered_names(chat)))
+  expect_true("Read" %in% .registered_names(chat))
+})
+
+test_that("a sub-agent inherits the parent's tools= selection", {
+  skip_if_not_installed("btw")
+  parent <- codeagent_client(.registry_test_chat(), tools = c("files", "shell"),
+                             permission_mode = "bypass")
+  ctx <- .worker_security_context_from_settings(parent$settings, parent$chat)
+  # The snapshot carries both layers: the cheap selection and the authority.
+  spec <- .rehydrate_tool_spec(ctx$tool_config$tools_spec)
+  expect_setequal(spec$native,
+                  c("Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS",
+                    "Bash"))
+  expect_false("WebSearch" %in% ctx$allowed_tools)
+  expect_true("Bash" %in% ctx$allowed_tools)
+})

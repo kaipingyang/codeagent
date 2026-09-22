@@ -1,5 +1,15 @@
 # codeagent 0.2.3
 
+* Sub-agents and team workers now inherit the parent's `tools=` /
+  `disallowed_tools=` selection through the worker security snapshot. Before,
+  a parent restricted to a few tools still had its workers register the full
+  set and then filter back down against `allowed_tools`, which produced the
+  right final tool set but built everything first -- including the skill scan.
+  The selection is now a cheap first layer applied at registration;
+  `allowed_tools` (the parent's actual tool names plus signatures) remains the
+  authority a worker can never exceed. A snapshot written before this field
+  existed decodes to "register everything", so old contexts are unchanged.
+
 * Fixed `register_tool_meta(capability = "read")` being ignored by the
   permission system. A host tool declared read-only was denied in `plan` mode
   and prompted for in `default` mode, contradicting the function's own

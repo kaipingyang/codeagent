@@ -93,6 +93,40 @@ NULL
     "Individual tool names are also accepted (for example \"Read\", \"Bash\").")
 }
 
+# Restore a spec that made the round trip through the worker security snapshot's
+# JSON. fromJSON(simplifyVector = FALSE) turns every character vector into a
+# list, so the fields are flattened back. NULL (a snapshot written before
+# `tools=` existed, or a parent that selected nothing) returns NULL, which
+# .apply_tool_spec() treats as "register everything" -- the historical
+# behaviour, so an old snapshot is never misread as an empty selection.
+#' @keywords internal
+.rehydrate_tool_spec <- function(spec) {
+  if (is.null(spec)) return(NULL)
+  backends <- .TOOL_BACKEND_DEFAULTS
+  for (nm in names(spec$backends %||% list()))
+    backends[[nm]] <- as.character(spec$backends[[nm]])[[1L]]
+  list(
+    all        = isTRUE(unlist(spec$all, use.names = FALSE)),
+    native     = as.character(unlist(spec$native %||% character(0),
+                                     use.names = FALSE)),
+    btw_groups = as.character(unlist(spec$btw_groups %||% character(0),
+                                     use.names = FALSE)),
+    backends   = backends
+  )
+}
+
+# Restore a disallowed set from the worker snapshot's JSON. Only the removal
+# list travels here: the scoped entries became ordinary deny rules back in
+# codeagent_client() and ride in the snapshot's own `rules`, so rebuilding them
+# here would apply them twice.
+#' @keywords internal
+.rehydrate_disallowed_tools <- function(disallowed) {
+  if (is.null(disallowed)) return(NULL)
+  list(remove = as.character(unlist(disallowed$remove %||% character(0),
+                                    use.names = FALSE)),
+       rules = list())
+}
+
 # Names of the tools a resolved spec selects (native + the btw groups it keeps).
 .spec_selected_names <- function(spec, chat_names) {
   btw_prefixes <- unlist(.BTW_GROUPS[spec$btw_groups], use.names = FALSE)

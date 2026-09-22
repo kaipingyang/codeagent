@@ -110,7 +110,14 @@ NULL
       btw_groups = tool_config$btw_groups %||% character(),
       btw_all_groups = isTRUE(tool_config$btw_all_groups),
       explore_data = isTRUE(tool_config$explore_data),
-      rag = isTRUE(tool_config$rag)
+      rag = isTRUE(tool_config$rag),
+      # The parent's `tools=` selection. NULL means "register everything",
+      # which is what a snapshot written before this field existed decodes to,
+      # so an old context keeps its old behaviour. This narrows what a worker
+      # builds in the first place; allowed_tools below remains the authority
+      # that a worker can never exceed the parent.
+      tools_spec = tool_config$tools_spec,
+      disallowed_tools = tool_config$disallowed_tools
     ),
     allowed_tools = if (is.null(allowed_tools)) NULL
                     else unique(as.character(allowed_tools)),
@@ -137,7 +144,9 @@ NULL
       btw_all_groups = is.null(groups),
       explore_data = !isFALSE(settings$explore_data),
       rag = isTRUE(settings$rag) ||
-        (is.list(settings$rag) && isTRUE(settings$rag$enabled))
+        (is.list(settings$rag) && isTRUE(settings$rag$enabled)),
+      tools_spec = settings$tools_spec,
+      disallowed_tools = settings$disallowed_tools
     ),
     allowed_tools = if (is.null(chat)) NULL else .tool_names(live_tools),
     allowed_tool_signatures = if (is.null(chat)) list()
@@ -195,6 +204,12 @@ NULL
   settings$file_tools <- context$tool_config$file_tools
   settings$btw_groups <- if (isTRUE(context$tool_config$btw_all_groups))
     NULL else unlist(context$tool_config$btw_groups, use.names = FALSE)
+  # Rebuild the parent's tools= selection so the worker never constructs the
+  # tools it was not given. The allowed_tools check below still runs and is
+  # what actually bounds the worker; this is the cheaper first layer.
+  settings$tools_spec <- .rehydrate_tool_spec(context$tool_config$tools_spec)
+  settings$disallowed_tools <- .rehydrate_disallowed_tools(
+    context$tool_config$disallowed_tools)
   settings$explore_data <- isTRUE(context$tool_config$explore_data)
   settings$rag <- isTRUE(context$tool_config$rag)
   settings$background_agents <- FALSE
