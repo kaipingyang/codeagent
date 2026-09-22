@@ -147,6 +147,9 @@ Two capabilities have parallel implementations and take an `@` suffix:
 | `web@core` / `web@btw` / `web@both` (default) | `WebSearch`+`WebFetch` / btw's URL reader / both |
 
 Unknown names are an error that lists the valid groups, never a silent drop.
+An entry that is valid but ends up registering nothing — a btw group whose
+optional dependency is missing (`git` without `{gert}`, `github` without `{gh}`),
+or one you also passed to `disallowed_tools` — warns and names the entry.
 Resource-driven tools keep their own arguments (`mcp_config`, `data_shield`) and
 are never removed by this selection. `btw_groups=` is superseded by `tools=`;
 supplying both is an error.

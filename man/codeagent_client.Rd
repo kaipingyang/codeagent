@@ -79,6 +79,9 @@ Two capabilities have parallel implementations and take an \code{@} suffix:
 \code{"files@core"} (codeagent's, any absolute path), \code{"files@btw"} (btw's
 hash-anchored, cwd-only Path A), \code{"files@both"}, and the same for \code{"web"}.
 Unknown names are an error listing the valid groups, never a silent drop.
+An entry that is valid but registers nothing -- a btw group whose optional
+dependency is missing, or one you also passed to \code{disallowed_tools} --
+warns and names the entry, rather than leaving you to notice the gap.
 Resource-driven tools stay on their own arguments (\code{mcp_config},
 \code{data_shield}) and are never removed by this selection.
 }}

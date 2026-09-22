@@ -181,6 +181,9 @@ print.CodeagentClient <- function(x, ...) {
 #'   `"files@core"` (codeagent's, any absolute path), `"files@btw"` (btw's
 #'   hash-anchored, cwd-only Path A), `"files@both"`, and the same for `"web"`.
 #'   Unknown names are an error listing the valid groups, never a silent drop.
+#'   An entry that is valid but registers nothing -- a btw group whose optional
+#'   dependency is missing, or one you also passed to `disallowed_tools` --
+#'   warns and names the entry, rather than leaving you to notice the gap.
 #'   Resource-driven tools stay on their own arguments (`mcp_config`,
 #'   `data_shield`) and are never removed by this selection.
 #' @param disallowed_tools Character vector or NULL. Carries two meanings in one
@@ -837,6 +840,9 @@ agent_loop <- function(user_input,
   tryCatch(.apply_tool_spec(chat, settings$tools_spec), error = function(e) NULL)
   tryCatch(.apply_disallowed_tools(chat, settings$disallowed_tools$remove),
            error = function(e) NULL)
+  # Say so when a `tools=` entry registered nothing. Deliberately NOT wrapped in
+  # a silencing tryCatch: the point of this call is to break the silence.
+  .report_unfulfilled_tools(chat, settings$tools_spec)
   # Mid-loop compaction: check the complete outgoing context before every model
   # request via on_request_start. No-op unless settings$midloop_compact = TRUE.
   tryCatch(register_midloop_compaction(chat, settings), error = function(e) NULL)

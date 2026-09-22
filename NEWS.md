@@ -1,5 +1,15 @@
 # codeagent 0.2.3
 
+* A `tools=` entry that registers nothing now warns and names the entry. btw
+  drops a tool group whose optional dependency is missing (`git` without
+  `{gert}`, `github` without `{gh}`) and reports it only as a once-per-session
+  note that does not say which request it defeated, so naming a group could
+  quietly yield zero tools. Requesting a group and also passing it to
+  `disallowed_tools` is reported the same way, since the contradiction is worth
+  surfacing. This warns rather than errors -- a missing optional dependency
+  should not stop a client from being built -- and is skipped on worker
+  rebuilds, which have no user to tell.
+
 * Sub-agents and team workers now inherit the parent's `tools=` /
   `disallowed_tools=` selection through the worker security snapshot. Before,
   a parent restricted to a few tools still had its workers register the full

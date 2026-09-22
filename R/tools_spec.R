@@ -20,7 +20,7 @@ NULL
 # Empty selection, used as the base of every resolved spec.
 .empty_tool_spec <- function(all = FALSE) {
   list(all = all, native = character(0), btw_groups = character(0),
-       backends = .TOOL_BACKEND_DEFAULTS)
+       backends = .TOOL_BACKEND_DEFAULTS, requested = character(0))
 }
 
 # Split "files@btw" into name + backend, validating both halves.
@@ -79,6 +79,9 @@ NULL
   if (length(unknown)) stop(.unknown_tool_error(unknown), call. = FALSE)
   out$native     <- unique(out$native)
   out$btw_groups <- unique(out$btw_groups)
+  # Keep the caller's own words so a request that ends up registering nothing
+  # can be named back to them (see .report_unfulfilled_tools()).
+  out$requested  <- as.character(spec)
   out
 }
 
@@ -209,4 +212,60 @@ NULL
   if (!any(drop)) return(invisible(chat))
   chat$set_tools(tools[!drop])
   invisible(chat)
+}
+
+# Tool names (exact) and btw prefixes ("^"-marked) one `tools=` entry asks for.
+.token_expected_names <- function(token, backends) {
+  p    <- .split_tool_token(token)
+  name <- p$name
+  if (name %in% names(.TOOL_BACKEND_DEFAULTS)) {
+    backend <- p$backend %||% backends[[name]] %||% .TOOL_BACKEND_DEFAULTS[[name]]
+    out <- character(0)
+    if (backend %in% c("core", "both"))
+      out <- c(out, .CODEAGENT_GROUPS[[name]])
+    if (backend %in% c("btw", "both"))
+      out <- c(out, paste0("^", .BTW_GROUPS[[.TOOL_BACKEND_BTW_GROUP[[name]]]]))
+    return(out)
+  }
+  if (!is.null(.CODEAGENT_GROUPS[[name]])) return(.CODEAGENT_GROUPS[[name]])
+  if (identical(.TOOL_META[[name]]$set, "A")) return(name)
+  if (!is.null(.BTW_GROUPS[[name]])) return(paste0("^", .BTW_GROUPS[[name]]))
+  character(0)
+}
+
+.any_expected_present <- function(expected, names_now) {
+  exact <- expected[!startsWith(expected, "^")]
+  if (any(names_now %in% exact)) return(TRUE)
+  prefixes <- sub("^\\^", "", expected[startsWith(expected, "^")])
+  if (!length(prefixes)) return(FALSE)
+  any(vapply(names_now, function(n)
+    any(vapply(prefixes, function(p) startsWith(n, p), logical(1L))), logical(1L)))
+}
+
+# Warn about `tools=` entries that registered nothing. A group can come up empty
+# for a legitimate environmental reason -- btw's can_register() drops git tools
+# without gert, github without gh -- and btw itself reports that only as a
+# once-per-session note that does not say which request it defeated. Silence
+# there is the wrong default: the caller named the group explicitly, so a request
+# that yields nothing must say so. This warns rather than errors, since a missing
+# optional dependency should not stop a client from being built.
+#' @keywords internal
+.report_unfulfilled_tools <- function(chat, spec) {
+  requested <- spec$requested %||% character(0)
+  if (!length(requested)) return(invisible(character(0)))
+  names_now <- tryCatch(.tool_names(chat$get_tools()),
+                        error = function(e) character(0))
+  unfulfilled <- Filter(function(token) {
+    expected <- tryCatch(.token_expected_names(token, spec$backends),
+                         error = function(e) character(0))
+    length(expected) > 0L && !.any_expected_present(expected, names_now)
+  }, requested)
+  unfulfilled <- unlist(unfulfilled, use.names = FALSE) %||% character(0)
+  if (length(unfulfilled))
+    warning("[codeagent] These `tools` entries registered no tool: ",
+            paste0("\"", unfulfilled, "\"", collapse = ", "),
+            ". A tool group can be empty when an optional dependency is ",
+            "missing (for example btw's git tools need {gert}, and its GitHub ",
+            "tool needs {gh}).", call. = FALSE)
+  invisible(unfulfilled)
 }

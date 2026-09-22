@@ -195,9 +195,13 @@ test_that("btw_groups= alone still works (superseded, not removed)", {
 
 test_that("a bare disallowed_tools name removes the tool from the model's view", {
   skip_if_not_installed("btw")
-  client <- codeagent_client(.registry_test_chat(),
-                             tools = c("files", "shell"),
-                             disallowed_tools = "Bash")
+  # "shell" names exactly one tool and it is disallowed, so the request ends up
+  # empty -- the contradiction is reported on purpose.
+  expect_warning(
+    client <- codeagent_client(.registry_test_chat(),
+                               tools = c("files", "shell"),
+                               disallowed_tools = "Bash"),
+    "shell")
   nm <- .registered_names(client$chat)
   expect_false("Bash" %in% nm)
   expect_true("Read" %in% nm)
@@ -217,9 +221,13 @@ test_that("a scoped disallowed_tools entry keeps the tool and denies the call", 
 
 test_that("disallowed_tools accepts a capability group name", {
   skip_if_not_installed("btw")
-  client <- codeagent_client(.registry_test_chat(),
-                             tools = c("files", "lint"),
-                             disallowed_tools = "lint")
+  # Requesting "lint" and disallowing it is contradictory; the removal wins and
+  # the contradiction is reported.
+  expect_warning(
+    client <- codeagent_client(.registry_test_chat(),
+                               tools = c("files", "lint"),
+                               disallowed_tools = "lint"),
+    "lint")
   nm <- .registered_names(client$chat)
   expect_false(any(c("Lint", "Format") %in% nm))
   expect_true("Read" %in% nm)
@@ -373,4 +381,43 @@ test_that("a sub-agent inherits the parent's tools= selection", {
                     "Bash"))
   expect_false("WebSearch" %in% ctx$allowed_tools)
   expect_true("Bash" %in% ctx$allowed_tools)
+})
+
+test_that("a spec remembers what the caller actually asked for", {
+  expect_setequal(.resolve_tool_spec(c("files", "docs"))$requested,
+                  c("files", "docs"))
+  expect_identical(.resolve_tool_spec(NULL)$requested, character(0))
+  expect_identical(.resolve_tool_spec(FALSE)$requested, character(0))
+})
+
+test_that("a named group that produced no tool is reported, not swallowed", {
+  chat <- .registry_test_chat()
+  register_builtin_tools(chat, mode = "bypass")   # files/shell only
+  spec <- .resolve_tool_spec(c("files", "docs"))
+  expect_warning(.report_unfulfilled_tools(chat, spec), "docs")
+})
+
+test_that("a fully satisfied request reports nothing", {
+  chat <- .registry_test_chat()
+  register_builtin_tools(chat, mode = "bypass")
+  spec <- .resolve_tool_spec("files")
+  expect_silent(.report_unfulfilled_tools(chat, spec))
+})
+
+test_that("naming a btw group unavailable in this environment warns", {
+  skip_if_not_installed("btw")
+  n <- length(tryCatch(suppressWarnings(btw::btw_tools("github")),
+                       error = function(e) list()))
+  if (n > 0L) skip("github tools are registrable in this environment")
+  expect_warning(codeagent_client(.registry_test_chat(), tools = "github"),
+                 "github")
+})
+
+test_that("a worker rebuild does not re-warn about the parent's request", {
+  # requested is intentionally dropped on the snapshot round trip: the worker
+  # has no user to tell, and the parent already reported it.
+  spec <- .rehydrate_tool_spec(list(all = FALSE, native = list("Read"),
+                                    btw_groups = list(), backends = list()))
+  chat <- .registry_test_chat()
+  expect_silent(.report_unfulfilled_tools(chat, spec))
 })
