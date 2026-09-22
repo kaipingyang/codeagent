@@ -172,6 +172,20 @@ tools the parent did not expose. Same-name tools must also match the parent's
 unwrapped implementation signature. Explicit deny rules take precedence over
 all allow rules, including multi-file patches.
 
+A tool's **capability** (`read` / `write` / `exec` / `net`) is what the gate
+decides on. Built-in metadata is authoritative; btw tools fall back to the
+`read_only_hint` each tool declares, and host tools declare theirs explicitly:
+
+```r
+chat$register_tool(my_excel_reader)                      # a host tool
+register_tool_meta("erp_tool_read_excel", "read")        # -> runs without prompting,
+                                                         #    and inside plan mode
+```
+
+A tool with no declaration resolves to `exec` and, if never declared at all, is
+denied in every mode including `bypass`. A host cannot downgrade a built-in:
+declaring `Bash` as `"read"` leaves it `exec`.
+
 Foreground `Agent` clones the active Chat and forwards the parent's approval
 callback. Process-based `TeamRun` and `BackgroundAgent` are registered only
 when codeagent constructed the parent Chat and can preserve its model, provider,

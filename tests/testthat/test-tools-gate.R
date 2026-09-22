@@ -21,7 +21,11 @@ test_that(".resolve_tool_policy parses settings$tools with defaults", {
   expect_identical(p$overrides$Bash, "deny")
 
   p2 <- .resolve_tool_policy(list())
-  expect_setequal(p2$sets, c("A", "B"))
+  # "C" -- host tools declared through register_tool_meta() -- is enabled by
+  # default. Leaving it out denied every declared host tool in every mode
+  # (including bypass) with no diagnostic. Undeclared tools are unaffected:
+  # .gate_decide() denies them on known = FALSE before any set check.
+  expect_setequal(p2$sets, c("A", "B", "C"))
   expect_identical(p2$overrides, list())
 })
 

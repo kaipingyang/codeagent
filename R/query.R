@@ -776,7 +776,7 @@ agent_loop <- function(user_input,
     rag_network_allowed <- identical(net_policy, "allow") ||
       (is.null(net_policy) && identical(mode_env$mode, "bypass"))
     rag_network_allowed <- rag_network_allowed &&
-      "A" %in% as.character(policy$sets %||% c("A", "B")) &&
+      "A" %in% as.character(policy$sets %||% .DEFAULT_TOOL_SETS) &&
       !shield_active
     tryCatch(register_rag_tool(
       chat, cwd, allow_network = rag_network_allowed),

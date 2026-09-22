@@ -224,3 +224,84 @@ test_that("disallowed_tools accepts a capability group name", {
   expect_false(any(c("Lint", "Format") %in% nm))
   expect_true("Read" %in% nm)
 })
+
+.btw_tool_named <- function(group, name) {
+  skip_if_not_installed("btw")
+  tools <- tryCatch(btw::btw_tools(group), error = function(e) list())
+  hit <- Filter(function(t) identical(as.character(t@name), name), tools)
+  if (!length(hit)) skip(paste0("btw tool not registrable here: ", name))
+  hit[[1L]]
+}
+
+test_that("a btw tool declaring read_only_hint is classified read, not exec", {
+  tool <- .btw_tool_named("pkg", "btw_tool_pkg_coverage")
+  expect_true(isTRUE(tool@annotations$read_only_hint))
+  expect_identical(.tool_capability("btw_tool_pkg_coverage", tool), "read")
+})
+
+test_that("a read-only btw tool that reaches the network stays net", {
+  tool <- .btw_tool_named("web", "btw_tool_web_read_url")
+  expect_true(isTRUE(tool@annotations$read_only_hint))
+  expect_identical(.tool_capability("btw_tool_web_read_url", tool), "net")
+})
+
+test_that("built-in .TOOL_META stays authoritative over a tool's own hint", {
+  # A btw file tool is explicitly classified write; its annotations must not
+  # be able to downgrade that.
+  tool <- .btw_tool_named("files", "btw_tool_files_write")
+  expect_identical(.tool_capability("btw_tool_files_write", tool), "write")
+})
+
+test_that("the gate honours a read-only btw tool the prefix scan misjudged", {
+  tool   <- .btw_tool_named("pkg", "btw_tool_pkg_coverage")
+  cap    <- .tool_capability("btw_tool_pkg_coverage", tool)
+  policy <- .resolve_tool_policy(list())
+  expect_identical(cap, "read")
+  # default: read-capability tools run without prompting
+  expect_identical(
+    .gate_decide("btw_tool_pkg_coverage", list(), policy, "default", list(), cap),
+    "allow")
+  # plan is a read-only boundary, so a read tool belongs inside it
+  expect_identical(
+    .gate_decide("btw_tool_pkg_coverage", list(), policy, "plan", list(), cap),
+    "allow")
+})
+
+test_that("a host tool registered read via register_tool_meta passes the gate", {
+  register_tool_meta("erp_reader", capability = "read", set = "A")
+  policy <- .resolve_tool_policy(list())
+  expect_identical(
+    .gate_decide("erp_reader", list(), policy, "default", list(), "read"), "allow")
+  expect_identical(
+    .gate_decide("erp_reader", list(), policy, "plan", list(), "read"), "allow")
+})
+
+test_that("a host tool cannot downgrade a built-in exec tool", {
+  register_tool_meta("Bash", capability = "read", set = "A")
+  expect_identical(.tool_capability("Bash"), "exec")
+  policy <- .resolve_tool_policy(list())
+  expect_identical(
+    .gate_decide("Bash", list(command = "ls"), policy, "plan", list(), "read"),
+    "deny")
+})
+
+test_that("register_tool_meta defaults are usable without extra tools$sets config", {
+  # The ERP report's exact call: no `set=`, so it lands in the default "C".
+  register_tool_meta("erp_tool_read_excel", capability = "read")
+  policy <- .resolve_tool_policy(list())
+  expect_identical(
+    .gate_decide("erp_tool_read_excel", list(), policy, "default", list(), "read"),
+    "allow")
+  expect_identical(
+    .gate_decide("erp_tool_read_excel", list(), policy, "plan", list(), "read"),
+    "allow")
+})
+
+test_that("an unregistered tool is still denied in every mode", {
+  policy <- .resolve_tool_policy(list())
+  for (mode in c("default", "plan", "bypass", "dont_ask")) {
+    expect_identical(
+      .gate_decide("never_declared_tool", list(), policy, mode, list()), "deny",
+      info = mode)
+  }
+})

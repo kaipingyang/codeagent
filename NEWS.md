@@ -1,5 +1,29 @@
 # codeagent 0.2.3
 
+* Fixed `register_tool_meta(capability = "read")` being ignored by the
+  permission system. A host tool declared read-only was denied in `plan` mode
+  and prompted for in `default` mode, contradicting the function's own
+  documentation. Three independent defects were in that path: `check_permission()`
+  decided read-only from a hard-coded list of native tool names and never
+  consulted the resolved capability; `.gate_decide()` discarded the capability
+  the gate had resolved from the live tool object; and `register_tool_meta()`
+  defaults to set `"C"` while the default policy enabled only `c("A", "B")`, so
+  a declared host tool was denied in **every** mode including `bypass`, with no
+  diagnostic. Default tool sets are now `c("A", "B", "C")` -- that registry is
+  populated only by an explicit host call, and an undeclared tool is still
+  denied on `known = FALSE` before any set check. Built-in metadata remains
+  authoritative, so a host still cannot downgrade `Bash` by claiming `"read"`.
+
+* btw tools are now classified from the `read_only_hint` each tool declares,
+  instead of only a prefix scan that had drifted. Eight tools were misjudged as
+  needing a permission prompt -- `git_status`, `git_diff`, `git_log`,
+  `git_branch_list`, `ide_read_current_editor`, `pkg_coverage` and `skill` were
+  treated as `exec`. Only `exec` is relaxed: `web_read_url` declares itself
+  read-only but keeps its `net` capability, because reaching the network is an
+  independent dimension from not mutating state. A missing or false hint keeps
+  the conservative result, so a new btw release can only ever be classified
+  correctly or conservatively, never dangerously.
+
 * Added `codeagent_client(tools=)`, one capability namespace that selects what
   gets registered: `NULL` for everything (the historical default), `FALSE` for
   nothing (tools the host registered on the Chat are kept), or a mix of
