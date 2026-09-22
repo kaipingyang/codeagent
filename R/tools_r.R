@@ -9,7 +9,12 @@
 NULL
 
 # Tool-name prefixes that map to logical groups (for optional filtering).
-# Covers all groups available in btw 1.2.1.
+# MUST cover every group the installed btw ships -- test-tools-registry.R fails
+# when btw adds one, so that a human decides the mapping instead of letting the
+# new tool fall through to the "unknown -> exec" default in .tool_metadata().
+# Listing a group here does NOT mean codeagent registers it: `run` and `skills`
+# are owned by codeagent (RunR wraps btw_tool_run_r; .make_skill_tool() replaces
+# btw_tool_skill) and .btw_selected_tools() filters them out regardless.
 .BTW_GROUPS <- list(
   agent       = "btw_tool_agent_",
   cran        = "btw_tool_cran_",
@@ -20,10 +25,48 @@ NULL
   github      = "btw_tool_github",
   ide         = "btw_tool_ide_",
   pkg         = "btw_tool_pkg_",
+  run         = "btw_tool_run_",
   sessioninfo = "btw_tool_sessioninfo_",
+  skills      = "btw_tool_skill",
   web         = "btw_tool_web_"
-  # "skill" group (btw_tool_skill) is registered separately via .make_skill_tool()
 )
+
+# Capability groups for codeagent-native tools. Deliberately shares one
+# namespace with .BTW_GROUPS: a group names a CAPABILITY, not an owner.
+# Five names appear in both tables, in two distinct shapes:
+#   files, web    -- two parallel implementations, selectable (see file_tools)
+#   run, agent, skills -- codeagent owns the capability and .btw_selected_tools()
+#                         filters the btw tools out (RunR wraps btw_tool_run_r;
+#                         .make_skill_tool() replaces btw_tool_skill; the Agent
+#                         owner keeps worktree/async/Data Shield semantics).
+.CODEAGENT_GROUPS <- list(
+  files    = c("Read", "Write", "Edit", "MultiEdit", "Glob", "Grep", "LS"),
+  notebook = c("NotebookRead", "NotebookEdit"),
+  shell    = "Bash",
+  run      = "RunR",
+  lint     = c("Lint", "Format"),
+  web      = c("WebSearch", "WebFetch"),
+  task     = c("TaskCreate", "TaskGet", "TaskUpdate", "TaskList", "TodoWrite"),
+  agent    = c("Agent", "BackgroundAgent", "TeamRun", "TeamCoordinate"),
+  plan     = c("EnterPlanMode", "ExitPlanMode"),
+  skills   = "use_skill",
+  memory   = "remember",
+  data     = c("DescribeData", "ExploreData"),
+  interact = "AskUserQuestion",
+  review   = c("AuditCode", "GenerateReport")
+)
+
+# Resolve a tool name to its capability group. Native tools win over the btw
+# prefix scan so an owned capability reports the codeagent group. Returns ""
+# for tools codeagent has not classified.
+#' @keywords internal
+.tool_group <- function(name) {
+  for (g in names(.CODEAGENT_GROUPS))
+    if (name %in% .CODEAGENT_GROUPS[[g]]) return(g)
+  for (g in names(.BTW_GROUPS))
+    if (startsWith(name, .BTW_GROUPS[[g]])) return(g)
+  ""
+}
 
 .btw_selected_tools <- function(groups = NULL, include_agent = TRUE) {
   all_tools <- btw::btw_tools()

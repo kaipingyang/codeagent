@@ -1,5 +1,39 @@
 # codeagent 0.2.3
 
+* Added `codeagent_client(tools=)`, one capability namespace that selects what
+  gets registered: `NULL` for everything (the historical default), `FALSE` for
+  nothing (tools the host registered on the Chat are kept), or a mix of
+  capability groups, individual tool names, and btw group names. The two
+  capabilities with parallel implementations take an `@` suffix -- `files@core`
+  / `files@btw` / `files@both` and the same for `web` -- which folds the
+  `file_tools` switch and btw's Path A into the same selection. Unknown names
+  are an error listing the valid groups rather than a silent drop.
+  `btw_groups=` is superseded by it; supplying both is an error.
+
+* Added `codeagent_client(disallowed_tools=)`, which carries the same two
+  meanings as the Claude Agent SDK's public argument: a bare name (tool or
+  capability group) removes the tool definitions so the model never sees them,
+  while a scoped entry such as `"Bash(rm *)"` keeps the tool and becomes an
+  ordinary deny rule, absolute in every permission mode including `bypass`.
+
+* Added drift guards for the btw integration: `.BTW_GROUPS` must cover every
+  group the installed btw ships, and every codeagent-native tool must declare a
+  capability group. This caught `.BTW_GROUPS` still describing btw 1.2.1 while
+  btw 1.5.0 was installed -- `run` and `skills` were missing, so passing either
+  name reported "unknown group" instead of naming the codeagent tool that owns
+  the capability (`RunR`, `use_skill`). When btw next adds a tool or group,
+  these tests fail on purpose so the classification is a decision rather than a
+  fall-through to the "unknown -> exec" default.
+
+* Reduced streaming startup and finalization overhead by reusing a small async
+  driver and moving synchronous event dispatch outside the coroutine state
+  machine. A callback-driven iterator keeps one completion promise and waits for
+  asynchronous iterator cleanup before releasing ownership. Text is accumulated
+  in chunks. Async-turn ownership now unwinds even when stream creation and
+  error notification both fail. JIT, Shiny deep stacks, callback ordering,
+  Data Shield, and citation buffering remain enabled. This does not eliminate
+  ellmer's internal high-rate streaming overhead.
+
 This patch release adds optional Liquid Glass theming, fixes tool-card behavior,
 and closes security/integration blockers found during PR review. It includes one
 intentional safe-default change: `team_lead()` now defaults to `"dont_ask"`.

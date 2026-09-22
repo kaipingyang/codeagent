@@ -190,11 +190,17 @@ HookRegistry <- R6::R6Class(
     # Legacy convenience methods -------------------------------------------------
 
     #' @description Register a PreToolUse hook (legacy shorthand).
+    #' @param fn Function. Hook callback.
+    #' @param tool_pattern Character or NULL. Glob filter for tool name (only applies to tool-related events).
+    #' @param timeout_ms Integer. Max ms before warning (default 2000).
     register_pre = function(fn, tool_pattern = NULL, timeout_ms = 2000L) {
       self$register(HookEvent$PRE_TOOL_USE, fn, tool_pattern, timeout_ms)
     },
 
     #' @description Register a PostToolUse hook (legacy shorthand).
+    #' @param fn Function. Hook callback.
+    #' @param tool_pattern Character or NULL. Glob filter for tool name (only applies to tool-related events).
+    #' @param timeout_ms Integer. Max ms before warning (default 2000).
     register_post = function(fn, tool_pattern = NULL, timeout_ms = 2000L) {
       self$register(HookEvent$POST_TOOL_USE, fn, tool_pattern, timeout_ms)
     },
@@ -202,6 +208,8 @@ HookRegistry <- R6::R6Class(
     # Fire methods ---------------------------------------------------------------
 
     #' @description Fire PreToolUse hooks.
+    #' @param tool_name Character. Tool name.
+    #' @param tool_input List. Tool arguments.
     run_pre = function(tool_name, tool_input) {
       current_input <- tool_input
       for (hook in private$hooks[[HookEvent$PRE_TOOL_USE]]) {
@@ -224,6 +232,9 @@ HookRegistry <- R6::R6Class(
     },
 
     #' @description Fire PostToolUse hooks.
+    #' @param tool_name Character. Tool name.
+    #' @param tool_input List. Tool arguments.
+    #' @param tool_output The tool result passed through the hooks.
     run_post = function(tool_name, tool_input, tool_output) {
       current_output <- tool_output
       for (hook in private$hooks[[HookEvent$POST_TOOL_USE]]) {
@@ -239,6 +250,9 @@ HookRegistry <- R6::R6Class(
     },
 
     #' @description Fire PostToolUseFailure hooks (informational).
+    #' @param tool_name Character. Tool name.
+    #' @param tool_input List. Tool arguments.
+    #' @param error_message Character. Error text from the failed tool call.
     run_failure = function(tool_name, tool_input, error_message) {
       for (hook in private$hooks[[HookEvent$POST_TOOL_USE_FAILURE]]) {
         if (!.hook_pattern_matches(hook$pattern, tool_name)) next
@@ -249,6 +263,9 @@ HookRegistry <- R6::R6Class(
     },
 
     #' @description Fire PermissionDenied hooks (informational).
+    #' @param tool_name Character. Tool name.
+    #' @param tool_input List. Tool arguments.
+    #' @param mode Character. Active permission mode.
     run_permission_denied = function(tool_name, tool_input, mode) {
       for (hook in private$hooks[[HookEvent$PERMISSION_DENIED]]) {
         if (!.hook_pattern_matches(hook$pattern, tool_name)) next
@@ -259,6 +276,9 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire PermissionRequest hooks.
     #' Returns "allow", "deny", or NULL (fall through to ask_fn).
+    #' @param tool_name Character. Tool name.
+    #' @param tool_input List. Tool arguments.
+    #' @param mode Character. Active permission mode.
     run_permission_request = function(tool_name, tool_input, mode) {
       for (hook in private$hooks[[HookEvent$PERMISSION_REQUEST]]) {
         if (!.hook_pattern_matches(hook$pattern, tool_name)) next
@@ -278,6 +298,7 @@ HookRegistry <- R6::R6Class(
     #'   original text. Returns a list: `list(action = "block", message = ...)`
     #'   if any hook blocked, else `list(action = "allow", additional_context =
     #'   <appended text or NULL>)`.
+    #' @param message Character. Message text.
     run_user_prompt_submit = function(message) {
       ctx <- character(0)
       for (hook in private$hooks[[HookEvent$USER_PROMPT_SUBMIT]]) {
@@ -299,6 +320,7 @@ HookRegistry <- R6::R6Class(
     #'   #14). The event was renamed to align with Claude Code's public
     #'   `UserPromptSubmit`; this shim forwards to the new method for one release
     #'   cycle so existing callers do not break. Prefer `run_user_prompt_submit()`.
+    #' @param message Character. Message text.
     run_user_message = function(message) {
       .Deprecated("run_user_prompt_submit",
                   msg = "run_user_message() is deprecated; use run_user_prompt_submit().")
@@ -306,6 +328,7 @@ HookRegistry <- R6::R6Class(
     },
 
     #' @description Fire AssistantMessage hooks (informational).
+    #' @param message Character. Message text.
     run_assistant_message = function(message) {
       for (hook in private$hooks[[HookEvent$ASSISTANT_MESSAGE]])
         .run_hook_timed(hook$fn, hook$timeout_ms, message)
@@ -314,6 +337,7 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire SessionStart hooks at the top of a session/turn.
     #'   Callback: `function(context)`. Return value ignored.
+    #' @param context List. Event context.
     run_session_start = function(context = list()) {
       for (hook in private$hooks[[HookEvent$SESSION_START]])
         .run_hook_timed(hook$fn, hook$timeout_ms, context)
@@ -322,6 +346,8 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire Stop hooks when the agent loop terminates.
     #'   Callback: `function(stop_reason, context)`. Return value ignored.
+    #' @param stop_reason Character. Why the agent loop terminated.
+    #' @param context List. Event context.
     run_stop = function(stop_reason = "completed", context = list()) {
       for (hook in private$hooks[[HookEvent$STOP]])
         .run_hook_timed(hook$fn, hook$timeout_ms, stop_reason, context)
@@ -330,6 +356,8 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire PreCompact hooks before context compaction.
     #'   Callback: `function(level, context)`. Return value ignored.
+    #' @param level Character. Compaction level about to run.
+    #' @param context List. Event context.
     run_pre_compact = function(level = "unknown", context = list()) {
       for (hook in private$hooks[[HookEvent$PRE_COMPACT]])
         .run_hook_timed(hook$fn, hook$timeout_ms, level, context)
@@ -338,6 +366,8 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire SubagentStart hooks when a sub-agent is launched.
     #'   Callback: `function(description, context)`. Return value ignored.
+    #' @param description Character. Sub-agent task description.
+    #' @param context List. Event context.
     run_subagent_start = function(description = "", context = list()) {
       for (hook in private$hooks[[HookEvent$SUBAGENT_START]])
         .run_hook_timed(hook$fn, hook$timeout_ms, description, context)
@@ -346,6 +376,9 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire SubagentStop hooks when a sub-agent completes.
     #'   Callback: `function(description, result, context)`. Return ignored.
+    #' @param description Character. Sub-agent task description.
+    #' @param result The sub-agent's result, or NULL.
+    #' @param context List. Event context.
     run_subagent_stop = function(description = "", result = NULL, context = list()) {
       for (hook in private$hooks[[HookEvent$SUBAGENT_STOP]])
         .run_hook_timed(hook$fn, hook$timeout_ms, description, result, context)
@@ -356,6 +389,8 @@ HookRegistry <- R6::R6Class(
     #'   Callback: `function(reason, context)`. Return value ignored.
     #'   `reason` mirrors CC's exit reasons where they map (e.g. "completed",
     #'   "max_turns", "budget_exceeded", "error").
+    #' @param reason Character. Why the session ended.
+    #' @param context List. Event context.
     run_session_end = function(reason = "completed", context = list()) {
       for (hook in private$hooks[[HookEvent$SESSION_END]])
         .run_hook_timed(hook$fn, hook$timeout_ms, reason, context)
@@ -364,6 +399,9 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire PostCompact hooks after context compaction completes.
     #'   Callback: `function(trigger, compact_summary, context)`. Return ignored.
+    #' @param trigger Character. What triggered compaction.
+    #' @param compact_summary Character. Summary produced by compaction.
+    #' @param context List. Event context.
     run_post_compact = function(trigger = "auto", compact_summary = "", context = list()) {
       for (hook in private$hooks[[HookEvent$POST_COMPACT]])
         .run_hook_timed(hook$fn, hook$timeout_ms, trigger, compact_summary, context)
@@ -372,6 +410,8 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire StopFailure hooks when the loop ends on an error.
     #'   Callback: `function(error, context)`. Return value ignored.
+    #' @param error Character. The error that ended the loop.
+    #' @param context List. Event context.
     run_stop_failure = function(error = "", context = list()) {
       for (hook in private$hooks[[HookEvent$STOP_FAILURE]])
         .run_hook_timed(hook$fn, hook$timeout_ms, error, context)
@@ -380,6 +420,9 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire Notification hooks for user-facing notifications.
     #'   Callback: `function(message, notification_type, context)`. Return ignored.
+    #' @param message Character. Notification text.
+    #' @param notification_type Character. Notification category.
+    #' @param context List. Event context.
     run_notification = function(message = "", notification_type = "info", context = list()) {
       for (hook in private$hooks[[HookEvent$NOTIFICATION]])
         .run_hook_timed(hook$fn, hook$timeout_ms, message, notification_type, context)
@@ -388,6 +431,9 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire TaskCreated hooks when a task is created.
     #'   Callback: `function(task_id, task_subject, context)`. Return ignored.
+    #' @param task_id Character. Task id.
+    #' @param task_subject Character. Task subject.
+    #' @param context List. Event context.
     run_task_created = function(task_id = "", task_subject = "", context = list()) {
       for (hook in private$hooks[[HookEvent$TASK_CREATED]])
         .run_hook_timed(hook$fn, hook$timeout_ms, task_id, task_subject, context)
@@ -396,6 +442,9 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire TaskCompleted hooks when a task becomes completed.
     #'   Callback: `function(task_id, task_subject, context)`. Return ignored.
+    #' @param task_id Character. Task id.
+    #' @param task_subject Character. Task subject.
+    #' @param context List. Event context.
     run_task_completed = function(task_id = "", task_subject = "", context = list()) {
       for (hook in private$hooks[[HookEvent$TASK_COMPLETED]])
         .run_hook_timed(hook$fn, hook$timeout_ms, task_id, task_subject, context)
@@ -404,6 +453,8 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire WorktreeCreate hooks when a sub-agent worktree is made.
     #'   Callback: `function(name, context)`. Return value ignored.
+    #' @param name Character. Worktree name.
+    #' @param context List. Event context.
     run_worktree_create = function(name = "", context = list()) {
       for (hook in private$hooks[[HookEvent$WORKTREE_CREATE]])
         .run_hook_timed(hook$fn, hook$timeout_ms, name, context)
@@ -412,6 +463,8 @@ HookRegistry <- R6::R6Class(
 
     #' @description Fire WorktreeRemove hooks when a sub-agent worktree is removed.
     #'   Callback: `function(worktree_path, context)`. Return value ignored.
+    #' @param worktree_path Character. Path of the removed worktree.
+    #' @param context List. Event context.
     run_worktree_remove = function(worktree_path = "", context = list()) {
       for (hook in private$hooks[[HookEvent$WORKTREE_REMOVE]])
         .run_hook_timed(hook$fn, hook$timeout_ms, worktree_path, context)
@@ -424,6 +477,10 @@ HookRegistry <- R6::R6Class(
     #'   (User/Project by path prefix; no Managed concept) and `load_reason` is
     #'   always "session_start" -- codeagent has no nested/glob/include/compact
     #'   load paths, so these fields are NOT field-for-field equal to CC.
+    #' @param file_path Character. Path of the loaded CLAUDE.md file.
+    #' @param memory_type Character. Best-effort User/Project classification.
+    #' @param load_reason Character. Always "session_start" in codeagent.
+    #' @param context List. Event context.
     run_instructions_loaded = function(file_path = "", memory_type = "Project",
                                        load_reason = "session_start", context = list()) {
       for (hook in private$hooks[[HookEvent$INSTRUCTIONS_LOADED]])
@@ -436,6 +493,9 @@ HookRegistry <- R6::R6Class(
     #'   Callback: `function(file_path, event, context)` where `event` is one of
     #'   "change"/"add"/"unlink". Return value ignored. Not fired on the CLI --
     #'   the synchronous CLI loop cannot pump the `later` queue watcher needs.
+    #' @param file_path Character. Path that changed.
+    #' @param event Character. One of "change", "add", "unlink".
+    #' @param context List. Event context.
     run_file_changed = function(file_path = "", event = "change", context = list()) {
       for (hook in private$hooks[[HookEvent$FILE_CHANGED]])
         .run_hook_timed(hook$fn, hook$timeout_ms, file_path, event, context)
@@ -445,6 +505,9 @@ HookRegistry <- R6::R6Class(
     #' @description Fire ConfigChange hooks (Shiny-only; watcher-driven).
     #'   Callback: `function(source, file_path, context)`. Return value ignored.
     #'   Not fired on the CLI (see the `run_file_changed()` method note).
+    #' @param source Character. Which configuration source changed.
+    #' @param file_path Character. Path of the changed configuration file.
+    #' @param context List. Event context.
     run_config_change = function(source = "user_settings", file_path = "", context = list()) {
       for (hook in private$hooks[[HookEvent$CONFIG_CHANGE]])
         .run_hook_timed(hook$fn, hook$timeout_ms, source, file_path, context)

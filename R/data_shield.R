@@ -929,6 +929,7 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Return non-sensitive policy metadata for one registered asset.
+    #' @param name Character(1). Registered asset name.
     asset_policy = function(name) {
       private$assert_open()
       asset <- private$assets[[name]]
@@ -937,12 +938,14 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Resolve effective Shield policy for one tool/agent name.
+    #' @param tool_name Character(1). Tool or agent name to resolve the policy for.
     tool_policy = function(tool_name) {
       private$assert_open()
       private$resolve_tool_policy(tool_name)
     },
 
     #' @description Return prompt-safe content according to an asset policy.
+    #' @param name Character(1). Registered asset name.
     prompt_content = function(name) {
       private$assert_open()
       asset <- private$asset(name)
@@ -964,6 +967,8 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Tag one result with registered provenance for raw egress.
+    #' @param value The tool result value to tag with provenance.
+    #' @param source Character(1). Registered asset name approved for raw egress.
     trusted_result = function(value, source) {
       private$assert_open()
       asset <- private$asset(source)
@@ -973,6 +978,7 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Install/refresh this shield on an ellmer Chat.
+    #' @param chat An `ellmer::Chat` to install or refresh this shield on.
     install = function(chat) {
       private$assert_open()
       if (!inherits(chat, "Chat"))
@@ -1012,6 +1018,7 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Return strict safe metadata for a registered dataset.
+    #' @param name Character(1) or NULL. Dataset name; NULL when exactly one dataset is registered.
     describe = function(name = NULL) {
       private$assert_open()
       if (!isTRUE(private$config$describe_enabled))
@@ -1464,6 +1471,8 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Add a custom scanner function to the end of the egress pipeline.
+    #' @param name Character(1). Scanner name.
+    #' @param fn Function. Scanner appended to the end of the egress pipeline.
     add_scanner = function(name, fn) {
       private$assert_open()
       if (!is.character(name) || length(name) != 1L || !nzchar(name) || !is.function(fn))
@@ -1516,6 +1525,7 @@ DataShield <- R6::R6Class(
     },
 
     #' @description Remove one dataset, or all datasets when name is NULL.
+    #' @param name Character(1) or NULL. Dataset to remove; NULL removes every dataset.
     clear = function(name = NULL) {
       private$assert_open()
       if (is.null(name)) {
@@ -1731,16 +1741,17 @@ DataShield <- R6::R6Class(
       handle(reviewed)
     },
 
-    #' @description Review a block of code/text with the configured reviewer
-    #'   and return its structured risk verdict. Used by the code-audit pipeline
-    #'   (`.audit_code_impl`) to review external-file contents that deterministic
-    #'   code has already extracted and whitelisted -- the reviewer never reads
-    #'   files itself. Sanitizes the text (strip protected values) before it
-    #'   reaches the reviewer, same as `run_reviewers`. Returns
-    #'   `list(error, risk, confidence, reason)`; when no reviewer is configured,
-    #'   `list(error = TRUE, reason = "no reviewer configured")`.
-    #' @param text Character. The code/text to review (untrusted).
-    #' @param context Optional non-sensitive context (`tool_name`, `capability`).
+    # Review a block of code/text with the configured reviewer and return its
+    # structured risk verdict. Used by the code-audit pipeline
+    # (`.audit_code_impl`) to review external-file contents that deterministic
+    # code has already extracted and whitelisted -- the reviewer never reads
+    # files itself. Sanitizes the text (strip protected values) before it
+    # reaches the reviewer, same as `run_reviewers`. Returns
+    # `list(error, risk, confidence, reason)`; when no reviewer is configured,
+    # `list(error = TRUE, reason = "no reviewer configured")`.
+    # This method is private, so roxygen tags would not resolve here.
+    #   text:    Character. The code/text to review (untrusted).
+    #   context: Optional non-sensitive context (`tool_name`, `capability`).
     review_code = function(text, context = list()) {
       private$assert_open()
       if (!length(private$reviewers))

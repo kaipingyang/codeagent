@@ -16,7 +16,9 @@ codeagent_client(
   mcp_config = NULL,
   register_tools = TRUE,
   data_shield = NULL,
-  max_budget_usd = NULL
+  max_budget_usd = NULL,
+  tools = NULL,
+  disallowed_tools = NULL
 )
 }
 \arguments{
@@ -33,8 +35,9 @@ env vars (or Anthropic defaults).}
 
 \item{max_turns}{Integer. Maximum agentic loop turns.}
 
-\item{btw_groups}{Character vector or NULL. btw tool groups to register
-(e.g. \code{c("docs","git","pkg")}). NULL = all available groups.}
+\item{btw_groups}{Character vector or NULL. Superseded by \code{tools}: btw group
+names are ordinary \code{tools} entries. Still honoured on its own (NULL = all
+available groups), but supplying both \code{tools} and \code{btw_groups} is an error.}
 
 \item{worktree_isolation}{Logical. Run sub-agents in isolated git worktrees.}
 
@@ -63,6 +66,29 @@ serving endpoint ellmer doesn't recognize) report cost \verb{$0} forever, so
 the cap silently never fires there -- this is a known limitation, not a
 bug (see \code{CODEAGENT_MAX_BUDGET_USD} env var / \code{max_budget_usd} in
 settings.json for the same knob without a client-code change).}
+
+\item{tools}{Tool selection, in one capability namespace shared by
+codeagent-native and btw groups.
+\itemize{
+\item \code{NULL} (default) registers everything, exactly as before.
+\item \code{FALSE} registers no codeagent tool; tools the host registered on \code{chat}
+itself are untouched.
+\item A character vector of capability groups (\code{"files"}, \code{"shell"}, \code{"docs"},
+\code{"git"}, ...), individual tool names (\code{"Read"}, \code{"Bash"}), or both.
+Two capabilities have parallel implementations and take an \code{@} suffix:
+\code{"files@core"} (codeagent's, any absolute path), \code{"files@btw"} (btw's
+hash-anchored, cwd-only Path A), \code{"files@both"}, and the same for \code{"web"}.
+Unknown names are an error listing the valid groups, never a silent drop.
+Resource-driven tools stay on their own arguments (\code{mcp_config},
+\code{data_shield}) and are never removed by this selection.
+}}
+
+\item{disallowed_tools}{Character vector or NULL. Carries two meanings in one
+vector, mirroring the Claude Agent SDK's public contract. A bare name --
+a tool (\code{"Bash"}) or a capability group (\code{"lint"}) -- removes those tool
+definitions, so the model never sees them. A scoped entry (\code{"Bash(rm *)"})
+keeps the tool and becomes an ordinary deny rule, which is absolute in
+every permission mode including \code{bypass}.}
 }
 \value{
 Object of class \code{CodeagentClient} with \verb{$chat}, \verb{$settings}, and
