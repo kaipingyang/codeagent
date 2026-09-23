@@ -61,12 +61,30 @@ PermissionMode <- list(
 #' @param tool_input List or NULL. Tool arguments (used for Bash read-only detection).
 #' @param allow_plan_exit Logical. Whether `ExitPlanMode` may restore a mode
 #'   after a trusted in-session `EnterPlanMode` transition.
+#' @param capability Optional character(1). The caller's resolved capability for
+#'   this tool (`"read"`, `"write"`, `"exec"`, `"net"`). The central gate passes
+#'   what it resolved from the live `ToolDef`, which can see annotations a
+#'   name-only lookup cannot (btw sets `read_only_hint` on every tool it ships).
+#'   Ignored for tools listed in the built-in metadata, so a host cannot
+#'   downgrade `Bash` by passing `"read"`. `NULL` resolves from the tool name.
 #' @return Character(1): `"allow"`, `"deny"`, or `"ask"`.
 #' @export
 check_permission <- function(tool_name, mode = "default",
                               rules = list(), tool_input = NULL,
-                              allow_plan_exit = FALSE) {
-  is_readonly <- tool_name %in% .READONLY_TOOLS
+                              allow_plan_exit = FALSE, capability = NULL) {
+  # A tool is read-only when the hard-coded list names it, OR when its resolved
+  # capability is "read". The list alone was not enough: it covers only native
+  # tools, so btw's read-only tools and any host tool declared through
+  # register_tool_meta(capability = "read") were treated as sensitive -- denied
+  # in plan mode and prompted for in default mode, contradicting both
+  # .gate_decide()'s own plan branch and register_tool_meta()'s documented
+  # promise. Built-in .TOOL_META stays authoritative so a host cannot downgrade
+  # Bash by passing capability = "read" here.
+  resolved_capability <- if (!is.null(.TOOL_META[[tool_name]]))
+    .TOOL_META[[tool_name]]$capability
+    else capability %||% .tool_metadata(tool_name)$capability
+  is_readonly <- tool_name %in% .READONLY_TOOLS ||
+    identical(resolved_capability, "read")
 
   # 1. Explicit deny rules are absolute. Among the remaining matching rules,
   # preserve declaration order for allow/ask.

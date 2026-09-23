@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -97,7 +97,7 @@ intentional session/thread sharing). Implemented strategies are shown first;
 planned strategies are listed separately so the examples never imply they
 already exist.
 
-```{r}
+```{r, purl=FALSE}
 # Implemented now:
 client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
@@ -476,7 +476,7 @@ other tool is still scanned.
 
 The minimal, deterministic slice that already gives real protection:
 
-```{r}
+```{r, purl=FALSE}
 # Easy entry: strategy specs create one private DataShield R6 for this client.
 client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
@@ -507,7 +507,7 @@ The dataset does **not** need to be known when the app starts. Register it in
 the upload observer immediately after reading it; tools may already be attached
 and wrapped, because value matching reads the live index at invocation time.
 
-```{r}
+```{r, purl=FALSE}
 # Inside each Shiny server session: one R6 may be shared by selected chats.
 shield <- DataShield$new(
   strategies = list(shield_describe(), shield_egress(max_rows = 0)))
@@ -526,7 +526,7 @@ observeEvent(input$file, {
 
 A complete runnable host-style Shiny example is installed at:
 
-```{r}
+```{r, purl=FALSE}
 system.file("examples/data_shield_upload_app.R", package = "codeagent")
 ```
 

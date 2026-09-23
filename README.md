@@ -124,6 +124,46 @@ refresh. In that case `chat$get_cost()` may remain zero and a
 | agent | btw | hierarchical subagent delegation |
 | data | codeagent | `ExploreData` — arbitrary model-generated R execution over a data.frame (exec-gated, not a sandbox); `DescribeData` — strict protected-data metadata (Data Shield) |
 
+#### Selecting tools
+
+`codeagent_client(tools=)` picks what gets registered, in one capability
+namespace shared by codeagent-native and btw groups:
+
+```r
+codeagent_client(chat)                                # NULL: everything (default)
+codeagent_client(chat, tools = FALSE)                 # nothing; host tools kept
+codeagent_client(chat, tools = c("files", "shell"))   # capability groups
+codeagent_client(chat, tools = c("Read", "Glob"))     # individual tool names
+codeagent_client(chat, tools = c("docs", "git"))      # btw groups, same namespace
+```
+
+Two capabilities have parallel implementations and take an `@` suffix:
+
+| Selection | Effect |
+|---|---|
+| `files@core` (default) | codeagent's `Read`/`Write`/`Edit`/... — any absolute path |
+| `files@btw` | btw's hash-anchored, atomic-patch set — project cwd only |
+| `files@both` | both paths registered; the model picks per task |
+| `web@core` / `web@btw` / `web@both` (default) | `WebSearch`+`WebFetch` / btw's URL reader / both |
+
+Unknown names are an error that lists the valid groups, never a silent drop.
+An entry that is valid but ends up registering nothing — a btw group whose
+optional dependency is missing (`git` without `{gert}`, `github` without `{gh}`),
+or one you also passed to `disallowed_tools` — warns and names the entry.
+Resource-driven tools keep their own arguments (`mcp_config`, `data_shield`) and
+are never removed by this selection. `btw_groups=` is superseded by `tools=`;
+supplying both is an error.
+
+`disallowed_tools=` carries two meanings in one vector:
+
+```r
+# bare name (tool or group): the definition is removed, the model never sees it
+codeagent_client(chat, disallowed_tools = c("Bash", "lint"))
+
+# scoped: the tool stays, matching calls are denied in every mode incl. bypass
+codeagent_client(chat, disallowed_tools = "Bash(rm *)")
+```
+
 Tool authorization is enforced by one fail-closed central gate. Enabled tool
 sets, capability policies, per-tool overrides, and fine-grained path rules are
 checked for every invocation, including `bypass`; unknown tools require explicit
@@ -134,6 +174,20 @@ actual tools; worker reconstruction may remove capabilities but cannot add
 tools the parent did not expose. Same-name tools must also match the parent's
 unwrapped implementation signature. Explicit deny rules take precedence over
 all allow rules, including multi-file patches.
+
+A tool's **capability** (`read` / `write` / `exec` / `net`) is what the gate
+decides on. Built-in metadata is authoritative; btw tools fall back to the
+`read_only_hint` each tool declares, and host tools declare theirs explicitly:
+
+```r
+chat$register_tool(my_excel_reader)                      # a host tool
+register_tool_meta("erp_tool_read_excel", "read")        # -> runs without prompting,
+                                                         #    and inside plan mode
+```
+
+A tool with no declaration resolves to `exec` and, if never declared at all, is
+denied in every mode including `bypass`. A host cannot downgrade a built-in:
+declaring `Bash` as `"read"` leaves it `exec`.
 
 Foreground `Agent` clones the active Chat and forwards the parent's approval
 callback. Process-based `TeamRun` and `BackgroundAgent` are registered only
@@ -445,6 +499,17 @@ actually removed while core, MCP, skill, and separately owned tools are retained
 the Agent checkbox controls the single foreground Agent owner. Permission or
 tool-group changes are rejected while a response is streaming, and a failed
 refresh restores the previous tool snapshot before input is re-enabled.
+
+`codeagent_stream_async()` uses a shared, small coroutine that awaits one
+callback-driven stream completion. Event dispatch and finalization stay outside
+its generated state machine, and text is assembled from chunks rather than
+repeatedly copying the full reply. Iterator cleanup is awaited before releasing
+async-turn ownership, including when a text callback throws.
+This reduces per-turn compilation overhead without disabling R JIT or Shiny
+deep-stack tracing. Data Shield and enabled web citations still buffer output
+until their existing final scan/render step; they are not bypassed for speed.
+It does not remove ellmer's internal per-fragment coroutine overhead in
+high-rate streams.
 
 Tool results have three deliberately separate channels: the model receives the
 portable text `value`; any UI can consume the versioned

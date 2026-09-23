@@ -145,6 +145,15 @@ Return value ignored (informational only).
     \preformatted{HookRegistry$register_pre(fn, tool_pattern = NULL, timeout_ms = 2000L)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{fn}}{Function. Hook callback.}
+      \item{\code{tool_pattern}}{Character or NULL. Glob filter for tool name (only applies to tool-related events).}
+      \item{\code{timeout_ms}}{Integer. Max ms before warning (default 2000).}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -155,6 +164,15 @@ Return value ignored (informational only).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$register_post(fn, tool_pattern = NULL, timeout_ms = 2000L)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{fn}}{Function. Hook callback.}
+      \item{\code{tool_pattern}}{Character or NULL. Glob filter for tool name (only applies to tool-related events).}
+      \item{\code{timeout_ms}}{Integer. Max ms before warning (default 2000).}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -169,6 +187,14 @@ Return value ignored (informational only).
     \preformatted{HookRegistry$run_pre(tool_name, tool_input)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_name}}{Character. Tool name.}
+      \item{\code{tool_input}}{List. Tool arguments.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -179,6 +205,15 @@ Return value ignored (informational only).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_post(tool_name, tool_input, tool_output)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_name}}{Character. Tool name.}
+      \item{\code{tool_input}}{List. Tool arguments.}
+      \item{\code{tool_output}}{The tool result passed through the hooks.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -193,6 +228,15 @@ Return value ignored (informational only).
     \preformatted{HookRegistry$run_failure(tool_name, tool_input, error_message)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_name}}{Character. Tool name.}
+      \item{\code{tool_input}}{List. Tool arguments.}
+      \item{\code{error_message}}{Character. Error text from the failed tool call.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -203,6 +247,15 @@ Return value ignored (informational only).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_permission_denied(tool_name, tool_input, mode)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_name}}{Character. Tool name.}
+      \item{\code{tool_input}}{List. Tool arguments.}
+      \item{\code{mode}}{Character. Active permission mode.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -216,6 +269,15 @@ Returns "allow", "deny", or NULL (fall through to ask_fn).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_permission_request(tool_name, tool_input, mode)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_name}}{Character. Tool name.}
+      \item{\code{tool_input}}{List. Tool arguments.}
+      \item{\code{mode}}{Character. Active permission mode.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -234,6 +296,13 @@ if any hook blocked, else \verb{list(action = "allow", additional_context = <app
     \preformatted{HookRegistry$run_user_prompt_submit(message)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{message}}{Character. Message text.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -249,6 +318,13 @@ cycle so existing callers do not break. Prefer \code{run_user_prompt_submit()}.
     \preformatted{HookRegistry$run_user_message(message)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{message}}{Character. Message text.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -259,6 +335,13 @@ cycle so existing callers do not break. Prefer \code{run_user_prompt_submit()}.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_assistant_message(message)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{message}}{Character. Message text.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -274,6 +357,13 @@ Callback: \verb{function(context)}. Return value ignored.
     \preformatted{HookRegistry$run_session_start(context = list())}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -285,6 +375,14 @@ Callback: \verb{function(stop_reason, context)}. Return value ignored.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_stop(stop_reason = "completed", context = list())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{stop_reason}}{Character. Why the agent loop terminated.}
+      \item{\code{context}}{List. Event context.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -300,6 +398,14 @@ Callback: \verb{function(level, context)}. Return value ignored.
     \preformatted{HookRegistry$run_pre_compact(level = "unknown", context = list())}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{level}}{Character. Compaction level about to run.}
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -311,6 +417,14 @@ Callback: \verb{function(description, context)}. Return value ignored.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_subagent_start(description = "", context = list())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{description}}{Character. Sub-agent task description.}
+      \item{\code{context}}{List. Event context.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -330,6 +444,15 @@ Callback: \verb{function(description, result, context)}. Return ignored.
 )}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{description}}{Character. Sub-agent task description.}
+      \item{\code{result}}{The sub-agent's result, or NULL.}
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -343,6 +466,14 @@ Callback: \verb{function(reason, context)}. Return value ignored.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_session_end(reason = "completed", context = list())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{reason}}{Character. Why the session ended.}
+      \item{\code{context}}{List. Event context.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -362,6 +493,15 @@ Callback: \verb{function(trigger, compact_summary, context)}. Return ignored.
 )}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{trigger}}{Character. What triggered compaction.}
+      \item{\code{compact_summary}}{Character. Summary produced by compaction.}
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -373,6 +513,14 @@ Callback: \verb{function(error, context)}. Return value ignored.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_stop_failure(error = "", context = list())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{error}}{Character. The error that ended the loop.}
+      \item{\code{context}}{List. Event context.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -392,6 +540,15 @@ Callback: \verb{function(message, notification_type, context)}. Return ignored.
 )}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{message}}{Character. Notification text.}
+      \item{\code{notification_type}}{Character. Notification category.}
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -407,6 +564,15 @@ Callback: \verb{function(task_id, task_subject, context)}. Return ignored.
   task_subject = "",
   context = list()
 )}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{task_id}}{Character. Task id.}
+      \item{\code{task_subject}}{Character. Task subject.}
+      \item{\code{context}}{List. Event context.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -426,6 +592,15 @@ Callback: \verb{function(task_id, task_subject, context)}. Return ignored.
 )}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{task_id}}{Character. Task id.}
+      \item{\code{task_subject}}{Character. Task subject.}
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -439,6 +614,14 @@ Callback: \verb{function(name, context)}. Return value ignored.
     \preformatted{HookRegistry$run_worktree_create(name = "", context = list())}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Character. Worktree name.}
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -450,6 +633,14 @@ Callback: \verb{function(worktree_path, context)}. Return value ignored.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{HookRegistry$run_worktree_remove(worktree_path = "", context = list())}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{worktree_path}}{Character. Path of the removed worktree.}
+      \item{\code{context}}{List. Event context.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -474,6 +665,16 @@ load paths, so these fields are NOT field-for-field equal to CC.
 )}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{file_path}}{Character. Path of the loaded CLAUDE.md file.}
+      \item{\code{memory_type}}{Character. Best-effort User/Project classification.}
+      \item{\code{load_reason}}{Character. Always "session_start" in codeagent.}
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -493,6 +694,15 @@ the synchronous CLI loop cannot pump the \code{later} queue watcher needs.
 )}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{file_path}}{Character. Path that changed.}
+      \item{\code{event}}{Character. One of "change", "add", "unlink".}
+      \item{\code{context}}{List. Event context.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -509,6 +719,15 @@ Not fired on the CLI (see the \code{run_file_changed()} method note).
   file_path = "",
   context = list()
 )}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{source}}{Character. Which configuration source changed.}
+      \item{\code{file_path}}{Character. Path of the changed configuration file.}
+      \item{\code{context}}{List. Event context.}
+    }
     \if{html}{\out{</div>}}
   }
 }

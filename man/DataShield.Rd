@@ -199,6 +199,13 @@ values.}
     \preformatted{DataShield$asset_policy(name)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Character(1). Registered asset name.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -209,6 +216,13 @@ values.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$tool_policy(tool_name)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{tool_name}}{Character(1). Tool or agent name to resolve the policy for.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -223,6 +237,13 @@ values.}
     \preformatted{DataShield$prompt_content(name)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Character(1). Registered asset name.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -233,6 +254,14 @@ values.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$trusted_result(value, source)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{value}}{The tool result value to tag with provenance.}
+      \item{\code{source}}{Character(1). Registered asset name approved for raw egress.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -247,6 +276,13 @@ values.}
     \preformatted{DataShield$install(chat)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{chat}}{An \code{ellmer::Chat} to install or refresh this shield on.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -257,6 +293,13 @@ values.}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$describe(name = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Character(1) or NULL. Dataset name; NULL when exactly one dataset is registered.}
+    }
     \if{html}{\out{</div>}}
   }
 }
@@ -509,6 +552,14 @@ is responsible for deciding what to read; the reviewer gets no tools).}
     \preformatted{DataShield$add_scanner(name, fn)}
     \if{html}{\out{</div>}}
   }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Character(1). Scanner name.}
+      \item{\code{fn}}{Function. Scanner appended to the end of the egress pipeline.}
+    }
+    \if{html}{\out{</div>}}
+  }
 }
 
 \if{html}{\out{<hr>}}
@@ -589,6 +640,13 @@ is responsible for deciding what to read; the reviewer gets no tools).}
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$clear(name = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{name}}{Character(1) or NULL. Dataset to remove; NULL removes every dataset.}
+    }
     \if{html}{\out{</div>}}
   }
 }

@@ -182,6 +182,13 @@ agent_tool <- function(model              = "claude-sonnet-4-6",
                            use.names = FALSE)
         sub_settings$explore_data <- isTRUE(tool_config$explore_data)
         sub_settings$rag <- isTRUE(tool_config$rag)
+        # Inherit the parent's tools= selection so the sub-agent never builds
+        # tools the parent was not given. A NULL selection means "everything",
+        # which is what a context predating this field decodes to. The
+        # allowed_tools check further down stays the authority.
+        sub_settings$tools_spec <- .rehydrate_tool_spec(tool_config$tools_spec)
+        sub_settings$disallowed_tools <- .rehydrate_disallowed_tools(
+          tool_config$disallowed_tools)
         sub_settings$delegation_tools <- FALSE
         sub_settings$hooks_registry <- hooks
         # Bind the shield before tool/gate registration so child ingress and

@@ -139,18 +139,18 @@ my_tool <- function(con, mode = "bypass") {
 - `mcptools` >= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
 - `httr2` 1.3.0（保持稳定版）
 
-**当前个人默认开发环境（2026-09-09）：**
+**当前个人默认开发环境（2026-09-22）：**
 
 个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
 
-- `ellmer` 0.5.0.9000 @ `92cfa7f48270048105ea1bfb44d23a2e59c2df6e`
+- `ellmer` 0.5.0.9000 @ `64abe4cc238d296b52e50194f4ee8257c0a320b4`
 - `btw` 1.5.0 @ `473d1d8e3114ed9136692ff3fb6b88ed0474ba66`
-- `shinychat` 0.5.0 @ `826c799994c32611629236bbc73516dbc14ff2ab`（monorepo：`posit-dev/shinychat/pkg-r`）
+- `shinychat` 0.5.0.9000 @ `fc50706f914290bceba5ccf6712a83af38e00ede`（monorepo：`posit-dev/shinychat/pkg-r`）
 - `shiny` 1.14.0.9000 @ `81844600fc15f1952838546faa6699d0506ce7f9`
-- `bslib` 0.12.0.9000 @ `7d9e2dbdd636706f40619954b6b559c283d4eae2`
-- `mcptools` 1.0.2.9000 @ `079e011e6f2a515565f903dc8a5b7c4d793746f1`
+- `bslib` 0.12.0.9000 @ `e3b761696003bdd65cea93ae6a8eefa9281ad1b5`
+- `mcptools` 1.0.2.9000 @ `8a07faae095755afd7160432a12a85cce3cb8cde`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
-- `httr2` 1.3.0.9000 @ `7ce699f813e662850ea21d9f87e242e0c699f9fe`
+- `httr2` 1.3.0.9000 @ `6313956a3202e3d8fdecf713777711d0d8140ec5`
 
 普通R环境直接使用该个人库，不依赖`/tmp` candidate或硬编码`.libPaths()`。
 上方0.2.0 shared release保持不变，除非另行执行发布promote。当前工作树
@@ -212,6 +212,17 @@ takes a **literal** anonymous function (it `substitute()`s the arg), so you cann
 dynamically-built function with it — return a `promises::then()` promise from a plain function
 instead (ellmer's `invoke_tools_async()` awaits any returned promise). See
 `lessons/2026-07-03-shiny-async-interaction.md` and `R/tools_builtin.R` `.asyncify_gated_tool()`.
+
+**Streaming latency:** keep `R/stream.R`'s shared `.run_codeagent_stream` coroutine
+small. Synchronous dispatch, text collection, and final/error handling belong in
+ordinary closures, not in the generated async state machine. Its `on.exit`
+balances async-turn depth even if an error callback throws before the first
+await. The coroutine awaits one completion promise; the callback-driven
+iterator uses standard promise-domain propagation and awaits asynchronous
+`close` in `finally` before releasing the turn. Do not restore per-turn
+construction of the large coroutine, or disable
+JIT/deep-stack tracing to hide its compilation cost. Shield/citation buffering
+is a separate behavior and must retain its output-safety contract.
 
 **`mirai::mirai_map()` 常量必须走 `.args`，不能用 `...`：** mirai (>= 2.x，验证于 2.7.1)
 **不会**把 `...` 里的具名参数绑定到 worker 进程 —— worker 里那些参数是 missing，函数报

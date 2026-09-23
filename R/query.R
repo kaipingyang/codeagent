@@ -167,8 +167,31 @@ print.CodeagentClient <- function(x, ...) {
 #' @param rules List of [PermissionRule()] objects.
 #' @param cwd Character. Working directory (used for CLAUDE.md, skills, sessions).
 #' @param max_turns Integer. Maximum agentic loop turns.
-#' @param btw_groups Character vector or NULL. btw tool groups to register
-#'   (e.g. `c("docs","git","pkg")`). NULL = all available groups.
+#' @param btw_groups Character vector or NULL. Superseded by `tools`: btw group
+#'   names are ordinary `tools` entries. Still honoured on its own (NULL = all
+#'   available groups), but supplying both `tools` and `btw_groups` is an error.
+#' @param tools Tool selection, in one capability namespace shared by
+#'   codeagent-native and btw groups.
+#'   * `NULL` (default) registers everything, exactly as before.
+#'   * `FALSE` registers no codeagent tool; tools the host registered on `chat`
+#'     itself are untouched.
+#'   * A character vector of capability groups (`"files"`, `"shell"`, `"docs"`,
+#'     `"git"`, ...), individual tool names (`"Read"`, `"Bash"`), or both.
+#'   Two capabilities have parallel implementations and take an `@` suffix:
+#'   `"files@core"` (codeagent's, any absolute path), `"files@btw"` (btw's
+#'   hash-anchored, cwd-only Path A), `"files@both"`, and the same for `"web"`.
+#'   Unknown names are an error listing the valid groups, never a silent drop.
+#'   An entry that is valid but registers nothing -- a btw group whose optional
+#'   dependency is missing, or one you also passed to `disallowed_tools` --
+#'   warns and names the entry, rather than leaving you to notice the gap.
+#'   Resource-driven tools stay on their own arguments (`mcp_config`,
+#'   `data_shield`) and are never removed by this selection.
+#' @param disallowed_tools Character vector or NULL. Carries two meanings in one
+#'   vector, mirroring the Claude Agent SDK's public contract. A bare name --
+#'   a tool (`"Bash"`) or a capability group (`"lint"`) -- removes those tool
+#'   definitions, so the model never sees them. A scoped entry (`"Bash(rm *)"`)
+#'   keeps the tool and becomes an ordinary deny rule, which is absolute in
+#'   every permission mode including `bypass`.
 #' @param worktree_isolation Logical. Run sub-agents in isolated git worktrees.
 #' @param verify_fn Function or NULL. Optional output verifier; re-enters the
 #'   loop when it reports failures (e.g. [verify_r_tests()]).
@@ -206,7 +229,9 @@ codeagent_client <- function(
   mcp_config         = NULL,
   register_tools     = TRUE,
   data_shield        = NULL,
-  max_budget_usd     = NULL
+  max_budget_usd     = NULL,
+  tools              = NULL,
+  disallowed_tools   = NULL
 ) {
   chat_supplied <- !is.null(chat)
 
@@ -235,6 +260,24 @@ codeagent_client <- function(
   settings$cwd                 <- cwd
   settings$max_turns           <- as.integer(max_turns)
   settings$btw_groups          <- btw_groups
+  # `tools=` is the single source of truth for tool selection. Resolving it here
+  # keeps the parse error at the user-facing call, and the dual-implementation
+  # backends feed the existing file_tools switch rather than a second mechanism.
+  # `btw_groups=` is the superseded half of the same job, so refuse to take both
+  # rather than silently intersect them.
+  if (!is.null(tools) && !is.null(btw_groups))
+    cli::cli_abort(c(
+      "{.arg tools} supersedes {.arg btw_groups}; supply only one.",
+      "i" = "btw group names are valid {.arg tools} entries, e.g. {.code tools = c(\"docs\", \"git\")}."
+    ))
+  settings$tools_spec          <- .resolve_tool_spec(tools)
+  # A scoped disallowed_tools entry becomes an ordinary deny rule (absolute in
+  # every mode, including bypass); a bare name is applied as a removal after
+  # registration, so the model never sees the tool at all.
+  settings$disallowed_tools    <- .resolve_disallowed_tools(disallowed_tools)
+  settings$rules               <- c(settings$disallowed_tools$rules, settings$rules)
+  if (!is.null(tools) && !isFALSE(tools))
+    settings$file_tools        <- settings$tools_spec$backends$files
   settings$worktree_isolation  <- isTRUE(worktree_isolation)
   settings$verify_fn           <- verify_fn
   settings$mcp_config          <- mcp_config
@@ -736,7 +779,7 @@ agent_loop <- function(user_input,
     rag_network_allowed <- identical(net_policy, "allow") ||
       (is.null(net_policy) && identical(mode_env$mode, "bypass"))
     rag_network_allowed <- rag_network_allowed &&
-      "A" %in% as.character(policy$sets %||% c("A", "B")) &&
+      "A" %in% as.character(policy$sets %||% .DEFAULT_TOOL_SETS) &&
       !shield_active
     tryCatch(register_rag_tool(
       chat, cwd, allow_network = rag_network_allowed),
@@ -790,6 +833,16 @@ agent_loop <- function(user_input,
       security_context = security_context),
       error = function(e) NULL)
   .sync_delegation_prompt(chat, settings, cwd)
+  # Apply the `tools=` selection. Deliberately a subtraction AFTER every
+  # register_*() call rather than a gate inside them: the btw integration path
+  # (ownership filters, Path A, wrappers) stays byte-for-byte unchanged, and a
+  # NULL spec is a no-op, so the historical default cannot regress.
+  tryCatch(.apply_tool_spec(chat, settings$tools_spec), error = function(e) NULL)
+  tryCatch(.apply_disallowed_tools(chat, settings$disallowed_tools$remove),
+           error = function(e) NULL)
+  # Say so when a `tools=` entry registered nothing. Deliberately NOT wrapped in
+  # a silencing tryCatch: the point of this call is to break the silence.
+  .report_unfulfilled_tools(chat, settings$tools_spec)
   # Mid-loop compaction: check the complete outgoing context before every model
   # request via on_request_start. No-op unless settings$midloop_compact = TRUE.
   tryCatch(register_midloop_compaction(chat, settings), error = function(e) NULL)

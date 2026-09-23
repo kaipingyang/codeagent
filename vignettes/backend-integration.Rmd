@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -41,7 +41,7 @@ codeagent's coding tools (Bash / Write / Edit / Glob / Grep / git / web) are
 attached. You get the client state and harness pipeline without registered
 tools or an installed permission gate.
 
-```{r}
+```{r, purl=FALSE}
 chat <- ellmer::chat_openai_compatible(
   base_url    = Sys.getenv("MY_BASE_URL"),
   model       = Sys.getenv("MY_MODEL"),
@@ -69,7 +69,7 @@ Use `codeagent_stream()` (blocking; pumps its own event loop) or
 `codeagent_stream_async()` (returns a promise). Rendering happens entirely
 through **typed callbacks** -- codeagent does not touch your UI.
 
-```{r}
+```{r, purl=FALSE}
 result <- codeagent::codeagent_stream(
   client, user_input,
   on_delta        = function(text_chunk)       { ... }, # assistant text
@@ -111,7 +111,7 @@ The result carries three deliberately separate channels:
   not parse or depend on it;
 - `value`: portable text for the model and unsupported/malformed artifacts.
 
-```{r}
+```{r, purl=FALSE}
 my_tool <- ellmer::tool(
   function(name) {
     df <- summarise_something(name)
@@ -148,7 +148,7 @@ allowing a safe fallback through `tool_result_value(event_or_result)`.
 
 A non-Shiny host renders the artifact itself, for example:
 
-```{r}
+```{r, purl=FALSE}
 on_tool_result <- function(event) {
   artifact <- codeagent::tool_result_artifact(event)
   if (!is.null(artifact) && identical(artifact$kind, "table")) {
@@ -167,7 +167,7 @@ the browser trust boundary.
 Register your tools the standard ellmer way, then **declare each tool's
 capability** so the central gate governs it like a native tool.
 
-```{r}
+```{r, purl=FALSE}
 chat$register_tool(my_tool)
 codeagent::register_tool_meta("Summarise", capability = "read") # read|write|exec|net
 ```
@@ -177,7 +177,7 @@ automatically. Install it after attaching your tools so approvals route to your
 `ask_fn`. The public `tools` argument is the standalone equivalent of
 `settings$tools`:
 
-```{r}
+```{r, purl=FALSE}
 tool_policy <- list(
   overrides    = list(Summarise = "allow"),       # allow | ask | deny
   capabilities = list(exec = "ask", net = "deny")
@@ -217,7 +217,7 @@ Place host skills in a supported project-local skill directory using the
 `.btw/skills/my_skill/SKILL.md`). Skill *content* is yours; codeagent only
 discovers, loads, and injects it.
 
-```{r}
+```{r, purl=FALSE}
 skills <- codeagent::list_skills_meta(cwd = getwd())
 prompt <- codeagent::load_skill_prompt(
   "my_skill", args = "optional arguments", cwd = getwd()

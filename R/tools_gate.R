@@ -98,6 +98,15 @@ NULL
       "^btw_tool_(docs|env|sessioninfo|cran)_", name)) "read"
     else if (grepl("^btw_tool_(web_|github)", name)) "net"
     else "exec"
+    # Prefer what the tool says about itself over this prefix scan: btw sets
+    # `read_only_hint` on every tool it ships, so a new btw release classifies
+    # correctly without a regex update here. Only "exec" is downgraded --
+    # "net" is an independent dimension (the call leaves the machine), and a
+    # read-only network tool must stay gated as net. A missing/false hint keeps
+    # the conservative prefix result, so this can only ever relax a tool that
+    # explicitly declares itself read-only.
+    if (identical(capability, "exec") && .btw_declares_read_only(tool))
+      capability <- "read"
     return(list(known = TRUE, set = "B", capability = capability,
                 path_args = character(), cwd_bound = FALSE))
   }
@@ -107,6 +116,13 @@ NULL
 
 .tool_capability <- function(name, tool = NULL) {
   .tool_metadata(name, tool)$capability
+}
+
+# TRUE only when a live ToolDef explicitly annotates itself read-only. Used to
+# relax the btw prefix scan; never consulted for tools listed in .TOOL_META.
+.btw_declares_read_only <- function(tool) {
+  if (is.null(tool)) return(FALSE)
+  isTRUE(tryCatch(tool@annotations$read_only_hint, error = function(e) NULL))
 }
 
 #' Declare a host tool's permission capability
@@ -150,12 +166,24 @@ register_tool_meta <- function(name,
   invisible(name)
 }
 
+# Tool sets enabled when settings$tools$sets is unset. "A" = codeagent-native,
+# "B" = btw, "C" = host tools declared through register_tool_meta(). See
+# .resolve_tool_policy() for why "C" is on by default.
+.DEFAULT_TOOL_SETS <- c("A", "B", "C")
+
 # Parse settings$tools into a policy object (sets / capabilities / overrides).
+# Default sets include "C" (host tools declared through register_tool_meta()):
+# that registry is populated only by an explicit host call, which is itself the
+# authorization, and an undeclared tool resolves to known = FALSE and is denied
+# by .gate_decide() before any set check. Leaving "C" out made
+# register_tool_meta() a dead end -- the declared tool was denied in EVERY mode,
+# including bypass, with no diagnostic. install_permission_gate() already
+# compensated by forcing c("A","B","C"); codeagent_client() had no such path.
 #' @keywords internal
 .resolve_tool_policy <- function(settings) {
   t <- settings$tools %||% list()
   list(
-    sets         = t$sets %||% c("A", "B"),
+    sets         = t$sets %||% .DEFAULT_TOOL_SETS,
     capabilities = t$capabilities %||% list(),
     overrides    = t$overrides %||% list()
   )
@@ -169,9 +197,14 @@ register_tool_meta <- function(name,
                          allow_plan_exit = FALSE) {
   meta <- .tool_metadata(name)
   if (!isTRUE(meta$known)) return("deny")
-  enabled_sets <- as.character(policy$sets %||% c("A", "B"))
+  enabled_sets <- as.character(policy$sets %||% .DEFAULT_TOOL_SETS)
   if (!meta$set %in% enabled_sets) return("deny")
-  capability <- meta$capability
+  # Built-in metadata stays authoritative, so a host tool cannot downgrade Bash
+  # by claiming "read". For everything else honour the capability the caller
+  # resolved from the live ToolDef: the gate can see annotations (btw's
+  # read_only_hint) that this name-only lookup cannot.
+  if (!is.null(.TOOL_META[[name]]) || is.null(capability))
+    capability <- meta$capability
 
   matched <- vapply(rules, .rule_matches, logical(1L),
                     tool_name = name, tool_input = input)
@@ -192,7 +225,8 @@ register_tool_meta <- function(name,
   cap <- policy$capabilities[[capability]]
   if (!is.null(cap) && nzchar(cap)) return(cap)
   check_permission(name, mode, rules, input,
-                   allow_plan_exit = allow_plan_exit)
+                   allow_plan_exit = allow_plan_exit,
+                   capability = capability)
 }
 
 # Per-chat gate context registry. `.register_all_tools()` may run more than once

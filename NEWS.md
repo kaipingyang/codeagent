@@ -1,5 +1,83 @@
 # codeagent 0.2.3
 
+* A `tools=` entry that registers nothing now warns and names the entry. btw
+  drops a tool group whose optional dependency is missing (`git` without
+  `{gert}`, `github` without `{gh}`) and reports it only as a once-per-session
+  note that does not say which request it defeated, so naming a group could
+  quietly yield zero tools. Requesting a group and also passing it to
+  `disallowed_tools` is reported the same way, since the contradiction is worth
+  surfacing. This warns rather than errors -- a missing optional dependency
+  should not stop a client from being built -- and is skipped on worker
+  rebuilds, which have no user to tell.
+
+* Sub-agents and team workers now inherit the parent's `tools=` /
+  `disallowed_tools=` selection through the worker security snapshot. Before,
+  a parent restricted to a few tools still had its workers register the full
+  set and then filter back down against `allowed_tools`, which produced the
+  right final tool set but built everything first -- including the skill scan.
+  The selection is now a cheap first layer applied at registration;
+  `allowed_tools` (the parent's actual tool names plus signatures) remains the
+  authority a worker can never exceed. A snapshot written before this field
+  existed decodes to "register everything", so old contexts are unchanged.
+
+* Fixed `register_tool_meta(capability = "read")` being ignored by the
+  permission system. A host tool declared read-only was denied in `plan` mode
+  and prompted for in `default` mode, contradicting the function's own
+  documentation. Three independent defects were in that path: `check_permission()`
+  decided read-only from a hard-coded list of native tool names and never
+  consulted the resolved capability; `.gate_decide()` discarded the capability
+  the gate had resolved from the live tool object; and `register_tool_meta()`
+  defaults to set `"C"` while the default policy enabled only `c("A", "B")`, so
+  a declared host tool was denied in **every** mode including `bypass`, with no
+  diagnostic. Default tool sets are now `c("A", "B", "C")` -- that registry is
+  populated only by an explicit host call, and an undeclared tool is still
+  denied on `known = FALSE` before any set check. Built-in metadata remains
+  authoritative, so a host still cannot downgrade `Bash` by claiming `"read"`.
+
+* btw tools are now classified from the `read_only_hint` each tool declares,
+  instead of only a prefix scan that had drifted. Eight tools were misjudged as
+  needing a permission prompt -- `git_status`, `git_diff`, `git_log`,
+  `git_branch_list`, `ide_read_current_editor`, `pkg_coverage` and `skill` were
+  treated as `exec`. Only `exec` is relaxed: `web_read_url` declares itself
+  read-only but keeps its `net` capability, because reaching the network is an
+  independent dimension from not mutating state. A missing or false hint keeps
+  the conservative result, so a new btw release can only ever be classified
+  correctly or conservatively, never dangerously.
+
+* Added `codeagent_client(tools=)`, one capability namespace that selects what
+  gets registered: `NULL` for everything (the historical default), `FALSE` for
+  nothing (tools the host registered on the Chat are kept), or a mix of
+  capability groups, individual tool names, and btw group names. The two
+  capabilities with parallel implementations take an `@` suffix -- `files@core`
+  / `files@btw` / `files@both` and the same for `web` -- which folds the
+  `file_tools` switch and btw's Path A into the same selection. Unknown names
+  are an error listing the valid groups rather than a silent drop.
+  `btw_groups=` is superseded by it; supplying both is an error.
+
+* Added `codeagent_client(disallowed_tools=)`, which carries the same two
+  meanings as the Claude Agent SDK's public argument: a bare name (tool or
+  capability group) removes the tool definitions so the model never sees them,
+  while a scoped entry such as `"Bash(rm *)"` keeps the tool and becomes an
+  ordinary deny rule, absolute in every permission mode including `bypass`.
+
+* Added drift guards for the btw integration: `.BTW_GROUPS` must cover every
+  group the installed btw ships, and every codeagent-native tool must declare a
+  capability group. This caught `.BTW_GROUPS` still describing btw 1.2.1 while
+  btw 1.5.0 was installed -- `run` and `skills` were missing, so passing either
+  name reported "unknown group" instead of naming the codeagent tool that owns
+  the capability (`RunR`, `use_skill`). When btw next adds a tool or group,
+  these tests fail on purpose so the classification is a decision rather than a
+  fall-through to the "unknown -> exec" default.
+
+* Reduced streaming startup and finalization overhead by reusing a small async
+  driver and moving synchronous event dispatch outside the coroutine state
+  machine. A callback-driven iterator keeps one completion promise and waits for
+  asynchronous iterator cleanup before releasing ownership. Text is accumulated
+  in chunks. Async-turn ownership now unwinds even when stream creation and
+  error notification both fail. JIT, Shiny deep stacks, callback ordering,
+  Data Shield, and citation buffering remain enabled. This does not eliminate
+  ellmer's internal high-rate streaming overhead.
+
 This patch release adds optional Liquid Glass theming, fixes tool-card behavior,
 and closes security/integration blockers found during PR review. It includes one
 intentional safe-default change: `team_lead()` now defaults to `"dont_ask"`.

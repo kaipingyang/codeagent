@@ -48,7 +48,11 @@ reference:
       - install_codeagent_cli
 
   - title: "Core tools"
-    desc: "Built-in tool factories registered on the Chat."
+    desc: >
+      Built-in tool factories registered on the Chat. Which of them a client
+      actually registers is controlled by `codeagent_client(tools=)` and
+      `disallowed_tools=`, in one capability namespace shared with the btw
+      tool groups.
     contents:
       - bash_tool
       - read_tool
