@@ -264,6 +264,12 @@ Return non-sensitive policy metadata for one registered asset.
 
     DataShield$asset_policy(name)
 
+#### Arguments
+
+- `name`:
+
+  Character(1). Registered asset name.
+
 ------------------------------------------------------------------------
 
 ### `DataShield$tool_policy()`
@@ -273,6 +279,12 @@ Resolve effective Shield policy for one tool/agent name.
 #### Usage
 
     DataShield$tool_policy(tool_name)
+
+#### Arguments
+
+- `tool_name`:
+
+  Character(1). Tool or agent name to resolve the policy for.
 
 ------------------------------------------------------------------------
 
@@ -284,6 +296,12 @@ Return prompt-safe content according to an asset policy.
 
     DataShield$prompt_content(name)
 
+#### Arguments
+
+- `name`:
+
+  Character(1). Registered asset name.
+
 ------------------------------------------------------------------------
 
 ### `DataShield$trusted_result()`
@@ -293,6 +311,16 @@ Tag one result with registered provenance for raw egress.
 #### Usage
 
     DataShield$trusted_result(value, source)
+
+#### Arguments
+
+- `value`:
+
+  The tool result value to tag with provenance.
+
+- `source`:
+
+  Character(1). Registered asset name approved for raw egress.
 
 ------------------------------------------------------------------------
 
@@ -304,6 +332,13 @@ Install/refresh this shield on an ellmer Chat.
 
     DataShield$install(chat)
 
+#### Arguments
+
+- `chat`:
+
+  An [`ellmer::Chat`](https://ellmer.tidyverse.org/reference/Chat.html)
+  to install or refresh this shield on.
+
 ------------------------------------------------------------------------
 
 ### `DataShield$describe()`
@@ -313,6 +348,13 @@ Return strict safe metadata for a registered dataset.
 #### Usage
 
     DataShield$describe(name = NULL)
+
+#### Arguments
+
+- `name`:
+
+  Character(1) or NULL. Dataset name; NULL when exactly one dataset is
+  registered.
 
 ------------------------------------------------------------------------
 
@@ -585,6 +627,16 @@ Add a custom scanner function to the end of the egress pipeline.
 
     DataShield$add_scanner(name, fn)
 
+#### Arguments
+
+- `name`:
+
+  Character(1). Scanner name.
+
+- `fn`:
+
+  Function. Scanner appended to the end of the egress pipeline.
+
 ------------------------------------------------------------------------
 
 ### `DataShield$set_egress_ask()`
@@ -653,6 +705,12 @@ Remove one dataset, or all datasets when name is NULL.
 #### Usage
 
     DataShield$clear(name = NULL)
+
+#### Arguments
+
+- `name`:
+
+  Character(1) or NULL. Dataset to remove; NULL removes every dataset.
 
 ------------------------------------------------------------------------
 

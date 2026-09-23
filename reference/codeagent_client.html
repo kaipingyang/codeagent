@@ -98,7 +98,9 @@ is the single object passed to <code><a href="codeagent.html">codeagent()</a></c
 <span>  mcp_config <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  register_tools <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  data_shield <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  max_budget_usd <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  max_budget_usd <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  tools <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  disallowed_tools <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -130,8 +132,9 @@ env vars (or Anthropic defaults).</p></dd>
 
 
 <dt id="arg-btw-groups">btw_groups<a class="anchor" aria-label="anchor" href="#arg-btw-groups"></a></dt>
-<dd><p>Character vector or NULL. btw tool groups to register
-(e.g. <code>c("docs","git","pkg")</code>). NULL = all available groups.</p></dd>
+<dd><p>Character vector or NULL. Superseded by <code>tools</code>: btw group
+names are ordinary <code>tools</code> entries. Still honoured on its own (NULL = all
+available groups), but supplying both <code>tools</code> and <code>btw_groups</code> is an error.</p></dd>
 
 
 <dt id="arg-worktree-isolation">worktree_isolation<a class="anchor" aria-label="anchor" href="#arg-worktree-isolation"></a></dt>
@@ -172,6 +175,34 @@ serving endpoint ellmer doesn't recognize) report cost <code>$0</code> forever, 
 the cap silently never fires there – this is a known limitation, not a
 bug (see <code>CODEAGENT_MAX_BUDGET_USD</code> env var / <code>max_budget_usd</code> in
 settings.json for the same knob without a client-code change).</p></dd>
+
+
+<dt id="arg-tools">tools<a class="anchor" aria-label="anchor" href="#arg-tools"></a></dt>
+<dd><p>Tool selection, in one capability namespace shared by
+codeagent-native and btw groups.</p><ul><li><p><code>NULL</code> (default) registers everything, exactly as before.</p></li>
+<li><p><code>FALSE</code> registers no codeagent tool; tools the host registered on <code>chat</code>
+itself are untouched.</p></li>
+<li><p>A character vector of capability groups (<code>"files"</code>, <code>"shell"</code>, <code>"docs"</code>,
+<code>"git"</code>, ...), individual tool names (<code>"Read"</code>, <code>"Bash"</code>), or both.
+Two capabilities have parallel implementations and take an <code>@</code> suffix:
+<code>"files@core"</code> (codeagent's, any absolute path), <code>"files@btw"</code> (btw's
+hash-anchored, cwd-only Path A), <code>"files@both"</code>, and the same for <code>"web"</code>.
+Unknown names are an error listing the valid groups, never a silent drop.
+An entry that is valid but registers nothing – a btw group whose optional
+dependency is missing, or one you also passed to <code>disallowed_tools</code> –
+warns and names the entry, rather than leaving you to notice the gap.
+Resource-driven tools stay on their own arguments (<code>mcp_config</code>,
+<code>data_shield</code>) and are never removed by this selection.</p></li>
+</ul></dd>
+
+
+<dt id="arg-disallowed-tools">disallowed_tools<a class="anchor" aria-label="anchor" href="#arg-disallowed-tools"></a></dt>
+<dd><p>Character vector or NULL. Carries two meanings in one
+vector, mirroring the Claude Agent SDK's public contract. A bare name –
+a tool (<code>"Bash"</code>) or a capability group (<code>"lint"</code>) – removes those tool
+definitions, so the model never sees them. A scoped entry (<code>"Bash(rm *)"</code>)
+keeps the tool and becomes an ordinary deny rule, which is absolute in
+every permission mode including <code>bypass</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

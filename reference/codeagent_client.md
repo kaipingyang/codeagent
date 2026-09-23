@@ -22,7 +22,9 @@ codeagent_client(
   mcp_config = NULL,
   register_tools = TRUE,
   data_shield = NULL,
-  max_budget_usd = NULL
+  max_budget_usd = NULL,
+  tools = NULL,
+  disallowed_tools = NULL
 )
 ```
 
@@ -57,8 +59,10 @@ codeagent_client(
 
 - btw_groups:
 
-  Character vector or NULL. btw tool groups to register (e.g.
-  `c("docs","git","pkg")`). NULL = all available groups.
+  Character vector or NULL. Superseded by `tools`: btw group names are
+  ordinary `tools` entries. Still honoured on its own (NULL = all
+  available groups), but supplying both `tools` and `btw_groups` is an
+  error.
 
 - worktree_isolation:
 
@@ -109,6 +113,38 @@ codeagent_client(
   there – this is a known limitation, not a bug (see
   `CODEAGENT_MAX_BUDGET_USD` env var / `max_budget_usd` in settings.json
   for the same knob without a client-code change).
+
+- tools:
+
+  Tool selection, in one capability namespace shared by codeagent-native
+  and btw groups.
+
+  - `NULL` (default) registers everything, exactly as before.
+
+  - `FALSE` registers no codeagent tool; tools the host registered on
+    `chat` itself are untouched.
+
+  - A character vector of capability groups (`"files"`, `"shell"`,
+    `"docs"`, `"git"`, ...), individual tool names (`"Read"`, `"Bash"`),
+    or both. Two capabilities have parallel implementations and take an
+    `@` suffix: `"files@core"` (codeagent's, any absolute path),
+    `"files@btw"` (btw's hash-anchored, cwd-only Path A),
+    `"files@both"`, and the same for `"web"`. Unknown names are an error
+    listing the valid groups, never a silent drop. An entry that is
+    valid but registers nothing – a btw group whose optional dependency
+    is missing, or one you also passed to `disallowed_tools` – warns and
+    names the entry, rather than leaving you to notice the gap.
+    Resource-driven tools stay on their own arguments (`mcp_config`,
+    `data_shield`) and are never removed by this selection.
+
+- disallowed_tools:
+
+  Character vector or NULL. Carries two meanings in one vector,
+  mirroring the Claude Agent SDK's public contract. A bare name – a tool
+  (`"Bash"`) or a capability group (`"lint"`) – removes those tool
+  definitions, so the model never sees them. A scoped entry
+  (`"Bash(rm *)"`) keeps the tool and becomes an ordinary deny rule,
+  which is absolute in every permission mode including `bypass`.
 
 ## Value
 

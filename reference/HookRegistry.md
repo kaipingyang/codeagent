@@ -175,6 +175,21 @@ Register a PreToolUse hook (legacy shorthand).
 
     HookRegistry$register_pre(fn, tool_pattern = NULL, timeout_ms = 2000L)
 
+#### Arguments
+
+- `fn`:
+
+  Function. Hook callback.
+
+- `tool_pattern`:
+
+  Character or NULL. Glob filter for tool name (only applies to
+  tool-related events).
+
+- `timeout_ms`:
+
+  Integer. Max ms before warning (default 2000).
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$register_post()`
@@ -184,6 +199,21 @@ Register a PostToolUse hook (legacy shorthand).
 #### Usage
 
     HookRegistry$register_post(fn, tool_pattern = NULL, timeout_ms = 2000L)
+
+#### Arguments
+
+- `fn`:
+
+  Function. Hook callback.
+
+- `tool_pattern`:
+
+  Character or NULL. Glob filter for tool name (only applies to
+  tool-related events).
+
+- `timeout_ms`:
+
+  Integer. Max ms before warning (default 2000).
 
 ------------------------------------------------------------------------
 
@@ -195,6 +225,16 @@ Fire PreToolUse hooks.
 
     HookRegistry$run_pre(tool_name, tool_input)
 
+#### Arguments
+
+- `tool_name`:
+
+  Character. Tool name.
+
+- `tool_input`:
+
+  List. Tool arguments.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_post()`
@@ -204,6 +244,20 @@ Fire PostToolUse hooks.
 #### Usage
 
     HookRegistry$run_post(tool_name, tool_input, tool_output)
+
+#### Arguments
+
+- `tool_name`:
+
+  Character. Tool name.
+
+- `tool_input`:
+
+  List. Tool arguments.
+
+- `tool_output`:
+
+  The tool result passed through the hooks.
 
 ------------------------------------------------------------------------
 
@@ -215,6 +269,20 @@ Fire PostToolUseFailure hooks (informational).
 
     HookRegistry$run_failure(tool_name, tool_input, error_message)
 
+#### Arguments
+
+- `tool_name`:
+
+  Character. Tool name.
+
+- `tool_input`:
+
+  List. Tool arguments.
+
+- `error_message`:
+
+  Character. Error text from the failed tool call.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_permission_denied()`
@@ -224,6 +292,20 @@ Fire PermissionDenied hooks (informational).
 #### Usage
 
     HookRegistry$run_permission_denied(tool_name, tool_input, mode)
+
+#### Arguments
+
+- `tool_name`:
+
+  Character. Tool name.
+
+- `tool_input`:
+
+  List. Tool arguments.
+
+- `mode`:
+
+  Character. Active permission mode.
 
 ------------------------------------------------------------------------
 
@@ -235,6 +317,20 @@ through to ask_fn).
 #### Usage
 
     HookRegistry$run_permission_request(tool_name, tool_input, mode)
+
+#### Arguments
+
+- `tool_name`:
+
+  Character. Tool name.
+
+- `tool_input`:
+
+  List. Tool arguments.
+
+- `mode`:
+
+  Character. Active permission mode.
 
 ------------------------------------------------------------------------
 
@@ -251,6 +347,12 @@ if any hook blocked, else
 
     HookRegistry$run_user_prompt_submit(message)
 
+#### Arguments
+
+- `message`:
+
+  Character. Message text.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_user_message()`
@@ -264,6 +366,12 @@ callers do not break. Prefer `run_user_prompt_submit()`.
 
     HookRegistry$run_user_message(message)
 
+#### Arguments
+
+- `message`:
+
+  Character. Message text.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_assistant_message()`
@@ -273,6 +381,12 @@ Fire AssistantMessage hooks (informational).
 #### Usage
 
     HookRegistry$run_assistant_message(message)
+
+#### Arguments
+
+- `message`:
+
+  Character. Message text.
 
 ------------------------------------------------------------------------
 
@@ -285,6 +399,12 @@ Fire SessionStart hooks at the top of a session/turn. Callback:
 
     HookRegistry$run_session_start(context = list())
 
+#### Arguments
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_stop()`
@@ -295,6 +415,16 @@ Fire Stop hooks when the agent loop terminates. Callback:
 #### Usage
 
     HookRegistry$run_stop(stop_reason = "completed", context = list())
+
+#### Arguments
+
+- `stop_reason`:
+
+  Character. Why the agent loop terminated.
+
+- `context`:
+
+  List. Event context.
 
 ------------------------------------------------------------------------
 
@@ -307,6 +437,16 @@ Fire PreCompact hooks before context compaction. Callback:
 
     HookRegistry$run_pre_compact(level = "unknown", context = list())
 
+#### Arguments
+
+- `level`:
+
+  Character. Compaction level about to run.
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_subagent_start()`
@@ -317,6 +457,16 @@ Fire SubagentStart hooks when a sub-agent is launched. Callback:
 #### Usage
 
     HookRegistry$run_subagent_start(description = "", context = list())
+
+#### Arguments
+
+- `description`:
+
+  Character. Sub-agent task description.
+
+- `context`:
+
+  List. Event context.
 
 ------------------------------------------------------------------------
 
@@ -333,6 +483,20 @@ Fire SubagentStop hooks when a sub-agent completes. Callback:
       context = list()
     )
 
+#### Arguments
+
+- `description`:
+
+  Character. Sub-agent task description.
+
+- `result`:
+
+  The sub-agent's result, or NULL.
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_session_end()`
@@ -345,6 +509,16 @@ exit reasons where they map (e.g. "completed", "max_turns",
 #### Usage
 
     HookRegistry$run_session_end(reason = "completed", context = list())
+
+#### Arguments
+
+- `reason`:
+
+  Character. Why the session ended.
+
+- `context`:
+
+  List. Event context.
 
 ------------------------------------------------------------------------
 
@@ -361,6 +535,20 @@ Fire PostCompact hooks after context compaction completes. Callback:
       context = list()
     )
 
+#### Arguments
+
+- `trigger`:
+
+  Character. What triggered compaction.
+
+- `compact_summary`:
+
+  Character. Summary produced by compaction.
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_stop_failure()`
@@ -371,6 +559,16 @@ Fire StopFailure hooks when the loop ends on an error. Callback:
 #### Usage
 
     HookRegistry$run_stop_failure(error = "", context = list())
+
+#### Arguments
+
+- `error`:
+
+  Character. The error that ended the loop.
+
+- `context`:
+
+  List. Event context.
 
 ------------------------------------------------------------------------
 
@@ -387,6 +585,20 @@ Fire Notification hooks for user-facing notifications. Callback:
       context = list()
     )
 
+#### Arguments
+
+- `message`:
+
+  Character. Notification text.
+
+- `notification_type`:
+
+  Character. Notification category.
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_task_created()`
@@ -401,6 +613,20 @@ Fire TaskCreated hooks when a task is created. Callback:
       task_subject = "",
       context = list()
     )
+
+#### Arguments
+
+- `task_id`:
+
+  Character. Task id.
+
+- `task_subject`:
+
+  Character. Task subject.
+
+- `context`:
+
+  List. Event context.
 
 ------------------------------------------------------------------------
 
@@ -417,6 +643,20 @@ Fire TaskCompleted hooks when a task becomes completed. Callback:
       context = list()
     )
 
+#### Arguments
+
+- `task_id`:
+
+  Character. Task id.
+
+- `task_subject`:
+
+  Character. Task subject.
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_worktree_create()`
@@ -428,6 +668,16 @@ Fire WorktreeCreate hooks when a sub-agent worktree is made. Callback:
 
     HookRegistry$run_worktree_create(name = "", context = list())
 
+#### Arguments
+
+- `name`:
+
+  Character. Worktree name.
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_worktree_remove()`
@@ -438,6 +688,16 @@ Callback: `function(worktree_path, context)`. Return value ignored.
 #### Usage
 
     HookRegistry$run_worktree_remove(worktree_path = "", context = list())
+
+#### Arguments
+
+- `worktree_path`:
+
+  Character. Path of the removed worktree.
+
+- `context`:
+
+  List. Event context.
 
 ------------------------------------------------------------------------
 
@@ -459,6 +719,24 @@ load paths, so these fields are NOT field-for-field equal to CC.
       context = list()
     )
 
+#### Arguments
+
+- `file_path`:
+
+  Character. Path of the loaded CLAUDE.md file.
+
+- `memory_type`:
+
+  Character. Best-effort User/Project classification.
+
+- `load_reason`:
+
+  Character. Always "session_start" in codeagent.
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_file_changed()`
@@ -476,6 +754,20 @@ the synchronous CLI loop cannot pump the `later` queue watcher needs.
       context = list()
     )
 
+#### Arguments
+
+- `file_path`:
+
+  Character. Path that changed.
+
+- `event`:
+
+  Character. One of "change", "add", "unlink".
+
+- `context`:
+
+  List. Event context.
+
 ------------------------------------------------------------------------
 
 ### `HookRegistry$run_config_change()`
@@ -491,6 +783,20 @@ on the CLI (see the `run_file_changed()` method note).
       file_path = "",
       context = list()
     )
+
+#### Arguments
+
+- `source`:
+
+  Character. Which configuration source changed.
+
+- `file_path`:
+
+  Character. Path of the changed configuration file.
+
+- `context`:
+
+  List. Event context.
 
 ------------------------------------------------------------------------
 

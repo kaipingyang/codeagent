@@ -57,7 +57,10 @@ Terminal REPL and command-line interface.
 
 ## Core tools
 
-Built-in tool factories registered on the Chat.
+Built-in tool factories registered on the Chat. Which of them a client
+actually registers is controlled by `codeagent_client(tools=)` and
+`disallowed_tools=`, in one capability namespace shared with the btw
+tool groups.
 
 - [`bash_tool()`](https://kaipingyang.github.io/codeagent/reference/bash_tool.md)
   : Create the Bash tool

@@ -298,14 +298,71 @@
 </tr>
 </tbody>
 </table>
+<div class="section level4">
+<h4 id="selecting-tools">Selecting tools<a class="anchor" aria-label="anchor" href="#selecting-tools"></a>
+</h4>
+<p><code>codeagent_client(tools=)</code> picks what gets registered, in one capability namespace shared by codeagent-native and btw groups:</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span><span class="op">)</span>                                <span class="co"># NULL: everything (default)</span></span>
+<span><span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, tools <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span>                 <span class="co"># nothing; host tools kept</span></span>
+<span><span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"files"</span>, <span class="st">"shell"</span><span class="op">)</span><span class="op">)</span>   <span class="co"># capability groups</span></span>
+<span><span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Read"</span>, <span class="st">"Glob"</span><span class="op">)</span><span class="op">)</span>     <span class="co"># individual tool names</span></span>
+<span><span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"docs"</span>, <span class="st">"git"</span><span class="op">)</span><span class="op">)</span>      <span class="co"># btw groups, same namespace</span></span></code></pre></div>
+<p>Two capabilities have parallel implementations and take an <code>@</code> suffix:</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Selection</th>
+<th>Effect</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code>files@core</code> (default)</td>
+<td>codeagent’s <code>Read</code>/<code>Write</code>/<code>Edit</code>/… — any absolute path</td>
+</tr>
+<tr>
+<td><code>files@btw</code></td>
+<td>btw’s hash-anchored, atomic-patch set — project cwd only</td>
+</tr>
+<tr>
+<td><code>files@both</code></td>
+<td>both paths registered; the model picks per task</td>
+</tr>
+<tr>
+<td>
+<code>web@core</code> / <code>web@btw</code> / <code>web@both</code> (default)</td>
+<td>
+<code>WebSearch</code>+<code>WebFetch</code> / btw’s URL reader / both</td>
+</tr>
+</tbody>
+</table>
+<p>Unknown names are an error that lists the valid groups, never a silent drop. An entry that is valid but ends up registering nothing — a btw group whose optional dependency is missing (<code>git</code> without <a href="https://docs.ropensci.org/gert/" class="external-link">gert</a>, <code>github</code> without <a href="https://gh.r-lib.org/" class="external-link">gh</a>), or one you also passed to <code>disallowed_tools</code> — warns and names the entry. Resource-driven tools keep their own arguments (<code>mcp_config</code>, <code>data_shield</code>) and are never removed by this selection. <code>btw_groups=</code> is superseded by <code>tools=</code>; supplying both is an error.</p>
+<p><code>disallowed_tools=</code> carries two meanings in one vector:</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># bare name (tool or group): the definition is removed, the model never sees it</span></span>
+<span><span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, disallowed_tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Bash"</span>, <span class="st">"lint"</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># scoped: the tool stays, matching calls are denied in every mode incl. bypass</span></span>
+<span><span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, disallowed_tools <span class="op">=</span> <span class="st">"Bash(rm *)"</span><span class="op">)</span></span></code></pre></div>
 <p>Tool authorization is enforced by one fail-closed central gate. Enabled tool sets, capability policies, per-tool overrides, and fine-grained path rules are checked for every invocation, including <code>bypass</code>; unknown tools require explicit metadata. File rules are matched against canonical paths for native, notebook, format, and btw file tools, including every path in an atomic patch. Sub-agents inherit both an immutable policy snapshot and an allowlist of the parent’s actual tools; worker reconstruction may remove capabilities but cannot add tools the parent did not expose. Same-name tools must also match the parent’s unwrapped implementation signature. Explicit deny rules take precedence over all allow rules, including multi-file patches.</p>
+<p>A tool’s <strong>capability</strong> (<code>read</code> / <code>write</code> / <code>exec</code> / <code>net</code>) is what the gate decides on. Built-in metadata is authoritative; btw tools fall back to the <code>read_only_hint</code> each tool declares, and host tools declare theirs explicitly:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">chat</span><span class="op">$</span><span class="fu">register_tool</span><span class="op">(</span><span class="va">my_excel_reader</span><span class="op">)</span>                      <span class="co"># a host tool</span></span>
+<span><span class="fu"><a href="reference/register_tool_meta.html">register_tool_meta</a></span><span class="op">(</span><span class="st">"erp_tool_read_excel"</span>, <span class="st">"read"</span><span class="op">)</span>        <span class="co"># -&gt; runs without prompting,</span></span>
+<span>                                                         <span class="co">#    and inside plan mode</span></span></code></pre></div>
+<p>A tool with no declaration resolves to <code>exec</code> and, if never declared at all, is denied in every mode including <code>bypass</code>. A host cannot downgrade a built-in: declaring <code>Bash</code> as <code>"read"</code> leaves it <code>exec</code>.</p>
 <p>Foreground <code>Agent</code> clones the active Chat and forwards the parent’s approval callback. Process-based <code>TeamRun</code> and <code>BackgroundAgent</code> are registered only when codeagent constructed the parent Chat and can preserve its model, provider, endpoint, and credential environment selector without serializing credentials. For an explicitly supplied Chat, use the foreground <code>Agent</code>; process delegation fails closed rather than silently selecting a different provider.</p>
 <p><code>RunR</code> is always an arbitrary-code execution capability. With <code>sandbox$enabled = TRUE</code>, its default <code>run_r_backend = "required"</code> fails closed until a real OS sandbox backend is available. Callers may explicitly select <code>run_r_backend = "process"</code> for <code>callr</code> timeout/output/environment hygiene, but that mode does <strong>not</strong> isolate the filesystem, network, credential files, or child processes.</p>
+</div>
 </div>
 <div class="section level3">
 <h3 id="deterministic-web-citations-opt-in">Deterministic web citations (opt-in)<a class="anchor" aria-label="anchor" href="#deterministic-web-citations-opt-in"></a>
 </h3>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, web_citations <span class="op">=</span> <span class="st">"shiny_aside"</span><span class="op">)</span></span></code></pre></div>
 <p><code>WebSearch</code> and <code>WebFetch</code> retain validated source records in <code>extra$codeagent$sources</code>. The model may cite only a current-turn ID with <code>[[cite:SOURCE_ID|visible claim]]</code>. When an upstream provider supplies ellmer <code>ContentCitation</code> / <code>WebSource</code> content, codeagent converts it to an opaque, server-owned current-turn reference instead of accepting shinychat’s generated markup. Both paths validate public URLs, scan claim/grounded span/title/quote/URL, escape untrusted markup, and build the same fixed <code>&lt;shiny-aside&gt;</code> allowlist on the server. Citation mode buffers the complete reply before showing it and rejects unknown, conflicting, or prior-turn IDs/references. Raw model or provider <code>&lt;shiny-aside&gt;</code> tags never enter the browser in citation mode. Session replay repeats this deterministic presentation transform from the lossless original <code>ContentCitation</code> and tool-result metadata.</p>
 <p>Web fetching accepts only public <code>http</code>/<code>https</code> URLs without userinfo. It rejects private, loopback, link-local, reserved, mixed public/private DNS answers and unsafe redirects. Every redirect is re-authorized, and each request pins the validated DNS address for the connection to prevent DNS rebinding. DNS resolution has a hard timeout both with optional <code>callr</code> and through the required <code>processx</code> fallback. Codebase RAG is a network capability because embedding sends source chunks or queries to an embedding backend. Automatic indexing requires network permission, set A, and no active Data Shield; with Data Shield enabled it fails closed rather than sending protected project content outside the shield pipeline. Public web text is wrapped in a server-generated untrusted-content boundary and the system prompt forbids treating it as instructions. Web tools are network capabilities: <code>default</code> mode asks for approval, while <code>plan</code> and <code>dont_ask</code> deny them unless an explicit rule or capability policy grants access.</p>
@@ -313,7 +370,7 @@
 <div class="section level3">
 <h3 id="data-shield-opt-in">Data Shield (opt-in)<a class="anchor" aria-label="anchor" href="#data-shield-opt-in"></a>
 </h3>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Easy declaration: creates a private R6 engine for this client.</span></span>
 <span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="reference/shield_describe.html">shield_describe</a></span><span class="op">(</span>k_anon <span class="op">=</span> <span class="fl">5</span><span class="op">)</span>,</span>
@@ -342,16 +399,16 @@
 <p><strong>Protected-data schema in the system prompt</strong> (querychat-style): when a shield is active, each registered dataset’s <em>filtered</em> schema (identifier values suppressed, rare categories hidden — the same output <code>DescribeData</code> produces) is injected into the system prompt, so the model knows what protected data exists without calling the tool first (it no longer fabricates column names/dims). The <code>DescribeData</code> tool remains the live on-demand fallback. Data registered before the client is built is in the initial prompt; for data uploaded at runtime, call <code>refresh_data_shield_context(client)</code> after <code>register_data()</code> to rebuild the system prompt (preserves history, one-time cache miss). <code>register_data()</code> does not auto-refresh — the shield stays decoupled from the Chat.</p>
 <p><code>shield_egress(max_rows = 0)</code> retains <strong>no raw tabular line</strong> when bulk output is detected; scalar/status/model-summary output still passes. <code><a href="reference/shield_regex.html">shield_regex()</a></code> handles unregistered PII/secrets; <code><a href="reference/shield_ingress.html">shield_ingress()</a></code> scans every tool’s arguments in the central permission gate and can block or request approval before execution (built-in rules are host-extensible: a <code>patterns=</code> name matching a built-in replaces it, a new name adds to it). <code><a href="reference/shield_tool_policy.html">shield_tool_policy()</a></code> provides exact/glob per-tool <code>scan</code>/<code>bypass</code>/<code>deny</code> rules; Shield bypass is audited and never bypasses the separate permission gate. <code><a href="reference/shield_sandbox.html">shield_sandbox()</a></code> permits project/temp operations whose path arguments are explicitly declared and verifiable, while blocking project-external and symlink-escaped paths. Its portable policy is not an OS sandbox: every non-delegated exec tool (including Bash, RunR, ExploreData, and Lint) fails closed until a full OS adapter is available, because even path-declared tools may execute project configuration or child processes. <code><a href="reference/shield_reviewer.html">shield_reviewer()</a></code> is an optional internal rail: a fresh, tool-less ellmer Chat reviews only deterministically sanitized code/arguments; remote reviewers never receive raw data/output, and missing/failed reviewers follow configurable ask/block fail-closed policy. See the full <a href="https://kaipingyang.github.io/codeagent/articles/data-shield.html#current-parameter-reference">Data Shield parameter reference</a>.</p>
 <p>Optional egress approval keeps raw disabled unless explicitly requested:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"ask"</span>, allow_raw_approval <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span> <span class="co"># Redact / Block only</span></span>
 <span><span class="fu"><a href="reference/shield_egress.html">shield_egress</a></span><span class="op">(</span>on_fail <span class="op">=</span> <span class="st">"ask"</span>, allow_raw_approval <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>  <span class="co"># adds RAW ONCE warning</span></span></code></pre></div>
 <p>No callback, timeout, error, or invalid choice defaults to redact.</p>
 <p>The in-memory audit log records only non-sensitive decision metadata (strategy, action, reason label, count, tool/id), never matched values or raw results:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">audit</span> <span class="op">&lt;-</span> <span class="va">shield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit <span class="op">=</span> <span class="fl">100</span><span class="op">)</span></span>
 <span><span class="va">shield</span><span class="op">$</span><span class="fu">clear_audit</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Safe reference assets and protected datasets use separate type/access axes:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">shield</span><span class="op">$</span><span class="fu">register_asset</span><span class="op">(</span></span>
 <span>  <span class="va">adam_spec</span>, name <span class="op">=</span> <span class="st">"adam_spec"</span>, kind <span class="op">=</span> <span class="st">"spec"</span>,</span>
 <span>  llm_access <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>prompt <span class="op">=</span> <span class="st">"raw"</span>, egress <span class="op">=</span> <span class="st">"scan"</span><span class="op">)</span>,</span>
@@ -360,14 +417,14 @@
 <p><code>kind</code> says what the asset is; <code>llm_access</code> says what may enter/leave the LLM. Raw egress is never a default and requires provenance (<code>shield$trusted_result()</code>), a reason, expiry/session scope, and audit.</p>
 <p><code>audit_code_tool(shield, project_root)</code> is an opt-in <code>AuditCode</code> tool the main-loop model can call to vet a block of R code <strong>before running it</strong>: it deterministically extracts referenced paths from the AST, enforces an in-project source-file whitelist in code (never delegated to the model), reads only whitelisted files, and — with a shield — routes the vetted text through the <code><a href="reference/shield_reviewer.html">shield_reviewer()</a></code> rail. It returns risk metadata only (which refs, which were blocked and why, reviewer verdict), never file contents, and grants no read/write/shell capability. Host wires it in (e.g. when the sandbox is disabled) so the model can self-audit external references.</p>
 <p><code><a href="reference/shield_preset.html">shield_preset_strict()</a></code>, <code><a href="reference/shield_preset.html">shield_preset_balanced()</a></code>, and <code><a href="reference/shield_preset.html">shield_preset_clinical()</a></code> are ready-made strategy combinations for <code>codeagent_client(data_shield = ...)</code> — the same three templates documented in <code><a href="articles/data-shield.html">vignette("data-shield")</a></code>’s “combination safety” matrix, as callable functions instead of copy-pasted code:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, data_shield <span class="op">=</span> <span class="fu"><a href="reference/shield_preset.html">shield_preset_strict</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="skill-system">Skill system<a class="anchor" aria-label="anchor" href="#skill-system"></a>
 </h3>
 <p>Compatible with Claude Code and btw skill format (<code>name/SKILL.md</code> directories).</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Install Posit's data-science skill collection</span></span>
 <span><span class="fu"><a href="reference/install_ds_skills.html">install_ds_skills</a></span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -379,7 +436,7 @@
 <div class="section level3">
 <h3 id="multi-agent-teams">Multi-agent teams<a class="anchor" aria-label="anchor" href="#multi-agent-teams"></a>
 </h3>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Work-stealing over a shared SQLite board</span></span>
 <span><span class="fu"><a href="reference/team_coordinate.html">team_coordinate</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"task 1"</span>, <span class="st">"task 2"</span>, <span class="st">"task 3"</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -389,7 +446,7 @@
 <div class="section level3">
 <h3 id="mcp-server">MCP server<a class="anchor" aria-label="anchor" href="#mcp-server"></a>
 </h3>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="reference/codeagent_mcp_server.html">codeagent_mcp_server</a></span><span class="op">(</span><span class="op">)</span> <span class="co"># session_tools = FALSE by default</span></span>
 <span><span class="co"># Claude Desktop config:</span></span>
 <span><span class="co"># {"mcpServers": {"codeagent": {"command": "Rscript",</span></span>
@@ -399,7 +456,7 @@
 <div class="section level3">
 <h3 id="shiny-app">Shiny app<a class="anchor" aria-label="anchor" href="#shiny-app"></a>
 </h3>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Single-user / interactive convenience:</span></span>
 <span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span></span>
 <span>  <span class="va">client</span>,</span>
@@ -455,9 +512,10 @@
 <span><span class="op">}</span><span class="op">)</span></span></code></pre></div>
 <p>Shiny model controls only perform verified name-only switches that keep the captured Chat identity. A provider, endpoint, credentials, params, or API-args change is rejected with guidance to start a new session/app; the CLI/R <code><a href="reference/switch_model.html">switch_model()</a></code> API can safely take the rebuilding Route B.</p>
 <p>Tool-group changes in the Settings panel are atomic: deselected btw groups are actually removed while core, MCP, skill, and separately owned tools are retained; the Agent checkbox controls the single foreground Agent owner. Permission or tool-group changes are rejected while a response is streaming, and a failed refresh restores the previous tool snapshot before input is re-enabled.</p>
+<p><code><a href="reference/codeagent_stream_async.html">codeagent_stream_async()</a></code> uses a shared, small coroutine that awaits one callback-driven stream completion. Event dispatch and finalization stay outside its generated state machine, and text is assembled from chunks rather than repeatedly copying the full reply. Iterator cleanup is awaited before releasing async-turn ownership, including when a text callback throws. This reduces per-turn compilation overhead without disabling R JIT or Shiny deep-stack tracing. Data Shield and enabled web citations still buffer output until their existing final scan/render step; they are not bypassed for speed. It does not remove ellmer’s internal per-fragment coroutine overhead in high-rate streams.</p>
 <p>Tool results have three deliberately separate channels: the model receives the portable text <code>value</code>; any UI can consume the versioned <code>extra$codeagent$artifact</code> (<code>schema = "codeagent.tool-artifact"</code>, <code>version = 1</code>); and shinychat receives its official <code>tool_result_display()</code> adapter in <code>extra$display</code>, including compact labels/value previews and framed rich cards. Successful tool cards start collapsed regardless of output length; error cards start expanded so failures remain immediately visible.</p>
 <p>The same renderer serves both surfaces through <code>render_artifact(artifact, mode=)</code>. In the chat bubble it renders in <code>"bubble"</code> mode, which omits the frame and header that the surrounding shinychat tool card already draws and keeps only the copy action; the right Output workspace uses <code>"panel"</code> mode for the full standalone card. Code blocks are emitted as <code>&lt;pre&gt;&lt;code class="hljs ..."&gt;</code> so their background, foreground and light/dark pair come from shinychat’s own stylesheet rather than a second theme maintained here. See the <a href="https://kaipingyang.github.io/codeagent/articles/tool-artifacts.html">tool-result artifact guide</a> for the v1 schema, version negotiation, trust boundary, and migration checklist. The streaming <code>on_tool_result</code> event exposes all three as <code>artifact</code>, <code>display</code>, and <code>value</code>. A non-shinychat host should prefer the artifact, ignore the display adapter, and fall back to the value when it does not support that artifact version or kind:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">on_tool_result</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">artifact</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tool_result_artifact.html">tool_result_artifact</a></span><span class="op">(</span><span class="va">event</span><span class="op">)</span>  <span class="co"># NULL if v1 is unsupported/invalid</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NULL.html" class="external-link">is.null</a></span><span class="op">(</span><span class="va">artifact</span><span class="op">)</span> <span class="op">&amp;&amp;</span> <span class="va">artifact</span><span class="op">$</span><span class="va">kind</span> <span class="op">==</span> <span class="st">"table"</span><span class="op">)</span> <span class="op">{</span></span>
@@ -473,24 +531,24 @@
 <h2 id="configuration-reference">Configuration reference<a class="anchor" aria-label="anchor" href="#configuration-reference"></a>
 </h2>
 <p>Precedence (low → high): package defaults → trusted user settings → non-sensitive <code>.codeagent/settings.json</code> values → environment variables. Project settings cannot select credentials or endpoints, mutate the process environment, weaken permissions/sandbox policy, install hooks/MCP, or expand the tool set. Put those settings in the user config outside the repository or pass them explicitly to <code><a href="reference/codeagent_client.html">codeagent_client()</a></code>. Project JSON uses a strict non-security allowlist and is ignored as a whole when duplicate top-level keys are present.</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb19-1"><a href="#cb19-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb19-2"><a href="#cb19-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb19-3"><a href="#cb19-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb19-4"><a href="#cb19-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb19-5"><a href="#cb19-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb19-6"><a href="#cb19-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span>       <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
-<span id="cb19-7"><a href="#cb19-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint"</span><span class="fu">,</span></span>
-<span id="cb19-8"><a href="#cb19-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span>  <span class="st">"your-fast-endpoint"</span></span>
-<span id="cb19-9"><a href="#cb19-9" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb19-10"><a href="#cb19-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb19-11"><a href="#cb19-11" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb19-12"><a href="#cb19-12" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb19-13"><a href="#cb19-13" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb19-14"><a href="#cb19-14" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
-<span id="cb19-15"><a href="#cb19-15" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb19-16"><a href="#cb19-16" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span><span class="fu">,</span></span>
-<span id="cb19-17"><a href="#cb19-17" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{}</span></span>
-<span id="cb19-18"><a href="#cb19-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span>       <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
+<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint"</span><span class="fu">,</span></span>
+<span id="cb22-8"><a href="#cb22-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span>  <span class="st">"your-fast-endpoint"</span></span>
+<span id="cb22-9"><a href="#cb22-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb22-10"><a href="#cb22-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb22-11"><a href="#cb22-11" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb22-12"><a href="#cb22-12" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb22-13"><a href="#cb22-13" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb22-14"><a href="#cb22-14" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
+<span id="cb22-15"><a href="#cb22-15" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb22-16"><a href="#cb22-16" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span><span class="fu">,</span></span>
+<span id="cb22-17"><a href="#cb22-17" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{}</span></span>
+<span id="cb22-18"><a href="#cb22-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <blockquote>
 <p><strong>API key:</strong> keep <code>CODEAGENT_API_KEY</code> in <code>~/.Renviron</code>, not in <code>settings.json</code>.</p>
 </blockquote>

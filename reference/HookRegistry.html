@@ -359,6 +359,19 @@ only supports block + additionalContext, not redaction of user input)</p></li>
 <p>Register a PreToolUse hook (legacy shorthand).</p><div class="section">
 <h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">register_pre</span><span class="op">(</span><span class="va">fn</span>, tool_pattern <span class="op">=</span> <span class="cn">NULL</span>, timeout_ms <span class="op">=</span> <span class="fl">2000L</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>fn</code></dt>
+<dd><p>Function. Hook callback.</p></dd>
+
+      <dt><code>tool_pattern</code></dt>
+<dd><p>Character or NULL. Glob filter for tool name (only applies to tool-related events).</p></dd>
+
+      <dt><code>timeout_ms</code></dt>
+<dd><p>Integer. Max ms before warning (default 2000).</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -368,6 +381,19 @@ only supports block + additionalContext, not redaction of user input)</p></li>
 <p>Register a PostToolUse hook (legacy shorthand).</p><div class="section">
 <h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">register_post</span><span class="op">(</span><span class="va">fn</span>, tool_pattern <span class="op">=</span> <span class="cn">NULL</span>, timeout_ms <span class="op">=</span> <span class="fl">2000L</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>fn</code></dt>
+<dd><p>Function. Hook callback.</p></dd>
+
+      <dt><code>tool_pattern</code></dt>
+<dd><p>Character or NULL. Glob filter for tool name (only applies to tool-related events).</p></dd>
+
+      <dt><code>timeout_ms</code></dt>
+<dd><p>Integer. Max ms before warning (default 2000).</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -377,6 +403,16 @@ only supports block + additionalContext, not redaction of user input)</p></li>
 <p>Fire PreToolUse hooks.</p><div class="section">
 <h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_pre</span><span class="op">(</span><span class="va">tool_name</span>, <span class="va">tool_input</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>tool_name</code></dt>
+<dd><p>Character. Tool name.</p></dd>
+
+      <dt><code>tool_input</code></dt>
+<dd><p>List. Tool arguments.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -386,6 +422,19 @@ only supports block + additionalContext, not redaction of user input)</p></li>
 <p>Fire PostToolUse hooks.</p><div class="section">
 <h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_post</span><span class="op">(</span><span class="va">tool_name</span>, <span class="va">tool_input</span>, <span class="va">tool_output</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>tool_name</code></dt>
+<dd><p>Character. Tool name.</p></dd>
+
+      <dt><code>tool_input</code></dt>
+<dd><p>List. Tool arguments.</p></dd>
+
+      <dt><code>tool_output</code></dt>
+<dd><p>The tool result passed through the hooks.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -395,6 +444,19 @@ only supports block + additionalContext, not redaction of user input)</p></li>
 <p>Fire PostToolUseFailure hooks (informational).</p><div class="section">
 <h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_failure</span><span class="op">(</span><span class="va">tool_name</span>, <span class="va">tool_input</span>, <span class="va">error_message</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>tool_name</code></dt>
+<dd><p>Character. Tool name.</p></dd>
+
+      <dt><code>tool_input</code></dt>
+<dd><p>List. Tool arguments.</p></dd>
+
+      <dt><code>error_message</code></dt>
+<dd><p>Character. Error text from the failed tool call.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -404,6 +466,19 @@ only supports block + additionalContext, not redaction of user input)</p></li>
 <p>Fire PermissionDenied hooks (informational).</p><div class="section">
 <h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_permission_denied</span><span class="op">(</span><span class="va">tool_name</span>, <span class="va">tool_input</span>, <span class="va">mode</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>tool_name</code></dt>
+<dd><p>Character. Tool name.</p></dd>
+
+      <dt><code>tool_input</code></dt>
+<dd><p>List. Tool arguments.</p></dd>
+
+      <dt><code>mode</code></dt>
+<dd><p>Character. Active permission mode.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -414,6 +489,19 @@ only supports block + additionalContext, not redaction of user input)</p></li>
 Returns "allow", "deny", or NULL (fall through to ask_fn).</p><div class="section">
 <h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_permission_request</span><span class="op">(</span><span class="va">tool_name</span>, <span class="va">tool_input</span>, <span class="va">mode</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>tool_name</code></dt>
+<dd><p>Character. Tool name.</p></dd>
+
+      <dt><code>tool_input</code></dt>
+<dd><p>List. Tool arguments.</p></dd>
+
+      <dt><code>mode</code></dt>
+<dd><p>Character. Active permission mode.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -427,6 +515,13 @@ original text. Returns a list: <code>list(action = "block", message = ...)</code
 if any hook blocked, else <code>list(action = "allow", additional_context = &lt;appended text or NULL&gt;)</code>.</p><div class="section">
 <h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_user_prompt_submit</span><span class="op">(</span><span class="va">message</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>message</code></dt>
+<dd><p>Character. Message text.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -439,6 +534,13 @@ if any hook blocked, else <code>list(action = "allow", additional_context = &lt;
 cycle so existing callers do not break. Prefer <code>run_user_prompt_submit()</code>.</p><div class="section">
 <h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_user_message</span><span class="op">(</span><span class="va">message</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>message</code></dt>
+<dd><p>Character. Message text.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -448,6 +550,13 @@ cycle so existing callers do not break. Prefer <code>run_user_prompt_submit()</c
 <p>Fire AssistantMessage hooks (informational).</p><div class="section">
 <h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_assistant_message</span><span class="op">(</span><span class="va">message</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>message</code></dt>
+<dd><p>Character. Message text.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -458,6 +567,13 @@ cycle so existing callers do not break. Prefer <code>run_user_prompt_submit()</c
 Callback: <code>function(context)</code>. Return value ignored.</p><div class="section">
 <h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_session_start</span><span class="op">(</span>context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -468,6 +584,16 @@ Callback: <code>function(context)</code>. Return value ignored.</p><div class="s
 Callback: <code>function(stop_reason, context)</code>. Return value ignored.</p><div class="section">
 <h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_stop</span><span class="op">(</span>stop_reason <span class="op">=</span> <span class="st">"completed"</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>stop_reason</code></dt>
+<dd><p>Character. Why the agent loop terminated.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -478,6 +604,16 @@ Callback: <code>function(stop_reason, context)</code>. Return value ignored.</p>
 Callback: <code>function(level, context)</code>. Return value ignored.</p><div class="section">
 <h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_pre_compact</span><span class="op">(</span>level <span class="op">=</span> <span class="st">"unknown"</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>level</code></dt>
+<dd><p>Character. Compaction level about to run.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -488,6 +624,16 @@ Callback: <code>function(level, context)</code>. Return value ignored.</p><div c
 Callback: <code>function(description, context)</code>. Return value ignored.</p><div class="section">
 <h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_subagent_start</span><span class="op">(</span>description <span class="op">=</span> <span class="st">""</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>description</code></dt>
+<dd><p>Character. Sub-agent task description.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -502,6 +648,19 @@ Callback: <code>function(description, result, context)</code>. Return ignored.</
 <span>  result <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>description</code></dt>
+<dd><p>Character. Sub-agent task description.</p></dd>
+
+      <dt><code>result</code></dt>
+<dd><p>The sub-agent's result, or NULL.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -514,6 +673,16 @@ Callback: <code>function(reason, context)</code>. Return value ignored.
 "max_turns", "budget_exceeded", "error").</p><div class="section">
 <h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_session_end</span><span class="op">(</span>reason <span class="op">=</span> <span class="st">"completed"</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>reason</code></dt>
+<dd><p>Character. Why the session ended.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -528,6 +697,19 @@ Callback: <code>function(trigger, compact_summary, context)</code>. Return ignor
 <span>  compact_summary <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-17">Arguments<a class="anchor" aria-label="anchor" href="#arguments-17"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>trigger</code></dt>
+<dd><p>Character. What triggered compaction.</p></dd>
+
+      <dt><code>compact_summary</code></dt>
+<dd><p>Character. Summary produced by compaction.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -538,6 +720,16 @@ Callback: <code>function(trigger, compact_summary, context)</code>. Return ignor
 Callback: <code>function(error, context)</code>. Return value ignored.</p><div class="section">
 <h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_stop_failure</span><span class="op">(</span>error <span class="op">=</span> <span class="st">""</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>error</code></dt>
+<dd><p>Character. The error that ended the loop.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -552,6 +744,19 @@ Callback: <code>function(message, notification_type, context)</code>. Return ign
 <span>  notification_type <span class="op">=</span> <span class="st">"info"</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-19">Arguments<a class="anchor" aria-label="anchor" href="#arguments-19"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>message</code></dt>
+<dd><p>Character. Notification text.</p></dd>
+
+      <dt><code>notification_type</code></dt>
+<dd><p>Character. Notification category.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -566,6 +771,19 @@ Callback: <code>function(task_id, task_subject, context)</code>. Return ignored.
 <span>  task_subject <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-20">Arguments<a class="anchor" aria-label="anchor" href="#arguments-20"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>task_id</code></dt>
+<dd><p>Character. Task id.</p></dd>
+
+      <dt><code>task_subject</code></dt>
+<dd><p>Character. Task subject.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -580,6 +798,19 @@ Callback: <code>function(task_id, task_subject, context)</code>. Return ignored.
 <span>  task_subject <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-21">Arguments<a class="anchor" aria-label="anchor" href="#arguments-21"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>task_id</code></dt>
+<dd><p>Character. Task id.</p></dd>
+
+      <dt><code>task_subject</code></dt>
+<dd><p>Character. Task subject.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -590,6 +821,16 @@ Callback: <code>function(task_id, task_subject, context)</code>. Return ignored.
 Callback: <code>function(name, context)</code>. Return value ignored.</p><div class="section">
 <h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_worktree_create</span><span class="op">(</span>name <span class="op">=</span> <span class="st">""</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-22">Arguments<a class="anchor" aria-label="anchor" href="#arguments-22"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>name</code></dt>
+<dd><p>Character. Worktree name.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -600,6 +841,16 @@ Callback: <code>function(name, context)</code>. Return value ignored.</p><div cl
 Callback: <code>function(worktree_path, context)</code>. Return value ignored.</p><div class="section">
 <h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">run_worktree_remove</span><span class="op">(</span>worktree_path <span class="op">=</span> <span class="st">""</span>, context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-23">Arguments<a class="anchor" aria-label="anchor" href="#arguments-23"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>worktree_path</code></dt>
+<dd><p>Character. Path of the removed worktree.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -619,6 +870,22 @@ load paths, so these fields are NOT field-for-field equal to CC.</p><div class="
 <span>  load_reason <span class="op">=</span> <span class="st">"session_start"</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-24">Arguments<a class="anchor" aria-label="anchor" href="#arguments-24"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>file_path</code></dt>
+<dd><p>Character. Path of the loaded CLAUDE.md file.</p></dd>
+
+      <dt><code>memory_type</code></dt>
+<dd><p>Character. Best-effort User/Project classification.</p></dd>
+
+      <dt><code>load_reason</code></dt>
+<dd><p>Character. Always "session_start" in codeagent.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -635,6 +902,19 @@ the synchronous CLI loop cannot pump the <code>later</code> queue watcher needs.
 <span>  event <span class="op">=</span> <span class="st">"change"</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-25">Arguments<a class="anchor" aria-label="anchor" href="#arguments-25"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>file_path</code></dt>
+<dd><p>Character. Path that changed.</p></dd>
+
+      <dt><code>event</code></dt>
+<dd><p>Character. One of "change", "add", "unlink".</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -650,6 +930,19 @@ Not fired on the CLI (see the <code>run_file_changed()</code> method note).</p><
 <span>  file_path <span class="op">=</span> <span class="st">""</span>,</span>
 <span>  context <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-26">Arguments<a class="anchor" aria-label="anchor" href="#arguments-26"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>source</code></dt>
+<dd><p>Character. Which configuration source changed.</p></dd>
+
+      <dt><code>file_path</code></dt>
+<dd><p>Character. Path of the changed configuration file.</p></dd>
+
+      <dt><code>context</code></dt>
+<dd><p>List. Event context.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -678,7 +971,7 @@ Not fired on the CLI (see the <code>run_file_changed()</code> method note).</p><
 <h4 id="usage-30">Usage<a class="anchor" aria-label="anchor" href="#usage-30"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">HookRegistry</span><span class="op">$</span><span class="fu">has_hooks</span><span class="op">(</span><span class="va">event</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<h4 id="arguments-27">Arguments<a class="anchor" aria-label="anchor" href="#arguments-27"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>event</code></dt>
 <dd><p>Character. One of <a href="HookEvent.html">HookEvent</a> values.</p></dd>
 

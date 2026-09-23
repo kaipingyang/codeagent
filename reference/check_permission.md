@@ -11,7 +11,8 @@ check_permission(
   mode = "default",
   rules = list(),
   tool_input = NULL,
-  allow_plan_exit = FALSE
+  allow_plan_exit = FALSE,
+  capability = NULL
 )
 ```
 
@@ -41,6 +42,16 @@ check_permission(
 
   Logical. Whether `ExitPlanMode` may restore a mode after a trusted
   in-session `EnterPlanMode` transition.
+
+- capability:
+
+  Optional character(1). The caller's resolved capability for this tool
+  (`"read"`, `"write"`, `"exec"`, `"net"`). The central gate passes what
+  it resolved from the live `ToolDef`, which can see annotations a
+  name-only lookup cannot (btw sets `read_only_hint` on every tool it
+  ships). Ignored for tools listed in the built-in metadata, so a host
+  cannot downgrade `Bash` by passing `"read"`. `NULL` resolves from the
+  tool name.
 
 ## Value
 
