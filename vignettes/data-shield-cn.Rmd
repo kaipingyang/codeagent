@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -89,7 +89,7 @@ shield <- DataShield$new()
 或一个显式的 `DataShield` 实例（用于上传数据、有意在 session/thread 间共享）。
 已实现的策略先展示；规划中的策略单独列出，以免示例暗示它们已经存在。
 
-```{r}
+```{r, purl=FALSE}
 # 当前已实现：
 client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
@@ -445,7 +445,7 @@ Agent 像调用任何普通工具一样调用 `ReadADaMSpec`；raw 放行由已�
 
 已经能提供真实保护的最小确定性切片：
 
-```{r}
+```{r, purl=FALSE}
 # 简单入口：策略 spec 会为这个 client 创建一个私有 DataShield R6。
 client <- codeagent_client(chat, data_shield = list(
   shield_describe(k_anon = 5),
@@ -473,7 +473,7 @@ client$data_shield$install(client$chat)
 注册即可；工具可能已经挂好并被包裹了，因为 value matching 在每次调用时
 读取的是活的索引。
 
-```{r}
+```{r, purl=FALSE}
 # 每个 Shiny server session 内部：一个 R6 可以被选定的多个 chat 共享。
 shield <- DataShield$new(
   strategies = list(shield_describe(), shield_egress(max_rows = 0)))
@@ -492,7 +492,7 @@ observeEvent(input$file, {
 
 一个完整可运行的宿主风格 Shiny 示例安装在：
 
-```{r}
+```{r, purl=FALSE}
 system.file("examples/data_shield_upload_app.R", package = "codeagent")
 ```
 

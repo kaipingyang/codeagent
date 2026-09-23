@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r, include = FALSE}
+```{r, purl=FALSE, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -38,7 +38,7 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 （Bash / Write / Edit / Glob / Grep / git / web）将**一个也不会**被附加。你会得到客户端状态和
 运行框架管道，但不会注册工具，也不会安装权限门。
 
-```{r}
+```{r, purl=FALSE}
 chat <- ellmer::chat_openai_compatible(
   base_url    = Sys.getenv("MY_BASE_URL"),
   model       = Sys.getenv("MY_MODEL"),
@@ -64,7 +64,7 @@ client <- codeagent::codeagent_client(
 使用 `codeagent_stream()`（阻塞式；自行推进事件循环）或 `codeagent_stream_async()`
 （返回 promise）。所有渲染都通过**类型化回调**完成——codeagent 不会操作你的 UI。
 
-```{r}
+```{r, purl=FALSE}
 result <- codeagent::codeagent_stream(
   client, user_input,
   on_delta        = function(text_chunk)       { ... }, # 助手文本
@@ -103,7 +103,7 @@ result <- codeagent::codeagent_stream(
 - `display`：可选的官方 shinychat 适配器；非 shinychat 宿主不应解析或依赖它；
 - `value`：供模型使用的可移植文本，也是工件不受支持或格式错误时的后备。
 
-```{r}
+```{r, purl=FALSE}
 my_tool <- ellmer::tool(
   function(name) {
     df <- summarise_something(name)
@@ -138,7 +138,7 @@ schema 和外层结构，且默认只接受版本 1。对于未知或格式错�
 
 非 Shiny 宿主自行渲染工件，例如：
 
-```{r}
+```{r, purl=FALSE}
 on_tool_result <- function(event) {
   artifact <- codeagent::tool_result_artifact(event)
   if (!is.null(artifact) && identical(artifact$kind, "table")) {
@@ -155,7 +155,7 @@ on_tool_result <- function(event) {
 
 先按标准 ellmer 方式注册工具，再**声明每个工具的能力**，使中央权限门像治理原生工具一样治理它。
 
-```{r}
+```{r, purl=FALSE}
 chat$register_tool(my_tool)
 codeagent::register_tool_meta("Summarise", capability = "read") # read|write|exec|net
 ```
@@ -163,7 +163,7 @@ codeagent::register_tool_meta("Summarise", capability = "read") # read|write|exe
 在仅含运行框架的客户端（`register_tools = FALSE`）上，权限门**不会**自动安装。请在附加工具后安装，
 使审批请求能够传给你的 `ask_fn`。公开参数 `tools` 等同于独立安装场景中的 `settings$tools`：
 
-```{r}
+```{r, purl=FALSE}
 tool_policy <- list(
   overrides    = list(Summarise = "allow"),       # allow | ask | deny
   capabilities = list(exec = "ask", net = "deny")
@@ -197,7 +197,7 @@ codeagent::install_permission_gate(
 请把宿主技能按 `<name>/SKILL.md` 格式放入受支持的项目级技能目录（例如
 `.btw/skills/my_skill/SKILL.md`）。技能*内容*由宿主拥有；codeagent 只负责发现、加载和注入。
 
-```{r}
+```{r, purl=FALSE}
 skills <- codeagent::list_skills_meta(cwd = getwd())
 prompt <- codeagent::load_skill_prompt(
   "my_skill", args = "optional arguments", cwd = getwd()
