@@ -95,6 +95,16 @@ daemon **只服务 MCP 共享模式**：`codegraph sync` / `explore` 等 CLI 命
 
 > **测试无误 = 要装到本地才算数。** 每次改完代码、跑完测试后，务必 `bash tools/install-local.sh` 把**当前版本装到本地**——`load_all()` 只在当前 session 生效，真实验证/CLI/launcher 跑的是已安装的包。
 
+**vignette 的每个 chunk 都必须标 `purl = FALSE`：** R CMD check 的
+"checking running R code from vignettes" 会用 `knitr::purl()` 把 vignette
+**tangle** 成 `.R` 再 source。chunk 的 `eval = FALSE` **挡不住 purl，只有
+`purl = FALSE` 能挡** —— 没标的 chunk 会被抽出来、脱离 knit 上下文、且没有
+attach 包地独立执行，于是 `codeagent_client()` 找不到、`Sys.getenv("MY_BASE_URL")`
+为空之类直接变成 check ERROR。28 个 vignette 现在全部 tangle 出 0 行可执行代码，
+`tests/testthat/test-vignettes.R` 两条测试守着（一条查 chunk header，一条真的
+purl 一遍断言产物无可执行行）。新增 vignette 照着 `permissions.Rmd` 的
+```` ```{r, purl=FALSE} ```` 写。
+
 **新增功能必须同步更新 README.md：**
 - 新导出函数/新 feature → 在 README 对应 section 补一行
 - 重要行为变更 → 更新 README 相应描述
@@ -304,7 +314,7 @@ chat <- ellmer::chat_openai_compatible(...)   # Databricks/Azure
 # Step 2: codeagent_client() injects tools + system prompt → CodeagentClient
 client <- codeagent_client(chat,
   permission_mode    = "bypass",
-  btw_groups         = c("docs","git","pkg"),
+  tools              = c("files", "shell", "docs"),  # see Tool selection below
   worktree_isolation = FALSE,
   verify_fn          = NULL
 )
@@ -317,17 +327,94 @@ agent_loop(user_input, client, ...)  # per-turn (Shiny)
 codeagent_app(client, theme="default") # Shiny UI
 ```
 
+### Tool selection (`tools=` / `disallowed_tools=`)
+
+`tools=` is the single source of truth for *which* tools get registered. One
+capability namespace covers codeagent-native groups (`.CODEAGENT_GROUPS`) and
+btw groups (`.BTW_GROUPS`) — a group names a **capability, not an owner**.
+
+| `tools=` value | Meaning |
+|---|---|
+| `NULL` (default) | register everything (historical behaviour) |
+| `FALSE` | register no codeagent tool; tools the host put on the Chat stay |
+| `c("files","shell")` | capability groups |
+| `c("Read","Bash")` | individual tool names |
+| `c("docs","git")` | btw groups — same namespace, no prefix |
+| `list("files", my_tool)` | names and `ToolDef` objects mixed |
+
+Five group names exist in both tables, in two distinct shapes:
+
+- **`files`, `web`** — two parallel implementations, selectable with an `@`
+  suffix: `files@core` (codeagent's, any absolute path), `files@btw` (btw's
+  hash-anchored cwd-only Path A), `files@both`. Defaults differ on purpose:
+  `files` → `core`, `web` → `both` (both web tools have always registered side
+  by side). `files@` feeds the existing `settings$file_tools` switch rather than
+  a second mechanism.
+- **`run`, `agent`, `skills`** — codeagent owns the capability and
+  `.btw_selected_tools()` filters the btw tools out (`RunR` wraps
+  `btw_tool_run_r`; `.make_skill_tool()` replaces `btw_tool_skill`; the Agent
+  owner keeps worktree/async/Data Shield semantics). **These three filters are
+  security boundaries, not tidying** — `tests/testthat/test-tools-registry.R`
+  pins them.
+
+`disallowed_tools=` carries two meanings in one vector (the Claude Agent SDK's
+public contract): a bare name (tool or group) removes the definition so the
+model never sees it; a scoped entry such as `"Bash(rm *)"` keeps the tool and
+becomes an ordinary deny rule, absolute in every mode including `bypass`.
+
+**Implementation shape — selection is a subtraction, applied last.**
+`.register_all_tools()` runs every `register_*()` call unchanged and only then
+calls `.apply_tool_spec()` / `.apply_disallowed_tools()`. The btw integration
+path is therefore untouched and a `NULL` spec is a strict no-op, so the default
+cannot regress. The selection also travels in the worker security snapshot
+(`tool_config$tools_spec`), so a sub-agent does not build tools the parent was
+not given; `allowed_tools` remains the authority a worker can never exceed.
+
+Unknown names are an error listing the valid groups. A name that is valid but
+registers nothing (a btw group whose optional dependency is missing, or one also
+passed to `disallowed_tools`) warns and names the entry — btw reports such a
+drop only as a once-per-session note that never says which request it defeated.
+
+`btw_groups=` is superseded by `tools=`; supplying both is an error. It still
+works alone, and `settings$btw_groups` is still the field the UI/CLI/worker
+snapshot read.
+
+**btw drift guards.** `.BTW_GROUPS` must cover every group the installed btw
+ships, and every native tool must declare a capability group — both asserted by
+tests. This caught `.BTW_GROUPS` still describing btw 1.2.1 under btw 1.5.0
+(`run` and `skills` missing). btw tool capability comes from each tool's own
+`read_only_hint` rather than a prefix regex that drifts; only `exec` is relaxed
+to `read`, since `net` (reaching the network) is an independent dimension.
+
 ### Subsystems
 
 **`query.R`** — `codeagent_client()` is the primary factory; builds `CodeagentClient` S3 object. `codeagent()` dispatches new/legacy style. `agent_loop()` is called per-turn (was `query_loop`). `.register_all_tools()` wires all tool groups. `.handle_agent_error()` classifies PTL/rate-limit/network/auth errors with backoff. `verify_r_tests()` is a built-in verify function.
 
 **`permissions.R`** — **Seven-mode** gate: `default / plan / accept_edits / bypass / dont_ask / auto / bubble`. `bubble` returns `"ask"` to bubble permission up to parent agent (sub-agent mode). `auto` uses haiku ML classifier. `DenialTracker` emits warnings.
 
+> **Read-only is decided by capability, not by a name list.** `check_permission()`
+> takes an optional `capability=`; `is_readonly` is `tool_name %in% .READONLY_TOOLS`
+> **OR** resolved capability `== "read"`. Three defects once made
+> `register_tool_meta(capability="read")` a dead end and must not come back:
+> (1) `check_permission()` deciding read-only from the hard-coded name list alone,
+> which contradicted `.gate_decide()`'s own plan branch — two layers, opposite
+> answers, the stricter one winning; (2) `.gate_decide()` overwriting the
+> capability its caller resolved from the live `ToolDef` (that lookup can see
+> annotations a name-only lookup cannot); (3) `register_tool_meta()` defaulting to
+> set `"C"` while the default policy enabled only `c("A","B")`, denying a declared
+> host tool in **every** mode including `bypass`, with no diagnostic. Default sets
+> are now `.DEFAULT_TOOL_SETS = c("A","B","C")` — that registry is populated only
+> by an explicit host call, and an undeclared tool is still denied on
+> `known = FALSE` before any set check. Built-in `.TOOL_META` stays authoritative,
+> so a host declaring `Bash` as `"read"` still resolves `exec`.
+
 **`hooks.R`** — `HookRegistry` with **12 lifecycle events** via `HookEvent$*`: tool events (`PreToolUse`, `PostToolUse`, `PostToolUseFailure`), permission events (`PermissionDenied`, `PermissionRequest`), message events (`UserMessage`, `AssistantMessage`), and lifecycle events (`SessionStart`, `Stop`, `PreCompact`, `SubagentStart`, `SubagentStop`). Mount points: `agent_loop` fires SessionStart(iter 1)/Stop(all terminal returns)/PreCompact(before maybe_compact); `agent_tool` fallback fires SubagentStart/Stop. Legacy `register_pre()`/`register_post()` still work.
 
 **`tools_builtin.R`** — 8 core tools (Bash, Read, Write, Edit, MultiEdit, Glob, Grep, LS). All return `ContentToolResult` with `extra$display` (HTML title + markdown) for shinychat tool cards. All have `_intent` parameter for card display.
 
-**`tools_r.R`** — Wraps `btw::btw_tools()` with explicit ownership. Full-client/UI registration filters raw `btw_tool_agent_*`; the dedicated Agent owner selects exactly one foreground implementation (shield/async/worktree → codeagent Agent, plain sync → upstream agent). Runtime btw-group changes build a target snapshot and call `set_tools()` atomically, preserving core/MCP/skill/file-owner tools; failures restore the old snapshot and wrappers. `btw_tool_skill` remains owned by the skill system.
+**`tools_spec.R`** — resolves `tools=` / `disallowed_tools=` (see **Tool selection** above). `.resolve_tool_spec()` parses into `{all, native, btw_groups, backends, requested}`; `.apply_tool_spec()` / `.apply_disallowed_tools()` subtract from the Chat after every `register_*()` call; `.rehydrate_tool_spec()` / `.rehydrate_disallowed_tools()` restore a spec from the worker snapshot's JSON (`fromJSON(simplifyVector=FALSE)` turns character vectors into lists). `.report_unfulfilled_tools()` names entries that registered nothing. Only the removal half of `disallowed_tools` travels in the snapshot — its scoped entries became deny rules in `settings$rules` already.
+
+**`tools_r.R`** — Wraps `btw::btw_tools()` with explicit ownership, and holds both group tables: `.BTW_GROUPS` (btw group -> tool-name prefix; must cover every group the installed btw ships) and `.CODEAGENT_GROUPS` (capability group -> native tool names). `.tool_group()` resolves a tool to its group, native winning over the btw prefix scan. Full-client/UI registration filters raw `btw_tool_agent_*`; the dedicated Agent owner selects exactly one foreground implementation (shield/async/worktree → codeagent Agent, plain sync → upstream agent). Runtime btw-group changes build a target snapshot and call `set_tools()` atomically, preserving core/MCP/skill/file-owner tools; failures restore the old snapshot and wrappers. `btw_tool_skill` remains owned by the skill system.
 
 **`tool_run_r.R`** — `run_r_tool()` wraps `btw::btw_tool_run_r()` (arbitrary R execution, no sandbox) behind the **permission gate** under tool name `"RunR"`. `destructive_hint=TRUE`, never read-only → `default` mode resolves to `"ask"` (user confirms each call), `plan`/`dont_ask` → `deny`, `bypass` → allow. btw excludes `btw_tool_run_r` from default `btw_tools()`, so the gated wrapper is the only execution path. `.runr_to_tool_result()` is a special case of the `tool_display.R` adapter.
 
