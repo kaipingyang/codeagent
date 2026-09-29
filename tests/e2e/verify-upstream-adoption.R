@@ -60,17 +60,17 @@ mandatory_preflight <- function(start_wd) {
   frozen <- list(
     codeagent = c(version = "0.2.3", sha = ""),
     ellmer = c(version = "0.5.0.9000",
-               sha = "64abe4cc238d296b52e50194f4ee8257c0a320b4"),
-    btw = c(version = "1.5.0",
-            sha = "473d1d8e3114ed9136692ff3fb6b88ed0474ba66"),
+               sha = "215c4bdcad5d4395abe3821d2a83b4f434614da0"),
+    btw = c(version = "1.5.0.9000",
+            sha = "1025d26db22710514039f49c3262ba7484729ac9"),
     shinychat = c(version = "0.5.0.9000",
-                  sha = "fc50706f914290bceba5ccf6712a83af38e00ede"),
+                  sha = "05e0bbd987286068638d3cf96d6ea7daff15c5b2"),
     shiny = c(version = "1.14.0.9000",
               sha = "81844600fc15f1952838546faa6699d0506ce7f9"),
     bslib = c(version = "0.12.0.9000",
-              sha = "e3b761696003bdd65cea93ae6a8eefa9281ad1b5"),
-    mcptools = c(version = "1.0.2.9000",
-                 sha = "8a07faae095755afd7160432a12a85cce3cb8cde"),
+              sha = "ac1e25f8070e1f952509b6575ced19b4237e7ec5"),
+    mcptools = c(version = "1.0.3.9000",
+                 sha = "ff94da04ccb5e6e86a56537c9d2dcb0e0532067b"),
     Rapp = c(version = "0.4.1.9000",
              sha = "489655f24945042791ddb083d0d5518c4a905d9f"),
     httr2 = c(version = "1.3.0.9000",
@@ -667,15 +667,55 @@ run_case <- function(case, app_path, root, ui_layout) {
         "const r=e.getBoundingClientRect(),h=document.elementFromPoint(r.left+r.width/2,r.top+r.height/2);",
         "return !!h&&(h===e||e.contains(h));"))),
       timeout_s = 15)
-    click_expression(paste0(
+    # click_expression() computes (x, y), verifies elementFromPoint hits the
+    # target, and only then dispatches the mouse events over CDP. Between those
+    # two steps the tree can repaint (jstree renders lazily), so the dispatch
+    # can land on whatever now occupies the old coordinates. The dispatch always
+    # "succeeds", so a lost click is silent: jstree registers no selection, the
+    # Shiny input never fires, and the File tab never opens. Observed at roughly
+    # 15% of page_chat runs, with `.jstree-clicked` empty in the failure dump.
+    # Click, then confirm the selection actually registered; retry if it did not.
+    file_node_expression <- paste0(
       "(()=>{const a=Array.from(document.querySelectorAll('.jstree-anchor'))",
       ".find(e=>e.innerText.trim()==='e2e-visible.txt');",
-      "return a&&(a.querySelector('.jstree-themeicon')||a);})()"),
-      "e2e-visible.txt file node")
-    wait_until(
-      "File tab preview",
-      function() grepl("E2E_FILE_CONTENT", text("#ca_file_view"), fixed = TRUE),
-      timeout_s = 20)
+      "return a&&(a.querySelector('.jstree-themeicon')||a);})()")
+    node_selected <- function() {
+      isTRUE(value(paste0(
+        "return Array.from(document.querySelectorAll('.jstree-clicked'))",
+        ".some(e=>(e.innerText||'').trim()==='e2e-visible.txt');")))
+    }
+    selection_registered <- FALSE
+    for (attempt in seq_len(4L)) {
+      click_expression(file_node_expression, "e2e-visible.txt file node")
+      registered <- tryCatch(
+        wait_until(paste0("jstree selection (attempt ", attempt, ")"),
+                   node_selected, timeout_s = 4),
+        error = function(e) NULL)
+      if (!is.null(registered)) { selection_registered <- TRUE; break }
+    }
+    assert(selection_registered,
+           "jstree never registered a selection for e2e-visible.txt after 4 clicks.")
+    tryCatch(
+      wait_until(
+        "File tab preview",
+        function() grepl("E2E_FILE_CONTENT", text("#ca_file_view"), fixed = TRUE),
+        timeout_s = 20),
+      error = function(e) {
+        view_dom <- value(paste0(
+          "return JSON.stringify({",
+          "file_view_present: !!document.querySelector('#ca_file_view'),",
+          "file_view_text: (document.querySelector('#ca_file_view')||{}).innerText||'(none)',",
+          "jstree_clicked: Array.from(document.querySelectorAll('.jstree-clicked'))",
+          ".map(e=>(e.innerText||'').trim()),",
+          "jstree_anchors: document.querySelectorAll('.jstree-anchor').length,",
+          "tabs: Array.from(document.querySelectorAll('[role=tab],.nav-link'))",
+          ".map(t=>({t:(t.innerText||'').trim(),sel:t.getAttribute('aria-selected')})),",
+          "panels: Array.from(document.querySelectorAll('[role=tabpanel],.tab-pane'))",
+          ".map(p=>({id:p.id,active:/active/.test(String(p.className||'')),",
+          "len:(p.innerText||'').length}))",
+          "});"))
+        fail(conditionMessage(e), "\nFile view DOM: ", paste(view_dom, collapse = " | "))
+      })
     assert(grepl("e2e-visible.txt", text("#ca_file_view"), fixed = TRUE),
            "File viewer header did not retain the selected filename.")
     assert(count("#ca_attach_file") == 1L,

@@ -78,13 +78,13 @@ Suggests:
     pkgload
 Config/testthat/edition: 3
 Remotes:
-    tidyverse/ellmer@64abe4cc238d296b52e50194f4ee8257c0a320b4,
-    posit-dev/btw@473d1d8e3114ed9136692ff3fb6b88ed0474ba66,
-    posit-dev/shinychat/pkg-r@fc50706f914290bceba5ccf6712a83af38e00ede,
+    tidyverse/ellmer@215c4bdcad5d4395abe3821d2a83b4f434614da0,
+    posit-dev/btw@1025d26db22710514039f49c3262ba7484729ac9,
+    posit-dev/shinychat/pkg-r@05e0bbd987286068638d3cf96d6ea7daff15c5b2,
     ericrayanderson/shinyglass@e07c0ae7b9cdf7959eace05c7ac32481f06d5a7c,
     rstudio/shiny@81844600fc15f1952838546faa6699d0506ce7f9,
-    rstudio/bslib@e3b761696003bdd65cea93ae6a8eefa9281ad1b5,
-    posit-dev/mcptools@8a07faae095755afd7160432a12a85cce3cb8cde,
+    rstudio/bslib@ac1e25f8070e1f952509b6575ced19b4237e7ec5,
+    posit-dev/mcptools@ff94da04ccb5e6e86a56537c9d2dcb0e0532067b,
     r-lib/Rapp@489655f24945042791ddb083d0d5518c4a905d9f,
     r-lib/httr2@6313956a3202e3d8fdecf713777711d0d8140ec5
 URL: https://kaipingyang.github.io/codeagent, https://github.com/kaipingyang/codeagent
