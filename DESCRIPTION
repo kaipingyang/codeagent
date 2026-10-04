@@ -60,6 +60,9 @@ Suggests:
     shinyFiles,
     shinyWidgets,
     shinyglass (>= 0.3.0),
+    shinygenui (>= 0.2.0),
+    ggplot2,
+    DT,
     rstudioapi,
     yaml,
     DBI,
@@ -82,6 +85,7 @@ Remotes:
     posit-dev/btw@1025d26db22710514039f49c3262ba7484729ac9,
     posit-dev/shinychat/pkg-r@05e0bbd987286068638d3cf96d6ea7daff15c5b2,
     ericrayanderson/shinyglass@e07c0ae7b9cdf7959eace05c7ac32481f06d5a7c,
+    nanxstats/shinygenui@f3f930de53fc7bd8cf9e37a4828d9d3de7049280,
     rstudio/shiny@81844600fc15f1952838546faa6699d0506ce7f9,
     rstudio/bslib@ac1e25f8070e1f952509b6575ced19b4237e7ec5,
     posit-dev/mcptools@ff94da04ccb5e6e86a56537c9d2dcb0e0532067b,
@@ -89,5 +93,4 @@ Remotes:
     r-lib/httr2@6313956a3202e3d8fdecf713777711d0d8140ec5
 URL: https://kaipingyang.github.io/codeagent, https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues
-Config/roxygen2/version: 8.0.0
-RoxygenNote: 7.3.3
+Config/roxygen2/version: 8.1.0

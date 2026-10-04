@@ -1,5 +1,18 @@
 # codeagent 0.2.3
 
+* Groundwork for generative UI on top of `{shinygenui}` (new Suggests, with
+  `{ggplot2}` and `{DT}`, which its starter components need). This
+  release adds no user-visible canvas yet: it freezes the component catalog
+  codeagent has reviewed (`value_box`, `data_table`, `scatter_plot`,
+  `histogram`; `markdown_card` is excluded because it keeps external image and
+  `javascript:` URLs), pins the upstream contract with tests, and ships
+  codeagent's own canvas prompt template. `genui_server()` is never called --
+  it would replace the system prompt and register tools outside the central
+  permission gate. The eight `canvas_*` tool names are declared as read-only
+  (set `"A"`) by exact name, never by prefix, and form the `genui` group in
+  `tools=`. Until the canvas tools are registered in a later release,
+  `tools = "genui"` registers nothing and warns accordingly.
+
 * A `tools=` entry that registers nothing now warns and names the entry. btw
   drops a tool group whose optional dependency is missing (`git` without
   `{gert}`, `github` without `{gh}`) and reports it only as a once-per-session

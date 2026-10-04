@@ -53,7 +53,13 @@ NULL
   memory   = "remember",
   data     = c("DescribeData", "ExploreData"),
   interact = "AskUserQuestion",
-  review   = c("AuditCode", "GenerateReport")
+  review   = c("AuditCode", "GenerateReport"),
+  # Generative UI canvas (R/genui.R). Written out rather than computed from
+  # .genui_tool_names() so this table does not depend on file load order; a test
+  # asserts the two stay equal.
+  genui    = c("canvas_value_box", "canvas_data_table", "canvas_scatter_plot",
+               "canvas_histogram", "canvas_update", "canvas_remove",
+               "canvas_clear", "canvas_state")
 )
 
 # Resolve a tool name to its capability group. Native tools win over the btw
