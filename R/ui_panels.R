@@ -257,7 +257,36 @@ chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
 # Main output panel (right, largest area)
 # ---------------------------------------------------------------------------
 
-output_panel_ui <- function() {
+# Content Security Policy for apps that may show a generative UI canvas. Canvas
+# text is model-authored; even though components render it as text, the page
+# must not be able to fetch a model-chosen image, media file, frame or plugin.
+# Scripts and styles are untouched (Shiny, bslib and shinychat need inline ones).
+.GENUI_CSP <- paste(
+  "img-src 'self' data: blob:;",
+  "media-src 'self' data: blob:;",
+  "frame-src 'none';",
+  "object-src 'none'")
+
+# The static Canvas tab: one persistent container the GenUI executor inserts
+# into. Present only when this app may run a canvas; the server hides it again
+# in a session that turns out not to have one.
+.genui_canvas_panel <- function() {
+  bslib::nav_panel(
+    title = "Canvas",
+    value = "canvas",
+    htmltools::tags$head(htmltools::tags$meta(
+      `http-equiv` = "Content-Security-Policy", content = .GENUI_CSP)),
+    htmltools::div(
+      class = "html-fill-container html-fill-item ca-genui-pane",
+      style = "height:100%;min-height:0;overflow:auto;",
+      htmltools::div(
+        id = .GENUI_CANVAS_ID, class = "genui-canvas",
+        `data-placeholder` = "Canvas components will appear here.")
+    )
+  )
+}
+
+output_panel_ui <- function(canvas = FALSE) {
   bslib::navset_tab(
       id       = "main_tab",
       selected = "output",
@@ -302,6 +331,7 @@ output_panel_ui <- function() {
             style = "height:100%;min-height:0;"
           )
         )
-      )
+      ),
+      if (isTRUE(canvas)) .genui_canvas_panel()
     )
 }

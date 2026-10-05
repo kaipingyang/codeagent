@@ -123,6 +123,7 @@ refresh. In that case `chat$get_cost()` may remain zero and a
 | web | btw | URL → Markdown |
 | agent | btw | hierarchical subagent delegation |
 | data | codeagent | `ExploreData` — arbitrary model-generated R execution over a data.frame (exec-gated, not a sandbox); `DescribeData` — strict protected-data metadata (Data Shield) |
+| genui | codeagent | `canvas_value_box`, `canvas_data_table`, `canvas_scatter_plot`, `canvas_histogram`, `canvas_update`, `canvas_remove`, `canvas_clear`, `canvas_state` — Shiny app only, see [Generative UI canvas](#generative-ui-canvas) |
 
 #### Selecting tools
 
@@ -561,6 +562,53 @@ values and tool request/result IDs remain unchanged. The fresh session greeting 
 persistent across New/Delete, is reset with `chat_clear(greeting = TRUE)`, and is
 not duplicated when history is restored; `codeagent_app(greeting=)` remains a
 composer-prefill API.
+
+### Generative UI canvas
+
+In `codeagent_app()` the model can draw on a **Canvas** tab in the Output
+workspace: value boxes, sortable tables, scatter plots and histograms built from
+data frames in the R session. Components come from
+[shinygenui](https://github.com/nanxstats/shinygenui) (optional; install it with
+`pak::pak(c("nanxstats/shinygenui", "ggplot2", "DT"))`), but codeagent keeps the
+chat, the system prompt, the streaming, the permission gate, Data Shield and
+the session: only shinygenui's pure functions are used, never `genui_server()`.
+
+```r
+# Per-session apps (bare Chat or client_factory): on by default when installed.
+codeagent_app(ellmer::chat_openai_compatible(...))
+
+# A pre-built client shared by the app gets a canvas only when asked for by name.
+client <- codeagent_client(chat, tools = c("files", "shell", "genui"))
+codeagent_app(client)
+
+# Turn it off.
+codeagent_client(chat, disallowed_tools = "genui")
+```
+
+The model calls one tool per component (`canvas_histogram(dataset = "mtcars",
+column = "mpg")`) plus `canvas_update` / `canvas_remove` / `canvas_clear` /
+`canvas_state`. Every call is checked before anything reaches the browser:
+the central gate (canvas tools are `read`), Data Shield argument scrubbing,
+shinygenui's own argument and column validation against the real data, a
+canvas-output check that rejects markup, links, URL schemes and control
+characters, and quotas (changes per turn, live components, history length,
+argument size). Rejections come back as tool errors that tell the model what
+to fix. Create and update are transactional: a component whose server fails
+is removed again, and a failed update restores the previous arguments. Each
+mount runs in its own Shiny module scope, destroyed with `session$destroy()`
+on removal, so observers do not outlive their component.
+
+The canvas is saved in the same session file write as the conversation and
+restored with it (New, Delete, load, auto-continue, fork). Restore is strict:
+every saved change is replayed through validation, bound to the tool request
+that made it, and checked against the component catalog; anything that no
+longer fits leaves an empty canvas and a notice rather than a partial one.
+`/rewind` and `/clear` roll the canvas back together with the turns they
+remove, and a cancelled turn accepts no further canvas changes. The
+per-turn reminder lists live component ids, so they survive compaction. When
+the canvas is available the page carries a Content Security Policy that blocks
+images, media, frames and plugins from other origins. A pre-built client
+opened in two browser sessions disables its canvas rather than share it.
 
 ## Configuration reference
 

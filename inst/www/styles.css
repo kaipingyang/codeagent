@@ -341,3 +341,26 @@ shiny-chat-page
   white-space: nowrap;
 }
 .ca-file-view-header a:hover { opacity: 1; color: var(--bs-body-color); }
+
+/* Generative UI canvas (R/genui_runtime.R). codeagent ships its own layout
+   rather than depending on shinygenui's asset class names. */
+.genui-canvas {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 12px;
+  padding: 8px;
+  min-height: 100%;
+}
+.genui-canvas:empty::before {
+  content: attr(data-placeholder);
+  color: var(--bs-secondary-color, #6c757d);
+  padding: 24px;
+  width: 100%;
+  text-align: center;
+}
+.genui-shell { min-width: 0; }
+.genui-shell > .card, .genui-shell > .bslib-value-box { margin-bottom: 0; }
+.genui-width-auto { flex: 1 1 220px; }
+.genui-width-wide { flex: 2 1 420px; }
+.genui-width-full { flex: 1 1 100%; }

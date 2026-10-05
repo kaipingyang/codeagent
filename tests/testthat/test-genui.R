@@ -247,3 +247,7 @@ test_that("the canvas_ prefix alone never grants a capability", {
   expect_false(meta$known)
   expect_identical(.tool_capability("canvas_rm_rf"), "exec")
 })
+
+test_that("the prompt fragment explains the dataset argument", {
+  expect_match(.genui_fragment(), "`dataset`", fixed = TRUE)
+})

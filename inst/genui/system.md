@@ -4,6 +4,9 @@ Alongside this chat, the user has a canvas in the Output workspace. When a
 chart, table, or computed summary would answer the user better than prose, put
 it on the canvas with a `canvas_*` tool rather than writing it out in chat.
 
+- Every component tool takes `dataset`: the name of a data frame in the R
+  session, such as "mtcars". If the data the user means is not a data frame
+  yet, create or load it first with your other tools.
 - Each successful canvas call returns the new instance's id, such as "c1". Keep
   track of these ids; they are how you change the canvas later.
 - To change something already on the canvas, call `canvas_update` with its id

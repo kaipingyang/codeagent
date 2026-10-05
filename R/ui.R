@@ -610,6 +610,11 @@ codeagent_app <- function(
   }
   cwd <- settings$cwd %||% getwd()
 
+  # Whether this app may show a generative UI canvas (decides the static Canvas
+  # tab). Each server session decides again for itself and may hide the tab.
+  genui_per_session <- !is.null(client_factory)
+  genui_ui <- suppressWarnings(.genui_wanted(settings, per_session = genui_per_session))
+
   # Static assets
   www_dir <- system.file("www", package = "codeagent")
   if (nzchar(www_dir))
@@ -665,7 +670,7 @@ codeagent_app <- function(
       id = "ca_page_chat_workspace",
       class = "html-fill-container html-fill-item",
       style = "height:100%;min-height:0;",
-      bslib::card(fill = TRUE, output_panel_ui())
+      bslib::card(fill = TRUE, output_panel_ui(canvas = genui_ui))
     )
     ui <- .codeagent_page_chat_ui(
       theme = ca_bs_theme,
@@ -687,7 +692,7 @@ codeagent_app <- function(
         sidebar = bslib::sidebar(
           id = "ca_output_sidebar", position = "right", width = "50%",
           resizable = TRUE, fillable = TRUE, padding = 4,
-          bslib::card(fill = TRUE, output_panel_ui())
+          bslib::card(fill = TRUE, output_panel_ui(canvas = genui_ui))
         ),
         bslib::card(
           fill = TRUE,
@@ -711,6 +716,16 @@ codeagent_app <- function(
     settings$web_citations <- web_citations
     settings$ui_layout <- ui_layout
     cwd <- settings$cwd %||% getwd()
+    # Generative UI canvas: an adapter per Chat, created cheaply here and
+    # prepared under the init overlay below. A shared pre-built client keeps
+    # one adapter on its Chat, so a second browser session poisons it instead
+    # of silently taking over the first session's canvas.
+    if (isTRUE(genui_ui) && .genui_wanted(settings, per_session = genui_per_session)) {
+      adapter <- attr(chat_obj, "codeagent_genui") %||%
+        GenUIAdapter$new(prepare = FALSE)
+      attr(chat_obj, "codeagent_genui") <- adapter
+      settings$genui <- adapter
+    }
     tools_ready <- if (!is.null(client_factory))
       length(tryCatch(chat_obj$get_tools(), error = function(e) list())) > 0L else
       tools_ready
@@ -841,8 +856,14 @@ codeagent_app <- function(
     # visible throughout. Input stays gated (state$initializing) until ready. A
     # pre-built client already has its tools (tools_ready) -> overlay clears fast.
     session$onFlushed(function() {
-      if (!isTRUE(tools_ready))
+      genui_on <- .genui_attach(settings, session)
+      if (!isTRUE(tools_ready) || isTRUE(genui_on))
         tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
+      if (isTRUE(genui_on))
+        tryCatch(.sync_genui_prompt(chat_obj, settings), error = function(e) NULL)
+      if (isTRUE(genui_ui) && !isTRUE(genui_on))
+        tryCatch(bslib::nav_hide("main_tab", "canvas", session = session),
+                 error = function(e) NULL)
       # Harness-only/session factories register tools lazily; install/re-install
       # the shield afterwards so newly attached tools capture this session state.
       if (inherits(session_client$data_shield, "DataShield"))
@@ -867,6 +888,7 @@ codeagent_app <- function(
         shinychat::chat_clear("chat", session = session)
         # Replay via contents_shinychat -- native tool card rendering.
         .replay_turns_to_ui(chat_obj, session, settings)
+        .genui_restore_ui(settings, chat_obj, sid, cwd)
         # Refresh the CONTEXT token meter for the auto-restored conversation.
         tryCatch({
           n_tokens <- token_count_with_estimation(chat_obj, allow_network = FALSE)

@@ -323,6 +323,7 @@ NULL
     .prompt_actions(),
     .prompt_r_specifics(),
     .prompt_web_citations(settings),
+    .prompt_genui(settings),
     .prompt_context_blocks(settings, cwd)
   )
   paste(parts[nzchar(parts)], collapse = "\n\n")
@@ -387,6 +388,12 @@ NULL
   # Background sub-agent results (completed since last turn) + running notices.
   # Mirrors Claude Code's async-agent attachments: surface results and avoid
   # re-spawning tasks that are still in flight.
+  # Live canvas components, every turn: compaction may have summarised away
+  # the turns that created them, and the model needs their ids to edit them.
+  canvas <- if (inherits(settings$genui, "GenUIAdapter"))
+    tryCatch(settings$genui$summary(), error = function(e) "") else ""
+  if (nzchar(canvas)) lines <- c(lines, "", canvas)
+
   bg <- tryCatch(.bg_reminder_block(), error = function(e) "")
   if (nzchar(bg)) lines <- c(lines, "", bg)
 

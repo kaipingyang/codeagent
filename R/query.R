@@ -832,6 +832,9 @@ agent_loop <- function(user_input,
       chat, settings$data_shield_engine,
       security_context = security_context),
       error = function(e) NULL)
+  # Generative UI canvas: only when the Shiny server attached an adapter for
+  # this browser session (settings$genui); the CLI never has one.
+  tryCatch(.register_genui_tools(chat, settings), error = function(e) NULL)
   .sync_delegation_prompt(chat, settings, cwd)
   # Apply the `tools=` selection. Deliberately a subtraction AFTER every
   # register_*() call rather than a gate inside them: the btw integration path
