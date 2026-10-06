@@ -116,7 +116,7 @@ NULL
       "i" = paste0(
         "Install the verified build with ",
         "`pak::pak(\"ericrayanderson/shinyglass@",
-        "e07c0ae7b9cdf7959eace05c7ac32481f06d5a7c\")`."
+        "8996a7badae511e53640db40d415366a475aa856\")`."
       )
     ))
   }
