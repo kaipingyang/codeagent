@@ -49,6 +49,7 @@ onclick = sprintf(
   shiny::observeEvent(input$new_session, {
     if (!is.null(stream_task) && stream_task$status() == "running") return()
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
+    .genui_reset(settings)
     .reset_session_state(state)
     .reset_chat_ui_greeting(session)
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
@@ -62,6 +63,7 @@ onclick = sprintf(
       tryCatch(delete_session(sid, directory = cwd), error = function(e) NULL)
     }
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
+    .genui_reset(settings)
     .reset_session_state(state)
     .reset_chat_ui_greeting(session)
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
@@ -92,6 +94,7 @@ onclick = sprintf(
     .reset_chat_ui_greeting(session)
     # Replay via contents_shinychat -- native tool card rendering.
     .replay_turns_to_ui(chat, session, settings)
+    .genui_restore_ui(settings, chat, sid, cwd)
     # Refresh the CONTEXT token meter for the restored conversation (the stream
     # task only updates it on new turns, so a freshly restored session would
     # otherwise read 0 tokens).

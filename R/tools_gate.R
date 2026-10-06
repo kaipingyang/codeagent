@@ -52,6 +52,20 @@ NULL
   GenerateReport = list(set = "A", capability = "write", path_args = "path"),
   remember    = list(set = "A", capability = "write"),
   use_skill   = list(set = "A", capability = "read"),
+  # Generative UI canvas tools (R/genui.R). "read": they change only the canvas
+  # in the user's own browser session -- no disk, no execution, no network --
+  # and their safety comes from the GenUI pipeline (Data Shield ingress, quota,
+  # catalog validation, pre-DOM checks), not from a prompt. Listed by exact name
+  # on purpose: the canvas_ prefix is never matched, or any host tool named
+  # canvas_* would inherit "read". Must equal .genui_tool_names() (tested).
+  canvas_value_box    = list(set = "A", capability = "read"),
+  canvas_data_table   = list(set = "A", capability = "read"),
+  canvas_scatter_plot = list(set = "A", capability = "read"),
+  canvas_histogram    = list(set = "A", capability = "read"),
+  canvas_update       = list(set = "A", capability = "read"),
+  canvas_remove       = list(set = "A", capability = "read"),
+  canvas_clear        = list(set = "A", capability = "read"),
+  canvas_state        = list(set = "A", capability = "read"),
   # btw file tools (set B)
   btw_tool_files_write   = list(set = "B", capability = "write", path_args = "path"),
   btw_tool_files_edit    = list(set = "B", capability = "write", path_args = "path"),

@@ -258,6 +258,9 @@ NULL
   unfulfilled <- Filter(function(token) {
     expected <- tryCatch(.token_expected_names(token, spec$backends),
                          error = function(e) character(0))
+    # Canvas tools are registered by codeagent_app() per browser session, never
+    # by the client itself, so their absence here is not a failure.
+    if (length(expected) && all(expected %in% .genui_tool_names())) return(FALSE)
     length(expected) > 0L && !.any_expected_present(expected, names_now)
   }, requested)
   unfulfilled <- unlist(unfulfilled, use.names = FALSE) %||% character(0)

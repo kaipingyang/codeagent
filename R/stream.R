@@ -12,6 +12,55 @@
 #' @name stream
 NULL
 
+.consume_codeagent_stream <- function(stream, consume) {
+  iterator <- coro::as_iterator(stream)
+  completion <- promises::promise(function(resolve, reject) {
+    settled <- FALSE
+    fail <- function(error) {
+      if (!settled) {
+        settled <<- TRUE
+        reject(error)
+      }
+      invisible(NULL)
+    }
+    advance <- function() {
+      tryCatch({
+        value <- iterator()
+        if (!promises::is.promise(value)) value <- promises::promise_resolve(value)
+        promises::then(value, receive, fail)
+      }, error = fail)
+      invisible(NULL)
+    }
+    receive <- function(chunk) {
+      if (settled) return(invisible(NULL))
+      tryCatch({
+        if (coro::is_exhausted(chunk)) {
+          settled <<- TRUE
+          resolve(NULL)
+        } else {
+          consume(chunk)
+          advance()
+        }
+      }, error = fail)
+      invisible(NULL)
+    }
+    advance()
+  })
+  promises::finally(completion, function() {
+    if ("close" %in% names(formals(iterator))) iterator(close = TRUE)
+  })
+}
+
+.run_codeagent_stream <- coro::async(function(start, consume, complete, fail) {
+  .enter_async_turn()
+  on.exit(.exit_async_turn(), add = TRUE)
+  tryCatch({
+    stream <- start()
+    coro::await(.consume_codeagent_stream(stream, consume))
+    complete()
+  }, error = function(error) fail(error))
+})
+
 # ---------------------------------------------------------------------------
 # codeagent_stream_async
 # ---------------------------------------------------------------------------
@@ -20,6 +69,8 @@ NULL
 #'
 #' Runs the full turn pipeline (compaction, system-reminder injection, session
 #' save, cost tracking) and invokes typed callbacks for each content event.
+#' A shared, small coroutine drives the stream; synchronous event handling stays
+#' outside its state machine. Text is collected in chunks before final assembly.
 #'
 #' **Tool event dual paths** (see plan sec6 for details):
 #' * `on_tool_request` / `on_tool_result` parameters are called from the
@@ -120,140 +171,120 @@ codeagent_stream_async <- function(
   # (text followed by Content attachments) across the dots.
   stream_contents <- if (is.list(actual_input)) actual_input else list(actual_input)
 
-  # Mark this as an async turn so promise-returning tools (e.g. concurrent
-  # sub-agents) are permitted; cleared when the turn's promise settles.
-  .enter_async_turn()
-  .async_result <- coro::async(function() {
-    # controller resets automatically when passed to a new stream call
-    # (ellmer 0.4.1 docs), but an explicit tryCatch-guarded reset is harmless.
+  acc <- ""
+  text_chunks <- new.env(hash = FALSE, parent = emptyenv())
+  chunk_count <- 0L
+  flush_text <- function() {
+    if (chunk_count > 0L) {
+      keys <- as.character(seq_len(chunk_count))
+      chunks <- unname(unlist(mget(keys, text_chunks, inherits = FALSE),
+                              use.names = FALSE))
+      acc <<- paste0(acc, paste0(chunks, collapse = ""))
+      rm(list = keys, envir = text_chunks)
+      chunk_count <<- 0L
+    }
+    invisible(NULL)
+  }
+
+  start <- function() {
     if (!is.null(controller))
       tryCatch(controller$reset(), error = function(e) NULL)
+    do.call(chat$stream_async,
+            c(stream_contents,
+              list(stream = "content", controller = controller,
+                   tool_mode = tool_mode)))
+  }
 
-    # acc is initialised at the top level so it is visible to the error handler.
-    acc <- ""
-
-    tryCatch({
-      stream <- do.call(chat$stream_async,
-                        c(stream_contents,
-                          list(stream     = "content",
-                               controller = controller,
-                               tool_mode  = tool_mode)))
-
-      for (chunk in coro::await_each(stream)) {
-
-        if (S7::S7_inherits(chunk, ellmer::ContentThinking)) {
-          # Extended-thinking block: emit to on_thinking if provided.
-          th <- tryCatch(chunk@thinking, error = function(e) "")
-          if (!is.null(on_thinking) && nzchar(th)) on_thinking(th)
-
-        } else if (S7::S7_inherits(chunk, ellmer::ContentToolRequest)) {
-          # Pre-gate notification: the permission gate fires later via
-          # chat$on_tool_request; this callback is a preview for the UI.
-          if (!is.null(on_tool_request)) {
-            nm     <- tryCatch(chunk@name,      error = function(e) "")
-            args   <- tryCatch(chunk@arguments, error = function(e) list())
-            intent <- tryCatch(args[["_intent"]], error = function(e) NULL)
-            on_tool_request(list(
-              id        = tryCatch(chunk@id, error = function(e) ""),
-              name      = nm,
-              arguments = args,
-              intent    = intent))
-          }
-
-        } else if (S7::S7_inherits(chunk, ellmer::ContentToolResult)) {
-          # Tool completed: collect current-turn sources before display adaption.
-          adapted <- tryCatch(.adapt_tool_result(chunk), error = function(e) chunk)
-          .citation_registry_add(
-            citation_registry, .citation_sources_from_result(adapted))
-          if (!is.null(on_tool_result)) {
-            display  <- tryCatch(adapted@extra$display, error = function(e) NULL)
-            artifact <- tool_result_artifact(adapted, version = NULL)
-            req      <- tryCatch(chunk@request, error = function(e) NULL)
-            on_tool_result(list(
-              id       = tryCatch(
-                           if (!is.null(req)) req@id   else NA_character_,
-                           error = function(e) NA_character_),
-              name     = tryCatch(
-                           if (!is.null(req)) req@name else NA_character_,
-                           error = function(e) NA_character_),
-              display  = display,
-              value    = tool_result_value(adapted),
-              is_error = !is.null(tryCatch(chunk@error, error = function(e) NULL)),
-              artifact = artifact))
-          }
-
-        } else {
-          # Text chunk: accumulate and notify. In buffer mode (shield active) we
-          # withhold live deltas -- the reply is emitted once, post-scan, below.
-          txt <- .chunk_text(chunk)
-          if (nzchar(txt)) {
-            acc <- paste0(acc, txt)
-            if (!is.null(on_delta) && !isTRUE(.buffer_output)) on_delta(txt)
-          }
-        }
+  consume <- function(chunk) {
+    if (S7::S7_inherits(chunk, ellmer::ContentThinking)) {
+      th <- tryCatch(chunk@thinking, error = function(e) "")
+      if (!is.null(on_thinking) && nzchar(th)) on_thinking(th)
+    } else if (S7::S7_inherits(chunk, ellmer::ContentToolRequest)) {
+      if (!is.null(on_tool_request)) {
+        nm <- tryCatch(chunk@name, error = function(e) "")
+        args <- tryCatch(chunk@arguments, error = function(e) list())
+        intent <- tryCatch(args[["_intent"]], error = function(e) NULL)
+        on_tool_request(list(
+          id = tryCatch(chunk@id, error = function(e) ""),
+          name = nm, arguments = args, intent = intent
+        ))
       }
+    } else if (S7::S7_inherits(chunk, ellmer::ContentToolResult)) {
+      adapted <- tryCatch(.adapt_tool_result(chunk), error = function(e) chunk)
+      .citation_registry_add(citation_registry, .citation_sources_from_result(adapted))
+      if (!is.null(on_tool_result)) {
+        display <- tryCatch(adapted@extra$display, error = function(e) NULL)
+        artifact <- tool_result_artifact(adapted, version = NULL)
+        req <- tryCatch(chunk@request, error = function(e) NULL)
+        on_tool_result(list(
+          id = tryCatch(if (!is.null(req)) req@id else NA_character_,
+                        error = function(e) NA_character_),
+          name = tryCatch(if (!is.null(req)) req@name else NA_character_,
+                          error = function(e) NA_character_),
+          display = display, value = tool_result_value(adapted),
+          is_error = !is.null(tryCatch(chunk@error, error = function(e) NULL)),
+          artifact = artifact
+        ))
+      }
+    } else {
+      txt <- .chunk_text(chunk)
+      if (nzchar(txt)) {
+        chunk_count <<- chunk_count + 1L
+        assign(as.character(chunk_count), txt, envir = text_chunks)
+        if (!is.null(on_delta) && !isTRUE(.buffer_output)) on_delta(txt)
+      }
+    }
+    invisible(NULL)
+  }
 
-      # Map only after the stream has closed and the final AssistantTurn exists.
-      # Append the static note before the output gate. In live mode only the note
-      # remains to emit; buffered mode emits the complete gated response once.
-      finish <- .map_finish_reason(.last_finish_reason(chat))
-      acc <- .append_finish_note(acc, finish$note)
+  complete <- function() {
+    flush_text()
+    finish <- .map_finish_reason(.last_finish_reason(chat))
+    acc <<- .append_finish_note(acc, finish$note)
+    if (isTRUE(.citation_active))
+      acc <<- .render_turn_citations(acc, citation_registry, settings, chat)
+    og <- .output_gate_guarded(acc, settings, chat)
+    acc <<- og$text %||% acc
+    if (!is.null(on_delta)) {
+      if (isTRUE(.buffer_output) && nzchar(acc))
+        tryCatch(on_delta(acc), error = function(e) NULL)
+      if (!isTRUE(.buffer_output) && !is.null(finish$note))
+        tryCatch(on_delta(paste0("\n\n", finish$note)), error = function(e) NULL)
+    }
+    hooks <- tryCatch(settings$hooks_registry, error = function(e) NULL)
+    if (!is.null(hooks)) tryCatch(
+      hooks$run_assistant_message(acc), error = function(e) NULL)
+    usage <- .turn_teardown(client, cwd, session_id, presentation_text = acc)
+    if (!is.null(hooks)) tryCatch(
+      hooks$run_stop(finish$stop_reason,
+                    list(session_id = session_id, finish_reason = finish$finish_reason)),
+      error = function(e) NULL)
+    if (!is.null(on_usage)) on_usage(usage)
+    invisible(list(text = acc, usage = usage, stop_reason = finish$stop_reason,
+                   finish_reason = finish$finish_reason))
+  }
+  fail <- function(e) {
+    flush_text()
+    recovered <- tryCatch(
+      .handle_agent_error(e, chat, actual_input, compaction_ctrl,
+                          hooks = tryCatch(settings$hooks_registry,
+                                           error = function(e2) NULL)),
+      error = function(e2) paste0("[error] ", conditionMessage(e2)))
+    if (isTRUE(.buffer_output)) {
       if (isTRUE(.citation_active))
-        acc <- .render_turn_citations(
-          acc, citation_registry, settings, chat)
+        acc <<- .render_turn_citations(acc, citation_registry, settings, chat)
       og <- .output_gate_guarded(acc, settings, chat)
-      acc <- og$text %||% acc
-      if (!is.null(on_delta)) {
-        if (isTRUE(.buffer_output) && nzchar(acc))
-          tryCatch(on_delta(acc), error = function(e) NULL)
-        if (!isTRUE(.buffer_output) && !is.null(finish$note))
-          tryCatch(on_delta(paste0("\n\n", finish$note)), error = function(e) NULL)
-      }
-
-      hooks <- tryCatch(settings$hooks_registry, error = function(e) NULL)
-      if (!is.null(hooks)) tryCatch(
-        hooks$run_assistant_message(acc), error = function(e) NULL)
-      usage <- .turn_teardown(
-        client, cwd, session_id, presentation_text = acc)
-      if (!is.null(hooks)) tryCatch(
-        hooks$run_stop(finish$stop_reason,
-                       list(session_id = session_id,
-                            finish_reason = finish$finish_reason)),
-        error = function(e) NULL)
-      if (!is.null(on_usage)) on_usage(usage)
-      invisible(list(text = acc, usage = usage,
-                     stop_reason = finish$stop_reason,
-                     finish_reason = finish$finish_reason))
-
-    }, error = function(e) {
-      # acc is visible here (outer-scope variable in the async closure).
-      recovered <- tryCatch(
-        .handle_agent_error(e, chat, actual_input, compaction_ctrl,
-                            hooks = tryCatch(settings$hooks_registry,
-                                             error = function(e2) NULL)),
-        error = function(e2) paste0("[error] ", conditionMessage(e2)))
-      # Fail-closed on the ERROR path too (kiro round-4 #1): the partial reply in
-      # `acc` was accumulated but the output gate only ran on the success branch.
-      # When a shield is active, scan the partial text before it leaves via the
-      # return value, and DO NOT surface the raw error string (conditionMessage
-      # may itself embed a protected value, e.g. a mid-stream FAKEID) to on_error.
-      if (isTRUE(.buffer_output)) {
-        if (isTRUE(.citation_active))
-          acc <- .render_turn_citations(
-            acc, citation_registry, settings, chat)
-        og  <- .output_gate_guarded(acc, settings, chat)
-        acc <- og$text %||% acc
-        if (!is.null(on_error)) on_error(
-          "[data_shield] stream error; details withheld (fail-closed).",
-          is.character(recovered))
-      } else if (!is.null(on_error)) {
-        on_error(conditionMessage(e), is.character(recovered))
-      }
-      invisible(list(text = acc, usage = NULL, stop_reason = "error",
-                     finish_reason = .last_finish_reason(chat)))
-    })
-  })()
-  promises::finally(.async_result, function() .exit_async_turn())
+      acc <<- og$text %||% acc
+      if (!is.null(on_error)) on_error(
+        "[data_shield] stream error; details withheld (fail-closed).",
+        is.character(recovered))
+    } else if (!is.null(on_error)) {
+      on_error(conditionMessage(e), is.character(recovered))
+    }
+    invisible(list(text = acc, usage = NULL, stop_reason = "error",
+                   finish_reason = .last_finish_reason(chat)))
+  }
+  .run_codeagent_stream(start, consume, complete, fail)
 }
 
 # ---------------------------------------------------------------------------

@@ -1,5 +1,24 @@
 # codeagent 0.2.3
 
+* `codeagent_app()` gains a generative UI canvas built on `{shinygenui}`
+  (Suggests, with `{ggplot2}` and `{DT}` for its starter components). The model
+  draws value boxes, tables, scatter plots and histograms from data frames in
+  the R session onto a new Canvas tab in the Output workspace, through eight
+  `canvas_*` tools in the `genui` group. codeagent consumes only shinygenui's
+  pure functions and owns everything else: the tools pass the central gate
+  (declared `read` by exact name, never by prefix), Data Shield, shinygenui's
+  validation, a canvas-output check (no markup, links, URL schemes or control
+  characters) and quotas before the DOM changes; create and update are
+  transactional, and each mount runs in a Shiny module scope destroyed on
+  removal. The canvas is persisted in the same session file write as the
+  chat, restored strictly (fail closed on catalog drift, unbound requests or
+  failed replay), rolled back with `/rewind` and `/clear`, and closed to
+  changes after a cancel. Per-session apps enable it by default when the
+  packages are installed; a shared pre-built client only with
+  `tools = "genui"`; `disallowed_tools = "genui"` turns it off. The CLI never
+  registers canvas tools, and naming `genui` there is not reported as
+  unfulfilled. `save_session()` gains `genui_state=`.
+
 * A `tools=` entry that registers nothing now warns and names the entry. btw
   drops a tool group whose optional dependency is missing (`git` without
   `{gert}`, `github` without `{gh}`) and reports it only as a once-per-session

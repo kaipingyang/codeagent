@@ -10,18 +10,18 @@ metadata:
 ## 安装当前已验收GitHub HEAD
 
 先重新查询各仓库HEAD；确认后用完整SHA安装，且只更新`Depends`、`Imports`、
-`LinkingTo`运行时依赖，不批量升级无关CRAN包。2026-09-09 manifest：
+`LinkingTo`运行时依赖，不批量升级无关CRAN包。2026-10-06 manifest：
 
 ```r
 refs <- c(
-  "tidyverse/ellmer@92cfa7f48270048105ea1bfb44d23a2e59c2df6e",
-  "posit-dev/btw@473d1d8e3114ed9136692ff3fb6b88ed0474ba66",
-  "posit-dev/shinychat/pkg-r@826c799994c32611629236bbc73516dbc14ff2ab",
-  "rstudio/shiny@81844600fc15f1952838546faa6699d0506ce7f9",
-  "rstudio/bslib@7d9e2dbdd636706f40619954b6b559c283d4eae2",
-  "posit-dev/mcptools@079e011e6f2a515565f903dc8a5b7c4d793746f1",
+  "tidyverse/ellmer@248c86704a52baf2f4f66a91f12b42a48ddac993",
+  "posit-dev/btw@6a27d997120f11cfda15bf0a5953a22329b01715",
+  "posit-dev/shinychat/pkg-r@05e0bbd987286068638d3cf96d6ea7daff15c5b2",
+  "rstudio/shiny@bbc43849f06059f5daa7310ea0f40ec901f0ed0f",
+  "rstudio/bslib@ac1e25f8070e1f952509b6575ced19b4237e7ec5",
+  "posit-dev/mcptools@ff94da04ccb5e6e86a56537c9d2dcb0e0532067b",
   "r-lib/Rapp@489655f24945042791ddb083d0d5518c4a905d9f",
-  "r-lib/httr2@7ce699f813e662850ea21d9f87e242e0c699f9fe"
+  "r-lib/httr2@b9d93794884228bd6654ca7f2abc0162c1ba5f81"
 )
 pak::pkg_install(refs, upgrade = TRUE, ask = FALSE,
   dependencies = c("Depends", "Imports", "LinkingTo"))
@@ -62,14 +62,14 @@ pak::pak(c(
 当前个人默认开发环境使用以下完整manifest；0.2.0 shared library保持上方历史
 基线，不得被普通开发安装覆盖：
 
-- `ellmer` 0.5.0.9000 @ `92cfa7f48270048105ea1bfb44d23a2e59c2df6e`
-- `btw` 1.5.0 @ `473d1d8e3114ed9136692ff3fb6b88ed0474ba66`
-- `shinychat` 0.5.0 @ `826c799994c32611629236bbc73516dbc14ff2ab`（monorepo：`posit-dev/shinychat/pkg-r`）
-- `shiny` 1.14.0.9000 @ `81844600fc15f1952838546faa6699d0506ce7f9`
-- `bslib` 0.12.0.9000 @ `7d9e2dbdd636706f40619954b6b559c283d4eae2`
-- `mcptools` 1.0.2.9000 @ `079e011e6f2a515565f903dc8a5b7c4d793746f1`
+- `ellmer` 0.5.0.9000 @ `248c86704a52baf2f4f66a91f12b42a48ddac993`
+- `btw` 1.5.0.9000 @ `6a27d997120f11cfda15bf0a5953a22329b01715`
+- `shinychat` 0.5.0.9000 @ `05e0bbd987286068638d3cf96d6ea7daff15c5b2`（monorepo：`posit-dev/shinychat/pkg-r`）
+- `shiny` 1.14.0.9000 @ `bbc43849f06059f5daa7310ea0f40ec901f0ed0f`
+- `bslib` 0.12.0.9000 @ `ac1e25f8070e1f952509b6575ced19b4237e7ec5`
+- `mcptools` 1.0.3.9000 @ `ff94da04ccb5e6e86a56537c9d2dcb0e0532067b`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
-- `httr2` 1.3.0.9000 @ `7ce699f813e662850ea21d9f87e242e0c699f9fe`
+- `httr2` 1.3.0.9000 @ `b9d93794884228bd6654ca7f2abc0162c1ba5f81`
 
 普通运行不依赖`/tmp` candidate。exact shinychat的官方tool结果取值是
 `open_style = "framed"`（不是`"frame"`）；它还提供`page_chat()`、

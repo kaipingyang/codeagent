@@ -47,11 +47,15 @@ NULL
 #' @param title Character or NULL. Optional human-readable title.
 #' @param assistant_text_override Character or NULL. Safe finalized text for the
 #'   last assistant turn's presentation line. Lossless chat-state remains intact.
+#' @param genui_state List or NULL. The generative UI canvas state to persist
+#'   with the conversation, written in the same atomic file replacement as the
+#'   chat state. Supplied by [codeagent_app()]; `NULL` writes no canvas line.
 #' @return Character(1). The session UUID.
 #' @export
 save_session <- function(chat, cwd = getwd(),
                           session_id = NULL, title = NULL,
-                          assistant_text_override = NULL) {
+                          assistant_text_override = NULL,
+                          genui_state = NULL) {
   if (is.null(session_id)) session_id <- .generate_uuid_v4()
   session_dir <- .ensure_session_dir(cwd)
   file_path   <- file.path(session_dir, paste0(session_id, ".jsonl"))
@@ -87,6 +91,15 @@ save_session <- function(chat, cwd = getwd(),
       list(type = "chat-state", sessionId = session_id,
            timestamp = now, state = state_str),
       auto_unbox = TRUE))
+  }
+
+  # Canvas state rides in the same file and the same rename as the chat state,
+  # so a saved conversation and its canvas can never come from different saves.
+  if (!is.null(genui_state)) {
+    lines <- c(lines, jsonlite::toJSON(
+      list(type = "genui-state", sessionId = session_id,
+           timestamp = now, state = genui_state),
+      auto_unbox = TRUE, null = "null"))
   }
 
   # Turn lines (text-level -- drives UI display, titles, and legacy fallback).

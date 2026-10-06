@@ -43,6 +43,17 @@ server_chat <- function(input, output, session, chat, settings,
   # (extra$codeagent$artifact) on demand -- no stored right_output (plan 35 B1).
   # Returns the (possibly adapted) result so callers can store it.
   .push_output <- function(result, immediate = TRUE) {
+    # Canvas changes already happened in the Canvas tab; show that tab rather
+    # than replacing the Output panel with a summary card.
+    if (.is_genui_result(result)) {
+      tryCatch(bslib::nav_select("main_tab", "canvas", session = session),
+               error = function(e) NULL)
+      if (!is.null(drawer_id) && nzchar(drawer_id))
+        tryCatch(shinychat::chat_drawer_show(drawer_id, title = "Workspace",
+                                             session = session),
+                 error = function(e) NULL)
+      return(invisible(result))
+    }
     artifact <- tool_result_artifact(result)
     title   <- .artifact_title(artifact)
     content <- tryCatch(render_artifact(artifact, mode = "panel"), error = function(e) NULL)
@@ -103,6 +114,7 @@ server_chat <- function(input, output, session, chat, settings,
   # user_contents: character scalar OR list (text + ContentImage/ContentPDF)
   # ------------------------------------------------------------------
     stream_task <- shiny::ExtendedTask$new(function(user_contents) {
+    .genui_begin_turn(settings)
     # Extract text for skill-prompt injection; keep full contents for LLM
     text_part <- .user_input_text(user_contents)
 
@@ -221,13 +233,17 @@ server_chat <- function(input, output, session, chat, settings,
 
       shiny::isolate(state$iteration <- (state$iteration %||% 0L) + 1L)
 
-      # Auto-save every turn (session_id is always set from startup).
+      # Auto-save every turn (session_id is always set from startup). The
+      # canvas is settled first (a cancelled round ellmer dropped is rolled
+      # back) and saved in the same file write as the chat.
       sid <- shiny::isolate(state$session_id)
       presentation_text <- NULL
       if (!is.null(finalized)) presentation_text <- finalized$text
+      .genui_end_turn(settings, chat)
       tryCatch(save_session(
         chat, cwd, sid,
-        assistant_text_override = presentation_text),
+        assistant_text_override = presentation_text,
+        genui_state = .genui_snapshot(settings, chat)),
         error = function(e) NULL)
       if (!is.null(finalized) && !is.null(hooks)) tryCatch(
         hooks$run_stop(finalized$finish$stop_reason,
@@ -297,6 +313,7 @@ server_chat <- function(input, output, session, chat, settings,
   shiny::observeEvent(input$esc, {
     if (stream_task$status() == "running") {
       state$interrupt <- TRUE
+      .genui_cancel_turn(settings)
       if (!is.null(stream_ctrl)) stream_ctrl$cancel()
       # ellmer 0.4.0+ (#840) + 0.4.1+ (#643) handle orphan tool requests and
       # AssistantPartialTurn automatically -- .patch_interrupted_chat not needed.
@@ -307,6 +324,7 @@ server_chat <- function(input, output, session, chat, settings,
   shiny::observeEvent(input$chat_cancel, {
     if (stream_task$status() == "running") {
       state$interrupt <- TRUE
+      .genui_cancel_turn(settings)
       if (!is.null(stream_ctrl)) stream_ctrl$cancel()
       # See note above: ellmer handles interrupts automatically.
     }
@@ -378,6 +396,7 @@ server_chat <- function(input, output, session, chat, settings,
   # Read-only facts the pure decision needs (gathered lazily -- only compute the
   # expensive token estimate for /budget).
   n_turns  <- length(tryCatch(chat$get_turns(), error = function(e) list()))
+  request_ids_before <- .chat_request_ids(chat)
   n_tokens <- if (identical(name, "budget"))
     tryCatch(estimate_tokens(chat), error = function(e) 0L) else 0L
   sessions <- if (identical(name, "sessions"))
@@ -472,6 +491,10 @@ server_chat <- function(input, output, session, chat, settings,
     # "append": nothing to do here; feedback appended below.
     NULL
   )
+
+  if (isTRUE(res$action %in% c("clear", "rewind")))
+    .genui_after_history_change(settings, chat, request_ids_before, cwd,
+                                shiny::isolate(state$session_id))
 
   # Append feedback to chat (NULL means the command handled its own UI, e.g. modal
   # returned early). Use the string + role form (NOT a Turn object): shinychat's
