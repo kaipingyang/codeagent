@@ -75,6 +75,8 @@ and interrupts retain their harness stop reasons.
 \description{
 Runs the full turn pipeline (compaction, system-reminder injection, session
 save, cost tracking) and invokes typed callbacks for each content event.
+A shared, small coroutine drives the stream; synchronous event handling stays
+outside its state machine. Text is collected in chunks before final assembly.
 }
 \details{
 \strong{Tool event dual paths} (see plan sec6 for details):
