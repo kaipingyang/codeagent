@@ -2,7 +2,9 @@
 
 Runs the full turn pipeline (compaction, system-reminder injection,
 session save, cost tracking) and invokes typed callbacks for each
-content event.
+content event. A shared, small coroutine drives the stream; synchronous
+event handling stays outside its state machine. Text is collected in
+chunks before final assembly.
 
 ## Usage
 

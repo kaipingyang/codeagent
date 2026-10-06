@@ -198,19 +198,19 @@ library。
 - `mcptools` \>= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
 - `httr2` 1.3.0（保持稳定版）
 
-**当前个人默认开发环境（2026-09-29）：**
+**当前个人默认开发环境（2026-10-06）：**
 
 个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
 
-- `ellmer` 0.5.0.9000 @ `215c4bdcad5d4395abe3821d2a83b4f434614da0`
-- `btw` 1.5.0.9000 @ `1025d26db22710514039f49c3262ba7484729ac9`
+- `ellmer` 0.5.0.9000 @ `248c86704a52baf2f4f66a91f12b42a48ddac993`
+- `btw` 1.5.0.9000 @ `6a27d997120f11cfda15bf0a5953a22329b01715`
 - `shinychat` 0.5.0.9000 @
   `05e0bbd987286068638d3cf96d6ea7daff15c5b2`（monorepo：`posit-dev/shinychat/pkg-r`）
-- `shiny` 1.14.0.9000 @ `81844600fc15f1952838546faa6699d0506ce7f9`
+- `shiny` 1.14.0.9000 @ `bbc43849f06059f5daa7310ea0f40ec901f0ed0f`
 - `bslib` 0.12.0.9000 @ `ac1e25f8070e1f952509b6575ced19b4237e7ec5`
 - `mcptools` 1.0.3.9000 @ `ff94da04ccb5e6e86a56537c9d2dcb0e0532067b`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
-- `httr2` 1.3.0.9000 @ `6313956a3202e3d8fdecf713777711d0d8140ec5`
+- `httr2` 1.3.0.9000 @ `b9d93794884228bd6654ca7f2abc0162c1ba5f81`
 
 普通R环境直接使用该个人库，不依赖`/tmp`
 candidate或硬编码[`.libPaths()`](https://rdrr.io/r/base/libPaths.html)。
@@ -724,6 +724,31 @@ rather than trusting shinychat-generated provider markup. Web fetches
 allow only public http/https, reject userinfo/private/reserved/mixed
 DNS, re-authorize every redirect, and pin the validated address with
 curl resolve to prevent DNS rebinding.
+
+**`genui.R` / `genui_runtime.R` / `genui_wiring.R`** — generative UI
+canvas over shinygenui’s **pure functions only** (`genui_dispatch` /
+`genui_catalog` / `genui_prompt`; never `genui_server()`, never
+`shinygenui:::`). `GenUIAdapter` (R6, one per browser session, lazy
+`prepare()` under the init overlay) owns catalog, state, trace and
+executor; `.genui_*` pure functions hold dataset lookup, canvas-output
+validation, quota, output discovery, trace fold. Executor touches Shiny
+only via an injectable `ops` list (tests use `helper-genui.R` fakes);
+each mount gets its own module scope (`ca_genui_<id>[_n]`) destroyed
+with `session$destroy()` (fallback: null outputs). Activation:
+`.genui_wanted()` — per-session app + `tools=NULL` on when installed,
+shared client only if named, `disallowed_tools="genui"` off, CLI never.
+Registered inside
+[`.register_all_tools()`](https://kaipingyang.github.io/codeagent/reference/dot-register_all_tools.md)
+from `settings$genui`; prompt section via `.prompt_genui()` /
+`.sync_genui_prompt()`; reminder carries the canvas summary. Each trace
+op records `tool_context()$request@id` — rewind/clear/cancel roll back
+by vanished request ids; `save_session(genui_state=)` writes the canvas
+in the same atomic file; restore is strict (digest + request binding +
+full re-dispatch, fail closed). Contract tests: `test-genui-contract.R`
+(run first when bumping the shinygenui SHA). E2E:
+`tests/e2e/verify-genui.R` (needs `--disable-dev-shm-usage`;
+`CODEAGENT_E2E_LIVE=1` for a real-model round). Plans:
+`references/plan/41-*.md`, `42-*.md`.
 
 **`skills.R`** — **btw-compatible** skill system. Skill format:
 `<name>/SKILL.md` directories (not flat `.md` files). Uses

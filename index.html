@@ -296,6 +296,13 @@
 <td>
 <code>ExploreData</code> — arbitrary model-generated R execution over a data.frame (exec-gated, not a sandbox); <code>DescribeData</code> — strict protected-data metadata (Data Shield)</td>
 </tr>
+<tr>
+<td>genui</td>
+<td>codeagent</td>
+<td>
+<code>canvas_value_box</code>, <code>canvas_data_table</code>, <code>canvas_scatter_plot</code>, <code>canvas_histogram</code>, <code>canvas_update</code>, <code>canvas_remove</code>, <code>canvas_clear</code>, <code>canvas_state</code> — Shiny app only, see <a href="#generative-ui-canvas">Generative UI canvas</a>
+</td>
+</tr>
 </tbody>
 </table>
 <div class="section level4">
@@ -474,7 +481,7 @@
 <span></span>
 <span><span class="co"># Liquid Glass delegates material rendering to the optional pinned shinyglass</span></span>
 <span><span class="co"># package; codeagent adds only a thin shinychat surface/dark-mode adapter:</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ericrayanderson/shinyglass@e07c0ae7b9cdf7959eace05c7ac32481f06d5a7c"</span><span class="op">)</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ericrayanderson/shinyglass@8996a7badae511e53640db40d415366a475aa856"</span><span class="op">)</span></span>
 <span><span class="va">liquid_theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_theme.html">codeagent_theme</a></span><span class="op">(</span></span>
 <span>  <span class="st">"glass"</span>, preset <span class="op">=</span> <span class="st">"auto"</span>, intensity <span class="op">=</span> <span class="fl">0.45</span>,</span>
 <span>  tint <span class="op">=</span> <span class="cn">TRUE</span>, specular <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -526,29 +533,46 @@
 <span><span class="op">}</span></span></code></pre></div>
 <p><code>ui_layout = "page_chat"</code> uses shinychat’s single-root page, <code>page_chat_theme()</code> baseline, a persistent global dark-mode/Workspace toolbar, and resizable drawer without transferring streaming, permission, session, or Data Shield ownership to <code><a href="https://posit-dev.github.io/shinychat/r/reference/chat_app.html" class="external-link">shinychat::chat_server()</a></code>. The main chat explicitly fills 100% of its available main column (which still shrinks for the sidebar/drawer), while classic keeps shinychat’s embedded-chat width and disables the unused native drawer/history presentation. Tool results and file selection open the page_chat drawer; its Workspace control uses the official <code>toolbar_input_button()</code> and drawer toggle API. Files can stage the selected file in the composer through <code>chat_attachment()</code> plus <code>update_chat_user_input()</code>. Skill turns use <code>ContentSlashCommand</code> after safety scanning and reminder injection, so the model receives the expanded skill prompt while replay shows the original <code>/skill args</code>. Legacy session cards are migrated only on a presentation copy, so provider-facing values and tool request/result IDs remain unchanged. The fresh session greeting is persistent across New/Delete, is reset with <code>chat_clear(greeting = TRUE)</code>, and is not duplicated when history is restored; <code>codeagent_app(greeting=)</code> remains a composer-prefill API.</p>
 </div>
+<div class="section level3">
+<h3 id="generative-ui-canvas">Generative UI canvas<a class="anchor" aria-label="anchor" href="#generative-ui-canvas"></a>
+</h3>
+<p>In <code><a href="reference/codeagent_app.html">codeagent_app()</a></code> the model can draw on a <strong>Canvas</strong> tab in the Output workspace: value boxes, sortable tables, scatter plots and histograms built from data frames in the R session. Components come from <a href="https://github.com/nanxstats/shinygenui" class="external-link">shinygenui</a> (optional; install it with <code>pak::pak(c("nanxstats/shinygenui", "ggplot2", "DT"))</code>), but codeagent keeps the chat, the system prompt, the streaming, the permission gate, Data Shield and the session: only shinygenui’s pure functions are used, never <code>genui_server()</code>.</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Per-session apps (bare Chat or client_factory): on by default when installed.</span></span>
+<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_openai_compatible.html" class="external-link">chat_openai_compatible</a></span><span class="op">(</span><span class="va">...</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># A pre-built client shared by the app gets a canvas only when asked for by name.</span></span>
+<span><span class="va">client</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"files"</span>, <span class="st">"shell"</span>, <span class="st">"genui"</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Turn it off.</span></span>
+<span><span class="fu"><a href="reference/codeagent_client.html">codeagent_client</a></span><span class="op">(</span><span class="va">chat</span>, disallowed_tools <span class="op">=</span> <span class="st">"genui"</span><span class="op">)</span></span></code></pre></div>
+<p>The model calls one tool per component (<code>canvas_histogram(dataset = "mtcars", column = "mpg")</code>) plus <code>canvas_update</code> / <code>canvas_remove</code> / <code>canvas_clear</code> / <code>canvas_state</code>. Every call is checked before anything reaches the browser: the central gate (canvas tools are <code>read</code>), Data Shield argument scrubbing, shinygenui’s own argument and column validation against the real data, a canvas-output check that rejects markup, links, URL schemes and control characters, and quotas (changes per turn, live components, history length, argument size). Rejections come back as tool errors that tell the model what to fix. Create and update are transactional: a component whose server fails is removed again, and a failed update restores the previous arguments. Each mount runs in its own Shiny module scope, destroyed with <code>session$destroy()</code> on removal, so observers do not outlive their component.</p>
+<p>The canvas is saved in the same session file write as the conversation and restored with it (New, Delete, load, auto-continue, fork). Restore is strict: every saved change is replayed through validation, bound to the tool request that made it, and checked against the component catalog; anything that no longer fits leaves an empty canvas and a notice rather than a partial one. <code>/rewind</code> and <code>/clear</code> roll the canvas back together with the turns they remove, and a cancelled turn accepts no further canvas changes. The per-turn reminder lists live component ids, so they survive compaction. When the canvas is available the page carries a Content Security Policy that blocks images, media, frames and plugins from other origins. A pre-built client opened in two browser sessions disables its canvas rather than share it.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="configuration-reference">Configuration reference<a class="anchor" aria-label="anchor" href="#configuration-reference"></a>
 </h2>
 <p>Precedence (low → high): package defaults → trusted user settings → non-sensitive <code>.codeagent/settings.json</code> values → environment variables. Project settings cannot select credentials or endpoints, mutate the process environment, weaken permissions/sandbox policy, install hooks/MCP, or expand the tool set. Put those settings in the user config outside the repository or pass them explicitly to <code><a href="reference/codeagent_client.html">codeagent_client()</a></code>. Project JSON uses a strict non-security allowlist and is ignored as a whole when duplicate top-level keys are present.</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb22-1"><a href="#cb22-1" tabindex="-1"></a><span class="fu">{</span></span>
-<span id="cb22-2"><a href="#cb22-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
-<span id="cb22-3"><a href="#cb22-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
-<span id="cb22-4"><a href="#cb22-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb22-5"><a href="#cb22-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
-<span id="cb22-6"><a href="#cb22-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span>       <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
-<span id="cb22-7"><a href="#cb22-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint"</span><span class="fu">,</span></span>
-<span id="cb22-8"><a href="#cb22-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span>  <span class="st">"your-fast-endpoint"</span></span>
-<span id="cb22-9"><a href="#cb22-9" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb22-10"><a href="#cb22-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
-<span id="cb22-11"><a href="#cb22-11" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb22-12"><a href="#cb22-12" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb22-13"><a href="#cb22-13" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[]</span><span class="fu">,</span></span>
-<span id="cb22-14"><a href="#cb22-14" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
-<span id="cb22-15"><a href="#cb22-15" tabindex="-1"></a>  <span class="fu">},</span></span>
-<span id="cb22-16"><a href="#cb22-16" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span><span class="fu">,</span></span>
-<span id="cb22-17"><a href="#cb22-17" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{}</span></span>
-<span id="cb22-18"><a href="#cb22-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode json"><code class="sourceCode json"><span id="cb23-1"><a href="#cb23-1" tabindex="-1"></a><span class="fu">{</span></span>
+<span id="cb23-2"><a href="#cb23-2" tabindex="-1"></a>  <span class="dt">"provider"</span><span class="fu">:</span> <span class="st">"openai_compatible"</span><span class="fu">,</span></span>
+<span id="cb23-3"><a href="#cb23-3" tabindex="-1"></a>  <span class="dt">"model"</span><span class="fu">:</span> <span class="st">"main"</span><span class="fu">,</span></span>
+<span id="cb23-4"><a href="#cb23-4" tabindex="-1"></a>  <span class="dt">"env"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb23-5"><a href="#cb23-5" tabindex="-1"></a>    <span class="dt">"CODEAGENT_BASE_URL"</span><span class="fu">:</span> <span class="st">"https://YOUR-WORKSPACE/serving-endpoints"</span><span class="fu">,</span></span>
+<span id="cb23-6"><a href="#cb23-6" tabindex="-1"></a>    <span class="dt">"CODEAGENT_MODEL"</span><span class="fu">:</span>       <span class="st">"your-main-endpoint"</span><span class="fu">,</span></span>
+<span id="cb23-7"><a href="#cb23-7" tabindex="-1"></a>    <span class="dt">"CODEAGENT_HEAVY_MODEL"</span><span class="fu">:</span> <span class="st">"your-heavy-endpoint"</span><span class="fu">,</span></span>
+<span id="cb23-8"><a href="#cb23-8" tabindex="-1"></a>    <span class="dt">"CODEAGENT_FAST_MODEL"</span><span class="fu">:</span>  <span class="st">"your-fast-endpoint"</span></span>
+<span id="cb23-9"><a href="#cb23-9" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb23-10"><a href="#cb23-10" tabindex="-1"></a>  <span class="dt">"permissions"</span><span class="fu">:</span> <span class="fu">{</span></span>
+<span id="cb23-11"><a href="#cb23-11" tabindex="-1"></a>    <span class="dt">"allow"</span><span class="fu">:</span> <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb23-12"><a href="#cb23-12" tabindex="-1"></a>    <span class="dt">"deny"</span><span class="fu">:</span>  <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb23-13"><a href="#cb23-13" tabindex="-1"></a>    <span class="dt">"ask"</span><span class="fu">:</span>   <span class="ot">[]</span><span class="fu">,</span></span>
+<span id="cb23-14"><a href="#cb23-14" tabindex="-1"></a>    <span class="dt">"defaultMode"</span><span class="fu">:</span> <span class="st">"default"</span></span>
+<span id="cb23-15"><a href="#cb23-15" tabindex="-1"></a>  <span class="fu">},</span></span>
+<span id="cb23-16"><a href="#cb23-16" tabindex="-1"></a>  <span class="dt">"effortLevel"</span><span class="fu">:</span> <span class="st">"high"</span><span class="fu">,</span></span>
+<span id="cb23-17"><a href="#cb23-17" tabindex="-1"></a>  <span class="dt">"hooks"</span><span class="fu">:</span> <span class="fu">{}</span></span>
+<span id="cb23-18"><a href="#cb23-18" tabindex="-1"></a><span class="fu">}</span></span></code></pre></div>
 <blockquote>
 <p><strong>API key:</strong> keep <code>CODEAGENT_API_KEY</code> in <code>~/.Renviron</code>, not in <code>settings.json</code>.</p>
 </blockquote>
