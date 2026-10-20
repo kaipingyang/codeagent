@@ -1,5 +1,17 @@
 # codeagent 0.2.3
 
+* The generative UI canvas now takes every component shinygenui provides:
+  `canvas_markdown_card` (plain markdown; links, images and URLs are refused
+  before rendering) and the `canvas_card_row` container, whose children go in
+  through `parent_id`, nest at most two levels deep, and are re-mounted when
+  the container is updated. Components are admitted only when every argument
+  type is one shinygenui re-validates on replay, and a saved canvas is bound to
+  the components' ui/server/check implementations and the shinygenui version,
+  so an upgraded implementation fails closed on restore instead of replaying
+  silently. Plots follow dark mode, the workspace tab strip no longer shrinks
+  under a tall canvas, and canvas tool cards label the instance rather than
+  repeating their title.
+
 * `codeagent_app()` gains a generative UI canvas built on `{shinygenui}`
   (Suggests, with `{ggplot2}` and `{DT}` for its starter components). The model
   draws value boxes, tables, scatter plots and histograms from data frames in

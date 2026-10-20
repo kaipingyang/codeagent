@@ -360,7 +360,24 @@ shiny-chat-page
   text-align: center;
 }
 .genui-shell { min-width: 0; }
+/* card_row: children sit side by side and wrap, like the canvas itself. */
+.genui-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+}
 .genui-shell > .card, .genui-shell > .bslib-value-box { margin-bottom: 0; }
 .genui-width-auto { flex: 1 1 220px; }
 .genui-width-wide { flex: 2 1 420px; }
 .genui-width-full { flex: 1 1 100%; }
+/* Dark mode: shinygenui's ggplot2 components draw dark ink on a white
+   bitmap (theme_minimal). Invert the bitmap and rotate hues back, so the plot
+   sits on a dark surface and keeps its colours' hue. thematic is not an
+   option: thematic 0.1.6 cannot hook ggplot2 >= 4. */
+[data-bs-theme="dark"] .genui-shell .shiny-plot-output img {
+  filter: invert(0.88) hue-rotate(180deg);
+}
+/* The workspace tab strip must keep its height: a tall Canvas (or File)
+   pane otherwise flex-shrinks the strip and clips the tab labels. */
+ul#main_tab { flex-shrink: 0; }

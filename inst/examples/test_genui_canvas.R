@@ -42,18 +42,25 @@ assign("e2e_cars", mtcars, envir = globalenv())
 
 ns <- asNamespace("codeagent")
 calls <- list(
-  list(id = "e2e-canvas-1", tool = "canvas_histogram",
+  list(id = "e2e-canvas-1", tool = "canvas_card_row",
+       args = list(title = "E2E_ROW_TITLE")),
+  list(id = "e2e-canvas-2", tool = "canvas_histogram",
        args = list(dataset = "e2e_cars", column = "mpg",
-                   title = "E2E_HISTOGRAM_TITLE")),
-  list(id = "e2e-canvas-2", tool = "canvas_value_box",
+                   title = "E2E_HISTOGRAM_TITLE", parent_id = "c1")),
+  list(id = "e2e-canvas-3", tool = "canvas_value_box",
        args = list(dataset = "e2e_cars", title = "E2E_VALUE_TITLE",
-                   column = "hp", agg = "max"))
+                   column = "hp", agg = "max", parent_id = "c1")),
+  list(id = "e2e-canvas-4", tool = "canvas_markdown_card",
+       args = list(title = "E2E_NOTE_TITLE", text = "**E2E_NOTE_BODY**")),
+  list(id = "e2e-canvas-5", tool = "canvas_data_table",
+       args = list(dataset = "e2e_cars", columns = c("mpg", "hp"),
+                   page_size = 5L))
 )
 
 # A browserless adapter computes the trace the live app would have recorded.
 null_ops <- list(
   insert = function(...) NULL, remove = function(...) NULL,
-  null_output = function(...) NULL,
+  null_output = function(...) NULL, destroy_scope = function(...) TRUE,
   run_server = function(...) NULL, input_values = function(...) NULL)
 recorder <- ns$GenUIAdapter$new(data_env = globalenv())
 recorder$bind(session = "fixture", ops = null_ops)
@@ -78,8 +85,9 @@ turns <- c(turns, list(ellmer::AssistantTurn(
 present <- vapply(calls, `[[`, "", "id")
 snapshot <- recorder$snapshot(present)
 if (identical(case, "mismatch")) {
-  # Keep the canvas but drop the second call from the conversation.
-  turns <- turns[-c(4L, 5L)]
+  # Keep the canvas but drop the last canvas call from the conversation.
+  n <- length(turns)
+  turns <- turns[-c(n - 2L, n - 1L)]
 }
 
 shield <- NULL

@@ -113,3 +113,37 @@ test_that("removed components' module scopes are destroyed on every path", {
   # Every scope that was ever started is gone once the canvas is empty.
   expect_setequal(h$ops$scopes, started)
 })
+
+test_that("random sequences with containers keep canvas, registry and trace aligned", {
+  skip_if_no_genui()
+  set.seed(4205)
+  h <- genui_test_adapter()
+  for (i in 1:80) {
+    if (i %% 5 == 0) h$adapter$begin_turn()
+    live <- names(h$adapter$state()$instances)
+    rows <- live[vapply(live, function(id)
+      identical(h$adapter$state()$instances[[id]]$component, "card_row"), logical(1L))]
+    parent <- if (length(rows) && runif(1) < 0.6) sample(rows, 1) else NULL
+    id <- if (length(live)) sample(live, 1) else "c999"
+    switch(sample(c("row", "hist", "note", "update", "remove", "clear"), 1,
+                  prob = c(3, 3, 2, 2, 2, 1)),
+      row    = h$adapter$call("canvas_card_row", c(list(title = "r"),
+                                                  if (!is.null(parent)) list(parent_id = parent))),
+      hist   = h$adapter$call("canvas_histogram", c(list(dataset = "cars", column = "mpg"),
+                                                   if (!is.null(parent)) list(parent_id = parent))),
+      note   = h$adapter$call("canvas_markdown_card", c(list(text = "**n**"),
+                                                       if (!is.null(parent)) list(parent_id = parent))),
+      update = h$adapter$call("canvas_update", list(id = id, args = '{"title": "u"}')),
+      remove = h$adapter$call("canvas_remove", list(id = id)),
+      clear  = h$adapter$call("canvas_clear", list()))
+    inst <- h$adapter$state()$instances
+    # Every live component has exactly one live module scope, and every
+    # scope that was started but is not live has been destroyed.
+    started <- vapply(Filter(function(x) identical(x$op, "server"), h$ops$log),
+                      function(x) x$module_id, "")
+    expect_length(setdiff(started, h$ops$scopes), length(inst))
+    folded <- .genui_fold_trace(h$adapter$catalog(), h$adapter$snapshot()$trace,
+                                function(n) .genui_resolve_dataset(n, h$env))
+    expect_identical(folded$instances, inst)
+  }
+})

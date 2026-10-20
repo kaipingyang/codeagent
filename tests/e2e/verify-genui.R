@@ -127,6 +127,49 @@ common_checks <- function(s, label) {
          paste(unique(s$ev$errors), collapse = " | "))
 }
 
+# The fixture canvas: a card_row (c1) holding a histogram (c2) and a value
+# box (c3), then a markdown note (c4) and a data table (c5) on the canvas.
+all_shells <- function(s) count(s, "#ca_genui_canvas .genui-shell")
+
+check_restored <- function(s, label) {
+  s$wait("three top-level and five total components", function()
+    shells(s) == 3L && all_shells(s) == 5L)
+  # Module scope ids change on every mount (a reload mounts ca_genui_c1_2),
+  # so components are located by their stable shell ids.
+  assert(count(s, "#ca_genui_shell_c1 .genui-slot > .genui-shell") == 2L,
+         label, ": children are not inside the card_row slot")
+  s$wait("histogram rendered", function()
+    count(s, "#ca_genui_shell_c2 .shiny-plot-output img") == 1L)
+  s$wait("value box rendered", function()
+    identical(s$js(paste0("(document.querySelector('#ca_genui_shell_c3 ",
+                          ".shiny-text-output')||{}).innerText||''")),
+              format(max(mtcars$hp), big.mark = ",")))
+  s$wait("data table rendered", function()
+    count(s, "#ca_genui_shell_c5 table") >= 1L)
+  text <- s$js("document.getElementById('ca_genui_canvas').innerText")
+  for (needle in c("E2E_ROW_TITLE", "E2E_HISTOGRAM_TITLE", "E2E_NOTE_TITLE"))
+    assert(grepl(needle, text, fixed = TRUE), label, ": missing ", needle)
+  assert(count(s, "#ca_genui_shell_c4 strong") == 1L,
+         label, ": markdown note did not render its emphasis")
+}
+
+# Session lifecycle in the live app: a permission-mode change re-registers
+# every tool and must leave the canvas alone; New empties it; loading the
+# saved session brings it back; Delete empties it again.
+check_lifecycle <- function(s, label) {
+  sid <- "00000000-0000-4000-8000-0000000000c1"
+  s$js("Shiny.setInputValue('perm_mode', 'plan', {priority: 'event'})")
+  Sys.sleep(3)
+  assert(shells(s) == 3L && all_shells(s) == 5L,
+         label, ": permission-mode change disturbed the canvas")
+  s$js("document.getElementById('new_session').click()")
+  s$wait("New empties the canvas", function() all_shells(s) == 0L)
+  s$js(sprintf("Shiny.setInputValue('ca_load_session', '%s', {priority: 'event'})", sid))
+  check_restored(s, paste(label, "reload"))
+  s$js("document.getElementById('delete_session_btn').click()")
+  s$wait("Delete empties the canvas", function() all_shells(s) == 0L)
+}
+
 fixture_app <- function(fixture, port) {
   app <- source(fixture, local = new.env())$value
   shiny::runApp(app, host = "127.0.0.1", port = port, launch.browser = FALSE,
@@ -152,19 +195,12 @@ run_fixture <- function(case, layout) {
     s$js("(function(){var b=document.getElementById('ca_workspace_toggle');if(b&&!document.querySelector('.shiny-chat-layout[data-drawer-open]'))b.click();})()")
 
   if (case %in% c("restore", "shielded")) {
-    s$wait("two mounted components", function() shells(s) == 2L)
-    s$wait("histogram rendered", function()
-      count(s, "#ca_genui_c1-plot img") == 1L)
-    s$wait("value box rendered", function()
-      identical(s$js("(document.getElementById('ca_genui_c2-value')||{}).innerText||''"),
-                format(max(mtcars$hp), big.mark = ",")))
-    assert(grepl("E2E_HISTOGRAM_TITLE", s$js(
-      "document.getElementById('ca_genui_canvas').innerText"), fixed = TRUE),
-      label, ": histogram title missing")
+    check_restored(s, label)
     tab_visible <- s$js(
       "(function(){var a=document.querySelector('a[data-value=\"canvas\"]');return !!a && a.offsetParent!==null;})()")
     assert(isTRUE(tab_visible) || identical(layout, "page_chat"),
            label, ": Canvas tab not visible")
+    if (identical(case, "restore")) check_lifecycle(s, label)
   } else {
     s$wait("fail-closed notice", function() grepl(
       "could not be safely restored", s$js("document.body.innerText"), fixed = TRUE))
@@ -238,8 +274,13 @@ run_live <- function() {
                   "on the canvas. Use the canvas tool directly; do not run R code."))
     assert(shells(s) == 1L, "live: create did not mount exactly one component")
     s$wait("live plot", function() count(s, "#ca_genui_canvas .genui-shell img") >= 1L)
+    # Canvas tools are `read`: switching to plan mode re-registers every tool
+    # and must leave both the canvas and the canvas tools usable.
+    s$js("Shiny.setInputValue('perm_mode', 'plan', {priority: 'event'})")
+    Sys.sleep(3)
+    assert(shells(s) == 1L, "live: the permission-mode change disturbed the canvas")
     turn(s, paste("Change that canvas histogram to show the hp column instead.",
-                  "Update the existing component in place."))
+                  "Update the existing component in place with canvas_update."))
     assert(shells(s) == 1L, "live: update did not keep exactly one component")
     assert(grepl("hp", canvas_text(s), ignore.case = TRUE),
            "live: the component was not updated to hp")
@@ -251,6 +292,29 @@ run_live <- function() {
       timeout_s = 60)
     send(s, "/clear")
     s$wait("clear empties the canvas", function() shells(s) == 0L, timeout_s = 60)
+    Sys.sleep(2)
+
+    # Cancel mid-turn: whatever the canvas shows once the turn has settled
+    # must be exactly what the saved session restores.
+    before <- messages(s)
+    send(s, paste("Add three separate value boxes to the canvas for the maximum",
+                  "of mpg, of hp and of wt in e2e_cars. Make one canvas tool call,",
+                  "wait for its result, then make the next."))
+    s$wait("first component of the cancelled turn", function() all_shells(s) >= 1L,
+           timeout_s = 180)
+    s$js("Shiny.setInputValue('chat_cancel', Date.now(), {priority: 'event'})")
+    s$wait("cancelled turn settled", function() messages(s) > before && idle(s),
+           timeout_s = 120)
+    Sys.sleep(3)
+    live_count <- all_shells(s)
+    assert(live_count >= 1L, "live: the cancelled turn left no component at all")
+    s$js("document.getElementById('new_session').click()")
+    s$wait("New empties the canvas", function() all_shells(s) == 0L)
+    s$wait("session list", function() count(s, ".ca-session-btn") >= 1L)
+    s$js("document.querySelector('.ca-session-btn').click()")
+    s$wait("restored canvas equals the live one after cancel", function()
+      all_shells(s) == live_count, timeout_s = 60)
+    cat("live_cancel_components=", live_count, "\n", sep = "")
     common_checks(s, "live")
   }, error = dump)
   cat("genui_e2e=PASS case=live\n")

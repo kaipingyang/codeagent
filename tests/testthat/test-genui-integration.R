@@ -322,3 +322,24 @@ test_that("canvas_state output passes Data Shield egress", {
   value <- if (inherits(res, "ellmer::ContentToolResult")) res@value else res
   expect_false(grepl(sentinel, paste(value, collapse = ""), fixed = TRUE))
 })
+
+test_that("a forked session carries its canvas and restores it", {
+  skip_if_no_genui()
+  withr::local_envvar(HOME = withr::local_tempdir(),
+                      CODEAGENT_HOME = withr::local_tempdir())
+  cwd <- withr::local_tempdir()
+  h <- genui_test_adapter()
+  req <- ellmer::ContentToolRequest(id = "r1", name = "canvas_histogram", arguments = list())
+  ellmer::with_tool_context(list(request = req, turns = list()),
+    h$adapter$call("canvas_histogram", list(dataset = "cars", column = "mpg")))
+  chat <- ellmer::chat_openai(model = "gpt-4.1", credentials = function() "test")
+  chat$set_turns(list(ellmer::Turn("user", "hi"), ellmer::AssistantTurn(contents = list(req))))
+  sid <- save_session(chat, cwd, genui_state = h$adapter$snapshot(.chat_request_ids(chat)))
+  fork <- fork_session(sid, directory = cwd)
+  chat2 <- ellmer::chat_openai(model = "gpt-4.1", credentials = function() "test")
+  restore_session_into_chat(chat2, session_id = fork, cwd = cwd)
+  h2 <- genui_test_adapter(env = h$env)
+  res <- .genui_restore_session(list(genui = h2$adapter), chat2, fork, cwd)
+  expect_true(res$ok)
+  expect_identical(h2$ops$dom, "ca_genui_shell_c1")
+})

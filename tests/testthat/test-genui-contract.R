@@ -23,8 +23,37 @@ test_that("the starter pack still ships the components the plan admits", {
                    function(x) x$name, character(1L))
   expect_true(all(c("value_box", "data_table", "scatter_plot", "histogram")
                   %in% names_))
-  # Excluded by host policy; its presence is what makes the filter necessary.
   expect_true("markdown_card" %in% names_)
+})
+
+test_that("card_row is a container whose children go into an <id>-slot element", {
+  # The executor inserts children at #<container module id>-slot, which is the
+  # same convention shinygenui's own engine relies on.
+  skip_if_not(.genui_available(), "shinygenui starter pack unavailable")
+  row <- shinygenui::genui_card_row()
+  expect_true(isTRUE(row$container))
+  html <- as.character(row$ui("m", list(title = "t")))
+  expect_match(html, 'id="m-slot"', fixed = TRUE)
+})
+
+test_that("genui_dispatch places a child into a container through parent_id", {
+  skip_if_not(.genui_available(), "shinygenui starter pack unavailable")
+  catalog <- shinygenui::genui_catalog(
+    shinygenui::genui_card_row(),
+    Filter(function(x) x$name == "histogram",
+           shinygenui::genui_components_bslib(data = NULL))[[1]])
+  st <- list(instances = list(c1 = list(component = "card_row", args = list(),
+                                        parent_id = NULL)), next_id = 2L)
+  plan <- shinygenui::genui_dispatch(
+    catalog, shinygenui::genui_call("histogram", list(column = "mpg", parent_id = "c1")),
+    st, data = mtcars)
+  expect_identical(plan$parent_id, "c1")
+  remove <- shinygenui::genui_dispatch(
+    catalog, shinygenui::genui_call("remove_component", list(id = "c1")),
+    list(instances = list(c1 = st$instances$c1,
+                          c2 = list(component = "histogram", args = list(column = "mpg"),
+                                    parent_id = "c1")), next_id = 3L))
+  expect_identical(remove$ids, c("c2", "c1"))
 })
 
 test_that("an unbound catalog keeps column arguments as plain strings", {

@@ -14,7 +14,8 @@
   trace_entries      = 200L,
   arg_bytes          = 8192L,
   string_chars       = 2048L,
-  array_items        = 100L
+  array_items        = 100L,
+  max_depth          = 2L
 )
 
 # -- dataset ------------------------------------------------------------------
@@ -48,6 +49,10 @@
 # URL schemes (a model-chosen URL is browser egress), no control characters.
 .GENUI_BAD_TEXT <- c(
   markup  = "<\\s*[A-Za-z!/?]",
+  # Markdown links and images ([x](y), ![x](y), [x][1], [1]: y) and
+  # protocol-relative URLs: markdown_card hands text to shiny::markdown().
+  md_link = "\\]\\s*[(\\[]|\\[[^\\]]*\\]\\s*:",
+  netpath = "(^|[^A-Za-z0-9:])//[A-Za-z0-9]",
   scheme  = "(?i)\\b(javascript|vbscript|data|file|blob)\\s*:",
   url     = "(?i)\\b(https?|ftp|wss?)://|\\bwww\\.",
   control = "[\\x01-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]"
@@ -156,11 +161,26 @@
 
 .genui_empty_state <- function() list(instances = list(), next_id = 1L)
 
+# Descendants of `id`, parents before children (creation order).
+#' @keywords internal
+.genui_descendants <- function(instances, id) {
+  out <- character()
+  frontier <- id
+  for (nm in names(instances)) {
+    if (!is.null(instances[[nm]]$parent_id) &&
+        instances[[nm]]$parent_id %in% c(frontier, out))
+      out <- c(out, nm)
+  }
+  out
+}
+
 # Dispatch one trace op against `state`, re-running every shinygenui check.
 .genui_redispatch <- function(catalog, op, state, resolve_data) {
   data <- if (!is.null(op$dataset)) resolve_data(op$dataset) else NULL
   call <- switch(op$action,
-    create = shinygenui::genui_call(op$component, op$args %||% list()),
+    create = shinygenui::genui_call(
+      op$component, c(op$args %||% list(),
+                      if (!is.null(op$parent_id)) list(parent_id = op$parent_id))),
     update = shinygenui::genui_call("update_component",
                                     list(id = op$id, args = op$args %||% list())),
     remove = shinygenui::genui_call("remove_component", list(id = op$id)),
@@ -307,14 +327,16 @@
     })
 }
 
-# Mount one instance. Building the UI comes first so a failing ui() leaves the
-# DOM untouched; a failing server removes the shell and its scope again.
+# Mount one instance into `target` (the canvas, or a container's slot).
+# Building the UI comes first so a failing ui() leaves the DOM untouched; a
+# failing server removes the shell and its scope again.
 #' @keywords internal
 .genui_mount <- function(component, id, args, data, ops,
-                         module_id = .genui_module_id(id)) {
+                         module_id = .genui_module_id(id),
+                         target = paste0("#", .GENUI_CANVAS_ID)) {
   ui <- component$ui(module_id, args)
   outputs <- .genui_output_ids(ui)
-  ops$insert(paste0("#", .GENUI_CANVAS_ID), .genui_shell(component, id, ui))
+  ops$insert(target, .genui_shell(component, id, ui))
   handles <- tryCatch(
     .genui_start(component, module_id, args, data, outputs, ops),
     error = function(e) {

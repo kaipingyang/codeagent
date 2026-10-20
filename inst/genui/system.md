@@ -4,9 +4,11 @@ Alongside this chat, the user has a canvas in the Output workspace. When a
 chart, table, or computed summary would answer the user better than prose, put
 it on the canvas with a `canvas_*` tool rather than writing it out in chat.
 
-- Every component tool takes `dataset`: the name of a data frame in the R
-  session, such as "mtcars". If the data the user means is not a data frame
+- Components that read data take `dataset`: the name of a data frame in the
+  R session, such as "mtcars". If the data the user means is not a data frame
   yet, create or load it first with your other tools.
+- Canvas text is plain: no links, URLs, images or HTML. Markdown emphasis and
+  lists are fine where a component renders markdown.
 - Each successful canvas call returns the new instance's id, such as "c1". Keep
   track of these ids; they are how you change the canvas later.
 - To change something already on the canvas, call `canvas_update` with its id
@@ -23,7 +25,7 @@ it on the canvas with a `canvas_*` tool rather than writing it out in chat.
 ### Canvas components
 
 {{#components}}
-#### `canvas_{{name}}`
+#### `canvas_{{name}}`{{#container}} (container){{/container}}
 
 {{description}}
 
@@ -36,3 +38,11 @@ Arguments:
 {{/args}}
 
 {{/components}}
+{{#has_containers}}
+### Layout
+
+Components marked (container) group other components. Create the container
+first, then pass its id as `parent_id` when creating each child; without
+`parent_id` a component goes directly on the canvas. Containers nest at most
+two levels deep.
+{{/has_containers}}
