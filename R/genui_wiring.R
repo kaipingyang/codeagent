@@ -164,6 +164,8 @@
                     "The canvas could not be safely restored: ",
                     .genui_message(e))))
   if (is.list(res) && isFALSE(res$ok)) .ui_toast(res$message, "warning")
+  if (is.list(res) && isTRUE(res$ok) && length(res$changed))
+    .ui_toast(res$message, "message")
   invisible(res)
 }
 
@@ -189,6 +191,8 @@
   adapter <- settings$genui
   if (!inherits(adapter, "GenUIAdapter")) return(invisible(NULL))
   tryCatch(adapter$settle_turn(.chat_request_ids(chat)), error = function(e) NULL)
+  # The turn may have changed a data frame a component shows.
+  tryCatch(adapter$mark_stale(), error = function(e) NULL)
   invisible(NULL)
 }
 
@@ -208,5 +212,24 @@
 .genui_reset <- function(settings) {
   if (inherits(settings$genui, "GenUIAdapter"))
     tryCatch(settings$genui$reset(), error = function(e) NULL)
+  invisible(NULL)
+}
+
+# The Canvas tab's "Refresh data" button: redraw every data component from the
+# current data frames. Not while a response is streaming -- the model may be
+# changing the canvas itself.
+#' @keywords internal
+.genui_server <- function(input, session, settings, stream_task) {
+  shiny::observeEvent(input$ca_genui_refresh, {
+    adapter <- settings$genui
+    if (!inherits(adapter, "GenUIAdapter")) return()
+    if (identical(tryCatch(stream_task$status(), error = function(e) ""), "running")) {
+      .ui_toast("The canvas can be refreshed once the response finishes.", "warning")
+      return()
+    }
+    err <- tryCatch({ adapter$refresh(); NULL },
+                    error = function(e) .genui_message(e))
+    if (!is.null(err)) .ui_toast(err, "warning")
+  }, ignoreInit = TRUE)
   invisible(NULL)
 }

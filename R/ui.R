@@ -825,6 +825,8 @@ codeagent_app <- function(
                                drawer_id       = if (identical(ui_layout, "page_chat"))
                                  "chat" else NULL)
 
+    .genui_server(input, session, settings, stream_task)
+
     server_sessions(input, output, session,
                     chat        = chat_obj,
                     cwd         = cwd,

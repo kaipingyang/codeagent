@@ -16,6 +16,9 @@ it on the canvas with a `canvas_*` tool rather than writing it out in chat.
 - To take something off the canvas, call `canvas_remove` with its id. Use
   `canvas_clear` only to start over.
 - If you are unsure what is on the canvas, call `canvas_state` before acting.
+- Components show the data as it was when they were drawn. After you change a
+  data frame that a component shows, call `canvas_refresh` so the canvas shows
+  the current data. The reminder marks components whose data changed.
 - Column arguments must name columns that exist in the data. If a call is
   rejected, read the error: it lists the valid values. Correct the arguments
   and try again rather than describing a result you did not produce.

@@ -590,7 +590,7 @@ codeagent_client(chat, disallowed_tools = "genui")
 The model calls one tool per component (`canvas_histogram(dataset = "mtcars",
 column = "mpg")`, `canvas_card_row(title = "Engine")`, then children with
 `parent_id = "c1"`) plus `canvas_update` / `canvas_remove` / `canvas_clear` /
-`canvas_state`. A component is admitted only if every argument type is one
+`canvas_state` / `canvas_refresh`. A component is admitted only if every argument type is one
 shinygenui re-validates completely on replay. Every call is checked before anything reaches the browser:
 the central gate (canvas tools are `read`), Data Shield argument scrubbing,
 shinygenui's own argument and column validation against the real data, a
@@ -611,7 +611,12 @@ version -- so anything that no longer fits, including an upgraded component
 implementation, leaves an empty canvas and a notice rather than a partial one.
 `/rewind` and `/clear` roll the canvas back together with the turns they
 remove, and a cancelled turn accepts no further canvas changes. The
-per-turn reminder lists live component ids, so they survive compaction. Plots follow
+per-turn reminder lists live component ids, so they survive compaction. Components
+show their data as it was when drawn: after a turn that changed a data frame a
+component shows, the component carries a "Data changed" badge and the reminder
+tells the model, which can call `canvas_refresh`; the Canvas tab's **Refresh
+data** button does the same for the user. Restoring a session whose data has
+changed since the save draws the current data and says so. Plots follow
 dark mode. When the canvas is available the page carries a Content Security Policy that blocks
 images, media, frames and plugins from other origins. A pre-built client
 opened in two browser sessions disables its canvas rather than share it.

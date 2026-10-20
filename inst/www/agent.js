@@ -276,6 +276,20 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Generative UI canvas: mark components whose data frame changed since they
+  // were drawn (server-driven via `ca_genui_stale`, a list of instance ids).
+  // ---------------------------------------------------------------------------
+  if (typeof Shiny !== "undefined" && Shiny.addCustomMessageHandler) {
+    Shiny.addCustomMessageHandler("ca_genui_stale", function (msg) {
+      var ids = (msg && msg.ids) || [];
+      document.querySelectorAll("#ca_genui_canvas .genui-shell").forEach(function (el) {
+        var id = el.id.replace(/^ca_genui_shell_/, "");
+        el.classList.toggle("genui-stale", ids.indexOf(id) !== -1);
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Click outside the slash-command palette dismisses it (typical autocomplete
   // UX). The palette is `ul.shiny-chat-slash-palette` (light DOM) and closes on
   // Escape, so we send an Escape keydown to the input when the click lands

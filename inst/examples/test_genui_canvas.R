@@ -13,6 +13,8 @@
 #   shielded -- the same with an active Data Shield
 #   mismatch -- the canvas references a request the chat does not contain;
 #               restore must fail closed and leave the canvas empty
+#   datachanged -- the data frame changed after the save; restore succeeds,
+#               draws the current data and says so
 
 required <- c("codeagent", "ellmer", "shiny", "shinygenui")
 missing <- required[!vapply(required, requireNamespace, logical(1L), quietly = TRUE)]
@@ -21,8 +23,9 @@ if (length(missing))
        call. = FALSE)
 
 case <- Sys.getenv("CODEAGENT_E2E_CASE", "restore")
-if (!case %in% c("restore", "shielded", "mismatch"))
-  stop("CODEAGENT_E2E_CASE must be restore, shielded or mismatch.", call. = FALSE)
+if (!case %in% c("restore", "shielded", "mismatch", "datachanged"))
+  stop("CODEAGENT_E2E_CASE must be restore, shielded, mismatch or datachanged.",
+       call. = FALSE)
 ui_layout <- Sys.getenv("CODEAGENT_E2E_UI_LAYOUT", "classic")
 
 fixture_root <- Sys.getenv("CODEAGENT_E2E_ROOT", "")
@@ -111,5 +114,7 @@ codeagent::save_session(chat, cwd = fixture_cwd,
                         title = paste("GenUI E2E", case),
                         genui_state = snapshot)
 chat$set_turns(list())
+if (identical(case, "datachanged"))
+  assign("e2e_cars", utils::head(mtcars, 10), envir = globalenv())
 
 codeagent::codeagent_app(client, launch.browser = FALSE, ui_layout = ui_layout)

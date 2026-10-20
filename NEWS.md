@@ -1,5 +1,15 @@
 # codeagent 0.2.3
 
+* Canvas components can now be redrawn from current data. Each component
+  remembers a fingerprint of the data frame it was drawn from; after a turn
+  that changed it, the component shows a "Data changed" badge and the
+  per-turn reminder marks it. The model refreshes with the new
+  `canvas_refresh` tool (one id or all), the user with the Canvas tab's
+  **Refresh data** button. A refresh re-runs shinygenui's checks against the
+  new data first, so a vanished column keeps the old view instead of breaking
+  it, and it never enters the trace. Restoring a session whose data changed
+  since the save draws the current data and says which components changed.
+
 * The generative UI canvas now takes every component shinygenui provides:
   `canvas_markdown_card` (plain markdown; links, images and URLs are refused
   before rendering) and the `canvas_card_row` container, whose children go in

@@ -212,18 +212,23 @@
 # One bounded line for the per-turn system reminder, so instance ids survive
 # compaction of the turns that created them.
 #' @keywords internal
-.genui_state_summary <- function(state, max = 12L) {
+.genui_state_summary <- function(state, max = 12L, stale = character()) {
   inst <- state$instances %||% list()
   if (!length(inst)) return("")
   ids <- names(inst)
   shown <- utils::head(ids, max)
-  parts <- vapply(shown, function(id) sprintf(
-    "%s %s (dataset %s)", id, inst[[id]]$component,
-    inst[[id]]$dataset %||% "?"), character(1L))
+  parts <- vapply(shown, function(id) paste0(
+    id, " ", inst[[id]]$component,
+    if (!is.null(inst[[id]]$dataset)) sprintf(" (dataset %s)", inst[[id]]$dataset),
+    if (id %in% stale) " [data changed; canvas_refresh to redraw]"), character(1L))
   more <- length(ids) - length(shown)
   paste0("Canvas components now on screen: ", paste(parts, collapse = "; "),
          if (more > 0L) sprintf("; and %d more", more), ".")
 }
+
+# Fingerprint of the data a component was drawn from, to notice later changes.
+#' @keywords internal
+.genui_fingerprint <- function(data) rlang::hash(data)
 
 # -- DOM naming ---------------------------------------------------------------
 
@@ -266,6 +271,8 @@
       shiny::withReactiveDomain(session,
                                 component$server(module_id, args, data))
     },
+    mark_stale = function(ids)
+      session$sendCustomMessage("ca_genui_stale", list(ids = as.list(ids))),
     input_values = function(module_id) {
       input <- session$input
       all <- shiny::isolate(names(input)) %||% character()

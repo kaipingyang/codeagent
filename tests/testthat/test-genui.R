@@ -129,7 +129,8 @@ test_that(".genui_tool_names lists every component tool plus the lifecycle", {
   expect_setequal(.genui_tool_names(), c(
     "canvas_value_box", "canvas_data_table", "canvas_scatter_plot",
     "canvas_histogram", "canvas_markdown_card", "canvas_card_row",
-    "canvas_update", "canvas_remove", "canvas_clear", "canvas_state"))
+    "canvas_update", "canvas_remove", "canvas_clear", "canvas_state",
+    "canvas_refresh"))
 })
 
 .genui_plan <- function(call_name, args, state = list(instances = list(), next_id = 1L)) {

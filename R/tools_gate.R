@@ -68,6 +68,7 @@ NULL
   canvas_remove       = list(set = "A", capability = "read"),
   canvas_clear        = list(set = "A", capability = "read"),
   canvas_state        = list(set = "A", capability = "read"),
+  canvas_refresh      = list(set = "A", capability = "read"),
   # btw file tools (set B)
   btw_tool_files_write   = list(set = "B", capability = "write", path_args = "path"),
   btw_tool_files_edit    = list(set = "B", capability = "write", path_args = "path"),

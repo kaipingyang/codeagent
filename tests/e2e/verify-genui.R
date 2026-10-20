@@ -201,6 +201,14 @@ run_fixture <- function(case, layout) {
     assert(isTRUE(tab_visible) || identical(layout, "page_chat"),
            label, ": Canvas tab not visible")
     if (identical(case, "restore")) check_lifecycle(s, label)
+  } else if (identical(case, "datachanged")) {
+    s$wait("restored from the current data", function()
+      all_shells(s) == 5L && identical(s$js(paste0(
+        "(document.querySelector('#ca_genui_shell_c3 .shiny-text-output')||{})",
+        ".innerText||''")), format(max(utils::head(mtcars, 10)$hp))))
+    s$wait("data-changed notice", function() grepl(
+      "changed since this session was saved", s$js("document.body.innerText"),
+      fixed = TRUE))
   } else {
     s$wait("fail-closed notice", function() grepl(
       "could not be safely restored", s$js("document.body.innerText"), fixed = TRUE))
@@ -284,9 +292,25 @@ run_live <- function() {
     assert(shells(s) == 1L, "live: update did not keep exactly one component")
     assert(grepl("hp", canvas_text(s), ignore.case = TRUE),
            "live: the component was not updated to hp")
-    # Each exchange above was user -> tool request -> tool result -> reply, so
-    # rewinding two "exchanges" (four turns) drops exactly the update round.
-    send(s, "/rewind 2")
+    # Each exchange above was user -> tool request -> tool result -> reply
+    # (four turns), while /rewind counts two turns per "exchange". Rewinding
+    # four of them drops eight turns: the RunR and update rounds, including the
+    # update's tool request, so the canvas returns to the mpg histogram.
+    # The data behind the component changes outside the canvas: the shell is
+    # marked stale at the end of the turn, and the Refresh button redraws it.
+    s$js("Shiny.setInputValue('perm_mode', 'bypass', {priority: 'event'})")
+    Sys.sleep(3)
+    turn(s, paste("Run this R code with RunR, exactly as written, and do not",
+                  "touch the canvas: e2e_cars <- head(e2e_cars, 10)"))
+    s$wait("stale badge", function() count(s, "#ca_genui_canvas .genui-stale") == 1L,
+           timeout_s = 30)
+    src_before <- s$js("(document.querySelector('#ca_genui_canvas img')||{}).src||''")
+    s$js("document.getElementById('ca_genui_refresh').click()")
+    s$wait("refresh clears the badge and redraws", function()
+      count(s, "#ca_genui_canvas .genui-stale") == 0L &&
+        !identical(s$js("(document.querySelector('#ca_genui_canvas img')||{}).src||''"),
+                   src_before), timeout_s = 30)
+    send(s, "/rewind 4")
     s$wait("rewind rolls the update back", function()
       shells(s) == 1L && grepl("mpg", canvas_text(s), ignore.case = TRUE),
       timeout_s = 60)
@@ -321,7 +345,7 @@ run_live <- function() {
 }
 
 for (layout in strsplit(Sys.getenv("CODEAGENT_E2E_LAYOUTS", "classic,page_chat"), ",")[[1L]])
-  for (case in c("restore", "shielded", "mismatch"))
+  for (case in c("restore", "shielded", "mismatch", "datachanged"))
     run_fixture(case, layout)
 if (identical(Sys.getenv("CODEAGENT_E2E_LIVE"), "1")) run_live()
 cat("genui_e2e=ALL_PASS\n")
