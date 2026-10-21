@@ -1,5 +1,11 @@
 # codeagent 0.2.3
 
+* The Data Shield input gate reads text attachments sent as ellmer
+  `ContentDocument`, the form shinychat uses since its #419. Before, such a
+  document had no readable text, so with a shield active every text
+  attachment was blocked as unverifiable; now its content is decoded and
+  scanned like any other attachment -- a protected value still blocks the turn.
+
 * New `canvas_options()`, `canvas_component_output()` and
   `canvas_component_widget()`, and `codeagent_app(canvas = )`. The host picks
   which of shinygenui's components the canvas offers (`starter = TRUE`,

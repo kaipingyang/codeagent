@@ -60,21 +60,21 @@ mandatory_preflight <- function(start_wd) {
   frozen <- list(
     codeagent = c(version = "0.2.3", sha = ""),
     ellmer = c(version = "0.5.0.9000",
-               sha = "248c86704a52baf2f4f66a91f12b42a48ddac993"),
+               sha = "7853e0c784b188ed48fe9b0617cc4c52ba3f7471"),
     btw = c(version = "1.5.0.9000",
             sha = "6a27d997120f11cfda15bf0a5953a22329b01715"),
     shinychat = c(version = "0.5.0.9000",
-                  sha = "05e0bbd987286068638d3cf96d6ea7daff15c5b2"),
+                  sha = "2fa02a27fdac0fb1e956719048c7388a63bf2b05"),
     shiny = c(version = "1.14.0.9000",
               sha = "bbc43849f06059f5daa7310ea0f40ec901f0ed0f"),
     bslib = c(version = "0.12.0.9000",
-              sha = "ac1e25f8070e1f952509b6575ced19b4237e7ec5"),
+              sha = "20b165f78ca479ffdcf5314a959dcf6f5e64ab10"),
     mcptools = c(version = "1.0.3.9000",
-                 sha = "ff94da04ccb5e6e86a56537c9d2dcb0e0532067b"),
+                 sha = "714803bdfce903707a27d9c4740591d87f601aae"),
     Rapp = c(version = "0.4.1.9000",
              sha = "489655f24945042791ddb083d0d5518c4a905d9f"),
     httr2 = c(version = "1.3.0.9000",
-              sha = "b9d93794884228bd6654ca7f2abc0162c1ba5f81")
+              sha = "34b49ae3fa1ca3995a556ee6023d30b6e00b6f95")
   )
   for (package in names(frozen)) {
     info <- utils::packageDescription(package)
@@ -609,6 +609,29 @@ run_case <- function(case, app_path, root, ui_layout) {
   if (identical(case, "redact")) {
     assert(grepl("[REDACTED]", text("#chat"), fixed = TRUE),
            "Redact case did not expose an assertable redaction result.")
+  }
+  if (identical(case, "pass")) {
+    # shinychat sends text attachments as ellmer ContentDocument (#419). The
+    # Data Shield input gate must read them: a protected value inside the file
+    # blocks the turn, a clean file goes through to the model (which is
+    # unreachable here, so the turn ends in a withheld request failure).
+    send_attachment <- function(body) value(sprintf(paste0(
+      "Shiny.setInputValue('chat_user_input', {text: 'Summarise the attached file.', ",
+      "attachments: [{name: 'e2e.csv', mime: 'text/csv', ",
+      "data_url: 'data:text/csv;base64,%s'}]}, {priority: 'event'}); return true;"),
+      jsonlite::base64_enc(charToRaw(body))))
+    send_attachment("id\nE2EPROTECTED123\n")
+    wait_until("protected attachment blocked by the input gate", function() grepl(
+      "attachment blocked: contains protected content", text("#chat"), fixed = TRUE),
+      timeout_s = 30)
+    Sys.sleep(2)
+    send_attachment("id,score\n1,0.5\n")
+    wait_until("clean attachment passes the input gate", function() grepl(
+      "Request failed", text("#chat"), fixed = TRUE), timeout_s = 60)
+    blocks <- lengths(regmatches(text("#chat"), gregexpr(
+      "attachment blocked", text("#chat"), fixed = TRUE)))
+    assert(identical(blocks, 1L), "The clean attachment was blocked by the input gate.")
+    cat("attachment_gate=PASS\n")
   }
   if (identical(case, "block")) {
     assert(grepl("blocked", tolower(text("#chat")), fixed = TRUE),

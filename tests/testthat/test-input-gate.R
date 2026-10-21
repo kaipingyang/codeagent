@@ -220,3 +220,42 @@ test_that(".input_gate_scan wires data_shield_ocr_scanner via settings", {
                     data_shield_image_scanner = codeagent::data_shield_ocr_scanner(sh)))
   expect_identical(res$action, "block")
 })
+
+# shinychat >= 0.5.0.9000 (#419) sends text attachments as
+# ellmer::content_document_url() -- a ContentDocument holding base64 data and a
+# MIME type, with no @text. The gate must read the document, not treat it as
+# unreadable.
+doc_attachment <- function(text, mime = "text/csv") {
+  ellmer::content_document_url(paste0(
+    "data:", mime, ";base64,", jsonlite::base64_enc(charToRaw(enc2utf8(text)))))
+}
+
+test_that(".input_gate_scan reads a clean text document attachment and passes it", {
+  sh <- make_shield()
+  inp <- list("summarise the file", doc_attachment("id,score\n1,0.5\n2,0.7\n"))
+  res <- codeagent:::.input_gate_scan(inp, settings = list(data_shield_engine = sh))
+  expect_identical(res$action, "pass")
+  expect_identical(res$input, inp)
+})
+
+test_that(".input_gate_scan blocks a document attachment carrying a protected value", {
+  sh <- make_shield()
+  inp <- list("summarise the file", doc_attachment("id,subject\n1,SUBJECT007\n"))
+  res <- codeagent:::.input_gate_scan(inp, settings = list(data_shield_engine = sh))
+  expect_identical(res$action, "block")
+  expect_match(res$text, "protected content")
+})
+
+test_that(".input_gate_scan blocks a document attachment it cannot decode", {
+  sh <- make_shield()
+  bad <- ellmer::ContentDocument(mime_type = "text/plain", data = "%%%not-base64%%%",
+                                 filename = "x.txt")
+  res <- codeagent:::.input_gate_scan(list("hi", bad),
+                                      settings = list(data_shield_engine = sh))
+  expect_identical(res$action, "block")
+})
+
+test_that(".input_gate_content_text decodes a text document's data", {
+  expect_identical(
+    codeagent:::.input_gate_content_text(doc_attachment("a,b\n1,2\n")), "a,b\n1,2\n")
+})
