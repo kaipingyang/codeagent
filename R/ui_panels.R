@@ -270,23 +270,40 @@ chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
 # The static Canvas tab: one persistent container the GenUI executor inserts
 # into. Present only when this app may run a canvas; the server hides it again
 # in a session that turns out not to have one.
-.genui_canvas_panel <- function() {
+.genui_canvas_panel <- function(options = canvas_options()) {
+  csp <- if (isTRUE(options$csp)) .GENUI_CSP else
+    if (is.character(options$csp)) options$csp else NULL
   bslib::nav_panel(
     title = "Canvas",
     value = "canvas",
-    htmltools::tags$head(htmltools::tags$meta(
-      `http-equiv` = "Content-Security-Policy", content = .GENUI_CSP)),
+    if (!is.null(csp)) htmltools::tags$head(htmltools::tags$meta(
+      `http-equiv` = "Content-Security-Policy", content = csp)),
+    # One fill column: the toolbar keeps its height and the canvas pane takes
+    # the rest and scrolls, so the tab never grows a second scrollbar.
     htmltools::div(
-      class = "html-fill-container html-fill-item ca-genui-pane",
-      style = "height:100%;min-height:0;overflow:auto;",
+      class = "html-fill-container html-fill-item",
+      style = "height:100%;min-height:0;display:flex;flex-direction:column;",
       htmltools::div(
-        id = .GENUI_CANVAS_ID, class = "genui-canvas",
-        `data-placeholder` = "Canvas components will appear here.")
+        class = "ca-genui-toolbar",
+        bslib::toolbar(
+          bslib::toolbar_input_button(
+            "ca_genui_refresh", "Refresh data", icon = shiny::icon("rotate"),
+            show_label = TRUE,
+            tooltip = "Redraw every component from the current data frames"),
+          align = "right")
+      ),
+      htmltools::div(
+        class = "html-fill-item ca-genui-pane",
+        style = "flex:1 1 auto;min-height:0;overflow:auto;",
+        htmltools::div(
+          id = .GENUI_CANVAS_ID, class = "genui-canvas",
+          `data-placeholder` = "Canvas components will appear here.")
+      )
     )
   )
 }
 
-output_panel_ui <- function(canvas = FALSE) {
+output_panel_ui <- function(canvas = FALSE, canvas_opts = NULL) {
   bslib::navset_tab(
       id       = "main_tab",
       selected = "output",
@@ -332,6 +349,6 @@ output_panel_ui <- function(canvas = FALSE) {
           )
         )
       ),
-      if (isTRUE(canvas)) .genui_canvas_panel()
+      if (isTRUE(canvas)) .genui_canvas_panel(canvas_opts %||% canvas_options())
     )
 }

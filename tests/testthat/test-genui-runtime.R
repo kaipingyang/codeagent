@@ -90,13 +90,17 @@ test_that(".genui_quota_check bounds history, argument size, strings and arrays"
 
 test_that(".genui_output_ids finds every output each admitted component renders", {
   skip_if_no_genui()
-  catalog <- .genui_admit_catalog(shinygenui::genui_components_bslib(data = NULL))
+  catalog <- .genui_build_catalog()
   args <- list(value_box = list(title = "t", column = "mpg", agg = "mean"),
                data_table = list(),
                scatter_plot = list(x = "mpg", y = "hp"),
-               histogram = list(column = "mpg"))
-  expected <- c(value_box = "m-value", data_table = "m-table",
-                scatter_plot = "m-plot", histogram = "m-plot")
+               histogram = list(column = "mpg"),
+               markdown_card = list(text = "x"),
+               card_row = list(title = "t"))
+  expected <- list(value_box = "m-value", data_table = "m-table",
+                   scatter_plot = "m-plot", histogram = "m-plot",
+                   markdown_card = character(), card_row = character())
+  expect_setequal(names(args), .GENUI_ADMITTED)
   for (nm in names(args)) {
     ui <- catalog[[nm]]$ui("m", args[[nm]])
     expect_identical(.genui_output_ids(ui), expected[[nm]], info = nm)
@@ -186,7 +190,7 @@ test_that("component tools take the component's arguments plus dataset", {
   tools <- a$tools()
   names(tools) <- vapply(tools, function(t) t@name, "")
   props <- names(tools$canvas_scatter_plot@arguments@properties)
-  expect_setequal(props, c(names(a$catalog()$scatter_plot$args), "dataset"))
+  expect_setequal(props, c(names(a$catalog()$scatter_plot$args), "dataset", "parent_id"))
 })
 
 # -- adapter: calls -----------------------------------------------------------
@@ -382,4 +386,104 @@ test_that("Shiny's module destroy stops a mounted component's render observer", 
   expect_false(isTRUE(observer()$.destroyed))
   .genui_unmount("c1", rt, ops)
   expect_true(observer()$.destroyed)
+})
+
+# -- shinygenui's full component set (containers and markdown) ------------------
+
+test_that("markdown links, images and protocol-relative URLs are rejected", {
+  for (s in c("see [docs](foo)", "![x](//evil.example/a.png)", "[a]: //evil.example",
+              "//evil.example/a.png", "[ref][1]\n\n[1]: x"))
+    expect_match(.genui_validate_strings(list(text = s)), "Canvas text", info = s)
+  expect_null(.genui_validate_strings(list(text = "**Bold** and a list:\n- one\n- two")))
+})
+
+test_that("markdown_card and card_row need no dataset", {
+  skip_if_no_genui()
+  h <- genui_test_adapter()
+  tools <- h$adapter$tools()
+  names(tools) <- vapply(tools, function(t) t@name, "")
+  for (nm in c("canvas_markdown_card", "canvas_card_row"))
+    expect_false("dataset" %in% names(tools[[nm]]@arguments@properties), info = nm)
+  expect_true("dataset" %in% names(tools$canvas_histogram@arguments@properties))
+  expect_true(genui_ok(h$adapter$call("canvas_markdown_card",
+                                      list(text = "**Takeaway:** mpg falls with weight."))))
+})
+
+test_that("component tools accept parent_id once the catalog has a container", {
+  skip_if_no_genui()
+  h <- genui_test_adapter()
+  tools <- h$adapter$tools()
+  names(tools) <- vapply(tools, function(t) t@name, "")
+  expect_true("parent_id" %in% names(tools$canvas_histogram@arguments@properties))
+})
+
+test_that("a child is mounted into its container's slot", {
+  skip_if_no_genui()
+  h <- genui_test_adapter()
+  h$adapter$call("canvas_card_row", list(title = "Engine"))
+  res <- h$adapter$call("canvas_histogram",
+                        list(dataset = "cars", column = "mpg", parent_id = "c1"))
+  expect_true(genui_ok(res))
+  inserts <- Filter(function(x) identical(x$op, "insert"), h$ops$log)
+  expect_identical(inserts[[2]]$selector, "#ca_genui_c1-slot")
+  expect_identical(h$adapter$state()$instances$c2$parent_id, "c1")
+})
+
+test_that("removing a container tears down its children too", {
+  skip_if_no_genui()
+  h <- genui_test_adapter()
+  h$adapter$call("canvas_card_row", list(title = "Engine"))
+  h$adapter$call("canvas_histogram", list(dataset = "cars", column = "mpg", parent_id = "c1"))
+  h$adapter$call("canvas_remove", list(id = "c1"))
+  expect_length(h$adapter$state()$instances, 0L)
+  expect_setequal(h$ops$scopes, c("ca_genui_c1", "ca_genui_c2"))
+})
+
+test_that("updating a container re-mounts its children into the new slot", {
+  skip_if_no_genui()
+  h <- genui_test_adapter()
+  h$adapter$call("canvas_card_row", list(title = "Engine"))
+  h$adapter$call("canvas_histogram", list(dataset = "cars", column = "mpg", parent_id = "c1"))
+  res <- h$adapter$call("canvas_update", list(id = "c1", args = '{"title": "Motor"}'))
+  expect_true(genui_ok(res))
+  inserts <- vapply(Filter(function(x) identical(x$op, "insert"), h$ops$log),
+                    function(x) x$selector, "")
+  expect_identical(utils::tail(inserts, 1L), "#ca_genui_c1_2-slot")
+  expect_true("ca_genui_c2" %in% h$ops$scopes)
+  expect_length(h$adapter$state()$instances, 2L)
+  expect_identical(h$adapter$state()$instances$c1$args$title, "Motor")
+})
+
+test_that("containers nest at most two levels deep", {
+  skip_if_no_genui()
+  h <- genui_test_adapter()
+  h$adapter$call("canvas_card_row", list(title = "a"))
+  expect_true(genui_ok(h$adapter$call("canvas_card_row", list(title = "b", parent_id = "c1"))))
+  res <- h$adapter$call("canvas_card_row", list(title = "c", parent_id = "c2"))
+  expect_match(res@error, "nest")
+})
+
+test_that("a trace with containers folds and restores to the same canvas", {
+  skip_if_no_genui()
+  h <- genui_test_adapter()
+  h$adapter$call("canvas_card_row", list(title = "Engine"))
+  h$adapter$call("canvas_histogram", list(dataset = "cars", column = "mpg", parent_id = "c1"))
+  h$adapter$call("canvas_markdown_card", list(text = "Note"))
+  snap <- jsonlite::fromJSON(jsonlite::toJSON(h$adapter$snapshot(character()),
+                                              auto_unbox = TRUE, null = "null"),
+                             simplifyVector = FALSE)
+  h2 <- genui_test_adapter(env = h$env)
+  expect_true(h2$adapter$restore(snap)$ok)
+  expect_identical(h2$adapter$state()$instances$c2$parent_id, "c1")
+  inserts <- vapply(Filter(function(x) identical(x$op, "insert"), h2$ops$log),
+                    function(x) x$selector, "")
+  expect_identical(inserts, c("#ca_genui_canvas", "#ca_genui_c1-slot", "#ca_genui_canvas"))
+})
+
+test_that("a canvas tool card labels the instance instead of repeating its title", {
+  skip_if_no_genui()
+  h <- genui_test_adapter()
+  res <- h$adapter$call("canvas_histogram", list(dataset = "cars", column = "mpg"))
+  expect_identical(res@extra$display$title, "Canvas: added histogram")
+  expect_identical(res@extra$display$label, "c1 histogram")
 })

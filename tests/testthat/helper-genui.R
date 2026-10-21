@@ -17,6 +17,7 @@ fake_genui_ops <- function() {
   env$destroyed <- 0L
   env$fail_server <- NULL         # function(module_id, args) -> TRUE to fail
   env$inputs <- list()
+  env$stale <- character()        # ids last marked stale in the browser
   record <- function(...) env$log[[length(env$log) + 1L]] <- list(...)
   env$ops <- list(
     insert = function(selector, ui, where = "beforeEnd") {
@@ -37,7 +38,8 @@ fake_genui_ops <- function() {
       invisible(NULL)
     },
     run_server = function(component, module_id, args, data) {
-      record(op = "server", module_id = module_id)
+      rows <- tryCatch(nrow(data()), error = function(e) NA_integer_)
+      record(op = "server", module_id = module_id, rows = rows)
       if (is.function(env$fail_server) && isTRUE(env$fail_server(module_id, args)))
         stop("synthetic server failure")
       list(destroy = function() env$destroyed <- env$destroyed + 1L)
@@ -47,6 +49,7 @@ fake_genui_ops <- function() {
       env$scopes <- c(env$scopes, module_id)
       TRUE
     },
+    mark_stale = function(ids) env$stale <- ids,
     input_values = function(module_id) env$inputs[[module_id]]
   )
   env

@@ -58,8 +58,9 @@ NULL
   # .genui_tool_names() so this table does not depend on file load order; a test
   # asserts the two stay equal.
   genui    = c("canvas_value_box", "canvas_data_table", "canvas_scatter_plot",
-               "canvas_histogram", "canvas_update", "canvas_remove",
-               "canvas_clear", "canvas_state")
+               "canvas_histogram", "canvas_markdown_card", "canvas_card_row",
+               "canvas_update", "canvas_remove", "canvas_clear", "canvas_state",
+               "canvas_refresh")
 )
 
 # Resolve a tool name to its capability group. Native tools win over the btw

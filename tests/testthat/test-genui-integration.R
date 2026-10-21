@@ -4,25 +4,25 @@
 # -- activation -----------------------------------------------------------------
 
 test_that("GenUI is on by default only for per-session apps", {
-  local_mocked_bindings(.genui_available = function() TRUE)
+  local_mocked_bindings(.genui_available = function(...) TRUE)
   expect_true(.genui_wanted(list(tools_spec = NULL), per_session = TRUE))
   expect_false(.genui_wanted(list(tools_spec = NULL), per_session = FALSE))
 })
 
 test_that("naming genui enables it even for a shared client", {
-  local_mocked_bindings(.genui_available = function() TRUE)
+  local_mocked_bindings(.genui_available = function(...) TRUE)
   spec <- .resolve_tool_spec(c("files", "genui"))
   expect_true(.genui_wanted(list(tools_spec = spec), per_session = FALSE))
 })
 
 test_that("a selection that omits genui keeps it off", {
-  local_mocked_bindings(.genui_available = function() TRUE)
+  local_mocked_bindings(.genui_available = function(...) TRUE)
   spec <- .resolve_tool_spec(c("files", "shell"))
   expect_false(.genui_wanted(list(tools_spec = spec), per_session = TRUE))
 })
 
 test_that("disallowed_tools = 'genui' always wins", {
-  local_mocked_bindings(.genui_available = function() TRUE)
+  local_mocked_bindings(.genui_available = function(...) TRUE)
   dis <- .resolve_disallowed_tools("genui")
   expect_false(.genui_wanted(list(tools_spec = NULL, disallowed_tools = dis),
                              per_session = TRUE))
@@ -32,12 +32,12 @@ test_that("disallowed_tools = 'genui' always wins", {
 })
 
 test_that("the default quietly stays off when shinygenui is unavailable", {
-  local_mocked_bindings(.genui_available = function() FALSE)
+  local_mocked_bindings(.genui_available = function(...) FALSE)
   expect_false(.genui_wanted(list(tools_spec = NULL), per_session = TRUE))
 })
 
 test_that("an explicit request for unavailable GenUI warns", {
-  local_mocked_bindings(.genui_available = function() FALSE)
+  local_mocked_bindings(.genui_available = function(...) FALSE)
   spec <- .resolve_tool_spec("genui")
   expect_warning(
     expect_false(.genui_wanted(list(tools_spec = spec), per_session = TRUE)),
@@ -321,4 +321,25 @@ test_that("canvas_state output passes Data Shield egress", {
   res <- tool()
   value <- if (inherits(res, "ellmer::ContentToolResult")) res@value else res
   expect_false(grepl(sentinel, paste(value, collapse = ""), fixed = TRUE))
+})
+
+test_that("a forked session carries its canvas and restores it", {
+  skip_if_no_genui()
+  withr::local_envvar(HOME = withr::local_tempdir(),
+                      CODEAGENT_HOME = withr::local_tempdir())
+  cwd <- withr::local_tempdir()
+  h <- genui_test_adapter()
+  req <- ellmer::ContentToolRequest(id = "r1", name = "canvas_histogram", arguments = list())
+  ellmer::with_tool_context(list(request = req, turns = list()),
+    h$adapter$call("canvas_histogram", list(dataset = "cars", column = "mpg")))
+  chat <- ellmer::chat_openai(model = "gpt-4.1", credentials = function() "test")
+  chat$set_turns(list(ellmer::Turn("user", "hi"), ellmer::AssistantTurn(contents = list(req))))
+  sid <- save_session(chat, cwd, genui_state = h$adapter$snapshot(.chat_request_ids(chat)))
+  fork <- fork_session(sid, directory = cwd)
+  chat2 <- ellmer::chat_openai(model = "gpt-4.1", credentials = function() "test")
+  restore_session_into_chat(chat2, session_id = fork, cwd = cwd)
+  h2 <- genui_test_adapter(env = h$env)
+  res <- .genui_restore_session(list(genui = h2$adapter), chat2, fork, cwd)
+  expect_true(res$ok)
+  expect_identical(h2$ops$dom, "ca_genui_shell_c1")
 })

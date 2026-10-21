@@ -22,7 +22,8 @@ codeagent_app(
   chat = NULL,
   web_citations = c("off", "shiny_aside"),
   web_allow_private = FALSE,
-  ui_layout = c("classic", "page_chat")
+  ui_layout = c("classic", "page_chat"),
+  canvas = NULL
 )
 }
 \arguments{
@@ -93,6 +94,14 @@ closed rather than weakening SSRF protection.}
 three-column layout. \code{"page_chat"} opts into shinychat's full-window page
 with codeagent controls on the left and the Output/Files/File workspace in
 the official resizable drawer on the right.}
+
+\item{canvas}{Generative UI canvas options from \code{\link[=canvas_options]{canvas_options()}}:
+which components the model may draw (shinygenui's own and your own), the
+page's Content Security Policy and model-text checking. \code{NULL} (default)
+uses \code{canvas_options()}; the canvas is then on for per-session apps when
+shinygenui is installed. Passing options also enables the canvas for a
+shared pre-built client. \code{disallowed_tools = "genui"} on the client turns
+it off.}
 }
 \value{
 A \code{shiny.appobj}.

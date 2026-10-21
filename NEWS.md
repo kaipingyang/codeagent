@@ -1,5 +1,43 @@
 # codeagent 0.2.3
 
+* New `canvas_options()`, `canvas_component_output()` and
+  `canvas_component_widget()`, and `codeagent_app(canvas = )`. The host picks
+  which of shinygenui's components the canvas offers (`starter = TRUE`,
+  `FALSE` or a subset) and adds its own, built from any Shiny output/render
+  pair or any htmlwidget or HTML. Host components get the same canvas tooling
+  as the built-in ones -- read-only registration by exact name, the
+  transactional executor, Data Shield, strict restore whose identity now
+  follows closures into the builder's render function -- and decide for
+  themselves what they render. `csp` and `validate_text` loosen the page's
+  Content Security Policy and the model-text check when components need it.
+  Without shinygenui's own components, ggplot2 and DT are no longer required.
+* Fixed: restoring a canvas could hand a component the arguments or data of
+  the last component restored. Data accessors were created inside the restore
+  loop, and arguments that a component's UI never touched stayed lazy until
+  its render function ran; both are now fixed when a component is mounted.
+
+* Canvas components can now be redrawn from current data. Each component
+  remembers a fingerprint of the data frame it was drawn from; after a turn
+  that changed it, the component shows a "Data changed" badge and the
+  per-turn reminder marks it. The model refreshes with the new
+  `canvas_refresh` tool (one id or all), the user with the Canvas tab's
+  **Refresh data** button. A refresh re-runs shinygenui's checks against the
+  new data first, so a vanished column keeps the old view instead of breaking
+  it, and it never enters the trace. Restoring a session whose data changed
+  since the save draws the current data and says which components changed.
+
+* The generative UI canvas now takes every component shinygenui provides:
+  `canvas_markdown_card` (plain markdown; links, images and URLs are refused
+  before rendering) and the `canvas_card_row` container, whose children go in
+  through `parent_id`, nest at most two levels deep, and are re-mounted when
+  the container is updated. Components are admitted only when every argument
+  type is one shinygenui re-validates on replay, and a saved canvas is bound to
+  the components' ui/server/check implementations and the shinygenui version,
+  so an upgraded implementation fails closed on restore instead of replaying
+  silently. Plots follow dark mode, the workspace tab strip no longer shrinks
+  under a tall canvas, and canvas tool cards label the instance rather than
+  repeating their title.
+
 * `codeagent_app()` gains a generative UI canvas built on `{shinygenui}`
   (Suggests, with `{ggplot2}` and `{DT}` for its starter components). The model
   draws value boxes, tables, scatter plots and histograms from data frames in

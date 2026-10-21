@@ -566,8 +566,10 @@ composer-prefill API.
 ### Generative UI canvas
 
 In `codeagent_app()` the model can draw on a **Canvas** tab in the Output
-workspace: value boxes, sortable tables, scatter plots and histograms built from
-data frames in the R session. Components come from
+workspace with every component shinygenui provides: value boxes, sortable
+tables, scatter plots and histograms built from data frames in the R session,
+plain markdown notes, and `card_row` containers that group components side by
+side (nested at most two levels). Components come from
 [shinygenui](https://github.com/nanxstats/shinygenui) (optional; install it with
 `pak::pak(c("nanxstats/shinygenui", "ggplot2", "DT"))`), but codeagent keeps the
 chat, the system prompt, the streaming, the permission gate, Data Shield and
@@ -585,9 +587,43 @@ codeagent_app(client)
 codeagent_client(chat, disallowed_tools = "genui")
 ```
 
+Choose the components with `canvas_options()` -- any subset of shinygenui's
+own, plus your own built from any Shiny output or htmlwidget:
+
+```r
+boxplot_card <- canvas_component_output(
+  "boxplot", "Box plot of a numeric column by group.",
+  args = list(y = ellmer::type_string("Numeric column."),
+              by = ellmer::type_string("Grouping column.")),
+  output = shiny::plotOutput,
+  render = function(args, data) shiny::renderPlot(
+    boxplot(reformulate(args$by, args$y), data = data())))
+
+map_card <- canvas_component_widget(
+  "map", "Map of points with lat/lng columns.",
+  args = list(lat = ellmer::type_string(), lng = ellmer::type_string()),
+  widget = function(args, data)
+    leaflet::addMarkers(leaflet::addTiles(leaflet::leaflet(data)),
+                        lat = data[[args$lat]], lng = data[[args$lng]]))
+
+codeagent_app(chat, canvas = canvas_options(
+  components = list(boxplot_card, map_card),
+  starter    = c("data_table", "card_row"),   # TRUE (all), FALSE, or names
+  csp        = FALSE))  # the map loads tiles from another origin
+```
+
+Your components are trusted code: codeagent registers them as read-only canvas
+tools behind the permission gate and runs them through the same executor,
+Data Shield scanning and strict restore, and leaves what they render to you.
+Two switches loosen the defaults when your components need it: `csp`
+(`TRUE`, `FALSE` or your own policy string) and `validate_text` (set `FALSE`
+when the model must pass URLs to a component).
+
 The model calls one tool per component (`canvas_histogram(dataset = "mtcars",
-column = "mpg")`) plus `canvas_update` / `canvas_remove` / `canvas_clear` /
-`canvas_state`. Every call is checked before anything reaches the browser:
+column = "mpg")`, `canvas_card_row(title = "Engine")`, then children with
+`parent_id = "c1"`) plus `canvas_update` / `canvas_remove` / `canvas_clear` /
+`canvas_state` / `canvas_refresh`. A component is admitted only if every argument type is one
+shinygenui re-validates completely on replay. Every call is checked before anything reaches the browser:
 the central gate (canvas tools are `read`), Data Shield argument scrubbing,
 shinygenui's own argument and column validation against the real data, a
 canvas-output check that rejects markup, links, URL schemes and control
@@ -601,12 +637,19 @@ on removal, so observers do not outlive their component.
 The canvas is saved in the same session file write as the conversation and
 restored with it (New, Delete, load, auto-continue, fork). Restore is strict:
 every saved change is replayed through validation, bound to the tool request
-that made it, and checked against the component catalog; anything that no
-longer fits leaves an empty canvas and a notice rather than a partial one.
+that made it, and checked against the component catalog -- names, argument
+types, the components' ui/server/check implementations and the shinygenui
+version -- so anything that no longer fits, including an upgraded component
+implementation, leaves an empty canvas and a notice rather than a partial one.
 `/rewind` and `/clear` roll the canvas back together with the turns they
 remove, and a cancelled turn accepts no further canvas changes. The
-per-turn reminder lists live component ids, so they survive compaction. When
-the canvas is available the page carries a Content Security Policy that blocks
+per-turn reminder lists live component ids, so they survive compaction. Components
+show their data as it was when drawn: after a turn that changed a data frame a
+component shows, the component carries a "Data changed" badge and the reminder
+tells the model, which can call `canvas_refresh`; the Canvas tab's **Refresh
+data** button does the same for the user. Restoring a session whose data has
+changed since the save draws the current data and says so. Plots follow
+dark mode. When the canvas is available the page carries a Content Security Policy that blocks
 images, media, frames and plugins from other origins. A pre-built client
 opened in two browser sessions disables its canvas rather than share it.
 

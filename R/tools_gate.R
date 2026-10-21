@@ -62,10 +62,13 @@ NULL
   canvas_data_table   = list(set = "A", capability = "read"),
   canvas_scatter_plot = list(set = "A", capability = "read"),
   canvas_histogram    = list(set = "A", capability = "read"),
+  canvas_markdown_card = list(set = "A", capability = "read"),
+  canvas_card_row     = list(set = "A", capability = "read"),
   canvas_update       = list(set = "A", capability = "read"),
   canvas_remove       = list(set = "A", capability = "read"),
   canvas_clear        = list(set = "A", capability = "read"),
   canvas_state        = list(set = "A", capability = "read"),
+  canvas_refresh      = list(set = "A", capability = "read"),
   # btw file tools (set B)
   btw_tool_files_write   = list(set = "B", capability = "write", path_args = "path"),
   btw_tool_files_edit    = list(set = "B", capability = "write", path_args = "path"),

@@ -10,20 +10,25 @@
 # A shared pre-built client only gets one when asked for by name: two browser
 # sessions on one Chat would otherwise share a canvas (see GenUIAdapter$bind).
 #' @keywords internal
-.genui_wanted <- function(settings, per_session = TRUE) {
+.genui_wanted <- function(settings, per_session = TRUE,
+                          options = canvas_options(), explicit = FALSE) {
   removed <- settings$disallowed_tools$remove %||% character(0)
   if (any(.genui_tool_names() %in% removed)) return(FALSE)
+  if (!length(.genui_starter_names(options)) && !length(options$components))
+    return(FALSE)
   spec <- settings$tools_spec
-  explicit <- !is.null(spec) && !isTRUE(spec$all) &&
-    any(.genui_tool_names() %in% spec$native)
+  explicit <- isTRUE(explicit) || (!is.null(spec) && !isTRUE(spec$all) &&
+    any(.genui_tool_names() %in% spec$native))
   default_on <- is.null(spec) || isTRUE(spec$all)
   if (!explicit && !(default_on && isTRUE(per_session))) return(FALSE)
-  if (!.genui_available()) {
+  if (!.genui_available(options)) {
     if (explicit)
-      warning("[codeagent] `tools` asks for \"genui\", but generative UI needs ",
-              "shinygenui (plus ggplot2 and DT); the canvas is off. Install ",
-              "with pak::pak(c(\"nanxstats/shinygenui\", \"ggplot2\", \"DT\")).",
-              call. = FALSE)
+      warning("[codeagent] A canvas was asked for, but generative UI needs ",
+              paste(.genui_required_packages(options), collapse = ", "),
+              "; the canvas is off. Install with pak::pak(c(",
+              paste0("\"", sub("^shinygenui$", "nanxstats/shinygenui",
+                                .genui_required_packages(options)), "\"",
+                     collapse = ", "), ")).", call. = FALSE)
     return(FALSE)
   }
   TRUE
@@ -164,6 +169,8 @@
                     "The canvas could not be safely restored: ",
                     .genui_message(e))))
   if (is.list(res) && isFALSE(res$ok)) .ui_toast(res$message, "warning")
+  if (is.list(res) && isTRUE(res$ok) && length(res$changed))
+    .ui_toast(res$message, "message")
   invisible(res)
 }
 
@@ -189,6 +196,8 @@
   adapter <- settings$genui
   if (!inherits(adapter, "GenUIAdapter")) return(invisible(NULL))
   tryCatch(adapter$settle_turn(.chat_request_ids(chat)), error = function(e) NULL)
+  # The turn may have changed a data frame a component shows.
+  tryCatch(adapter$mark_stale(), error = function(e) NULL)
   invisible(NULL)
 }
 
@@ -208,5 +217,24 @@
 .genui_reset <- function(settings) {
   if (inherits(settings$genui, "GenUIAdapter"))
     tryCatch(settings$genui$reset(), error = function(e) NULL)
+  invisible(NULL)
+}
+
+# The Canvas tab's "Refresh data" button: redraw every data component from the
+# current data frames. Not while a response is streaming -- the model may be
+# changing the canvas itself.
+#' @keywords internal
+.genui_server <- function(input, session, settings, stream_task) {
+  shiny::observeEvent(input$ca_genui_refresh, {
+    adapter <- settings$genui
+    if (!inherits(adapter, "GenUIAdapter")) return()
+    if (identical(tryCatch(stream_task$status(), error = function(e) ""), "running")) {
+      .ui_toast("The canvas can be refreshed once the response finishes.", "warning")
+      return()
+    }
+    err <- tryCatch({ adapter$refresh(); NULL },
+                    error = function(e) .genui_message(e))
+    if (!is.null(err)) .ui_toast(err, "warning")
+  }, ignoreInit = TRUE)
   invisible(NULL)
 }

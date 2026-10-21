@@ -14,7 +14,8 @@
   trace_entries      = 200L,
   arg_bytes          = 8192L,
   string_chars       = 2048L,
-  array_items        = 100L
+  array_items        = 100L,
+  max_depth          = 2L
 )
 
 # -- dataset ------------------------------------------------------------------
@@ -48,6 +49,10 @@
 # URL schemes (a model-chosen URL is browser egress), no control characters.
 .GENUI_BAD_TEXT <- c(
   markup  = "<\\s*[A-Za-z!/?]",
+  # Markdown links and images ([x](y), ![x](y), [x][1], [1]: y) and
+  # protocol-relative URLs: markdown_card hands text to shiny::markdown().
+  md_link = "\\]\\s*[(\\[]|\\[[^\\]]*\\]\\s*:",
+  netpath = "(^|[^A-Za-z0-9:])//[A-Za-z0-9]",
   scheme  = "(?i)\\b(javascript|vbscript|data|file|blob)\\s*:",
   url     = "(?i)\\b(https?|ftp|wss?)://|\\bwww\\.",
   control = "[\\x01-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]"
@@ -156,11 +161,26 @@
 
 .genui_empty_state <- function() list(instances = list(), next_id = 1L)
 
+# Descendants of `id`, parents before children (creation order).
+#' @keywords internal
+.genui_descendants <- function(instances, id) {
+  out <- character()
+  frontier <- id
+  for (nm in names(instances)) {
+    if (!is.null(instances[[nm]]$parent_id) &&
+        instances[[nm]]$parent_id %in% c(frontier, out))
+      out <- c(out, nm)
+  }
+  out
+}
+
 # Dispatch one trace op against `state`, re-running every shinygenui check.
 .genui_redispatch <- function(catalog, op, state, resolve_data) {
   data <- if (!is.null(op$dataset)) resolve_data(op$dataset) else NULL
   call <- switch(op$action,
-    create = shinygenui::genui_call(op$component, op$args %||% list()),
+    create = shinygenui::genui_call(
+      op$component, c(op$args %||% list(),
+                      if (!is.null(op$parent_id)) list(parent_id = op$parent_id))),
     update = shinygenui::genui_call("update_component",
                                     list(id = op$id, args = op$args %||% list())),
     remove = shinygenui::genui_call("remove_component", list(id = op$id)),
@@ -192,18 +212,23 @@
 # One bounded line for the per-turn system reminder, so instance ids survive
 # compaction of the turns that created them.
 #' @keywords internal
-.genui_state_summary <- function(state, max = 12L) {
+.genui_state_summary <- function(state, max = 12L, stale = character()) {
   inst <- state$instances %||% list()
   if (!length(inst)) return("")
   ids <- names(inst)
   shown <- utils::head(ids, max)
-  parts <- vapply(shown, function(id) sprintf(
-    "%s %s (dataset %s)", id, inst[[id]]$component,
-    inst[[id]]$dataset %||% "?"), character(1L))
+  parts <- vapply(shown, function(id) paste0(
+    id, " ", inst[[id]]$component,
+    if (!is.null(inst[[id]]$dataset)) sprintf(" (dataset %s)", inst[[id]]$dataset),
+    if (id %in% stale) " [data changed; canvas_refresh to redraw]"), character(1L))
   more <- length(ids) - length(shown)
   paste0("Canvas components now on screen: ", paste(parts, collapse = "; "),
          if (more > 0L) sprintf("; and %d more", more), ".")
 }
+
+# Fingerprint of the data a component was drawn from, to notice later changes.
+#' @keywords internal
+.genui_fingerprint <- function(data) rlang::hash(data)
 
 # -- DOM naming ---------------------------------------------------------------
 
@@ -246,6 +271,8 @@
       shiny::withReactiveDomain(session,
                                 component$server(module_id, args, data))
     },
+    mark_stale = function(ids)
+      session$sendCustomMessage("ca_genui_stale", list(ids = as.list(ids))),
     input_values = function(module_id) {
       input <- session$input
       all <- shiny::isolate(names(input)) %||% character()
@@ -307,14 +334,30 @@
     })
 }
 
-# Mount one instance. Building the UI comes first so a failing ui() leaves the
-# DOM untouched; a failing server removes the shell and its scope again.
+# The data accessor a component server receives. Built in its own frame: a
+# `function() data` written inside a loop would see the loop variable's last
+# value once a lazily evaluated render function finally calls it.
+#' @keywords internal
+.genui_data_fn <- function(data) {
+  force(data)
+  function() data
+}
+
+# Mount one instance into `target` (the canvas, or a container's slot).
+# Building the UI comes first so a failing ui() leaves the DOM untouched; a
+# failing server removes the shell and its scope again.
 #' @keywords internal
 .genui_mount <- function(component, id, args, data, ops,
-                         module_id = .genui_module_id(id)) {
+                         module_id = .genui_module_id(id),
+                         target = paste0("#", .GENUI_CANVAS_ID)) {
+  # Forced here: a component whose ui ignores `args` would otherwise pass an
+  # unevaluated promise into its render function, evaluated long after the
+  # caller's variables (a restore loop's, say) have moved on.
+  force(args)
+  force(data)
   ui <- component$ui(module_id, args)
   outputs <- .genui_output_ids(ui)
-  ops$insert(paste0("#", .GENUI_CANVAS_ID), .genui_shell(component, id, ui))
+  ops$insert(target, .genui_shell(component, id, ui))
   handles <- tryCatch(
     .genui_start(component, module_id, args, data, outputs, ops),
     error = function(e) {
@@ -340,6 +383,9 @@
 #' @keywords internal
 .genui_remount <- function(component, id, old_args, new_args, runtime, data, ops,
                            module_id, rollback_module_id) {
+  force(old_args)
+  force(new_args)
+  force(data)
   new_ui <- component$ui(module_id, new_args)
   shell <- paste0("#", .genui_shell_id(id))
   swap <- function(ui) {

@@ -209,6 +209,37 @@ ok(is.character(compact_resp) && !startsWith(compact_resp, "[Error]"),
    ".make_compact_chat() can make a real API call")
 
 # ---------------------------------------------------------------------------
+# G. Generative UI canvas: host components (no model call)
+# ---------------------------------------------------------------------------
+
+section("G. Canvas -- canvas_options() with a host component")
+
+if (requireNamespace("shinygenui", quietly = TRUE)) {
+  boxplot_card <- canvas_component_output(
+    "boxplot", "Box plot of a numeric column by group.",
+    args = list(y = ellmer::type_string("Numeric column."),
+                by = ellmer::type_string("Grouping column.")),
+    output = shiny::plotOutput,
+    render = function(args, data) shiny::renderPlot(
+      graphics::boxplot(stats::reformulate(args$by, args$y), data = data())))
+  canvas <- canvas_options(components = list(boxplot_card), starter = "data_table")
+  adapter <- codeagent:::GenUIAdapter$new(options = canvas)
+  ok(setequal(names(adapter$catalog()), c("data_table", "boxplot")),
+     "catalog = chosen starter + host component")
+  null_ops <- list(insert = function(...) NULL, remove = function(...) NULL,
+                   null_output = function(...) NULL, destroy_scope = function(...) TRUE,
+                   run_server = function(...) NULL, input_values = function(...) NULL)
+  adapter$bind(session = "example", ops = null_ops)
+  adapter$begin_turn()
+  res <- adapter$call("canvas_boxplot", list(dataset = "mtcars", y = "mpg", by = "cyl"))
+  ok(is.null(res@error), "host component tool call succeeds")
+  ok(codeagent:::.tool_metadata("canvas_boxplot")$capability == "read",
+     "host component tool is declared read-only")
+} else {
+  cat("  [SKIP] shinygenui not installed\n")
+}
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 

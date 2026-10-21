@@ -1,20 +1,42 @@
 # codeagent-owned GenUI adapter (references/plan/41-genui-adapter.md, Phase 0).
 
+# Everything shinygenui provides: the bslib starter pack plus card_row.
 .genui_starter <- function() {
   skip_if_not(.genui_available(), "shinygenui starter pack unavailable")
-  shinygenui::genui_components_bslib(data = NULL)
+  c(shinygenui::genui_components_bslib(data = NULL),
+    list(shinygenui::genui_card_row()))
 }
 
 test_that(".genui_admit_catalog keeps exactly the admitted components", {
   catalog <- .genui_admit_catalog(.genui_starter())
-  expect_setequal(names(catalog),
-                  c("value_box", "data_table", "scatter_plot", "histogram"))
+  expect_setequal(names(catalog), c("value_box", "data_table", "scatter_plot",
+                                    "histogram", "markdown_card", "card_row"))
 })
 
-test_that(".genui_admit_catalog never admits markdown_card", {
-  # It keeps external img src and javascript: URLs (research report 2.4.4).
-  catalog <- .genui_admit_catalog(.genui_starter())
-  expect_false("markdown_card" %in% names(catalog))
+test_that("the catalog codeagent builds covers everything shinygenui provides", {
+  skip_if_not(.genui_available(), "shinygenui starter pack unavailable")
+  provided <- c(vapply(shinygenui::genui_components_bslib(data = NULL),
+                       function(x) x$name, ""), shinygenui::genui_card_row()$name)
+  expect_setequal(names(.genui_build_catalog()), provided)
+})
+
+test_that(".genui_admit_catalog refuses an argument type it cannot validate locally", {
+  # shinygenui fully re-validates only basic/enum/array/object types; anything
+  # else would pass replay unchecked (research 5.3), so it is not admitted.
+  skip_if_not(.genui_available(), "shinygenui starter pack unavailable")
+  odd <- shinygenui::genui_component(
+    name = "value_box", description = "schema type",
+    args = list(spec = ellmer::type_from_schema('{"type": "string"}')),
+    ui = function(id, args) htmltools::div())
+  others <- Filter(function(x) x$name != "value_box", .genui_starter())
+  expect_error(.genui_admit_catalog(c(others, list(odd))), "spec")
+})
+
+test_that(".genui_admit_catalog checks nested array and object types too", {
+  ok <- ellmer::type_array(ellmer::type_object(a = ellmer::type_string()))
+  bad <- ellmer::type_array(ellmer::type_from_schema('{"type": "string"}'))
+  expect_true(.genui_type_supported(ok))
+  expect_false(.genui_type_supported(bad))
 })
 
 test_that(".genui_admit_catalog ignores components outside the allowlist", {
@@ -58,6 +80,23 @@ test_that(".genui_catalog_digest does not depend on component order", {
     .genui_catalog_digest(shinygenui::genui_catalog(b, a)))
 })
 
+test_that(".genui_catalog_digest changes when a component's implementation changes", {
+  # Same name and schema, different rendering: a saved canvas must not be
+  # replayed silently against the new implementation (research 8.3).
+  a <- .genui_toy("alpha", list(x = "An x."))
+  b <- a
+  b$ui <- function(id, args) htmltools::span()
+  expect_false(identical(
+    .genui_catalog_digest(shinygenui::genui_catalog(a)),
+    .genui_catalog_digest(shinygenui::genui_catalog(b))))
+})
+
+test_that(".genui_catalog_digest changes with the shinygenui version", {
+  cat_ <- shinygenui::genui_catalog(.genui_toy("alpha", list(x = "An x.")))
+  expect_false(identical(.genui_catalog_digest(cat_, version = "0.2.0"),
+                         .genui_catalog_digest(cat_, version = "0.3.0")))
+})
+
 test_that(".genui_catalog_digest changes when a component's arguments change", {
   # Same component name, different schema: a stale trace or permission
   # decision must not be reused against the new implementation.
@@ -89,8 +128,9 @@ test_that("a name without the canvas_ prefix is not a GenUI tool", {
 test_that(".genui_tool_names lists every component tool plus the lifecycle", {
   expect_setequal(.genui_tool_names(), c(
     "canvas_value_box", "canvas_data_table", "canvas_scatter_plot",
-    "canvas_histogram", "canvas_update", "canvas_remove", "canvas_clear",
-    "canvas_state"))
+    "canvas_histogram", "canvas_markdown_card", "canvas_card_row",
+    "canvas_update", "canvas_remove", "canvas_clear", "canvas_state",
+    "canvas_refresh"))
 })
 
 .genui_plan <- function(call_name, args, state = list(instances = list(), next_id = 1L)) {
@@ -186,15 +226,16 @@ test_that("the prompt fragment never names an upstream lifecycle call", {
     expect_false(grepl(upstream, frag, fixed = TRUE), info = upstream)
 })
 
-test_that("the prompt fragment omits components outside the catalog", {
-  expect_false(grepl("markdown_card", .genui_fragment(), fixed = TRUE))
+test_that("the prompt fragment explains how containers take children", {
+  frag <- .genui_fragment()
+  expect_match(frag, "parent_id", fixed = TRUE)
+  expect_match(frag, "canvas_card_row", fixed = TRUE)
 })
 
 test_that("GenUIAdapter freezes the admitted catalog at construction", {
   skip_if_not(.genui_available(), "shinygenui starter pack unavailable")
   a <- GenUIAdapter$new()
-  expect_setequal(names(a$catalog()),
-                  c("value_box", "data_table", "scatter_plot", "histogram"))
+  expect_setequal(names(a$catalog()), .GENUI_ADMITTED)
   expect_identical(a$catalog(), a$catalog())
 })
 
@@ -202,7 +243,7 @@ test_that("GenUIAdapter exposes the digest, tool names and prompt it was built f
   skip_if_not(.genui_available(), "shinygenui starter pack unavailable")
   a <- GenUIAdapter$new()
   expect_identical(a$digest(), .genui_catalog_digest(a$catalog()))
-  expect_identical(a$tool_names(), .genui_tool_names())
+  expect_setequal(a$tool_names(), .genui_tool_names())
   expect_identical(a$prompt_fragment(), .genui_prompt_fragment(a$catalog()))
 })
 

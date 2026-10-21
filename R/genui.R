@@ -9,44 +9,110 @@
 #' @keywords internal
 NULL
 
-# Components codeagent has reviewed. Everything else in the starter pack is a
-# candidate upstream may add to; it is left out, not rejected. markdown_card is
-# deliberately absent: it keeps external img src and javascript: URLs.
-.GENUI_ADMITTED <- c("value_box", "data_table", "scatter_plot", "histogram")
+# Components codeagent admits: everything shinygenui provides today (its bslib
+# starter pack plus card_row). A component upstream adds later is a candidate,
+# left out until reviewed, never rejected. markdown_card is safe here only
+# because .genui_validate_strings() refuses markup, links and URLs in every
+# model-authored string before shiny::markdown() ever sees it.
+.GENUI_ADMITTED <- c("value_box", "data_table", "scatter_plot", "histogram",
+                     "markdown_card", "card_row")
+
+# Argument types shinygenui re-validates completely on every dispatch,
+# including replay. Any other ellmer type would be trusted to the provider on
+# a live call and checked by nobody on restore (research 5.3).
+.GENUI_TYPE_CLASSES <- c("ellmer::TypeBasic", "ellmer::TypeEnum",
+                         "ellmer::TypeArray", "ellmer::TypeObject")
+
+#' @keywords internal
+.genui_type_supported <- function(type) {
+  cls <- intersect(class(type), .GENUI_TYPE_CLASSES)
+  if (!length(cls)) return(FALSE)
+  if (identical(cls[[1L]], "ellmer::TypeArray"))
+    return(.genui_type_supported(type@items))
+  if (identical(cls[[1L]], "ellmer::TypeObject"))
+    return(all(vapply(type@properties, .genui_type_supported, logical(1L))))
+  TRUE
+}
 
 # Build the frozen catalog from a candidate component list. An admitted
 # component that is missing is an error -- the prompt would otherwise promise a
-# component the catalog cannot build.
+# component the catalog cannot build -- and so is an admitted component with
+# an argument type the local validator does not cover.
 #' @keywords internal
-.genui_admit_catalog <- function(components) {
+.genui_admit_catalog <- function(components, admitted = .GENUI_ADMITTED) {
   names_ <- vapply(components, function(x) as.character(x$name), character(1L))
-  missing <- setdiff(.GENUI_ADMITTED, names_)
+  missing <- setdiff(admitted, names_)
   if (length(missing))
     stop("[codeagent] shinygenui no longer provides admitted component(s): ",
          paste0("\"", missing, "\"", collapse = ", "),
          ". The installed shinygenui does not match the reviewed contract.",
          call. = FALSE)
-  do.call(shinygenui::genui_catalog, components[names_ %in% .GENUI_ADMITTED])
+  admitted <- components[names_ %in% admitted]
+  for (comp in admitted) {
+    bad <- names(Filter(Negate(.genui_type_supported), comp$args))
+    if (length(bad))
+      stop("[codeagent] Canvas component \"", comp$name, "\" has argument(s) ",
+           paste0("\"", bad, "\"", collapse = ", "), " of a type codeagent ",
+           "cannot validate on replay; it is not admitted.", call. = FALSE)
+  }
+  do.call(shinygenui::genui_catalog, admitted)
 }
 
-# Stable fingerprint of a catalog's tool surface: component names plus each
-# argument's name, type and constraints, sorted so order does not matter. Only
-# plain data goes in -- the Type objects are S7 and the component ui/server are
-# closures, neither of which hashes stably across processes.
+# Bumped when codeagent changes how a trace is executed or replayed.
+.GENUI_ADAPTER_VERSION <- "3"
+
+# Implementation identity of a saved canvas (research 8.3): component names,
+# each argument's full type (nested items and properties included), the
+# ui/server/check implementations, the shinygenui version and the adapter
+# version. Sorted, so component order does not matter. Functions enter as
+# deparsed text -- closures and S7 objects do not hash stably across processes.
 #' @keywords internal
-.genui_catalog_digest <- function(catalog) {
+.genui_catalog_digest <- function(catalog, version = NULL) {
+  version <- version %||% tryCatch(
+    as.character(utils::packageVersion("shinygenui")), error = function(e) "?")
   describe_arg <- function(type) list(
-    type     = class(type)[[1L]],
-    values   = tryCatch(type@values, error = function(e) NULL),
-    required = tryCatch(type@required, error = function(e) NULL))
+    type       = class(type)[[1L]],
+    values     = tryCatch(type@values, error = function(e) NULL),
+    required   = tryCatch(type@required, error = function(e) NULL),
+    items      = tryCatch(describe_arg(type@items), error = function(e) NULL),
+    properties = tryCatch(lapply(type@properties, describe_arg),
+                          error = function(e) NULL))
+  # A builder such as canvas_component_output() keeps the real implementation
+  # in its closure (render_fn, widget_fn, ...), so closures are followed: the
+  # function-valued bindings of a non-namespace enclosing environment count too.
+  code <- function(f, depth = 3L) {
+    if (!is.function(f)) return("")
+    own <- paste(c(deparse(formals(f)), deparse(body(f))), collapse = "\n")
+    env <- environment(f)
+    if (depth <= 0L || !is.environment(env) || isNamespace(env) ||
+        identical(env, globalenv()) || identical(env, baseenv()) ||
+        identical(env, emptyenv()))
+      return(own)
+    nms <- sort(ls(env, all.names = TRUE))
+    inner <- vapply(nms, function(nm) {
+      val <- get0(nm, envir = env, inherits = FALSE)
+      if (is.function(val) && !identical(val, f))
+        paste0(nm, "=", code(val, depth - 1L)) else ""
+    }, character(1L))
+    paste(c(own, inner[nzchar(inner)]), collapse = "\n")
+  }
   comps <- lapply(sort(names(catalog)), function(nm) {
     comp <- catalog[[nm]]
     arg_names <- sort(names(comp$args))
-    list(name = nm, container = isTRUE(comp$container),
+    list(name = nm, container = isTRUE(comp$container), width = comp$width,
          args = stats::setNames(lapply(arg_names, function(a)
-           describe_arg(comp$args[[a]])), arg_names))
+           describe_arg(comp$args[[a]])), arg_names),
+         impl = vapply(list(comp$ui, comp$server, comp$check), code, ""))
   })
-  rlang::hash(comps)
+  rlang::hash(list(components = comps, shinygenui = version,
+                   adapter = .GENUI_ADAPTER_VERSION))
+}
+
+# A component reads a data frame when it has a server or a check; only those
+# tools take a `dataset` argument.
+.genui_needs_data <- function(component) {
+  if (!is.null(component$needs_data)) return(isTRUE(component$needs_data))
+  !is.null(component$server) || !is.null(component$check)
 }
 
 # Tool name prefix. Tool names are listed statically (.genui_tool_names()) and
@@ -60,12 +126,14 @@ NULL
 .GENUI_LIFECYCLE <- c(canvas_update = "update_component",
                       canvas_remove = "remove_component",
                       canvas_clear  = "clear_canvas",
-                      canvas_state  = NA_character_)
+                      canvas_state  = NA_character_,
+                      canvas_refresh = NA_character_)
 
 #' @keywords internal
 .genui_tool_name <- function(component) paste0(.GENUI_PREFIX, component)
 
-# The shinygenui call name for a tool, or NULL for canvas_state.
+# The shinygenui call name for a tool, or NULL for the adapter-owned
+# canvas_state and canvas_refresh.
 #' @keywords internal
 .genui_dispatch_name <- function(tool_name) {
   if (!startsWith(tool_name, .GENUI_PREFIX))
@@ -79,8 +147,8 @@ NULL
 }
 
 #' @keywords internal
-.genui_tool_names <- function() {
-  c(.genui_tool_name(.GENUI_ADMITTED), names(.GENUI_LIFECYCLE))
+.genui_tool_names <- function(components = .GENUI_ADMITTED) {
+  c(.genui_tool_name(components), names(.GENUI_LIFECYCLE))
 }
 
 # Fields every op carries, whatever its action. shinygenui plans differ by
@@ -151,13 +219,21 @@ NULL
 }
 
 #' @noRd
-.genui_available <- function() !length(.genui_missing())
+.genui_available <- function(options = canvas_options())
+  !length(.genui_missing(.genui_required_packages(options)))
 
 #' @noRd
-.genui_build_catalog <- function() {
+.genui_build_catalog <- function(options = canvas_options()) {
+  starter <- .genui_starter_names(options)
   # Unbound (data = NULL): column names stay out of the tool schema and the
   # catalog survives the conversation moving between data sets.
-  .genui_admit_catalog(shinygenui::genui_components_bslib(data = NULL))
+  pool <- if (length(starter))
+    Filter(function(x) x$name %in% starter,
+           c(shinygenui::genui_components_bslib(data = NULL),
+             list(shinygenui::genui_card_row())))
+  else list()
+  host <- vapply(options$components, function(x) as.character(x$name), character(1L))
+  .genui_admit_catalog(c(pool, options$components), admitted = c(starter, host))
 }
 
 # The id of the tool request being executed, when ellmer provides one. Each
@@ -212,16 +288,27 @@ NULL
       else sprintf("Removed canvas component \"%s\".", op$id),
     clear = if (length(op$ids))
       sprintf("Cleared the canvas; removed %d component(s).", length(op$ids))
-      else "The canvas was already empty.")
+      else "The canvas was already empty.",
+    refresh = if (length(op$ids))
+      sprintf("Redrew %s from the current data.", paste(op$ids, collapse = ", "))
+      else "No canvas component reads a data frame; nothing to refresh.")
   title <- switch(op$action,
     create = paste("Canvas: added", op$component),
     update = paste("Canvas: updated", op$id),
     remove = paste("Canvas: removed", op$id),
-    clear  = "Canvas: cleared")
+    clear  = "Canvas: cleared",
+    refresh = "Canvas: refreshed")
   artifact <- .genui_artifact(op, digest, title)
   display <- .new_tool_result_display(
     title = .safe_tool_display_title(title), icon = .icon_tag("bar-chart"),
-    text = value, show_request = FALSE, open = FALSE, label = title,
+    text = value, show_request = FALSE, open = FALSE,
+    # shinychat shows "title: label"; the label names the instance instead of
+    # repeating the title.
+    label = switch(op$action,
+                   create = paste(op$id, op$component),
+                   clear = paste(length(op$ids), "removed"),
+                   refresh = paste(op$ids, collapse = ", "),
+                   op$id),
     value_preview = .tool_display_preview(value, 160L))
   ellmer::ContentToolResult(
     value = value,
@@ -248,13 +335,21 @@ NULL
   dataset_type <- ellmer::type_string(paste(
     "Name of the data frame in the R session to read, such as \"mtcars\".",
     "Create or load it first with your other tools if it does not exist yet."))
-  component_tools <- lapply(.GENUI_ADMITTED, function(nm) {
+  has_containers <- any(vapply(catalog, function(x) isTRUE(x$container), logical(1L)))
+  parent_type <- ellmer::type_string(paste(
+    "Optional id of an existing container component (for example \"c1\") to",
+    "place this component into. Omit to place it directly on the canvas."),
+    required = FALSE)
+  component_tools <- lapply(names(catalog), function(nm) {
     comp <- catalog[[nm]]
-    if ("dataset" %in% names(comp$args))
-      stop("[codeagent] Canvas component \"", nm, "\" already declares a ",
-           "`dataset` argument.", call. = FALSE)
+    reserved <- intersect(c("dataset", "parent_id"), names(comp$args))
+    if (length(reserved))
+      stop("[codeagent] Canvas component \"", nm, "\" already declares ",
+           paste0("`", reserved, "`", collapse = ", "), ".", call. = FALSE)
     tool_name <- .genui_tool_name(nm)
-    arguments <- c(list(dataset = dataset_type), comp$args)
+    arguments <- c(if (.genui_needs_data(comp)) list(dataset = dataset_type),
+                   comp$args,
+                   if (has_containers) list(parent_id = parent_type))
     ellmer::tool(
       .genui_tool_fn(names(arguments), function(args) adapter$call(tool_name, args)),
       name = tool_name, description = comp$description, arguments = arguments,
@@ -290,6 +385,17 @@ NULL
                           "the user asks to start over."),
       arguments = list(),
       annotations = ellmer::tool_annotations(title = "Canvas: clear")),
+    ellmer::tool(
+      .genui_tool_fn("id", function(args) adapter$call("canvas_refresh", args)),
+      name = "canvas_refresh",
+      description = paste(
+        "Redraw canvas components from the current contents of their data",
+        "frames. Call it after you change a data frame a component shows.",
+        "Pass an id to refresh one component, or omit it to refresh them all."),
+      arguments = list(id = ellmer::type_string(
+        "The component id to refresh. Omit to refresh every data component.",
+        required = FALSE)),
+      annotations = ellmer::tool_annotations(title = "Canvas: refresh")),
     ellmer::tool(
       .genui_tool_fn(character(), function(args) adapter$call("canvas_state", args)),
       name = "canvas_state",
@@ -330,8 +436,12 @@ GenUIAdapter <- R6::R6Class(
   "GenUIAdapter",
   cloneable = FALSE,
   public = list(
-    initialize = function(prepare = TRUE, data_env = globalenv()) {
-      private$data_env <- data_env
+    initialize = function(prepare = TRUE, data_env = NULL,
+                          options = canvas_options()) {
+      if (!inherits(options, "codeagent_canvas_options"))
+        stop("`options` must come from canvas_options().", call. = FALSE)
+      private$options <- options
+      private$data_env <- data_env %||% options$data_env
       if (isTRUE(prepare)) self$prepare()
     },
 
@@ -339,7 +449,7 @@ GenUIAdapter <- R6::R6Class(
     # the initialization overlay rather than on the path to first paint.
     prepare = function() {
       if (!is.null(private$catalog_)) return(invisible(self))
-      missing <- .genui_missing()
+      missing <- .genui_missing(.genui_required_packages(private$options))
       if (length(missing)) {
         refs <- ifelse(missing == "shinygenui", "nanxstats/shinygenui", missing)
         stop("[codeagent] Generative UI needs the suggested package(s) ",
@@ -347,7 +457,11 @@ GenUIAdapter <- R6::R6Class(
              "pak::pak(c(", paste0("\"", refs, "\"", collapse = ", "), ")).",
              call. = FALSE)
       }
-      catalog <- .genui_build_catalog()
+      catalog <- .genui_build_catalog(private$options)
+      # Host components become canvas tools too: declare each read-only by its
+      # exact name, as the built-in ones are in .TOOL_META.
+      for (nm in setdiff(names(catalog), .GENUI_ADMITTED))
+        register_tool_meta(.genui_tool_name(nm), "read")
       private$digest_ <- .genui_catalog_digest(catalog)
       private$prompt_ <- .genui_prompt_fragment(catalog)
       private$catalog_ <- catalog
@@ -356,7 +470,7 @@ GenUIAdapter <- R6::R6Class(
     prepared        = function() !is.null(private$catalog_),
     catalog         = function() { self$prepare(); private$catalog_ },
     digest          = function() { self$prepare(); private$digest_ },
-    tool_names      = function() .genui_tool_names(),
+    tool_names      = function() .genui_tool_names(names(self$catalog())),
     prompt_fragment = function() { self$prepare(); private$prompt_ },
     tools           = function() .genui_build_tools(self),
 
@@ -396,7 +510,56 @@ GenUIAdapter <- R6::R6Class(
     },
 
     state   = function() private$state_,
-    summary = function() .genui_state_summary(private$state_),
+    summary = function() .genui_state_summary(private$state_,
+                                              stale = self$stale_ids()),
+
+    # Components whose data frame changed (or vanished) since they were drawn.
+    stale_ids = function() {
+      inst <- private$state_$instances
+      ids <- names(inst)[vapply(inst, function(x) !is.null(x$dataset), logical(1L))]
+      ids[vapply(ids, function(id) {
+        now <- tryCatch(.genui_fingerprint(private$resolve(inst[[id]]$dataset)),
+                        error = function(e) NA_character_)
+        !identical(now, private$fingerprints[[id]])
+      }, logical(1L))]
+    },
+
+    # Tell the browser which components are out of date (a badge per shell).
+    mark_stale = function() {
+      ops <- private$ops
+      if (is.function(ops$mark_stale))
+        tryCatch(ops$mark_stale(self$stale_ids()), error = function(e) NULL)
+      invisible(self)
+    },
+
+    # Redraw data components from the current data. Not a trace op: the args
+    # do not change, and restore always reads the current data anyway.
+    # Returns the ids refreshed; failures are collected and rethrown together.
+    refresh = function(id = NULL) {
+      self$prepare()
+      inst <- private$state_$instances
+      data_ids <- names(inst)[vapply(inst, function(x) !is.null(x$dataset), logical(1L))]
+      if (!is.null(id)) {
+        if (!is.character(id) || length(id) != 1L || is.null(inst[[id]]))
+          stop("No canvas component with id \"", paste(id, collapse = ""), "\". ",
+               .genui_state_summary(private$state_), call. = FALSE)
+        if (!id %in% data_ids)
+          stop("Canvas component \"", id, "\" does not read a data frame.",
+               call. = FALSE)
+        data_ids <- id
+      }
+      problems <- character()
+      for (one in data_ids) {
+        err <- tryCatch({ private$refresh_one(one); NULL },
+                        error = function(e) .genui_message(e))
+        if (!is.null(err)) problems <- c(problems, paste0(one, ": ", err))
+      }
+      self$mark_stale()
+      if (length(problems))
+        stop("Could not refresh ", paste(problems, collapse = " "),
+             " The previous view is still shown.", call. = FALSE)
+      invisible(data_ids)
+    },
 
     # Persistable form. `present_ids` are the tool request ids in the chat at
     # save time; an op bound to a present request must still find it on
@@ -411,7 +574,7 @@ GenUIAdapter <- R6::R6Class(
       })
       list(schema = .GENUI_STATE_SCHEMA, version = .GENUI_STATE_VERSION,
            catalog_digest = if (self$prepared()) private$digest_ else NULL,
-           trace = trace)
+           trace = trace, fingerprints = private$fingerprints)
     },
 
     # Strict restore: verify, fold the whole trace through dispatch, then mount
@@ -436,7 +599,17 @@ GenUIAdapter <- R6::R6Class(
           return(fail("it no longer matches the conversation."))
       err <- private$rebuild(trace)
       if (!is.null(err)) return(fail(err))
-      list(ok = TRUE, count = length(private$state_$instances))
+      saved <- lapply(snapshot$fingerprints %||% list(),
+                      function(x) as.character(unlist(x))[[1L]])
+      changed <- names(saved)[vapply(names(saved), function(id)
+        !is.null(private$fingerprints[[id]]) &&
+          !identical(saved[[id]], private$fingerprints[[id]]), logical(1L))]
+      list(ok = TRUE, count = length(private$state_$instances),
+           changed = changed,
+           message = if (length(changed)) paste0(
+             "The data behind canvas component(s) ", paste(changed, collapse = ", "),
+             " changed since this session was saved; the canvas shows the ",
+             "current data."))
     },
 
     # Empty the canvas and forget its history (New, Delete, /clear).
@@ -465,12 +638,77 @@ GenUIAdapter <- R6::R6Class(
 
   private = list(
     catalog_ = NULL, digest_ = NULL, prompt_ = NULL,
-    data_env = NULL, ops = NULL, session_key = NULL, poisoned_ = FALSE,
+    options = NULL, data_env = NULL, ops = NULL, session_key = NULL,
+    poisoned_ = FALSE,
     state_ = list(instances = list(), next_id = 1L),
-    runtime = list(), trace = list(), mounts = list(),
+    runtime = list(), trace = list(), mounts = list(), fingerprints = list(),
     turn_open = TRUE, turn_mutations = 0L, turn_start = 0L,
 
     resolve = function(name) .genui_resolve_dataset(name, private$data_env),
+
+    remember_data = function(id, data) {
+      if (!is.null(data)) private$fingerprints[[id]] <- .genui_fingerprint(data)
+    },
+
+    # Re-validate one data component against its current data frame and
+    # remount it. shinygenui's own check runs first, so a column that is gone
+    # fails before the DOM changes; the old view then stays and reads stale.
+    refresh_one = function(id) {
+      inst <- private$state_$instances[[id]]
+      data <- private$resolve(inst$dataset)
+      shinygenui::genui_dispatch(
+        private$catalog_,
+        shinygenui::genui_call("update_component", list(id = id, args = list())),
+        private$state_, data = data)
+      comp <- private$catalog_[[inst$component]]
+      private$runtime[[id]] <- tryCatch(
+        .genui_remount(comp, id, inst$args, inst$args, private$runtime[[id]],
+                       .genui_data_fn(data), private$ops,
+                       module_id = private$next_module_id(id),
+                       rollback_module_id = private$next_module_id(id)),
+        error = function(e) {
+          private$runtime[[id]] <- attr(e, "restored")
+          stop(e)
+        })
+      if (isTRUE(comp$container)) private$remount_children(id)
+      private$remember_data(id, data)
+    },
+
+    # Where a new component's shell goes: the canvas, or its container's slot.
+    target = function(parent_id) {
+      if (is.null(parent_id)) return(paste0("#", .GENUI_CANVAS_ID))
+      paste0("#", private$runtime[[parent_id]]$module_id, "-slot")
+    },
+
+    check_depth = function(parent_id) {
+      depth <- 1L
+      id <- parent_id
+      while (is.character(id) && !is.null(private$state_$instances[[id]])) {
+        depth <- depth + 1L
+        id <- private$state_$instances[[id]]$parent_id
+      }
+      if (depth > .GENUI_LIMITS$max_depth)
+        stop(sprintf("Canvas containers nest at most %d levels deep.",
+                     .GENUI_LIMITS$max_depth), call. = FALSE)
+    },
+
+    # Mount every descendant of `id` again, parents before children, into the
+    # slots of its freshly mounted container.
+    remount_children = function(id) {
+      inst <- private$state_$instances
+      ops <- private$ops
+      for (child in .genui_descendants(inst, id)) {
+        .genui_unmount(child, private$runtime[[child]], ops)
+        ci <- inst[[child]]
+        data <- if (!is.null(ci$dataset)) private$resolve(ci$dataset)
+        private$runtime[[child]] <- .genui_mount(
+          private$catalog_[[ci$component]], child, ci$args, .genui_data_fn(data), ops,
+          module_id = private$next_module_id(child),
+          target = private$target(ci$parent_id))
+        private$remember_data(child, data)
+      }
+      invisible(NULL)
+    },
 
     # A module scope id never reused within this session: Shiny destroys a
     # scope for good, so each mount of an instance gets its own.
@@ -491,17 +729,32 @@ GenUIAdapter <- R6::R6Class(
         stop("This turn was cancelled; the canvas was not changed.", call. = FALSE)
       self$prepare()
       if (identical(tool_name, "canvas_state")) return(private$state_result())
+      if (identical(tool_name, "canvas_refresh")) {
+        msg <- .genui_quota_check("refresh", args, live = 0L,
+                                  turn_mutations = private$turn_mutations,
+                                  trace_len = 0L)
+        if (!is.null(msg)) stop(msg, call. = FALSE)
+        private$turn_mutations <- private$turn_mutations + 1L
+        ids <- self$refresh(args$id)
+        return(.genui_success_result(
+          list(action = "refresh", id = args$id, ids = ids), private$digest_))
+      }
 
       dispatch <- .genui_dispatch_name(tool_name)
       action <- .genui_action(dispatch)
       dataset <- NULL
-      if (identical(action, "create")) {
+      component <- if (identical(action, "create")) private$catalog_[[dispatch]]
+      needs_data <- !is.null(component) && .genui_needs_data(component)
+      if (isTRUE(needs_data)) {
         dataset <- args$dataset
         args$dataset <- NULL
       }
+      if (identical(action, "create") && !is.null(args$parent_id))
+        private$check_depth(args$parent_id)
       checked <- if (identical(action, "update"))
         c(list(id = args$id), .genui_update_delta(args$args)) else args
-      msg <- .genui_validate_strings(c(checked, list(dataset = dataset)))
+      msg <- if (isTRUE(private$options$validate_text))
+        .genui_validate_strings(c(checked, list(dataset = dataset)))
       if (is.null(msg))
         msg <- .genui_quota_check(action, checked,
                                   live = length(private$state_$instances),
@@ -510,11 +763,11 @@ GenUIAdapter <- R6::R6Class(
       if (!is.null(msg)) stop(msg, call. = FALSE)
 
       data <- NULL
-      if (identical(action, "create")) data <- private$resolve(dataset)
+      if (isTRUE(needs_data)) data <- private$resolve(dataset)
       if (identical(action, "update") && is.character(args$id) &&
           length(args$id) == 1L) {
         inst <- private$state_$instances[[args$id]]
-        if (!is.null(inst)) {
+        if (!is.null(inst$dataset)) {
           dataset <- inst$dataset
           data <- private$resolve(dataset)
         }
@@ -532,13 +785,15 @@ GenUIAdapter <- R6::R6Class(
 
     execute = function(op, data) {
       ops <- private$ops
-      data_fn <- function() data
+      data_fn <- .genui_data_fn(data)
       switch(op$action,
         create = {
           comp <- private$catalog_[[op$component]]
           private$runtime[[op$id]] <- .genui_mount(
             comp, op$id, op$args, data_fn, ops,
-            module_id = private$next_module_id(op$id))
+            module_id = private$next_module_id(op$id),
+            target = private$target(op$parent_id))
+          private$remember_data(op$id, data)
         },
         update = {
           comp <- private$catalog_[[op$component]]
@@ -550,13 +805,27 @@ GenUIAdapter <- R6::R6Class(
                            rollback_module_id = private$next_module_id(op$id)),
             error = function(e) {
               private$runtime[[op$id]] <- attr(e, "restored")
+              if (isTRUE(comp$container)) private$remount_children(op$id)
               stop(e)
             })
+          # The container's slot was rebuilt under a new scope, so its
+          # children are mounted again into it. If that fails, the canvas is
+          # rebuilt from the trace, which does not contain this update yet.
+          if (isTRUE(comp$container)) {
+            err <- tryCatch({ private$remount_children(op$id); NULL },
+                            error = function(e) e)
+            if (!is.null(err)) {
+              private$rebuild(private$trace)
+              stop(err)
+            }
+          }
+          private$remember_data(op$id, data)
         },
         remove = , clear = {
           for (id in op$ids) {
             .genui_unmount(id, private$runtime[[id]], ops)
             private$runtime[[id]] <- NULL
+            private$fingerprints[[id]] <- NULL
           }
         })
       invisible(NULL)
@@ -597,6 +866,7 @@ GenUIAdapter <- R6::R6Class(
         for (id in names(private$runtime))
           .genui_unmount(id, private$runtime[[id]], ops)
       private$runtime <- list()
+      private$fingerprints <- list()
       private$state_ <- .genui_empty_state()
       private$trace <- list()
       private$turn_start <- 0L
@@ -629,17 +899,20 @@ GenUIAdapter <- R6::R6Class(
       if (!is.null(ops)) {
         for (id in names(state$instances)) {
           inst <- state$instances[[id]]
+          data <- NULL
           mounted <- tryCatch({
-            data <- private$resolve(inst$dataset)
+            data <- if (!is.null(inst$dataset)) private$resolve(inst$dataset)
             .genui_mount(private$catalog_[[inst$component]], id, inst$args,
-                         function() data, ops,
-                         module_id = private$next_module_id(id))
+                         .genui_data_fn(data), ops,
+                         module_id = private$next_module_id(id),
+                         target = private$target(inst$parent_id))
           }, error = function(e) e)
           if (inherits(mounted, "error")) {
             private$clear_all()
             return(.genui_message(mounted))
           }
           private$runtime[[id]] <- mounted
+          private$remember_data(id, data)
         }
       }
       private$state_ <- state
