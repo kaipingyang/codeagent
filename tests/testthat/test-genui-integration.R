@@ -4,25 +4,25 @@
 # -- activation -----------------------------------------------------------------
 
 test_that("GenUI is on by default only for per-session apps", {
-  local_mocked_bindings(.genui_available = function() TRUE)
+  local_mocked_bindings(.genui_available = function(...) TRUE)
   expect_true(.genui_wanted(list(tools_spec = NULL), per_session = TRUE))
   expect_false(.genui_wanted(list(tools_spec = NULL), per_session = FALSE))
 })
 
 test_that("naming genui enables it even for a shared client", {
-  local_mocked_bindings(.genui_available = function() TRUE)
+  local_mocked_bindings(.genui_available = function(...) TRUE)
   spec <- .resolve_tool_spec(c("files", "genui"))
   expect_true(.genui_wanted(list(tools_spec = spec), per_session = FALSE))
 })
 
 test_that("a selection that omits genui keeps it off", {
-  local_mocked_bindings(.genui_available = function() TRUE)
+  local_mocked_bindings(.genui_available = function(...) TRUE)
   spec <- .resolve_tool_spec(c("files", "shell"))
   expect_false(.genui_wanted(list(tools_spec = spec), per_session = TRUE))
 })
 
 test_that("disallowed_tools = 'genui' always wins", {
-  local_mocked_bindings(.genui_available = function() TRUE)
+  local_mocked_bindings(.genui_available = function(...) TRUE)
   dis <- .resolve_disallowed_tools("genui")
   expect_false(.genui_wanted(list(tools_spec = NULL, disallowed_tools = dis),
                              per_session = TRUE))
@@ -32,12 +32,12 @@ test_that("disallowed_tools = 'genui' always wins", {
 })
 
 test_that("the default quietly stays off when shinygenui is unavailable", {
-  local_mocked_bindings(.genui_available = function() FALSE)
+  local_mocked_bindings(.genui_available = function(...) FALSE)
   expect_false(.genui_wanted(list(tools_spec = NULL), per_session = TRUE))
 })
 
 test_that("an explicit request for unavailable GenUI warns", {
-  local_mocked_bindings(.genui_available = function() FALSE)
+  local_mocked_bindings(.genui_available = function(...) FALSE)
   spec <- .resolve_tool_spec("genui")
   expect_warning(
     expect_false(.genui_wanted(list(tools_spec = spec), per_session = TRUE)),

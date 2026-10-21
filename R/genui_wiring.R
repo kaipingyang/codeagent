@@ -10,20 +10,25 @@
 # A shared pre-built client only gets one when asked for by name: two browser
 # sessions on one Chat would otherwise share a canvas (see GenUIAdapter$bind).
 #' @keywords internal
-.genui_wanted <- function(settings, per_session = TRUE) {
+.genui_wanted <- function(settings, per_session = TRUE,
+                          options = canvas_options(), explicit = FALSE) {
   removed <- settings$disallowed_tools$remove %||% character(0)
   if (any(.genui_tool_names() %in% removed)) return(FALSE)
+  if (!length(.genui_starter_names(options)) && !length(options$components))
+    return(FALSE)
   spec <- settings$tools_spec
-  explicit <- !is.null(spec) && !isTRUE(spec$all) &&
-    any(.genui_tool_names() %in% spec$native)
+  explicit <- isTRUE(explicit) || (!is.null(spec) && !isTRUE(spec$all) &&
+    any(.genui_tool_names() %in% spec$native))
   default_on <- is.null(spec) || isTRUE(spec$all)
   if (!explicit && !(default_on && isTRUE(per_session))) return(FALSE)
-  if (!.genui_available()) {
+  if (!.genui_available(options)) {
     if (explicit)
-      warning("[codeagent] `tools` asks for \"genui\", but generative UI needs ",
-              "shinygenui (plus ggplot2 and DT); the canvas is off. Install ",
-              "with pak::pak(c(\"nanxstats/shinygenui\", \"ggplot2\", \"DT\")).",
-              call. = FALSE)
+      warning("[codeagent] A canvas was asked for, but generative UI needs ",
+              paste(.genui_required_packages(options), collapse = ", "),
+              "; the canvas is off. Install with pak::pak(c(",
+              paste0("\"", sub("^shinygenui$", "nanxstats/shinygenui",
+                                .genui_required_packages(options)), "\"",
+                     collapse = ", "), ")).", call. = FALSE)
     return(FALSE)
   }
   TRUE

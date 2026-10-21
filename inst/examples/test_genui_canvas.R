@@ -15,6 +15,9 @@
 #               restore must fail closed and leave the canvas empty
 #   datachanged -- the data frame changed after the save; restore succeeds,
 #               draws the current data and says so
+#   custom   -- host components from canvas_component_output() (plotly) and
+#               canvas_component_widget() (reactable) beside shinygenui's
+#               card_row, chosen with canvas_options(starter = "card_row")
 
 required <- c("codeagent", "ellmer", "shiny", "shinygenui")
 missing <- required[!vapply(required, requireNamespace, logical(1L), quietly = TRUE)]
@@ -23,9 +26,9 @@ if (length(missing))
        call. = FALSE)
 
 case <- Sys.getenv("CODEAGENT_E2E_CASE", "restore")
-if (!case %in% c("restore", "shielded", "mismatch", "datachanged"))
-  stop("CODEAGENT_E2E_CASE must be restore, shielded, mismatch or datachanged.",
-       call. = FALSE)
+if (!case %in% c("restore", "shielded", "mismatch", "datachanged", "custom"))
+  stop("CODEAGENT_E2E_CASE must be restore, shielded, mismatch, datachanged ",
+       "or custom.", call. = FALSE)
 ui_layout <- Sys.getenv("CODEAGENT_E2E_UI_LAYOUT", "classic")
 
 fixture_root <- Sys.getenv("CODEAGENT_E2E_ROOT", "")
@@ -44,6 +47,7 @@ Sys.unsetenv(c("CODEAGENT_BASE_URL", "CODEAGENT_API_KEY", "CODEAGENT_MODEL",
 assign("e2e_cars", mtcars, envir = globalenv())
 
 ns <- asNamespace("codeagent")
+canvas <- codeagent::canvas_options()
 calls <- list(
   list(id = "e2e-canvas-1", tool = "canvas_card_row",
        args = list(title = "E2E_ROW_TITLE")),
@@ -59,13 +63,37 @@ calls <- list(
        args = list(dataset = "e2e_cars", columns = c("mpg", "hp"),
                    page_size = 5L))
 )
+if (identical(case, "custom")) {
+  line_chart <- codeagent::canvas_component_output(
+    "line_chart", "Interactive line chart of one numeric column against another.",
+    args = list(x = ellmer::type_string("Column on the x axis."),
+                y = ellmer::type_string("Column on the y axis.")),
+    output = plotly::plotlyOutput,
+    render = function(args, data) plotly::renderPlotly(
+      plotly::plot_ly(data(), x = data()[[args$x]], y = data()[[args$y]],
+                      type = "scatter", mode = "lines")),
+    width = "wide")
+  rows_table <- codeagent::canvas_component_widget(
+    "rows_table", "Sortable table of the data frame.",
+    args = list(title = ellmer::type_string("Heading.", required = FALSE)),
+    widget = function(args, data) reactable::reactable(utils::head(data, 10)))
+  canvas <- codeagent::canvas_options(
+    components = list(line_chart, rows_table), starter = "card_row")
+  calls <- list(
+    list(id = "e2e-canvas-1", tool = "canvas_card_row",
+         args = list(title = "E2E_ROW_TITLE")),
+    list(id = "e2e-canvas-2", tool = "canvas_line_chart",
+         args = list(dataset = "e2e_cars", x = "wt", y = "mpg", parent_id = "c1")),
+    list(id = "e2e-canvas-3", tool = "canvas_rows_table",
+         args = list(dataset = "e2e_cars", title = "E2E_TABLE")))
+}
 
 # A browserless adapter computes the trace the live app would have recorded.
 null_ops <- list(
   insert = function(...) NULL, remove = function(...) NULL,
   null_output = function(...) NULL, destroy_scope = function(...) TRUE,
   run_server = function(...) NULL, input_values = function(...) NULL)
-recorder <- ns$GenUIAdapter$new(data_env = globalenv())
+recorder <- ns$GenUIAdapter$new(data_env = globalenv(), options = canvas)
 recorder$bind(session = "fixture", ops = null_ops)
 recorder$begin_turn()
 turns <- list(ellmer::Turn("user", "E2E: show mpg and the top horsepower"))
@@ -117,4 +145,5 @@ chat$set_turns(list())
 if (identical(case, "datachanged"))
   assign("e2e_cars", utils::head(mtcars, 10), envir = globalenv())
 
-codeagent::codeagent_app(client, launch.browser = FALSE, ui_layout = ui_layout)
+codeagent::codeagent_app(client, launch.browser = FALSE, ui_layout = ui_layout,
+                         canvas = if (identical(case, "custom")) canvas)

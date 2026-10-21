@@ -517,6 +517,13 @@ codeagent_theme <- function(style = "default", ...) {
 #' @param web_allow_private Logical. Reserved opt-in for local development.
 #'   Private-network fetching remains disabled in this release; `TRUE` fails
 #'   closed rather than weakening SSRF protection.
+#' @param canvas Generative UI canvas options from [canvas_options()]:
+#'   which components the model may draw (shinygenui's own and your own), the
+#'   page's Content Security Policy and model-text checking. `NULL` (default)
+#'   uses `canvas_options()`; the canvas is then on for per-session apps when
+#'   shinygenui is installed. Passing options also enables the canvas for a
+#'   shared pre-built client. `disallowed_tools = "genui"` on the client turns
+#'   it off.
 #' @return A `shiny.appobj`.
 #' @export
 codeagent_app <- function(
@@ -538,7 +545,8 @@ codeagent_app <- function(
   chat            = NULL,
   web_citations   = c("off", "shiny_aside"),
   web_allow_private = FALSE,
-  ui_layout       = c("classic", "page_chat")
+  ui_layout       = c("classic", "page_chat"),
+  canvas          = NULL
 ) {
 
   ui_layout <- match.arg(ui_layout)
@@ -613,7 +621,13 @@ codeagent_app <- function(
   # Whether this app may show a generative UI canvas (decides the static Canvas
   # tab). Each server session decides again for itself and may hide the tab.
   genui_per_session <- !is.null(client_factory)
-  genui_ui <- suppressWarnings(.genui_wanted(settings, per_session = genui_per_session))
+  genui_explicit <- !is.null(canvas)
+  canvas <- canvas %||% canvas_options()
+  if (!inherits(canvas, "codeagent_canvas_options"))
+    stop("`canvas` must come from canvas_options().", call. = FALSE)
+  genui_ui <- suppressWarnings(.genui_wanted(
+    settings, per_session = genui_per_session, options = canvas,
+    explicit = genui_explicit))
 
   # Static assets
   www_dir <- system.file("www", package = "codeagent")
@@ -670,7 +684,7 @@ codeagent_app <- function(
       id = "ca_page_chat_workspace",
       class = "html-fill-container html-fill-item",
       style = "height:100%;min-height:0;",
-      bslib::card(fill = TRUE, output_panel_ui(canvas = genui_ui))
+      bslib::card(fill = TRUE, output_panel_ui(canvas = genui_ui, canvas_opts = canvas))
     )
     ui <- .codeagent_page_chat_ui(
       theme = ca_bs_theme,
@@ -692,7 +706,7 @@ codeagent_app <- function(
         sidebar = bslib::sidebar(
           id = "ca_output_sidebar", position = "right", width = "50%",
           resizable = TRUE, fillable = TRUE, padding = 4,
-          bslib::card(fill = TRUE, output_panel_ui(canvas = genui_ui))
+          bslib::card(fill = TRUE, output_panel_ui(canvas = genui_ui, canvas_opts = canvas))
         ),
         bslib::card(
           fill = TRUE,
@@ -720,9 +734,10 @@ codeagent_app <- function(
     # prepared under the init overlay below. A shared pre-built client keeps
     # one adapter on its Chat, so a second browser session poisons it instead
     # of silently taking over the first session's canvas.
-    if (isTRUE(genui_ui) && .genui_wanted(settings, per_session = genui_per_session)) {
+    if (isTRUE(genui_ui) && .genui_wanted(settings, per_session = genui_per_session,
+                                          options = canvas, explicit = genui_explicit)) {
       adapter <- attr(chat_obj, "codeagent_genui") %||%
-        GenUIAdapter$new(prepare = FALSE)
+        GenUIAdapter$new(prepare = FALSE, options = canvas)
       attr(chat_obj, "codeagent_genui") <- adapter
       settings$genui <- adapter
     }

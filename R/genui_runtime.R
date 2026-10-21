@@ -334,6 +334,15 @@
     })
 }
 
+# The data accessor a component server receives. Built in its own frame: a
+# `function() data` written inside a loop would see the loop variable's last
+# value once a lazily evaluated render function finally calls it.
+#' @keywords internal
+.genui_data_fn <- function(data) {
+  force(data)
+  function() data
+}
+
 # Mount one instance into `target` (the canvas, or a container's slot).
 # Building the UI comes first so a failing ui() leaves the DOM untouched; a
 # failing server removes the shell and its scope again.
@@ -341,6 +350,11 @@
 .genui_mount <- function(component, id, args, data, ops,
                          module_id = .genui_module_id(id),
                          target = paste0("#", .GENUI_CANVAS_ID)) {
+  # Forced here: a component whose ui ignores `args` would otherwise pass an
+  # unevaluated promise into its render function, evaluated long after the
+  # caller's variables (a restore loop's, say) have moved on.
+  force(args)
+  force(data)
   ui <- component$ui(module_id, args)
   outputs <- .genui_output_ids(ui)
   ops$insert(target, .genui_shell(component, id, ui))
@@ -369,6 +383,9 @@
 #' @keywords internal
 .genui_remount <- function(component, id, old_args, new_args, runtime, data, ops,
                            module_id, rollback_module_id) {
+  force(old_args)
+  force(new_args)
+  force(data)
   new_ui <- component$ui(module_id, new_args)
   shell <- paste0("#", .genui_shell_id(id))
   swap <- function(ui) {

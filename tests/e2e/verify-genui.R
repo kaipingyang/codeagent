@@ -201,6 +201,15 @@ run_fixture <- function(case, layout) {
     assert(isTRUE(tab_visible) || identical(layout, "page_chat"),
            label, ": Canvas tab not visible")
     if (identical(case, "restore")) check_lifecycle(s, label)
+  } else if (identical(case, "custom")) {
+    s$wait("host components mounted", function()
+      shells(s) == 2L && all_shells(s) == 3L)
+    s$wait("plotly line chart rendered", function()
+      count(s, "#ca_genui_shell_c2 .js-plotly-plot") == 1L)
+    s$wait("reactable table rendered", function()
+      count(s, "#ca_genui_shell_c3 .ReactTable") == 1L)
+    assert(count(s, "#ca_genui_shell_c1 .genui-slot > #ca_genui_shell_c2") == 1L,
+           label, ": host component is not inside the shinygenui container")
   } else if (identical(case, "datachanged")) {
     s$wait("restored from the current data", function()
       all_shells(s) == 5L && identical(s$js(paste0(
@@ -345,7 +354,7 @@ run_live <- function() {
 }
 
 for (layout in strsplit(Sys.getenv("CODEAGENT_E2E_LAYOUTS", "classic,page_chat"), ",")[[1L]])
-  for (case in c("restore", "shielded", "mismatch", "datachanged"))
+  for (case in c("restore", "shielded", "mismatch", "datachanged", "custom"))
     run_fixture(case, layout)
 if (identical(Sys.getenv("CODEAGENT_E2E_LIVE"), "1")) run_live()
 cat("genui_e2e=ALL_PASS\n")

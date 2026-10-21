@@ -33,6 +33,9 @@ reference:
     desc: "Interactive chat interface."
     contents:
       - codeagent_app
+      - canvas_options
+      - canvas_component_output
+      - canvas_component_widget
       - codeagent_theme
 
   - title: "IDE Addins"

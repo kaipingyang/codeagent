@@ -243,7 +243,7 @@ test_that("GenUIAdapter exposes the digest, tool names and prompt it was built f
   skip_if_not(.genui_available(), "shinygenui starter pack unavailable")
   a <- GenUIAdapter$new()
   expect_identical(a$digest(), .genui_catalog_digest(a$catalog()))
-  expect_identical(a$tool_names(), .genui_tool_names())
+  expect_setequal(a$tool_names(), .genui_tool_names())
   expect_identical(a$prompt_fragment(), .genui_prompt_fragment(a$catalog()))
 })
 

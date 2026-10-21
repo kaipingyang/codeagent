@@ -587,6 +587,38 @@ codeagent_app(client)
 codeagent_client(chat, disallowed_tools = "genui")
 ```
 
+Choose the components with `canvas_options()` -- any subset of shinygenui's
+own, plus your own built from any Shiny output or htmlwidget:
+
+```r
+boxplot_card <- canvas_component_output(
+  "boxplot", "Box plot of a numeric column by group.",
+  args = list(y = ellmer::type_string("Numeric column."),
+              by = ellmer::type_string("Grouping column.")),
+  output = shiny::plotOutput,
+  render = function(args, data) shiny::renderPlot(
+    boxplot(reformulate(args$by, args$y), data = data())))
+
+map_card <- canvas_component_widget(
+  "map", "Map of points with lat/lng columns.",
+  args = list(lat = ellmer::type_string(), lng = ellmer::type_string()),
+  widget = function(args, data)
+    leaflet::addMarkers(leaflet::addTiles(leaflet::leaflet(data)),
+                        lat = data[[args$lat]], lng = data[[args$lng]]))
+
+codeagent_app(chat, canvas = canvas_options(
+  components = list(boxplot_card, map_card),
+  starter    = c("data_table", "card_row"),   # TRUE (all), FALSE, or names
+  csp        = FALSE))  # the map loads tiles from another origin
+```
+
+Your components are trusted code: codeagent registers them as read-only canvas
+tools behind the permission gate and runs them through the same executor,
+Data Shield scanning and strict restore, and leaves what they render to you.
+Two switches loosen the defaults when your components need it: `csp`
+(`TRUE`, `FALSE` or your own policy string) and `validate_text` (set `FALSE`
+when the model must pass URLs to a component).
+
 The model calls one tool per component (`canvas_histogram(dataset = "mtcars",
 column = "mpg")`, `canvas_card_row(title = "Engine")`, then children with
 `parent_id = "c1"`) plus `canvas_update` / `canvas_remove` / `canvas_clear` /

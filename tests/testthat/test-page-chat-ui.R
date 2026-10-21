@@ -5,7 +5,9 @@ test_that("codeagent_app exposes a classic-first ui_layout argument", {
   fmls <- formals(codeagent_app)
   expect_true("ui_layout" %in% names(fmls))
   expect_identical(eval(fmls$ui_layout), c("classic", "page_chat"))
-  expect_identical(tail(names(fmls), 1L), "ui_layout")
+  # New arguments are appended after ui_layout, so positional calls written
+  # for earlier releases keep binding the same way.
+  expect_identical(tail(names(fmls), 2L), c("ui_layout", "canvas"))
 })
 
 test_that("page_chat UI composes the codeagent sidebar and workspace drawer", {

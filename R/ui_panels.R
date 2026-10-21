@@ -270,12 +270,14 @@ chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
 # The static Canvas tab: one persistent container the GenUI executor inserts
 # into. Present only when this app may run a canvas; the server hides it again
 # in a session that turns out not to have one.
-.genui_canvas_panel <- function() {
+.genui_canvas_panel <- function(options = canvas_options()) {
+  csp <- if (isTRUE(options$csp)) .GENUI_CSP else
+    if (is.character(options$csp)) options$csp else NULL
   bslib::nav_panel(
     title = "Canvas",
     value = "canvas",
-    htmltools::tags$head(htmltools::tags$meta(
-      `http-equiv` = "Content-Security-Policy", content = .GENUI_CSP)),
+    if (!is.null(csp)) htmltools::tags$head(htmltools::tags$meta(
+      `http-equiv` = "Content-Security-Policy", content = csp)),
     # One fill column: the toolbar keeps its height and the canvas pane takes
     # the rest and scrolls, so the tab never grows a second scrollbar.
     htmltools::div(
@@ -301,7 +303,7 @@ chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
   )
 }
 
-output_panel_ui <- function(canvas = FALSE) {
+output_panel_ui <- function(canvas = FALSE, canvas_opts = NULL) {
   bslib::navset_tab(
       id       = "main_tab",
       selected = "output",
@@ -347,6 +349,6 @@ output_panel_ui <- function(canvas = FALSE) {
           )
         )
       ),
-      if (isTRUE(canvas)) .genui_canvas_panel()
+      if (isTRUE(canvas)) .genui_canvas_panel(canvas_opts %||% canvas_options())
     )
 }

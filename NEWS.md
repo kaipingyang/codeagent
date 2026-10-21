@@ -1,5 +1,21 @@
 # codeagent 0.2.3
 
+* New `canvas_options()`, `canvas_component_output()` and
+  `canvas_component_widget()`, and `codeagent_app(canvas = )`. The host picks
+  which of shinygenui's components the canvas offers (`starter = TRUE`,
+  `FALSE` or a subset) and adds its own, built from any Shiny output/render
+  pair or any htmlwidget or HTML. Host components get the same canvas tooling
+  as the built-in ones -- read-only registration by exact name, the
+  transactional executor, Data Shield, strict restore whose identity now
+  follows closures into the builder's render function -- and decide for
+  themselves what they render. `csp` and `validate_text` loosen the page's
+  Content Security Policy and the model-text check when components need it.
+  Without shinygenui's own components, ggplot2 and DT are no longer required.
+* Fixed: restoring a canvas could hand a component the arguments or data of
+  the last component restored. Data accessors were created inside the restore
+  loop, and arguments that a component's UI never touched stayed lazy until
+  its render function ran; both are now fixed when a component is mounted.
+
 * Canvas components can now be redrawn from current data. Each component
   remembers a fingerprint of the data frame it was drawn from; after a turn
   that changed it, the component shows a "Data changed" badge and the
