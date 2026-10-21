@@ -116,6 +116,15 @@ purl 一遍断言产物无可执行行）。新增 vignette 照着 `permissions.
 - 新功能 → 加进 `inst/examples/test_databricks.R` 的 section
 - **新增任何导出函数，必须同时：① 确认是否需接入 `.register_all_tools()`/调用链；② 同步写 `test-*.R` 覆盖主路径和降级路径；③ 加进 `_pkgdown.yml` 的 reference 索引（对应 section 补一行）——否则 pkgdown CI 报 `topic missing from index` 挂掉（血泪：`data_shield_ocr_scanner` 漏加致 pkgdown build 失败）。改完跑 `pkgdown::check_pkgdown()` 应 `No problems found`。**
 
+**不要过度设计 —— 只拦该拦的，其余交给开发者：** 先分清"在防谁"。codeagent 只对
+**不可信输入**负责：模型输出（及经由模型进来的提示注入）、用户数据外泄（Data Shield）、工具权限。
+**宿主/开发者传入的代码**（自定义工具、画布组件、hooks、主题）是可信代码，codeagent 提供基础设施
+（登记、权限检查、Data Shield 自动套用、事务回滚、会话持久化），**不替开发者做决定**：不要求开发者
+逐项声明网络来源、数据量上限、依赖版本这类元数据，需要放宽时给**一个整体开关**，不做逐项白名单。
+设计新能力前先问：这条限制防的是模型还是开发者？防开发者的，通常不该做。
+（来源：2026-10-21 GenUI 组件扩展接口讨论——原方案为每个组件声明 `network`/`max_rows`/`packages`
+并合成 CSP，精简为 `canvas_options(csp=, validate_text=)` 两个开关。）
+
 **工具函数用闭包工厂模式：**
 ```r
 # 正确：外部资源（connection、checker）通过工厂函数捕获
