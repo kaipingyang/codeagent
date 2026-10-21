@@ -160,6 +160,19 @@ pkgdown build 失败）。改完跑
 [`pkgdown::check_pkgdown()`](https://pkgdown.r-lib.org/reference/check_pkgdown.html)
 应 `No problems found`。**
 
+**不要过度设计 —— 只拦该拦的，其余交给开发者：**
+先分清”在防谁”。codeagent 只对
+**不可信输入**负责：模型输出（及经由模型进来的提示注入）、用户数据外泄（Data
+Shield）、工具权限。
+**宿主/开发者传入的代码**（自定义工具、画布组件、hooks、主题）是可信代码，codeagent
+提供基础设施 （登记、权限检查、Data Shield
+自动套用、事务回滚、会话持久化），**不替开发者做决定**：不要求开发者
+逐项声明网络来源、数据量上限、依赖版本这类元数据，需要放宽时给**一个整体开关**，不做逐项白名单。
+设计新能力前先问：这条限制防的是模型还是开发者？防开发者的，通常不该做。
+（来源：2026-10-21 GenUI 组件扩展接口讨论——原方案为每个组件声明
+`network`/`max_rows`/`packages` 并合成 CSP，精简为
+`canvas_options(csp=, validate_text=)` 两个开关。）
+
 **工具函数用闭包工厂模式：**
 
 ``` r
@@ -744,9 +757,27 @@ from `settings$genui`; prompt section via `.prompt_genui()` /
 op records `tool_context()$request@id` — rewind/clear/cancel roll back
 by vanished request ids; `save_session(genui_state=)` writes the canvas
 in the same atomic file; restore is strict (digest + request binding +
-full re-dispatch, fail closed). Contract tests: `test-genui-contract.R`
-(run first when bumping the shinygenui SHA). E2E:
-`tests/e2e/verify-genui.R` (needs `--disable-dev-shm-usage`;
+full re-dispatch, fail closed). Admitted = everything shinygenui
+provides (starter pack + `card_row` container; `markdown_card` is safe
+only because the canvas-output check refuses markup/links/URLs), and
+only if every arg type is basic/enum/array/object; the restore digest
+covers arg types, ui/server/check implementations, shinygenui version
+and `.GENUI_ADAPTER_VERSION`. Host components:
+`canvas_options(components, starter, data_env, csp, validate_text)` +
+[`canvas_component_output()`](https://kaipingyang.github.io/codeagent/reference/canvas_component_output.md)
+/
+[`canvas_component_widget()`](https://kaipingyang.github.io/codeagent/reference/canvas_component_widget.md)
+(`R/genui_components.R`), passed via `codeagent_app(canvas=)`; host
+tools registered read via
+[`register_tool_meta()`](https://kaipingyang.github.io/codeagent/reference/register_tool_meta.md)
+at prepare; `.genui_mount()` forces args/data and `.genui_data_fn()`
+builds per-component accessors (lazy promises in a loop once handed
+every component the last one’s args/data). Data freshness: per-instance
+data fingerprints (`.genui_fingerprint`), `stale_ids()` / `mark_stale()`
+(badge via `ca_genui_stale`), `canvas_refresh` tool + Canvas-tab Refresh
+button; refresh is not a trace op; restore reports `changed`. Contract
+tests: `test-genui-contract.R` (run first when bumping the shinygenui
+SHA). E2E: `tests/e2e/verify-genui.R` (needs `--disable-dev-shm-usage`;
 `CODEAGENT_E2E_LIVE=1` for a real-model round). Plans:
 `references/plan/41-*.md`, `42-*.md`.
 

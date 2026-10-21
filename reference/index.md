@@ -34,6 +34,12 @@ Interactive chat interface.
 
 - [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
   : Launch the codeagent Shiny application
+- [`canvas_options()`](https://kaipingyang.github.io/codeagent/reference/canvas_options.md)
+  : Configure the generative UI canvas
+- [`canvas_component_output()`](https://kaipingyang.github.io/codeagent/reference/canvas_component_output.md)
+  : Build a canvas component from a Shiny output
+- [`canvas_component_widget()`](https://kaipingyang.github.io/codeagent/reference/canvas_component_widget.md)
+  : Build a canvas component from an htmlwidget or HTML
 - [`codeagent_theme()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme.md)
   : Build a codeagent application theme
 

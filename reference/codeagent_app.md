@@ -23,7 +23,8 @@ codeagent_app(
   chat = NULL,
   web_citations = c("off", "shiny_aside"),
   web_allow_private = FALSE,
-  ui_layout = c("classic", "page_chat")
+  ui_layout = c("classic", "page_chat"),
+  canvas = NULL
 )
 ```
 
@@ -140,6 +141,19 @@ codeagent_app(
   layout. `"page_chat"` opts into shinychat's full-window page with
   codeagent controls on the left and the Output/Files/File workspace in
   the official resizable drawer on the right.
+
+- canvas:
+
+  Generative UI canvas options from
+  [`canvas_options()`](https://kaipingyang.github.io/codeagent/reference/canvas_options.md):
+  which components the model may draw (shinygenui's own and your own),
+  the page's Content Security Policy and model-text checking. `NULL`
+  (default) uses
+  [`canvas_options()`](https://kaipingyang.github.io/codeagent/reference/canvas_options.md);
+  the canvas is then on for per-session apps when shinygenui is
+  installed. Passing options also enables the canvas for a shared
+  pre-built client. `disallowed_tools = "genui"` on the client turns it
+  off.
 
 ## Value
 

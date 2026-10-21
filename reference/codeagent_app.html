@@ -98,7 +98,8 @@
 <span>  chat <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  web_citations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"off"</span>, <span class="st">"shiny_aside"</span><span class="op">)</span>,</span>
 <span>  web_allow_private <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  ui_layout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"classic"</span>, <span class="st">"page_chat"</span><span class="op">)</span></span>
+<span>  ui_layout <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"classic"</span>, <span class="st">"page_chat"</span><span class="op">)</span>,</span>
+<span>  canvas <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -208,6 +209,16 @@ closed rather than weakening SSRF protection.</p></dd>
 three-column layout. <code>"page_chat"</code> opts into shinychat's full-window page
 with codeagent controls on the left and the Output/Files/File workspace in
 the official resizable drawer on the right.</p></dd>
+
+
+<dt id="arg-canvas">canvas<a class="anchor" aria-label="anchor" href="#arg-canvas"></a></dt>
+<dd><p>Generative UI canvas options from <code><a href="canvas_options.html">canvas_options()</a></code>:
+which components the model may draw (shinygenui's own and your own), the
+page's Content Security Policy and model-text checking. <code>NULL</code> (default)
+uses <code><a href="canvas_options.html">canvas_options()</a></code>; the canvas is then on for per-session apps when
+shinygenui is installed. Passing options also enables the canvas for a
+shared pre-built client. <code>disallowed_tools = "genui"</code> on the client turns
+it off.</p></dd>
 
 </dl></div>
     <div class="section level2">
