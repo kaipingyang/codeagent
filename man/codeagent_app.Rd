@@ -39,11 +39,11 @@ most flexible multi-user mode.}
 \code{"default"}, \code{"ios"} (iOS grouped canvas with white cards), \code{"aurora"}
 (ambient blue-indigo-purple light with selective frosted controls),
 \code{"flatly"}, \code{"darkly"} (dark), and \code{"glass"} (Liquid Glass from the
-optional \code{shinyglass} package, with a thin shinychat surface adapter). A
+optional \code{shinyglass} package, 0.5.0 or later, which also styles shinychat). A
 theme from \code{\link[=codeagent_theme]{codeagent_theme()}} or \code{shinychat::page_chat_theme()} is accepted
 unchanged. The CLI aliases \code{"light"} -> \code{"default"}, \code{"dark"} ->
 \code{"darkly"}, and \code{"glassmorphism"} -> \code{"glass"} are also accepted. Set at
-launch; the live dark-mode toggle also synchronizes the shinyglass preset.}
+launch; shinyglass follows the live dark-mode toggle itself.}
 
 \item{pinned_skills}{Character vector. Retained for backward compatibility;
 the old Skills picker panel was replaced by the slash-command typeahead
