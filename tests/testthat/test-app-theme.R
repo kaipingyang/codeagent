@@ -54,57 +54,22 @@ test_that("glass theme fails clearly when optional shinyglass is unavailable", {
 })
 
 
-test_that("shinyglass adapter only maps shinychat surfaces to public tokens", {
-  css <- .shinyglass_page_chat_rules()
-
-  for (selector in c(
-    ".shiny-chat-page-header",
-    ".shiny-chat-page-sidebar",
-    ".shiny-chat-drawer",
-    ".shiny-chat-page-drawer",
-    ".shiny-chat-composer"
-  )) {
-    expect_match(css, selector, fixed = TRUE)
-  }
-  for (token in c(
-    "var(--glass-bg)",
-    "var(--glass-blur)",
-    "var(--glass-saturate)",
-    "var(--glass-border)",
-    "var(--glass-shadow)"
-  )) {
-    expect_match(css, token, fixed = TRUE)
-  }
-  expect_match(css, "--shiny-chat-page-sidebar-bg", fixed = TRUE)
-  expect_match(css, "--shiny-chat-page-drawer-bg", fixed = TRUE)
-  expect_false(grepl("radial-gradient", css, fixed = TRUE))
-  expect_false(grepl("rgba(", css, fixed = TRUE))
-  expect_false(grepl(".shiny-chat-message-content", css, fixed = TRUE))
-})
-
-
-test_that("shinyglass adapter bridges bslib dark mode to its preset", {
-  dep <- .shinyglass_dark_mode_dependency()
-
-  expect_s3_class(dep, "html_dependency")
-  expect_identical(dep$name, "codeagent-shinyglass-adapter")
-  expect_match(dep$head, "MutationObserver", fixed = TRUE)
-  expect_match(dep$head, "data-bs-theme", fixed = TRUE)
-  expect_match(dep$head, "window.shinyglass.setPreset", fixed = TRUE)
-})
-
-
-test_that("installed shinyglass is bundled with the codeagent adapter", {
-  skip_if_not_installed("shinyglass", minimum_version = "0.2.0.9000")
-
-  theme <- codeagent_theme(
-    "glass", preset = "light", intensity = 0.6, tint = FALSE)
+test_that("glass leaves shinychat styling and dark mode to shinyglass itself", {
+  # shinyglass >= 0.5.0 styles shinychat's page_chat/chat_ui and follows
+  # bslib::input_dark_mode(); codeagent adds no adapter rules of its own.
+  skip_if_not_installed("shinyglass", minimum_version = "0.5.0")
+  theme <- codeagent_theme("glass", preset = "light", intensity = 0.6, tint = FALSE)
   expect_s3_class(theme, "bs_theme")
-
-  deps <- bslib::bs_theme_dependencies(theme)
-  dep_names <- vapply(deps, `[[`, character(1L), "name")
+  dep_names <- vapply(bslib::bs_theme_dependencies(theme), `[[`, character(1L), "name")
   expect_true("shinyglass" %in% dep_names)
-  expect_true("codeagent-shinyglass-adapter" %in% dep_names)
+  expect_false("codeagent-shinyglass-adapter" %in% dep_names)
+  expect_false(exists(".shinyglass_page_chat_rules", asNamespace("codeagent"),
+                      inherits = FALSE))
+})
+
+test_that("glass asks for shinyglass 0.5.0 or later", {
+  local_mocked_bindings(.shinyglass_version = function() package_version("0.4.0.9000"))
+  expect_error(.codeagent_shinyglass_theme(), "0\\.5\\.0")
 })
 
 test_that("custom codeagent themes carry additional rules", {
@@ -343,4 +308,24 @@ test_that("runnable examples delegate browser launch to the outer runApp", {
     )
     expect_match(script, "host = host", fixed = TRUE, info = name)
   }
+})
+
+test_that("large reading surfaces opt out of shinyglass refraction", {
+  # shinyglass >= 0.5.0 bends the backdrop of glass surfaces through an SVG
+  # lens; on a workspace-sized card that reads as a grey wash over the text.
+  # data-glass-no-refract is shinyglass's per-element opt-out.
+  ws <- as.character(htmltools::renderTags(
+    codeagent:::.codeagent_workspace_card(canvas = FALSE))$html)
+  expect_match(ws, "data-glass-no-refract", fixed = TRUE)
+  chat <- as.character(htmltools::renderTags(
+    codeagent:::.codeagent_chat_card(list(), "enter"))$html)
+  expect_match(chat, "data-glass-no-refract", fixed = TRUE)
+})
+
+test_that("the composer and its footer stay together when the greeting centers them", {
+  # shinyglass >= 0.5.0 lifts the footer with the centered composer; codeagent
+  # keeps the composer at the bottom, so the footer must stay there too.
+  css <- paste(readLines(system.file("www", "styles.css", package = "codeagent")),
+               collapse = "\n")
+  expect_match(css, "data-composer-centered\\]:has\\([^)]*ca-chat-footer-actions[^)]*\\)\\s*>\\s*\\.shiny-chat-footer")
 })

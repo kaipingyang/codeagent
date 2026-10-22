@@ -25,6 +25,6 @@ A bslib \code{bs_theme} object.
 Uses shinychat's official \code{page_chat_theme()} as the common Bootstrap 5
 foundation for both codeagent layouts. The \code{"glass"} style instead delegates
 Liquid Glass material rendering to the optional \code{\link[shinyglass:glass_theme]{shinyglass::glass_theme()}}
-package and adds only a thin adapter for shinychat page surfaces. The returned
+package (0.5.0 or later), which also styles shinychat itself. The returned
 object can be passed to \code{\link[=codeagent_app]{codeagent_app()}} or further customized with bslib.
 }

@@ -40,94 +40,33 @@ NULL
   requireNamespace("shinyglass", quietly = TRUE)
 }
 
-.shinyglass_page_chat_rules <- function() {
-  paste(c(
-    ":root {",
-    "  --shiny-chat-page-surface-bg: transparent;",
-    "  --shiny-chat-page-canvas-bg: transparent;",
-    "  --shiny-chat-page-sidebar-bg: var(--glass-bg);",
-    "  --shiny-chat-page-drawer-bg: var(--glass-bg);",
-    "  --shiny-chat-page-drawer-header-bg: var(--glass-bg);",
-    "  --shiny-chat-page-drawer-box-shadow: 0 12px 36px var(--glass-shadow);",
-    "}",
-    ".bslib-page-fill, body > shiny-chat-page.shiny-bound-input,",
-    "shiny-chat-page .shiny-chat-page-main,",
-    "shiny-chat-page .shiny-chat-page-panel,",
-    "shiny-chat-page shiny-chat-container {",
-    "  background-color: transparent !important;",
-    "}",
-    ".shiny-chat-page-header, .shiny-chat-page-sidebar,",
-    ".shiny-chat-drawer, .shiny-chat-page-drawer,",
-    ".shiny-chat-drawer-header, .shiny-chat-page-drawer-header,",
-    ".shiny-chat-composer {",
-    "  background: var(--glass-bg) !important;",
-    "  color: var(--glass-body-color);",
-    "  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));",
-    "  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));",
-    "  border-color: var(--glass-border) !important;",
-    "  box-shadow: 0 8px 32px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);",
-    "}",
-    ".shiny-chat-page-header { border-bottom: 1px solid var(--glass-border); }",
-    ".shiny-chat-page-sidebar { border-right: 1px solid var(--glass-border); }",
-    ".shiny-chat-drawer, .shiny-chat-page-drawer {",
-    "  border-left: 1px solid var(--glass-border);",
-    "}",
-    ".shiny-chat-composer {",
-    "  border: 1px solid var(--glass-border);",
-    "  border-radius: var(--glass-radius);",
-    "}"
-  ), collapse = "\n")
-}
+.shinyglass_version <- function() utils::packageVersion("shinyglass")
 
-.shinyglass_dark_mode_dependency <- function() {
-  script <- paste0(
-    "<script>(function(){'use strict';",
-    "if(window.__codeagentShinyglassBridge)return;",
-    "window.__codeagentShinyglassBridge=true;",
-    "var root=document.documentElement,syncing=false;",
-    "function sync(){",
-    "if(syncing||!window.shinyglass||",
-    "typeof window.shinyglass.setPreset!=='function')return;",
-    "var mode=root.getAttribute('data-bs-theme');",
-    "if(mode!=='light'&&mode!=='dark')return;",
-    "if(root.dataset.glassPreset===mode)return;",
-    "syncing=true;window.shinyglass.setPreset(mode);syncing=false;",
-    "}",
-    "new MutationObserver(sync).observe(root,{attributes:true,",
-    "attributeFilter:['data-bs-theme']});",
-    "document.addEventListener('DOMContentLoaded',sync,{once:true});",
-    "document.addEventListener('shiny:connected',sync);",
-    "setTimeout(sync,0);",
-    "})();</script>"
-  )
-  htmltools::htmlDependency(
-    name = "codeagent-shinyglass-adapter",
-    version = "1.0.0",
-    src = c(href = ""),
-    head = script,
-    all_files = FALSE
-  )
-}
-
+# Liquid Glass is shinyglass's job end to end: from 0.5.0 it styles shinychat's
+# page_chat()/chat_ui() and follows bslib::input_dark_mode() itself, so
+# codeagent only builds the theme. (Before 0.5.0 codeagent carried its own
+# shinychat surface rules and a dark-mode bridge; with 0.5.0 those rules
+# doubled the composer and greyed the workspace, so they were removed.)
 .codeagent_shinyglass_theme <- function(...) {
+  install_hint <- paste0(
+    "Install the verified build with ",
+    "`pak::pak(\"ericrayanderson/shinyglass@",
+    "1236b69a128414be67e597c407319c419f265f7a\")`.")
   if (!.shinyglass_available()) {
     cli::cli_abort(c(
       "The optional package `shinyglass` is required for `style = \"glass\"`.",
-      "i" = paste0(
-        "Install the verified build with ",
-        "`pak::pak(\"ericrayanderson/shinyglass@",
-        "8996a7badae511e53640db40d415366a475aa856\")`."
-      )
+      "i" = install_hint
+    ))
+  }
+  if (.shinyglass_version() < "0.5.0") {
+    cli::cli_abort(c(
+      "`style = \"glass\"` needs shinyglass 0.5.0 or later (installed: {(.shinyglass_version())}).",
+      "i" = install_hint
     ))
   }
   args <- list(...)
   if (is.null(args$preset)) args$preset <- "auto"
-  theme <- do.call(shinyglass::glass_theme, args)
-  theme <- bslib::bs_add_rules(theme, .shinyglass_page_chat_rules())
-  bslib::bs_bundle(
-    theme,
-    sass::sass_layer(html = .shinyglass_dark_mode_dependency())
-  )
+  do.call(shinyglass::glass_theme, args)
 }
 
 .ios_theme_rules <- function() {
@@ -272,7 +211,7 @@ NULL
 #' Uses shinychat's official `page_chat_theme()` as the common Bootstrap 5
 #' foundation for both codeagent layouts. The `"glass"` style instead delegates
 #' Liquid Glass material rendering to the optional [shinyglass::glass_theme()]
-#' package and adds only a thin adapter for shinychat page surfaces. The returned
+#' package (0.5.0 or later), which also styles shinychat itself. The returned
 #' object can be passed to [codeagent_app()] or further customized with bslib.
 #'
 #' @param style One of `"default"`, `"ios"`, `"aurora"`, `"flatly"`,
@@ -481,11 +420,11 @@ codeagent_theme <- function(style = "default", ...) {
 #'   `"default"`, `"ios"` (iOS grouped canvas with white cards), `"aurora"`
 #'   (ambient blue-indigo-purple light with selective frosted controls),
 #'   `"flatly"`, `"darkly"` (dark), and `"glass"` (Liquid Glass from the
-#'   optional `shinyglass` package, with a thin shinychat surface adapter). A
+#'   optional `shinyglass` package, 0.5.0 or later, which also styles shinychat). A
 #'   theme from [codeagent_theme()] or `shinychat::page_chat_theme()` is accepted
 #'   unchanged. The CLI aliases `"light"` -> `"default"`, `"dark"` ->
 #'   `"darkly"`, and `"glassmorphism"` -> `"glass"` are also accepted. Set at
-#'   launch; the live dark-mode toggle also synchronizes the shinyglass preset.
+#'   launch; shinyglass follows the live dark-mode toggle itself.
 #' @param pinned_skills Character vector. Retained for backward compatibility;
 #'   the old Skills picker panel was replaced by the slash-command typeahead
 #'   (type `/` in the chat input), so this argument is currently unused.
@@ -684,7 +623,7 @@ codeagent_app <- function(
       id = "ca_page_chat_workspace",
       class = "html-fill-container html-fill-item",
       style = "height:100%;min-height:0;",
-      bslib::card(fill = TRUE, output_panel_ui(canvas = genui_ui, canvas_opts = canvas))
+      .codeagent_workspace_card(canvas = genui_ui, canvas_opts = canvas)
     )
     ui <- .codeagent_page_chat_ui(
       theme = ca_bs_theme,
@@ -706,12 +645,9 @@ codeagent_app <- function(
         sidebar = bslib::sidebar(
           id = "ca_output_sidebar", position = "right", width = "50%",
           resizable = TRUE, fillable = TRUE, padding = 4,
-          bslib::card(fill = TRUE, output_panel_ui(canvas = genui_ui, canvas_opts = canvas))
+          .codeagent_workspace_card(canvas = genui_ui, canvas_opts = canvas)
         ),
-        bslib::card(
-          fill = TRUE,
-          chat_codeagent_ui(skill_meta, submit_key = chat_submit_key)
-        )
+        .codeagent_chat_card(skill_meta, submit_key = chat_submit_key)
       )
     )
   }

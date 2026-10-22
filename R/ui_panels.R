@@ -257,6 +257,21 @@ chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
 # Main output panel (right, largest area)
 # ---------------------------------------------------------------------------
 
+# The two large reading surfaces. Both opt out of shinyglass's refraction lens
+# (data-glass-no-refract, its per-element switch): bending the backdrop of a
+# workspace-sized card reads as a grey wash over text. Other themes ignore it.
+.codeagent_workspace_card <- function(canvas = FALSE, canvas_opts = NULL) {
+  htmltools::tagAppendAttributes(
+    bslib::card(fill = TRUE, output_panel_ui(canvas = canvas, canvas_opts = canvas_opts)),
+    `data-glass-no-refract` = NA)
+}
+
+.codeagent_chat_card <- function(skill_meta, submit_key = "enter") {
+  htmltools::tagAppendAttributes(
+    bslib::card(fill = TRUE, chat_codeagent_ui(skill_meta, submit_key = submit_key)),
+    `data-glass-no-refract` = NA)
+}
+
 # Content Security Policy for apps that may show a generative UI canvas. Canvas
 # text is model-authored; even though components render it as text, the page
 # must not be able to fetch a model-chosen image, media file, frame or plugin.

@@ -77,12 +77,36 @@ NULL
   list(action = res$action %||% "pass", text = res$text %||% text)
 }
 
-# Best-effort text extraction from an ellmer Content object (ContentPDF, etc.).
+# Best-effort text extraction from an ellmer Content object. Returns "" when
+# the text cannot be read; the caller treats that as unverifiable and blocks.
+#   * text-bearing Content: its @text
+#   * ContentDocument (shinychat sends text attachments this way since #419):
+#     its base64 @data decoded, when the MIME type is textual and the bytes are
+#     valid UTF-8
 #' @keywords internal
 .input_gate_content_text <- function(el) {
   txt <- tryCatch(el@text, error = function(e) NULL)
   if (is.character(txt) && length(txt) == 1L && nzchar(txt)) return(txt)
+  if (isTRUE(tryCatch(S7::S7_inherits(el, ellmer::ContentDocument),
+                      error = function(e) FALSE)))
+    return(.input_gate_document_text(el))
   ""
+}
+
+.input_gate_document_text <- function(el) {
+  mime <- tryCatch(as.character(el@mime_type), error = function(e) "")
+  textual <- grepl("^text/", mime) ||
+    grepl("(json|xml|yaml|csv|javascript|x-r|x-sh|x-python|sql|markdown|toml)",
+          mime, ignore.case = TRUE)
+  if (!textual) return("")
+  data <- tryCatch(as.character(el@data), error = function(e) "")
+  if (!length(data) || !nzchar(data) ||
+      !grepl("^[A-Za-z0-9+/=[:space:]]+$", data)) return("")
+  raw <- tryCatch(jsonlite::base64_dec(data), error = function(e) NULL)
+  if (is.null(raw) || !length(raw)) return("")
+  out <- tryCatch(rawToChar(raw), error = function(e) "")
+  if (!nzchar(out) || !validUTF8(out)) return("")
+  out
 }
 
 #' Run the Data Shield input gate on a user turn's input.

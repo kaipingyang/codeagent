@@ -158,18 +158,18 @@ my_tool <- function(con, mode = "bypass") {
 - `mcptools` >= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
 - `httr2` 1.3.0（保持稳定版）
 
-**当前个人默认开发环境（2026-10-06）：**
+**当前个人默认开发环境（2026-10-21）：**
 
 个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
 
-- `ellmer` 0.5.0.9000 @ `248c86704a52baf2f4f66a91f12b42a48ddac993`
+- `ellmer` 0.5.0.9000 @ `7853e0c784b188ed48fe9b0617cc4c52ba3f7471`
 - `btw` 1.5.0.9000 @ `6a27d997120f11cfda15bf0a5953a22329b01715`
-- `shinychat` 0.5.0.9000 @ `05e0bbd987286068638d3cf96d6ea7daff15c5b2`（monorepo：`posit-dev/shinychat/pkg-r`）
+- `shinychat` 0.5.0.9000 @ `2fa02a27fdac0fb1e956719048c7388a63bf2b05`（monorepo：`posit-dev/shinychat/pkg-r`）
 - `shiny` 1.14.0.9000 @ `bbc43849f06059f5daa7310ea0f40ec901f0ed0f`
-- `bslib` 0.12.0.9000 @ `ac1e25f8070e1f952509b6575ced19b4237e7ec5`
-- `mcptools` 1.0.3.9000 @ `ff94da04ccb5e6e86a56537c9d2dcb0e0532067b`
+- `bslib` 0.12.0.9000 @ `20b165f78ca479ffdcf5314a959dcf6f5e64ab10`
+- `mcptools` 1.0.3.9000 @ `714803bdfce903707a27d9c4740591d87f601aae`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
-- `httr2` 1.3.0.9000 @ `b9d93794884228bd6654ca7f2abc0162c1ba5f81`
+- `httr2` 1.3.0.9000 @ `34b49ae3fa1ca3995a556ee6023d30b6e00b6f95`
 
 普通R环境直接使用该个人库，不依赖`/tmp` candidate或硬编码`.libPaths()`。
 上方0.2.0 shared release保持不变，除非另行执行发布promote。当前工作树
@@ -486,7 +486,7 @@ to `read`, since `net` (reaching the network) is an independent dimension.
 
 **`compaction.R` `.make_compact_chat()`** — When `CODEAGENT_BASE_URL` set, uses `chat_openai_compatible` with the configured compact model; otherwise `chat_anthropic`.
 
-**`ui.R`** — `codeagent_app()` keeps instant startup: tool/skill registration is deferred behind the initialization overlay, and input remains disabled until ready. Citation mode is explicitly opt-in and buffer-then-show; ordinary streaming is unchanged. Both UI layouts now resolve from the official `page_chat_theme()` Bootstrap foundation through exported `codeagent_theme()`; `theme="ios"` adds an iOS grouped canvas/white-card layer, `theme="aurora"` adds static blue-indigo-purple ambient light with selective navigation/composer glass and high-opacity content surfaces, `theme="glass"` delegates material rendering and runtime intensity/tint/specular behavior to the optional exact-pinned `shinyglass` package while codeagent maps only shinychat header/sidebar/drawer/composer surfaces and bridges the bslib dark-mode attribute, and caller-supplied bslib themes pass through unchanged. `ui_layout="page_chat"` uses one top-level `page_chat()`/one chat root, a persistent global dark-mode + Workspace toolbar (`toolbar_input_button()`), a supported `bslib::sidebar()`, and `chat_drawer()` for the Output / Files / File artifact workspace. Its chat width is explicitly `100%` of the available main column; sidebar/drawer sizing still constrains that column. Classic retains shinychat's embedded-chat width and explicitly disables its unused native drawer/history presentation. The four official drawer server APIs are centralized in `.shinychat_drawer_action()`; tool/file events call show and the toolbar calls toggle. Files may stage the current file with `chat_attachment()` + `update_chat_user_input()`. Skill prompts are wrapped as `ContentSlashCommand` only after Data Shield and reminder injection, preserving provider text and `/skill args` replay. `chat_server()`/`chat_enable_history()` remain intentionally unregistered because codeagent owns streaming, permissions, hooks, sessions, and Data Shield. The greeting uses `chat_greeting(..., persistent=TRUE)` and resets via `chat_clear(greeting=TRUE)` before New/Delete/session restore. The three static workspace tabs remain unchanged; do not reintroduce per-file dynamic tabs. Tool-group and permission mutation are rejected while streaming and applied atomically otherwise.
+**`ui.R`** — `codeagent_app()` keeps instant startup: tool/skill registration is deferred behind the initialization overlay, and input remains disabled until ready. Citation mode is explicitly opt-in and buffer-then-show; ordinary streaming is unchanged. Both UI layouts now resolve from the official `page_chat_theme()` Bootstrap foundation through exported `codeagent_theme()`; `theme="ios"` adds an iOS grouped canvas/white-card layer, `theme="aurora"` adds static blue-indigo-purple ambient light with selective navigation/composer glass and high-opacity content surfaces, `theme="glass"` is entirely the optional exact-pinned `shinyglass` (>= 0.5.0, which styles shinychat and follows `input_dark_mode()` itself; codeagent's former surface rules + dark-mode bridge were removed because they doubled the composer and greyed the workspace under 0.5.0; the two large cards carry `data-glass-no-refract`), and caller-supplied bslib themes pass through unchanged. `ui_layout="page_chat"` uses one top-level `page_chat()`/one chat root, a persistent global dark-mode + Workspace toolbar (`toolbar_input_button()`), a supported `bslib::sidebar()`, and `chat_drawer()` for the Output / Files / File artifact workspace. Its chat width is explicitly `100%` of the available main column; sidebar/drawer sizing still constrains that column. Classic retains shinychat's embedded-chat width and explicitly disables its unused native drawer/history presentation. The four official drawer server APIs are centralized in `.shinychat_drawer_action()`; tool/file events call show and the toolbar calls toggle. Files may stage the current file with `chat_attachment()` + `update_chat_user_input()`. Skill prompts are wrapped as `ContentSlashCommand` only after Data Shield and reminder injection, preserving provider text and `/skill args` replay. `chat_server()`/`chat_enable_history()` remain intentionally unregistered because codeagent owns streaming, permissions, hooks, sessions, and Data Shield. The greeting uses `chat_greeting(..., persistent=TRUE)` and resets via `chat_clear(greeting=TRUE)` before New/Delete/session restore. The three static workspace tabs remain unchanged; do not reintroduce per-file dynamic tabs. Tool-group and permission mutation are rejected while streaming and applied atomically otherwise.
 
 **`sessions.R / mutations.R`** — Sessions remain lossless JSONL (`contents_record` → gzip → base64) with text presentation lines for UI/legacy fallback. Citation mode saves only the finalized, gated deterministic presentation text while retaining lossless tool/source metadata. Replay clones a presentation Chat, migrates legacy display only on that copy, and never changes provider-facing values, request/result IDs, turn ordering, or the original Chat. `session_id=NULL` continues the most recent session.
 
