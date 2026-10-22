@@ -112,9 +112,10 @@ Workspace 抽屉。</p>
 <h2 id="liquid-glass">Liquid Glass<a class="anchor" aria-label="anchor" href="#liquid-glass"></a>
 </h2>
 <p>可选的 <code>glass</code>
-主题把材质渲染、实时强度、色调、镜面高光和无障碍降级逻辑 委托给 <a href="https://ericrayanderson.github.io/shinyglass/" class="external-link">shinyglass</a>。codeagent
-只为 shinychat 的 header、sidebar、drawer 和 composer
-提供一层很薄的适配。</p>
+主题把材质渲染、实时强度、色调、镜面高光和无障碍降级逻辑 委托给 <a href="https://ericrayanderson.github.io/shinyglass/" class="external-link">shinyglass</a>（0.5.0
+及以上）。 它会自己处理 shinychat
+的页面、抽屉和输入框样式，也会跟随暗色模式切换；codeagent
+不再额外添加样式规则。</p>
 <div class="section level3">
 <h3 id="浅色模式">浅色模式<a class="anchor" aria-label="anchor" href="#%E6%B5%85%E8%89%B2%E6%A8%A1%E5%BC%8F"></a>
 </h3>
@@ -132,7 +133,7 @@ bslib 和 shinyglass。</p>
 <p>先安装 codeagent 已验证的精确 shinyglass 版本，再创建主题：</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span></span>
-<span>  <span class="st">"ericrayanderson/shinyglass@8996a7badae511e53640db40d415366a475aa856"</span></span>
+<span>  <span class="st">"ericrayanderson/shinyglass@1236b69a128414be67e597c407319c419f265f7a"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">liquid_theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_theme.html">codeagent_theme</a></span><span class="op">(</span></span>

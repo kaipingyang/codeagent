@@ -2,6 +2,23 @@
 
 ## codeagent 0.2.3
 
+- `theme = "glass"` now needs shinyglass 0.5.0 or later and leaves all
+  of its look to shinyglass, which styles shinychat’s page, drawer and
+  composer and follows the dark-mode toggle itself. codeagent’s own
+  shinychat surface rules and dark-mode bridge are gone: under 0.5.0
+  they doubled the composer and greyed the workspace. The workspace and
+  chat cards opt out of shinyglass’s refraction lens
+  (`data-glass-no-refract`), and the composer’s footer row stays with
+  the composer when an empty chat centres it.
+
+- The Data Shield input gate reads text attachments sent as ellmer
+  `ContentDocument`, the form shinychat uses since its
+  [\#419](https://github.com/kaipingyang/codeagent/issues/419). Before,
+  such a document had no readable text, so with a shield active every
+  text attachment was blocked as unverifiable; now its content is
+  decoded and scanned like any other attachment – a protected value
+  still blocks the turn.
+
 - New
   [`canvas_options()`](https://kaipingyang.github.io/codeagent/reference/canvas_options.md),
   [`canvas_component_output()`](https://kaipingyang.github.io/codeagent/reference/canvas_component_output.md)

@@ -14,9 +14,10 @@ Workspace 抽屉。
 
 可选的 `glass` 主题把材质渲染、实时强度、色调、镜面高光和无障碍降级逻辑
 委托给
-[shinyglass](https://ericrayanderson.github.io/shinyglass/)。codeagent
-只为 shinychat 的 header、sidebar、drawer 和 composer
-提供一层很薄的适配。
+[shinyglass](https://ericrayanderson.github.io/shinyglass/)（0.5.0
+及以上）。 它会自己处理 shinychat
+的页面、抽屉和输入框样式，也会跟随暗色模式切换；codeagent
+不再额外添加样式规则。
 
 ### 浅色模式
 
@@ -41,7 +42,7 @@ Workspace 抽屉。
 ``` r
 
 pak::pak(
-  "ericrayanderson/shinyglass@8996a7badae511e53640db40d415366a475aa856"
+  "ericrayanderson/shinyglass@1236b69a128414be67e597c407319c419f265f7a"
 )
 
 liquid_theme <- codeagent_theme(

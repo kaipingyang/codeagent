@@ -509,9 +509,9 @@ codeagent_app(client, ui_layout = "page_chat", theme = "ios")
 # and high-opacity content surfaces for dense chat, code, tools, and tables:
 codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
 
-# Liquid Glass delegates material rendering to the optional pinned shinyglass
-# package; codeagent adds only a thin shinychat surface/dark-mode adapter:
-pak::pak("ericrayanderson/shinyglass@8996a7badae511e53640db40d415366a475aa856")
+# Liquid Glass is the optional pinned shinyglass package (>= 0.5.0), which also
+# styles shinychat and follows dark mode itself; codeagent adds no rules:
+pak::pak("ericrayanderson/shinyglass@1236b69a128414be67e597c407319c419f265f7a")
 liquid_theme <- codeagent_theme(
   "glass", preset = "auto", intensity = 0.45,
   tint = TRUE, specular = TRUE

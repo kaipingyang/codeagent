@@ -4,7 +4,7 @@ Uses shinychat's official `page_chat_theme()` as the common Bootstrap 5
 foundation for both codeagent layouts. The `"glass"` style instead
 delegates Liquid Glass material rendering to the optional
 [`shinyglass::glass_theme()`](https://ericrayanderson.github.io/shinyglass/reference/glass_theme.html)
-package and adds only a thin adapter for shinychat page surfaces. The
+package (0.5.0 or later), which also styles shinychat itself. The
 returned object can be passed to
 [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
 or further customized with bslib.

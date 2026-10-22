@@ -211,19 +211,19 @@ library。
 - `mcptools` \>= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
 - `httr2` 1.3.0（保持稳定版）
 
-**当前个人默认开发环境（2026-10-06）：**
+**当前个人默认开发环境（2026-10-21）：**
 
 个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
 
-- `ellmer` 0.5.0.9000 @ `248c86704a52baf2f4f66a91f12b42a48ddac993`
+- `ellmer` 0.5.0.9000 @ `7853e0c784b188ed48fe9b0617cc4c52ba3f7471`
 - `btw` 1.5.0.9000 @ `6a27d997120f11cfda15bf0a5953a22329b01715`
 - `shinychat` 0.5.0.9000 @
-  `05e0bbd987286068638d3cf96d6ea7daff15c5b2`（monorepo：`posit-dev/shinychat/pkg-r`）
+  `2fa02a27fdac0fb1e956719048c7388a63bf2b05`（monorepo：`posit-dev/shinychat/pkg-r`）
 - `shiny` 1.14.0.9000 @ `bbc43849f06059f5daa7310ea0f40ec901f0ed0f`
-- `bslib` 0.12.0.9000 @ `ac1e25f8070e1f952509b6575ced19b4237e7ec5`
-- `mcptools` 1.0.3.9000 @ `ff94da04ccb5e6e86a56537c9d2dcb0e0532067b`
+- `bslib` 0.12.0.9000 @ `20b165f78ca479ffdcf5314a959dcf6f5e64ab10`
+- `mcptools` 1.0.3.9000 @ `714803bdfce903707a27d9c4740591d87f601aae`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
-- `httr2` 1.3.0.9000 @ `b9d93794884228bd6654ca7f2abc0162c1ba5f81`
+- `httr2` 1.3.0.9000 @ `34b49ae3fa1ca3995a556ee6023d30b6e00b6f95`
 
 普通R环境直接使用该个人库，不依赖`/tmp`
 candidate或硬编码[`.libPaths()`](https://rdrr.io/r/base/libPaths.html)。
@@ -856,14 +856,14 @@ unchanged. Both UI layouts now resolve from the official
 `theme="ios"` adds an iOS grouped canvas/white-card layer,
 `theme="aurora"` adds static blue-indigo-purple ambient light with
 selective navigation/composer glass and high-opacity content surfaces,
-`theme="glass"` delegates material rendering and runtime
-intensity/tint/specular behavior to the optional exact-pinned
-`shinyglass` package while codeagent maps only shinychat
-header/sidebar/drawer/composer surfaces and bridges the bslib dark-mode
-attribute, and caller-supplied bslib themes pass through unchanged.
-`ui_layout="page_chat"` uses one top-level `page_chat()`/one chat root,
-a persistent global dark-mode + Workspace toolbar
-(`toolbar_input_button()`), a supported
+`theme="glass"` is entirely the optional exact-pinned `shinyglass` (\>=
+0.5.0, which styles shinychat and follows `input_dark_mode()` itself;
+codeagent’s former surface rules + dark-mode bridge were removed because
+they doubled the composer and greyed the workspace under 0.5.0; the two
+large cards carry `data-glass-no-refract`), and caller-supplied bslib
+themes pass through unchanged. `ui_layout="page_chat"` uses one
+top-level `page_chat()`/one chat root, a persistent global dark-mode +
+Workspace toolbar (`toolbar_input_button()`), a supported
 [`bslib::sidebar()`](https://rstudio.github.io/bslib/reference/sidebar.html),
 and `chat_drawer()` for the Output / Files / File artifact workspace.
 Its chat width is explicitly `100%` of the available main column;

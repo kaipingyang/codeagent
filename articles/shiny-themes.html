@@ -113,9 +113,10 @@ all visible.</p>
 </h2>
 <p>The optional <code>glass</code> theme delegates its material
 rendering, live intensity, tint, specular highlights, and accessibility
-fallbacks to <a href="https://ericrayanderson.github.io/shinyglass/" class="external-link">shinyglass</a>.
-codeagent adds only a thin adapter for shinychat’s header, sidebar,
-drawer, and composer surfaces.</p>
+fallbacks to <a href="https://ericrayanderson.github.io/shinyglass/" class="external-link">shinyglass</a>
+0.5.0 or later, which styles shinychat’s page, drawer and composer and
+follows the dark-mode toggle itself; codeagent adds no rules of its
+own.</p>
 <div class="section level3">
 <h3 id="light-mode">Light mode<a class="anchor" aria-label="anchor" href="#light-mode"></a>
 </h3>
@@ -136,7 +137,7 @@ dark-mode control updates bslib and shinyglass together at runtime.</p>
 the theme:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span></span>
-<span>  <span class="st">"ericrayanderson/shinyglass@8996a7badae511e53640db40d415366a475aa856"</span></span>
+<span>  <span class="st">"ericrayanderson/shinyglass@1236b69a128414be67e597c407319c419f265f7a"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">liquid_theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/codeagent_theme.html">codeagent_theme</a></span><span class="op">(</span></span>

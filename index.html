@@ -479,9 +479,9 @@
 <span><span class="co"># and high-opacity content surfaces for dense chat, code, tools, and tables:</span></span>
 <span><span class="fu"><a href="reference/codeagent_app.html">codeagent_app</a></span><span class="op">(</span><span class="va">client</span>, ui_layout <span class="op">=</span> <span class="st">"page_chat"</span>, theme <span class="op">=</span> <span class="st">"aurora"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Liquid Glass delegates material rendering to the optional pinned shinyglass</span></span>
-<span><span class="co"># package; codeagent adds only a thin shinychat surface/dark-mode adapter:</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ericrayanderson/shinyglass@8996a7badae511e53640db40d415366a475aa856"</span><span class="op">)</span></span>
+<span><span class="co"># Liquid Glass is the optional pinned shinyglass package (&gt;= 0.5.0), which also</span></span>
+<span><span class="co"># styles shinychat and follows dark mode itself; codeagent adds no rules:</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"ericrayanderson/shinyglass@1236b69a128414be67e597c407319c419f265f7a"</span><span class="op">)</span></span>
 <span><span class="va">liquid_theme</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/codeagent_theme.html">codeagent_theme</a></span><span class="op">(</span></span>
 <span>  <span class="st">"glass"</span>, preset <span class="op">=</span> <span class="st">"auto"</span>, intensity <span class="op">=</span> <span class="fl">0.45</span>,</span>
 <span>  tint <span class="op">=</span> <span class="cn">TRUE</span>, specular <span class="op">=</span> <span class="cn">TRUE</span></span>

@@ -14,9 +14,9 @@ Workspace drawer are all visible.
 
 The optional `glass` theme delegates its material rendering, live
 intensity, tint, specular highlights, and accessibility fallbacks to
-[shinyglass](https://ericrayanderson.github.io/shinyglass/). codeagent
-adds only a thin adapter for shinychat’s header, sidebar, drawer, and
-composer surfaces.
+[shinyglass](https://ericrayanderson.github.io/shinyglass/) 0.5.0 or
+later, which styles shinychat’s page, drawer and composer and follows
+the dark-mode toggle itself; codeagent adds no rules of its own.
 
 ### Light mode
 
@@ -43,7 +43,7 @@ the theme:
 ``` r
 
 pak::pak(
-  "ericrayanderson/shinyglass@8996a7badae511e53640db40d415366a475aa856"
+  "ericrayanderson/shinyglass@1236b69a128414be67e597c407319c419f265f7a"
 )
 
 liquid_theme <- codeagent_theme(
