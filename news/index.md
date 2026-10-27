@@ -2,6 +2,21 @@
 
 ## codeagent (development version)
 
+- Fixed: approval, question, form and Data Shield requests that arrived
+  while another one was open (parallel tool calls, a form during an
+  approval) replaced it, and the replaced tool – and the turn – waited
+  forever. They now queue and are shown one at a time; the bar says how
+  many are waiting, an egress request still times out to “redact” while
+  queued, and restoring a session resolves every open or queued request
+  with its cancel value.
+
+- Fixed: with Data Shield or web citations active, the Shiny app
+  buffered the whole stream and showed no tool cards, so results that a
+  host tool shows only in its card (`extra$display`) never reached the
+  user. Tool requests and results are now shown as the turn runs; only
+  the model’s text is held for the output gate. Card arguments pass the
+  same gate and are dropped if it would change them.
+
 - Data Shield value matching catches identifiers written differently
   from how they were registered (`register_data(id_variants = TRUE)`,
   the default). For identifier columns only: ids that contain a letter
