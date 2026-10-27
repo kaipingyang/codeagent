@@ -8,7 +8,11 @@ so model switching reuses the same alias + provider-prefix resolution as
 ## Usage
 
 ``` r
-.resolve_model_chat(model, cwd = getwd())
+.resolve_model_chat(
+  model,
+  cwd = getwd(),
+  setting_sources = c("user", "project")
+)
 ```
 
 ## Arguments
@@ -21,6 +25,14 @@ so model switching reuses the same alias + provider-prefix resolution as
 - cwd:
 
   Character. Working directory (for alias lookup).
+
+- setting_sources:
+
+  Passed to
+  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md)
+  for a plain model name, so a client built with
+  `setting_sources = "project"` keeps ignoring the user-level settings
+  when the model is switched.
 
 ## Value
 

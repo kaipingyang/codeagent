@@ -13,7 +13,7 @@ merged in.
 ## Usage
 
 ``` r
-.load_claude_md(cwd)
+.load_claude_md(cwd, user = TRUE, project = TRUE)
 ```
 
 ## Arguments
@@ -21,6 +21,14 @@ merged in.
 - cwd:
 
   Character. Starting directory.
+
+- user:
+
+  Logical. Include the user-level files under `~`.
+
+- project:
+
+  Logical. Include the files from `cwd` upwards.
 
 ## Value
 

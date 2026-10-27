@@ -34,6 +34,14 @@ Interactive chat interface.
 
 - [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
   : Launch the codeagent Shiny application
+- [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md)
+  : Run codeagent's chat engine inside a host Shiny app
+- [`codeagent_chat_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.md)
+  : Chat UI for a host app that embeds codeagent
+- [`codeagent_canvas_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_canvas_ui.md)
+  : Generative UI canvas for a host app
+- [`codeagent_head_assets()`](https://kaipingyang.github.io/codeagent/reference/codeagent_head_assets.md)
+  : Browser assets for a host app that embeds codeagent
 - [`canvas_options()`](https://kaipingyang.github.io/codeagent/reference/canvas_options.md)
   : Configure the generative UI canvas
 - [`canvas_component_output()`](https://kaipingyang.github.io/codeagent/reference/canvas_component_output.md)
@@ -248,6 +256,8 @@ Tool factories and registration.
   : Create the Agent tool
 - [`ask_user_tool()`](https://kaipingyang.github.io/codeagent/reference/ask_user_tool.md)
   : Create the AskUserQuestion tool
+- [`ask_user_form_tool()`](https://kaipingyang.github.io/codeagent/reference/ask_user_form_tool.md)
+  : Create the AskUserForm tool
 - [`notebook_edit_tool()`](https://kaipingyang.github.io/codeagent/reference/notebook_edit_tool.md)
   : Create the NotebookEdit tool
 - [`notebook_read_tool()`](https://kaipingyang.github.io/codeagent/reference/notebook_read_tool.md)
@@ -262,6 +272,8 @@ Tool factories and registration.
   : Register the Agent tool and any btw custom agent tools
 - [`register_ask_user_tool()`](https://kaipingyang.github.io/codeagent/reference/register_ask_user_tool.md)
   : Register the AskUserQuestion tool on a Chat
+- [`register_ask_user_form_tool()`](https://kaipingyang.github.io/codeagent/reference/register_ask_user_form_tool.md)
+  : Register the AskUserForm tool on a Chat
 - [`register_btw_file_tools()`](https://kaipingyang.github.io/codeagent/reference/register_btw_file_tools.md)
   : Register btw file tools with permission control
 - [`register_notebook_tools()`](https://kaipingyang.github.io/codeagent/reference/register_notebook_tools.md)

@@ -86,7 +86,7 @@ security-sensitive project settings are ignored.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">load_settings</span><span class="op">(</span>cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">load_settings</span><span class="op">(</span>cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, setting_sources <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"user"</span>, <span class="st">"project"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -96,6 +96,20 @@ security-sensitive project settings are ignored.</p>
 <dl><dt id="arg-cwd">cwd<a class="anchor" aria-label="anchor" href="#arg-cwd"></a></dt>
 <dd><p>Character. Working directory (used to locate <code>.codeagent/settings.json</code>
 and <code>CLAUDE.md</code>). Defaults to <code><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd()</a></code>.</p></dd>
+
+
+<dt id="arg-setting-sources">setting_sources<a class="anchor" aria-label="anchor" href="#arg-setting-sources"></a></dt>
+<dd><p>Which filesystem sources to load, as in the Claude
+Agent SDK's <code>setting_sources</code>: <code>"user"</code> – <code>~/.codeagent/settings.json</code>
+(including its <code>env</code> block) and the user-level <code>~/.claude/CLAUDE.md</code> /
+<code>~/.codeagent/CLAUDE.md</code>; <code>"project"</code> – <code>&lt;cwd&gt;/.codeagent/settings.json</code>
+and the <code>CLAUDE.md</code> / <code>AGENTS.md</code> / <code>btw.md</code> / <code>llms.txt</code> files from <code>cwd</code>
+upwards. Default both. A host app that ships its own instructions in <code>cwd</code>
+uses <code>"project"</code>, so the runtime user's personal <code>settings.json</code> and
+<code>CLAUDE.md</code> files never reach the app (also when the model is switched).
+Not covered: <code>CODEAGENT_*</code> variables in <code>~/.Renviron</code>, auto-memory and
+user-level skill directories, which follow <code>CODEAGENT_HOME</code> and the btw
+skill paths.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -1,5 +1,98 @@
 # Changelog
 
+## codeagent (development version)
+
+- Data Shield value matching catches identifiers written differently
+  from how they were registered (`register_data(id_variants = TRUE)`,
+  the default). For identifier columns only: ids that contain a letter
+  also match with separators changed or dropped and leading zeros
+  dropped (`BGB 001 0007`, `BGB0010007`, `BGB-1-7`, en dash or no-break
+  space for `BGB-001-0007`), and a column with a dominant character
+  shape and a literal letter prefix contributes a pattern such as
+  `BGB-[0-9]{3}-[0-9]{4}` that also catches ids that were never
+  registered (another study, an unloaded subject). Purely numeric ids
+  keep exact matching only – their variants cannot be told apart from
+  decimals and counts. Variant keys count toward `max_index_values`,
+  [`close()`](https://rdrr.io/r/base/connections.html) drops them, and
+  the reviewer text path redacts them too. The segment-run cap adapts to
+  the longest indexed id (at most 12 parts). `USUBJID` / `SUBJID`
+  columns are classified as identifiers by name.
+
+- Fixed: the default `phone` regex redacted ISO dates (`2024-01-15`) and
+  clinical count-percent cells (`40 (100.0%)`) in tool results and
+  replies. It now matches written phone forms only (`+<country>`
+  followed by three or four groups, `+<10-15 digits>`, `555-123-4567`,
+  `555.123.4567`, `(555) 123-4567`, 11-digit mainland-China mobiles), so
+  count rows (`100 200 3000`) and signed changes (`+10 25 30`) also stay
+  clear.
+
+- Fixed: value_match tokenized text with `strsplit(perl = TRUE)`, which
+  is quadratic on long input – a 0.5 MB tool result took ~40 s per scan.
+  Scans now grow with the length of the text: under a second for that
+  result, and variant lookups use a hashed table, so a large index (10^5
+  ids) does not slow them down.
+
+- New
+  [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md),
+  [`codeagent_chat_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.md),
+  [`codeagent_canvas_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_canvas_ui.md)
+  and
+  [`codeagent_head_assets()`](https://kaipingyang.github.io/codeagent/reference/codeagent_head_assets.md)
+  embed codeagent’s chat engine in a host Shiny app that has its own
+  page and tools: streaming with compaction and interrupt, `/skill`
+  commands, hooks, the approval / question bar, the generative UI
+  canvas, Data Shield and per-turn session saving. Host tools are passed
+  with a declared capability and are registered inside the normal tool
+  setup, so result normalization, input hooks, `disallowed_tools`, the
+  permission gate and the shield cover them exactly like built-ins. A
+  tool-setup failure now fails closed (no tools, input stays disabled).
+  One client serves one open session.
+  [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
+  now runs on the same per-session core.
+
+- New `AskUserForm` tool
+  ([`ask_user_form_tool()`](https://kaipingyang.github.io/codeagent/reference/ask_user_form_tool.md),
+  [`register_ask_user_form_tool()`](https://kaipingyang.github.io/codeagent/reference/register_ask_user_form_tool.md),
+  capability group `interact`): the model shows a small form – text,
+  textarea, number, select, multiselect, checkbox and date fields with
+  defaults, required flags and hints – and gets back
+  `{submitted, values}`. In Shiny it opens in the chat’s interaction
+  area; Cancel and ESC report `submitted = false`. The CLI asks field by
+  field.
+
+- `codeagent_client(setting_sources =)` /
+  `load_settings(setting_sources =)`, named after the Claude Agent SDK
+  option, pick which filesystem sources are loaded: `"user"`
+  (`~/.codeagent/settings.json` and the user-level `CLAUDE.md` files)
+  and `"project"` (`.codeagent/settings.json` and the `CLAUDE.md` /
+  `AGENTS.md` files from `cwd` up). The default loads both. An app that
+  ships its own instructions passes `"project"`, so it never picks up a
+  developer’s personal `settings.json` or `CLAUDE.md` when it runs under
+  their account – also not after `/model`. `CODEAGENT_*` variables in
+  `~/.Renviron`, auto-memory and user-level skill directories are not
+  covered (point `CODEAGENT_HOME` elsewhere for those).
+
+- Fixed: Data Shield value matching missed compound identifiers. Text
+  was split on every non-alphanumeric character, so a CDISC `USUBJID`
+  such as `BGB-001-0007` became `BGB` / `001` / `0007` and never matched
+  the indexed value; such ids passed tool-result egress and reply
+  scanning untouched. Every contiguous run of
+  hyphen/underscore/slash-joined segments is now a candidate, so an id
+  is caught whole even when joined to other words
+  (`BGB-001-0007_AE.csv`, `subject/BGB-001-0007`), and replies redact it
+  whole.
+
+- A tool’s `ContentToolResult` value that JSON cannot encode (an R
+  `table`, an S4 object) is now sent as its printed text instead of as a
+  list, so it no longer bypasses Data Shield’s egress scan.
+
+- Fixed: a tool returning
+  `ContentToolResult(value = <list or data frame>)` made
+  OpenAI-compatible providers answer HTTP 400 under ellmer 0.5
+  (“expected one of a string or array of objects, but got an object”).
+  Result normalization now encodes such a value to one JSON string and
+  keeps `extra`.
+
 ## codeagent 0.2.3
 
 - `theme = "glass"` now needs shinyglass 0.5.0 or later and leaves all

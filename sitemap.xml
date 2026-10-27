@@ -60,6 +60,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/addin.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/agent_loop.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/agent_tool.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/ask_user_form_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/ask_user_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/async_agent.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/audit_code_tool.html</loc></url>
@@ -89,14 +90,18 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_addin.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_addin_selection.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_app.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_canvas_ui.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_client.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_client_config.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_console.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_create_readme.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_create_skill.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_head_assets.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_init_context.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_mcp_server.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_otel_status.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_server.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_stream.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_task.html</loc></url>
@@ -215,6 +220,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/recall_memories_relevant.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/refresh_data_shield_context.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_agent_tool.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/register_ask_user_form_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_ask_user_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_btw_file_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/register_builtin_tools.html</loc></url>
@@ -292,6 +298,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tool_result_value.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tool_run_r.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tools_agent.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/tools_ask_form.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tools_ask_user.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tools_bash.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/tools_btw_files_pathA.html</loc></url>

@@ -159,7 +159,8 @@ Register one protected data.frame.
       min_len = 3L,
       min_card = 8L,
       max_index_values = 500000L,
-      column_access = NULL
+      column_access = NULL,
+      id_variants = TRUE
     )
 
 #### Arguments
@@ -204,6 +205,16 @@ Register one protected data.frame.
   column falls back to its sensitivity tier. `egress="raw"` removes the
   column from the value-match index; `prompt="raw"` lets `DescribeData`
   enumerate its real values.
+
+- `id_variants`:
+
+  If `TRUE` (default), value_match also catches the indexed values
+  written another way (separators changed or dropped, leading zeros
+  dropped: `BGB 001 0007`, `BGB0010007`, `BGB-1-7` for `BGB-001-0007`),
+  and each identifier column whose values share a dominant character
+  shape with a literal letter prefix contributes a pattern (e.g.
+  `BGB-[0-9]{3}-[0-9]{4}`) that catches identifiers of that form even
+  when they were never registered.
 
 ------------------------------------------------------------------------
 

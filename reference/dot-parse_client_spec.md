@@ -12,7 +12,12 @@ Supports:
 ## Usage
 
 ``` r
-.parse_client_spec(spec, aliases = list(), cwd = getwd())
+.parse_client_spec(
+  spec,
+  aliases = list(),
+  cwd = getwd(),
+  setting_sources = c("user", "project")
+)
 ```
 
 ## Arguments

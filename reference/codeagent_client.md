@@ -24,7 +24,8 @@ codeagent_client(
   data_shield = NULL,
   max_budget_usd = NULL,
   tools = NULL,
-  disallowed_tools = NULL
+  disallowed_tools = NULL,
+  setting_sources = c("user", "project")
 )
 ```
 
@@ -145,6 +146,18 @@ codeagent_client(
   definitions, so the model never sees them. A scoped entry
   (`"Bash(rm *)"`) keeps the tool and becomes an ordinary deny rule,
   which is absolute in every permission mode including `bypass`.
+
+- setting_sources:
+
+  Which filesystem settings and instruction files to load, named as in
+  the Claude Agent SDK: `"user"` (`~/.codeagent/settings.json`,
+  `~/.claude/CLAUDE.md`, `~/.codeagent/CLAUDE.md`) and `"project"`
+  (`<cwd>/.codeagent/settings.json` and `CLAUDE.md` / `AGENTS.md` from
+  `cwd` upwards). Default both, as the CLI does. A host app that ships
+  its own `CLAUDE.md` in `cwd` passes `"project"`, so a developer's
+  personal settings and instructions never reach the app when it runs
+  under their account. See
+  [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
 
 ## Value
 

@@ -101,7 +101,7 @@ is also scanned for whole-line <code>@path/to/file</code> imports (see
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.load_claude_md</span><span class="op">(</span><span class="va">cwd</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">.load_claude_md</span><span class="op">(</span><span class="va">cwd</span>, user <span class="op">=</span> <span class="cn">TRUE</span>, project <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -110,6 +110,14 @@ is also scanned for whole-line <code>@path/to/file</code> imports (see
 
 <dl><dt id="arg-cwd">cwd<a class="anchor" aria-label="anchor" href="#arg-cwd"></a></dt>
 <dd><p>Character. Starting directory.</p></dd>
+
+
+<dt id="arg-user">user<a class="anchor" aria-label="anchor" href="#arg-user"></a></dt>
+<dd><p>Logical. Include the user-level files under <code>~</code>.</p></dd>
+
+
+<dt id="arg-project">project<a class="anchor" aria-label="anchor" href="#arg-project"></a></dt>
+<dd><p>Logical. Include the files from <code>cwd</code> upwards.</p></dd>
 
 </dl></div>
     <div class="section level2">

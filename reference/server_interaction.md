@@ -40,4 +40,5 @@ server_interaction(input, output, session, state)
 
 ## Value
 
-A list with `ask_fn` and `ask_question_fn` (promise-returning).
+A list with `ask_fn`, `ask_question_fn`, `ask_form_fn` and
+`egress_ask_fn` (promise-returning).

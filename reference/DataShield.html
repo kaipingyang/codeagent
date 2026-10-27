@@ -206,7 +206,8 @@ egress execution order.</p></dd>
 <span>  min_len <span class="op">=</span> <span class="fl">3L</span>,</span>
 <span>  min_card <span class="op">=</span> <span class="fl">8L</span>,</span>
 <span>  max_index_values <span class="op">=</span> <span class="fl">500000L</span>,</span>
-<span>  column_access <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  column_access <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  id_variants <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
@@ -243,6 +244,15 @@ overrides missing it are dropped (with a warning) so the column falls
 back to its sensitivity tier. <code>egress="raw"</code> removes the column from the
 value-match index; <code>prompt="raw"</code> lets <code>DescribeData</code> enumerate its real
 values.</p></dd>
+
+      <dt><code>id_variants</code></dt>
+<dd><p>If <code>TRUE</code> (default), value_match also catches the
+indexed values written another way (separators changed or dropped,
+leading zeros dropped: <code>BGB 001 0007</code>, <code>BGB0010007</code>, <code>BGB-1-7</code> for
+<code>BGB-001-0007</code>), and each identifier column whose values share a
+dominant character shape with a literal letter prefix contributes a
+pattern (e.g. <code>BGB-[0-9]{3}-[0-9]{4}</code>) that catches identifiers of that
+form even when they were never registered.</p></dd>
 
 
 </dl><p></p></div>
