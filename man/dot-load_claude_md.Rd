@@ -4,10 +4,14 @@
 \alias{.load_claude_md}
 \title{Load and merge CLAUDE.md from all levels}
 \usage{
-.load_claude_md(cwd)
+.load_claude_md(cwd, user = TRUE, project = TRUE)
 }
 \arguments{
 \item{cwd}{Character. Starting directory.}
+
+\item{user}{Logical. Include the user-level files under \code{~}.}
+
+\item{project}{Logical. Include the files from \code{cwd} upwards.}
 }
 \value{
 Character(1) with merged contents, or NULL if none found.

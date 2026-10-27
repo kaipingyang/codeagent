@@ -4,13 +4,21 @@
 \alias{.resolve_model_chat}
 \title{Resolve a model spec/alias into a fresh ellmer Chat}
 \usage{
-.resolve_model_chat(model, cwd = getwd())
+.resolve_model_chat(
+  model,
+  cwd = getwd(),
+  setting_sources = c("user", "project")
+)
 }
 \arguments{
 \item{model}{Character. \code{"anthropic/..."}, \code{"openai/..."}, \code{"ollama/..."},
 a plain model name, or an alias defined in \code{codeagent.md}.}
 
 \item{cwd}{Character. Working directory (for alias lookup).}
+
+\item{setting_sources}{Passed to \code{\link[=load_settings]{load_settings()}} for a plain model name,
+so a client built with \code{setting_sources = "project"} keeps ignoring the
+user-level settings when the model is switched.}
 }
 \value{
 A fresh \code{ellmer::Chat}.

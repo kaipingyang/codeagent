@@ -115,9 +115,23 @@ NULL
 #'
 #' @param cwd Character. Working directory (used to locate `.codeagent/settings.json`
 #'   and `CLAUDE.md`). Defaults to `getwd()`.
+#' @param setting_sources Which filesystem sources to load, as in the Claude
+#'   Agent SDK's `setting_sources`: `"user"` -- `~/.codeagent/settings.json`
+#'   (including its `env` block) and the user-level `~/.claude/CLAUDE.md` /
+#'   `~/.codeagent/CLAUDE.md`; `"project"` -- `<cwd>/.codeagent/settings.json`
+#'   and the `CLAUDE.md` / `AGENTS.md` / `btw.md` / `llms.txt` files from `cwd`
+#'   upwards. Default both. A host app that ships its own instructions in `cwd`
+#'   uses `"project"`, so the runtime user's personal `settings.json` and
+#'   `CLAUDE.md` files never reach the app (also when the model is switched).
+#'   Not covered: `CODEAGENT_*` variables in `~/.Renviron`, auto-memory and
+#'   user-level skill directories, which follow `CODEAGENT_HOME` and the btw
+#'   skill paths.
 #' @return A named list of settings.
 #' @export
-load_settings <- function(cwd = getwd()) {
+load_settings <- function(cwd = getwd(), setting_sources = c("user", "project")) {
+  setting_sources <- .check_setting_sources(setting_sources)
+  use_user    <- "user" %in% setting_sources
+  use_project <- "project" %in% setting_sources
   settings <- .CODEAGENT_DEFAULTS
 
   read_json <- function(path) {
@@ -168,9 +182,10 @@ load_settings <- function(cwd = getwd()) {
   # destinations, authorization, executable hooks, or the registered tool set.
   user_json    <- file.path(.get_codeagent_dir(), "settings.json")
   project_json <- file.path(cwd, ".codeagent", "settings.json")
-  settings <- .merge_settings(settings, read_json(user_json))
-  settings <- .merge_settings(
-    settings, sanitize_project(read_json(project_json)))
+  if (use_user) settings <- .merge_settings(settings, read_json(user_json))
+  if (use_project)
+    settings <- .merge_settings(
+      settings, sanitize_project(read_json(project_json)))
 
   # Only the trusted user-level env block reaches the process environment.
   if (is.list(settings$env) && length(settings$env) > 0L) {
@@ -279,7 +294,7 @@ load_settings <- function(cwd = getwd()) {
   }
 
   # CLAUDE.md (loaded as context, not merged as settings)
-  settings$claude_md <- .load_claude_md(cwd)
+  settings$claude_md <- .load_claude_md(cwd, user = use_user, project = use_project)
 
   settings
 }
@@ -378,16 +393,19 @@ load_settings <- function(cwd = getwd()) {
 #' `.expand_claude_md_imports()` before being merged in.
 #'
 #' @param cwd Character. Starting directory.
+#' @param user Logical. Include the user-level files under `~`.
+#' @param project Logical. Include the files from `cwd` upwards.
 #' @return Character(1) with merged contents, or NULL if none found.
 #' @keywords internal
-.load_claude_md <- function(cwd) {
+.load_claude_md <- function(cwd, user = TRUE, project = TRUE) {
   candidates <- character(0)
 
   # User-level memory (lowest priority; appears first)
   home <- path.expand("~")
-  candidates <- c(candidates,
-                  file.path(home, ".claude",    "CLAUDE.md"),
-                  file.path(home, ".codeagent", "CLAUDE.md"))
+  if (isTRUE(user))
+    candidates <- c(candidates,
+                    file.path(home, ".claude",    "CLAUDE.md"),
+                    file.path(home, ".codeagent", "CLAUDE.md"))
 
   # Project-level: walk up from cwd to root, collect deepest-last so that
   # more-specific dirs override.  Build outer->inner by reversing the walk.
@@ -397,7 +415,7 @@ load_settings <- function(cwd = getwd()) {
   agent_filenames <- c("CLAUDE.md", "btw.md", "AGENTS.md", "llms.txt")
   walk <- character(0)
   path <- cwd
-  for (i in seq_len(5L)) {
+  for (i in seq_len(if (isTRUE(project)) 5L else 0L)) {
     for (fname in agent_filenames)
       walk <- c(walk, file.path(path, fname))
     parent <- dirname(path)
@@ -605,3 +623,13 @@ use_codeagent_settings <- function(scope = c("user", "project"),
   if (length(issues)) cat("\n")
   invisible(issues)
 }
+
+# Validate a `setting_sources` value (Claude Agent SDK naming). codeagent has
+# user and project scopes; there is no separate local scope.
+.check_setting_sources <- function(x) {
+  if (!is.character(x) || anyNA(x) || !all(x %in% c("user", "project")))
+    stop("`setting_sources` must be a character vector of \"user\" and/or ",
+         "\"project\" (character(0) loads neither).", call. = FALSE)
+  unique(x)
+}
+

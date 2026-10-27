@@ -1,3 +1,46 @@
+# codeagent (development version)
+
+* New `codeagent_server()`, `codeagent_chat_ui()`, `codeagent_canvas_ui()` and
+  `codeagent_head_assets()` embed codeagent's chat engine in a host Shiny app
+  that has its own page and tools: streaming with compaction and interrupt,
+  `/skill` commands, hooks, the approval / question bar, the generative UI
+  canvas, Data Shield and per-turn session saving. Host tools are passed with
+  a declared capability and are registered inside the normal tool setup, so
+  result normalization, input hooks, `disallowed_tools`, the permission gate
+  and the shield cover them exactly like built-ins. A tool-setup failure now
+  fails closed (no tools, input stays disabled). One client serves one open
+  session. `codeagent_app()` now runs on the same per-session core.
+* New `AskUserForm` tool (`ask_user_form_tool()`, `register_ask_user_form_tool()`,
+  capability group `interact`): the model shows a small form -- text, textarea,
+  number, select, multiselect, checkbox and date fields with defaults,
+  required flags and hints -- and gets back `{submitted, values}`. In Shiny it
+  opens in the chat's interaction area; Cancel and ESC report `submitted =
+  false`. The CLI asks field by field.
+* `codeagent_client(setting_sources =)` / `load_settings(setting_sources =)`,
+  named after the Claude Agent SDK option, pick which filesystem sources are
+  loaded: `"user"` (`~/.codeagent/settings.json` and the user-level
+  `CLAUDE.md` files) and `"project"` (`.codeagent/settings.json` and the
+  `CLAUDE.md` / `AGENTS.md` files from `cwd` up). The default loads both. An
+  app that ships its own instructions passes `"project"`, so it never picks
+  up a developer's personal `settings.json` or `CLAUDE.md` when it runs under
+  their account -- also not after `/model`. `CODEAGENT_*` variables in
+  `~/.Renviron`, auto-memory and user-level skill directories are not covered
+  (point `CODEAGENT_HOME` elsewhere for those).
+* Fixed: Data Shield value matching missed compound identifiers. Text was
+  split on every non-alphanumeric character, so a CDISC `USUBJID` such as
+  `BGB-001-0007` became `BGB` / `001` / `0007` and never matched the indexed
+  value; such ids passed tool-result egress and reply scanning untouched.
+  Every contiguous run of hyphen/underscore/slash-joined segments is now a
+  candidate, so an id is caught whole even when joined to other words
+  (`BGB-001-0007_AE.csv`, `subject/BGB-001-0007`), and replies redact it whole.
+* A tool's `ContentToolResult` value that JSON cannot encode (an R `table`, an
+  S4 object) is now sent as its printed text instead of as a list, so it no
+  longer bypasses Data Shield's egress scan.
+* Fixed: a tool returning `ContentToolResult(value = <list or data frame>)`
+  made OpenAI-compatible providers answer HTTP 400 under ellmer 0.5 ("expected
+  one of a string or array of objects, but got an object"). Result
+  normalization now encodes such a value to one JSON string and keeps `extra`.
+
 # codeagent 0.2.3
 
 * `theme = "glass"` now needs shinyglass 0.5.0 or later and leaves all of

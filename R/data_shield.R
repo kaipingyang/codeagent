@@ -2427,12 +2427,43 @@ refresh_data_shield_context <- function(client) {
 
 # Scan text for indexed protected values (token-hash, v0).
 #' @keywords internal
+# Candidate tokens for value matching. Identifiers are often compound --
+# CDISC USUBJID "BGB-001-0007", "SITE_12/0003" -- and are indexed whole, and
+# text often joins them to other words ("BGB-001-0007_AE.csv",
+# "subject/BGB-001-0007"). So every contiguous run of hyphen/underscore/slash
+# separated segments is a candidate, separators kept, from single parts up to
+# the whole token (runs are capped at .DATA_SHIELD_MAX_SEGMENTS segments to
+# bound the work on pathological input). Edge punctuation is stripped; inner
+# dots stay (3.14).
+.DATA_SHIELD_MAX_SEGMENTS <- 8L
+
+#' @keywords internal
+.data_shield_tokens <- function(text) {
+  compound <- strsplit(text, "[^[:alnum:]._/-]+", perl = TRUE)[[1L]]
+  compound <- gsub("^[._/-]+|[._/-]+$", "", compound)
+  compound <- unique(compound[nzchar(compound)])
+  runs <- lapply(compound, function(tok) {
+    pos <- gregexpr("[^_/-]+", tok, perl = TRUE)[[1L]]
+    if (pos[1L] < 0L) return(character(0))
+    starts <- as.integer(pos)
+    ends <- starts + attr(pos, "match.length") - 1L
+    k <- length(starts)
+    out <- character(0)
+    for (i in seq_len(k)) {
+      last <- min(k, i + .DATA_SHIELD_MAX_SEGMENTS - 1L)
+      out <- c(out, substring(tok, starts[i], ends[i:last]))
+    }
+    c(out, tok)
+  })
+  toks <- gsub("^\\.+|\\.+$", "", unique(unlist(runs, use.names = FALSE)))
+  toks <- unique(toks)
+  toks[nchar(toks) >= 3L]
+}
+
 .data_shield_value_scan <- function(text, index) {
   if (!is.environment(index) || !is.character(text) || length(text) != 1L)
     return(list(hit = FALSE, n = 0L, values = character(0)))
-  toks <- unique(strsplit(text, "[^[:alnum:].]+", perl = TRUE)[[1L]])
-  toks <- gsub("^\\.+|\\.+$", "", toks)                 # strip edge dots (keep 3.14)
-  toks <- toks[nchar(toks) >= 3L]
+  toks <- .data_shield_tokens(text)
   if (!length(toks)) return(list(hit = FALSE, n = 0L, values = character(0)))
   norm <- .data_shield_normalize(toks)
   hit  <- norm[vapply(norm, function(t) exists(t, envir = index, inherits = FALSE),
@@ -2451,9 +2482,10 @@ refresh_data_shield_context <- function(client) {
   if (!is.environment(index)) return(text)
   # Re-tokenise the ORIGINAL text so we can locate raw tokens (with their real
   # casing/format) whose normalized form is a protected value.
-  toks <- unique(strsplit(text, "[^[:alnum:].]+", perl = TRUE)[[1L]])
-  toks <- gsub("^\\.+|\\.+$", "", toks)
-  toks <- toks[nchar(toks) >= 3L]
+  # Longest first, so a compound identifier is replaced whole before any of
+  # its parts.
+  toks <- .data_shield_tokens(text)
+  toks <- toks[order(-nchar(toks))]
   if (!length(toks)) return(text)
   out <- text
   for (tok in toks) {

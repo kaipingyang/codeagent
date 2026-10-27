@@ -240,6 +240,49 @@ if (requireNamespace("shinygenui", quietly = TRUE)) {
 }
 
 # ---------------------------------------------------------------------------
+# Host embedding: setting_sources, AskUserForm, codeagent_server()
+# ---------------------------------------------------------------------------
+
+section("Host embedding -- setting_sources / AskUserForm / codeagent_server")
+
+host_dir <- tempfile("host_agent_")
+dir.create(host_dir)
+writeLines("HOST_AGENT_MARKER", file.path(host_dir, "CLAUDE.md"))
+host_client <- codeagent_client(
+  ellmer::chat_openai_compatible(
+    base_url = Sys.getenv("CODEAGENT_BASE_URL"),
+    model = Sys.getenv("CODEAGENT_MODEL", "gpt-4.1"),
+    credentials = function() Sys.getenv("CODEAGENT_API_KEY"), echo = "none"),
+  cwd = host_dir, register_tools = FALSE, tools = "interact",
+  setting_sources = "project")
+host_prompt <- host_client$chat$get_system_prompt()
+ok(grepl("HOST_AGENT_MARKER", host_prompt, fixed = TRUE), "host CLAUDE.md is in the prompt")
+ok(!grepl(file.path(path.expand("~"), ".claude", "CLAUDE.md"), host_prompt, fixed = TRUE),
+   "setting_sources = \"project\" leaves ~/.claude/CLAUDE.md out")
+
+options(codeagent.test_form_answer = list(population = "Safety"))
+form_res <- S7::S7_data(ask_user_form_tool())(
+  title = "Confirm", fields = list(list(name = "population", type = "select",
+                                        choices = list("Safety", "ITT"))))
+options(codeagent.test_form_answer = NULL)
+ok(isTRUE(jsonlite::fromJSON(as.character(form_res@value))$submitted),
+   "AskUserForm returns the submitted values")
+
+host_tool <- ellmer::tool(function() ellmer::ContentToolResult(value = list(n = 3L)),
+                          name = "HostCount", description = "Count.", arguments = list())
+shiny::testServer(function(input, output, session) {
+  codeagent_server(input, output, session, host_client,
+                   tools = list(host_tool), tool_meta = list(HostCount = "read"))
+}, {
+  session$flushReact()
+  tools <- names(host_client$chat$get_tools())
+  ok(all(c("AskUserQuestion", "AskUserForm", "HostCount") %in% tools),
+     "codeagent_server registers the selection plus host tools")
+  ok(is.character(S7::S7_data(host_client$chat$get_tools()$HostCount)()@value),
+     "host tool result is encoded to one string for the provider")
+})
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 

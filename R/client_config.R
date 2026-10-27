@@ -150,7 +150,8 @@ NULL
 #' @param cwd Character. Working directory (for settings).
 #' @return An `ellmer::Chat` object.
 #' @keywords internal
-.parse_client_spec <- function(spec, aliases = list(), cwd = getwd()) {
+.parse_client_spec <- function(spec, aliases = list(), cwd = getwd(),
+                               setting_sources = c("user", "project")) {
   # Resolve alias
   if (!is.null(aliases[[spec]])) spec <- aliases[[spec]]
 
@@ -189,7 +190,7 @@ NULL
   }
 
   # Plain model name -- use settings auto-detect
-  settings <- load_settings(cwd)
+  settings <- load_settings(cwd, setting_sources = setting_sources)
   settings$model <- spec
   .make_chat(settings, cwd)
 }

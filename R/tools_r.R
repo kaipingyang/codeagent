@@ -52,7 +52,7 @@ NULL
   skills   = "use_skill",
   memory   = "remember",
   data     = c("DescribeData", "ExploreData"),
-  interact = "AskUserQuestion",
+  interact = c("AskUserQuestion", "AskUserForm"),
   review   = c("AuditCode", "GenerateReport"),
   # Generative UI canvas (R/genui.R). Written out rather than computed from
   # .genui_tool_names() so this table does not depend on file load order; a test

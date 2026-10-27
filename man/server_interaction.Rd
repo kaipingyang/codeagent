@@ -12,7 +12,8 @@ server_interaction(input, output, session, state)
 \item{state}{The shared \code{reactiveValues} (must contain \code{pending_interaction}).}
 }
 \value{
-A list with \code{ask_fn} and \code{ask_question_fn} (promise-returning).
+A list with \code{ask_fn}, \code{ask_question_fn}, \code{ask_form_fn} and
+\code{egress_ask_fn} (promise-returning).
 }
 \description{
 Shared "pause -> wait for user -> resume" machinery for three

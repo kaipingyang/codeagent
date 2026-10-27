@@ -50,3 +50,36 @@ test_that("promise tool results normalize after fulfillment", {
   for (i in 1:20) { later::run_now(0.01); if (!is.null(value)) break }
   expect_true(S7::S7_inherits(value, ellmer::ContentToolResult))
 })
+
+test_that("a ContentToolResult with a structured value is sent as one JSON string", {
+  res <- ellmer::ContentToolResult(
+    value = list(note = "x", table = data.frame(a = 1:2, b = c("u", NA))),
+    extra = list(display = list(title = "kept")))
+  out <- .normalize_tool_output(res)
+  expect_type(out@value, "character")
+  expect_length(out@value, 1L)
+  back <- jsonlite::fromJSON(out@value)
+  expect_equal(back$table$a, 1:2)
+  expect_true(is.na(back$table$b[2]))
+  expect_identical(out@extra$display$title, "kept")
+})
+
+test_that("string and scalar ContentToolResult values are left alone", {
+  s <- ellmer::ContentToolResult(value = "text")
+  expect_identical(.normalize_tool_output(s), s)
+  n <- ellmer::ContentToolResult(value = 3)
+  expect_identical(.normalize_tool_output(n), n)
+})
+
+test_that("a value JSON cannot encode is sent as its printed text, never as a list", {
+  tb <- ellmer::ContentToolResult(value = list(counts = table(c("a", "b", "a"))),
+                                  extra = list(display = list(title = "kept")))
+  out <- .normalize_tool_output(tb)
+  expect_type(out@value, "character")
+  expect_length(out@value, 1L)
+  expect_identical(out@extra$display$title, "kept")
+  f <- .normalize_tool_output(ellmer::ContentToolResult(value = list(fn = function() 1)))
+  expect_type(f@value, "character")
+  big <- .tool_value_printed(paste(rep("x", 30000), collapse = ""))
+  expect_match(big, "truncated", fixed = TRUE)
+})

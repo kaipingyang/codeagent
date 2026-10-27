@@ -33,6 +33,10 @@ reference:
     desc: "Interactive chat interface."
     contents:
       - codeagent_app
+      - codeagent_server
+      - codeagent_chat_ui
+      - codeagent_canvas_ui
+      - codeagent_head_assets
       - canvas_options
       - canvas_component_output
       - canvas_component_widget
@@ -158,6 +162,7 @@ reference:
     contents:
       - agent_tool
       - ask_user_tool
+      - ask_user_form_tool
       - notebook_edit_tool
       - notebook_read_tool
       - todo_write_tool
@@ -165,6 +170,7 @@ reference:
       - web_search_tool
       - register_agent_tool
       - register_ask_user_tool
+      - register_ask_user_form_tool
       - register_btw_file_tools
       - register_notebook_tools
       - register_r_tools

@@ -55,6 +55,55 @@ NULL
   }
 }
 
+# Build the promise-returning ask_form_fn (AskUserForm). Returns
+# promise<list(submitted=, values=)>; resolved by the form Submit / Cancel
+# observers (or ESC).
+.shiny_ask_form_fn <- function(session, state) {
+  function(title, fields, submit_label = "Submit") {
+    promises::promise(function(resolve, reject) {
+      shiny::isolate({
+        state$pending_interaction <- list(
+          type    = "form",
+          payload = list(title = title, fields = fields,
+                         submit_label = submit_label %||% "Submit"),
+          resolve = resolve
+        )
+      })
+    })
+  }
+}
+
+# Input id of a form field: positional, so ids stay valid Shiny ids whatever
+# the model named the field. Only one form is pending at a time.
+.form_input_id <- function(i) paste0("ca_form_", i)
+
+# One Shiny input for a validated form field (see .form_validate_fields). PURE.
+.form_field_input <- function(field, i) {
+  id <- .form_input_id(i)
+  label <- if (isTRUE(field$required)) paste0(field$label, " *") else field$label
+  def <- field$default
+  input <- switch(field$type,
+    text     = shiny::textInput(id, label, value = def, width = "100%"),
+    textarea = shiny::textAreaInput(id, label, value = def, width = "100%", rows = 3),
+    number   = shiny::numericInput(id, label,
+                                   value = suppressWarnings(as.numeric(def)), width = "100%"),
+    select   = shiny::selectInput(id, label, choices = field$choices,
+                                  selected = if (nzchar(def)) def else field$choices[1],
+                                  width = "100%"),
+    multiselect = shiny::selectInput(
+      id, label, choices = field$choices, multiple = TRUE, width = "100%",
+      selected = if (nzchar(def)) trimws(strsplit(def, ",", fixed = TRUE)[[1]]) else NULL),
+    checkbox = shiny::checkboxInput(id, label, value = isTRUE(as.logical(def))),
+    date     = shiny::dateInput(id, label, value = if (nzchar(def)) def else NULL,
+                                width = "100%")
+  )
+  htmltools::tagList(
+    input,
+    if (nzchar(field$help))
+      htmltools::tags$small(class = "form-text text-muted d-block mb-2", field$help)
+  )
+}
+
 # Build the promise-returning Data Shield egress approval callback. Payload is
 # non-sensitive metadata only; raw result stays inside the tool wrapper.
 .shiny_egress_ask_fn <- function(session, state) {
@@ -139,6 +188,28 @@ NULL
                          placeholder = "Type your answer..."),
       shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm")
     )
+  } else if (identical(pending$type, "form")) {
+    p <- pending$payload
+    htmltools::tags$div(
+      class = "ca-form-bar",
+      style = paste(
+        "border-top:2px solid var(--bs-primary,#0d6efd);",
+        "background:var(--bs-body-bg,#fff);",
+        "padding:8px 16px; text-align:left;",   # override footer centering
+        "box-shadow:0 -2px 8px rgba(0,0,0,.08);",
+        "max-height:60vh; overflow-y:auto;"
+      ),
+      htmltools::tags$p(style = "font-weight:600; margin-bottom:6px;",
+                        "\U0001f4dd ", p$title %||% ""),
+      htmltools::tagList(lapply(seq_along(p$fields), function(i)
+        .form_field_input(p$fields[[i]], i))),
+      htmltools::tags$div(
+        style = "display:flex; gap:8px; margin-top:4px;",
+        shiny::actionButton("ca_form_submit", p$submit_label %||% "Submit",
+                            class = "btn-primary btn-sm"),
+        shiny::actionButton("ca_form_cancel", "Cancel",
+                            class = "btn-outline-secondary btn-sm"))
+    )
   } else if (identical(pending$type, "egress")) {
     p <- pending$payload
     htmltools::tags$div(
@@ -174,6 +245,7 @@ NULL
   if (is.null(pending)) return(NULL)
   if (identical(pending$type, "approval")) return(FALSE)
   if (identical(pending$type, "egress")) return("redact")
+  if (identical(pending$type, "form")) return(list(submitted = FALSE))
   ""
 }
 
@@ -181,7 +253,8 @@ NULL
 #'
 #' @param input,output,session Standard Shiny server args.
 #' @param state The shared `reactiveValues` (must contain `pending_interaction`).
-#' @return A list with `ask_fn` and `ask_question_fn` (promise-returning).
+#' @return A list with `ask_fn`, `ask_question_fn`, `ask_form_fn` and
+#'   `egress_ask_fn` (promise-returning).
 #' @keywords internal
 server_interaction <- function(input, output, session, state) {
 
@@ -232,6 +305,31 @@ server_interaction <- function(input, output, session, state) {
     .resolve_pending(state, answer)
   })
 
+  # ---- Form submit / cancel (AskUserForm) ----
+  # A required field left empty keeps the form open (a re-render would wipe
+  # what the user typed), so it is reported with a toast instead.
+  shiny::observeEvent(input$ca_form_submit, ignoreInit = TRUE, {
+    pending <- shiny::isolate(state$pending_interaction)
+    if (is.null(pending) || !identical(pending$type, "form")) return()
+    spec <- pending$payload$fields
+    raw <- stats::setNames(lapply(seq_along(spec), function(i) input[[.form_input_id(i)]]),
+                           vapply(spec, `[[`, character(1L), "name"))
+    # dateInput gives a Date; keep the ISO text the model was told about.
+    raw <- lapply(raw, function(v) if (inherits(v, "Date")) format(v) else v)
+    collected <- .form_collect(spec, raw)
+    if (length(collected$missing)) {
+      .ui_toast(paste0("Please fill in: ", paste(collected$missing, collapse = ", ")),
+                "warning")
+      return()
+    }
+    .resolve_pending(state, list(submitted = TRUE, values = collected$values))
+  })
+  shiny::observeEvent(input$ca_form_cancel, ignoreInit = TRUE, {
+    pending <- shiny::isolate(state$pending_interaction)
+    if (is.null(pending) || !identical(pending$type, "form")) return()
+    .resolve_pending(state, list(submitted = FALSE))
+  })
+
   # ---- ESC: cancel a pending interaction without deadlocking the loop ----
   # Deny an approval (FALSE) or return an empty answer ("") for a question.
   shiny::observeEvent(input$esc, {
@@ -243,6 +341,7 @@ server_interaction <- function(input, output, session, state) {
   list(
     ask_fn          = .shiny_ask_fn(session, state),
     ask_question_fn = .shiny_ask_question_fn(session, state),
+    ask_form_fn     = .shiny_ask_form_fn(session, state),
     egress_ask_fn   = .shiny_egress_ask_fn(session, state)
   )
 }

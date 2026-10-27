@@ -18,7 +18,8 @@ codeagent_client(
   data_shield = NULL,
   max_budget_usd = NULL,
   tools = NULL,
-  disallowed_tools = NULL
+  disallowed_tools = NULL,
+  setting_sources = c("user", "project")
 )
 }
 \arguments{
@@ -92,6 +93,15 @@ a tool (\code{"Bash"}) or a capability group (\code{"lint"}) -- removes those to
 definitions, so the model never sees them. A scoped entry (\code{"Bash(rm *)"})
 keeps the tool and becomes an ordinary deny rule, which is absolute in
 every permission mode including \code{bypass}.}
+
+\item{setting_sources}{Which filesystem settings and instruction files to
+load, named as in the Claude Agent SDK: \code{"user"} (\verb{~/.codeagent/settings.json},
+\verb{~/.claude/CLAUDE.md}, \verb{~/.codeagent/CLAUDE.md}) and \code{"project"}
+(\verb{<cwd>/.codeagent/settings.json} and \code{CLAUDE.md} / \code{AGENTS.md} from \code{cwd}
+upwards). Default both, as the CLI does. A host app that ships its own
+\code{CLAUDE.md} in \code{cwd} passes \code{"project"}, so a developer's personal
+settings and instructions never reach the app when it runs under their
+account. See \code{\link[=load_settings]{load_settings()}}.}
 }
 \value{
 Object of class \code{CodeagentClient} with \verb{$chat}, \verb{$settings}, and

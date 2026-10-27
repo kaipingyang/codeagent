@@ -38,7 +38,7 @@ PermissionMode <- list(
 # when they do not modify the local filesystem.
 .READONLY_TOOLS <- c(
   "Read", "Glob", "Grep", "LS",
-  "TaskGet", "TaskList", "NotebookRead", "AskUserQuestion"
+  "TaskGet", "TaskList", "NotebookRead", "AskUserQuestion", "AskUserForm"
 )
 
 # Tools auto-allowed in accept_edits mode

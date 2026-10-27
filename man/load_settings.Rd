@@ -4,11 +4,23 @@
 \alias{load_settings}
 \title{Load codeagent settings}
 \usage{
-load_settings(cwd = getwd())
+load_settings(cwd = getwd(), setting_sources = c("user", "project"))
 }
 \arguments{
 \item{cwd}{Character. Working directory (used to locate \code{.codeagent/settings.json}
 and \code{CLAUDE.md}). Defaults to \code{getwd()}.}
+
+\item{setting_sources}{Which filesystem sources to load, as in the Claude
+Agent SDK's \code{setting_sources}: \code{"user"} -- \verb{~/.codeagent/settings.json}
+(including its \code{env} block) and the user-level \verb{~/.claude/CLAUDE.md} /
+\verb{~/.codeagent/CLAUDE.md}; \code{"project"} -- \verb{<cwd>/.codeagent/settings.json}
+and the \code{CLAUDE.md} / \code{AGENTS.md} / \code{btw.md} / \code{llms.txt} files from \code{cwd}
+upwards. Default both. A host app that ships its own instructions in \code{cwd}
+uses \code{"project"}, so the runtime user's personal \code{settings.json} and
+\code{CLAUDE.md} files never reach the app (also when the model is switched).
+Not covered: \verb{CODEAGENT_*} variables in \verb{~/.Renviron}, auto-memory and
+user-level skill directories, which follow \code{CODEAGENT_HOME} and the btw
+skill paths.}
 }
 \value{
 A named list of settings.

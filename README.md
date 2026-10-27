@@ -563,6 +563,45 @@ persistent across New/Delete, is reset with `chat_clear(greeting = TRUE)`, and i
 not duplicated when history is restored; `codeagent_app(greeting=)` remains a
 composer-prefill API.
 
+#### Embedding codeagent in your own Shiny app
+
+`codeagent_app()` is a complete app. When the host already has its own page --
+its own panels and its own tools -- use the same engine through
+`codeagent_server()`: streaming with per-turn compaction, stop / ESC
+interrupt, `/skill` commands, hooks, token budget and per-turn session saving;
+the approval and question bar (`AskUserQuestion`, `AskUserForm`); the
+generative UI canvas; and Data Shield. `codeagent_app()` runs on the same
+session core.
+
+```r
+ui <- bslib::page_sidebar(
+  sidebar = bslib::sidebar(width = 420, codeagent_chat_ui(greeting = "Hi! Ask me ...")),
+  codeagent_canvas_ui(),                     # optional: only with `canvas =`
+  codeagent_head_assets()
+)
+server <- function(input, output, session) {
+  client <- codeagent_client(
+    my_chat$clone(), cwd = "app/agent", register_tools = FALSE,
+    tools = c("Read", "Glob", "use_skill", "interact", "genui"),  # "genui" for the canvas
+    setting_sources = "project")   # app/agent/CLAUDE.md only, never ~/.claude/
+  codeagent_server(input, output, session, client,
+                   tools = list(my_lookup_tool), tool_meta = list(my_lookup_tool = "read"),
+                   canvas = canvas_options())
+}
+```
+
+The chat id is fixed to `"chat"`. Build the client per Shiny session with
+`register_tools = FALSE`: tools are registered after the first flush, once the
+UI's approval / question callbacks exist. Host tools get a declared
+capability, codeagent's result normalization (a structured `ContentToolResult`
+value is sent as one JSON string) and the permission gate / Data Shield.
+
+`AskUserForm` collects or confirms several values at once: the model sends a
+title and fields (`text`, `textarea`, `number`, `select`, `multiselect`,
+`checkbox`, `date`, with `default`, `required`, `help`), the form opens in the
+chat's interaction area, and the tool returns
+`{"submitted": true|false, "values": {...}}`.
+
 ### Generative UI canvas
 
 In `codeagent_app()` the model can draw on a **Canvas** tab in the Output

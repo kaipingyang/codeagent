@@ -39,6 +39,7 @@ NULL
   TeamCoordinate = list(set = "A", capability = "exec"),
   BackgroundAgent = list(set = "A", capability = "exec"),
   AskUserQuestion = list(set = "A", capability = "read"),
+  AskUserForm     = list(set = "A", capability = "read"),
   TaskCreate  = list(set = "A", capability = "write"),
   TaskGet     = list(set = "A", capability = "read"),
   TaskUpdate  = list(set = "A", capability = "write"),

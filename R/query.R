@@ -214,6 +214,14 @@ print.CodeagentClient <- function(x, ...) {
 #'   private [DataShield] R6), or an explicit [DataShield] instance shared by
 #'   selected chat threads. For a harness-only client, attach tools then call
 #'   `client$data_shield$install(client$chat)`.
+#' @param setting_sources Which filesystem settings and instruction files to
+#'   load, named as in the Claude Agent SDK: `"user"` (`~/.codeagent/settings.json`,
+#'   `~/.claude/CLAUDE.md`, `~/.codeagent/CLAUDE.md`) and `"project"`
+#'   (`<cwd>/.codeagent/settings.json` and `CLAUDE.md` / `AGENTS.md` from `cwd`
+#'   upwards). Default both, as the CLI does. A host app that ships its own
+#'   `CLAUDE.md` in `cwd` passes `"project"`, so a developer's personal
+#'   settings and instructions never reach the app when it runs under their
+#'   account. See [load_settings()].
 #' @return Object of class `CodeagentClient` with `$chat`, `$settings`, and
 #'   `$data_shield` (NULL when disabled).
 #' @export
@@ -231,7 +239,8 @@ codeagent_client <- function(
   data_shield        = NULL,
   max_budget_usd     = NULL,
   tools              = NULL,
-  disallowed_tools   = NULL
+  disallowed_tools   = NULL,
+  setting_sources    = c("user", "project")
 ) {
   chat_supplied <- !is.null(chat)
 
@@ -252,7 +261,9 @@ codeagent_client <- function(
        is.na(max_budget_usd) || max_budget_usd <= 0))
     cli::cli_abort("{.arg max_budget_usd} must be NULL or a single positive number.")
 
-  settings <- load_settings(cwd)
+  setting_sources <- .check_setting_sources(setting_sources)
+  settings <- load_settings(cwd, setting_sources = setting_sources)
+  settings$setting_sources     <- setting_sources
   settings$permission_mode     <- permission_mode
   # Merge rules: caller-supplied rules take priority over settings.json rules.
   # settings$rules is already parsed from permissions.allow/deny/ask by load_settings().
@@ -726,6 +737,7 @@ agent_loop <- function(user_input,
     async_gate      <- FALSE
   }
   ask_question_fn <- settings$shiny_ask_question_fn %||% ask_question_fn
+  ask_form_fn     <- settings$shiny_ask_form_fn %||% NULL
 
   # Core tools -- file-tool set is selectable (settings$file_tools):
   #   "core" (default): codeagent Read/Write/Edit/MultiEdit/Glob/Grep/LS -- work
@@ -805,6 +817,9 @@ agent_loop <- function(user_input,
   # ask_question_fn is NULL for CLI (readline path) or a Shiny callback (Phase 3).
   tryCatch(register_ask_user_tool(chat, ask_question_fn, async = async_gate),
            error = function(e) NULL)
+  # AskUserForm: same pause mechanism, a structured form instead of one question.
+  tryCatch(register_ask_user_form_tool(chat, ask_form_fn, async = async_gate),
+           error = function(e) NULL)
   # Capture the complete non-delegation tool snapshot only after every parent
   # tool has been registered. Delegates may remove tools, never add tools that
   # were absent from this verified snapshot.
@@ -841,6 +856,11 @@ agent_loop <- function(user_input,
   # (ownership filters, Path A, wrappers) stays byte-for-byte unchanged, and a
   # NULL spec is a no-op, so the historical default cannot regress.
   tryCatch(.apply_tool_spec(chat, settings$tools_spec), error = function(e) NULL)
+  # Host tools (codeagent_server(tools =)): after the selection, so `tools=`
+  # never strips them, and before disallowed_tools, normalizers, input hooks and
+  # the gate, so they get exactly the layers the built-ins get -- on every
+  # (re)registration, e.g. after /model.
+  .register_host_tools(chat, settings$host_tools, settings$host_tool_meta)
   tryCatch(.apply_disallowed_tools(chat, settings$disallowed_tools$remove),
            error = function(e) NULL)
   # Say so when a `tools=` entry registered nothing. Deliberately NOT wrapped in

@@ -26,11 +26,16 @@ NULL
 #' @param model Character. `"anthropic/..."`, `"openai/..."`, `"ollama/..."`,
 #'   a plain model name, or an alias defined in `codeagent.md`.
 #' @param cwd Character. Working directory (for alias lookup).
+#' @param setting_sources Passed to [load_settings()] for a plain model name,
+#'   so a client built with `setting_sources = "project"` keeps ignoring the
+#'   user-level settings when the model is switched.
 #' @return A fresh `ellmer::Chat`.
 #' @keywords internal
-.resolve_model_chat <- function(model, cwd = getwd()) {
+.resolve_model_chat <- function(model, cwd = getwd(),
+                                setting_sources = c("user", "project")) {
   aliases <- tryCatch(.read_codeagent_config(cwd), error = function(e) list())
-  .parse_client_spec(model, aliases = aliases, cwd = cwd)
+  .parse_client_spec(model, aliases = aliases, cwd = cwd,
+                     setting_sources = setting_sources)
 }
 
 # Compare credential closures without invoking them. In addition to body/formals,
@@ -273,7 +278,9 @@ NULL
   if (isTRUE(running))
     return(list(ok = FALSE, type = "warning",
                 message = "Streaming in progress -- cannot switch model now."))
-  new_chat <- tryCatch(.resolve_model_chat(model, cwd), error = identity)
+  new_chat <- tryCatch(
+    .resolve_model_chat(model, cwd, settings$setting_sources %||% c("user", "project")),
+    error = identity)
   if (inherits(new_chat, "error"))
     return(list(ok = FALSE, type = "error",
                 message = paste0("Model switch failed: ", conditionMessage(new_chat))))
@@ -335,7 +342,8 @@ switch_model <- function(client, model) {
     cli::cli_abort("{.arg model} must be a non-empty character spec or alias.")
 
   cwd      <- client$settings$cwd %||% getwd()
-  new_chat <- .resolve_model_chat(model, cwd)
+  new_chat <- .resolve_model_chat(
+    model, cwd, client$settings$setting_sources %||% c("user", "project"))
   new_model <- tryCatch(new_chat$get_model(), error = function(e) model)
 
   # Route A: in-place provider swap (Chat identity preserved).

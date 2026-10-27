@@ -4,7 +4,12 @@
 \alias{.parse_client_spec}
 \title{Parse a client spec string ("provider/model") into chat factory args}
 \usage{
-.parse_client_spec(spec, aliases = list(), cwd = getwd())
+.parse_client_spec(
+  spec,
+  aliases = list(),
+  cwd = getwd(),
+  setting_sources = c("user", "project")
+)
 }
 \arguments{
 \item{spec}{Character. Client spec string or alias key.}

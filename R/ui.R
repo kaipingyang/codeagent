@@ -662,24 +662,24 @@ codeagent_app <- function(
     session_client <- if (!is.null(client_factory))
       .invoke_codeagent_client_factory(client_factory, session) else ca_client
     chat_obj <- session_client$chat
-    settings <- session_client$settings
-    settings$web_citations <- web_citations
-    settings$ui_layout <- ui_layout
-    cwd <- settings$cwd %||% getwd()
-    # Generative UI canvas: an adapter per Chat, created cheaply here and
-    # prepared under the init overlay below. A shared pre-built client keeps
-    # one adapter on its Chat, so a second browser session poisons it instead
-    # of silently taking over the first session's canvas.
-    if (isTRUE(genui_ui) && .genui_wanted(settings, per_session = genui_per_session,
-                                          options = canvas, explicit = genui_explicit)) {
-      adapter <- attr(chat_obj, "codeagent_genui") %||%
-        GenUIAdapter$new(prepare = FALSE, options = canvas)
-      attr(chat_obj, "codeagent_genui") <- adapter
-      settings$genui <- adapter
-    }
     tools_ready <- if (!is.null(client_factory))
       length(tryCatch(chat_obj$get_tools(), error = function(e) list())) > 0L else
       tools_ready
+
+    # The per-session engine (streaming, interaction bar, canvas, Data Shield,
+    # hooks) is shared with codeagent_server(); see R/embed.R.
+    core <- .codeagent_session_server(
+      input, output, session, session_client,
+      canvas          = if (isTRUE(genui_ui)) canvas else NULL,
+      canvas_explicit = genui_explicit,
+      per_session     = genui_per_session,
+      tools_ready     = tools_ready,
+      drawer_id       = if (identical(ui_layout, "page_chat")) "chat" else NULL,
+      settings_overrides = list(web_citations = web_citations, ui_layout = ui_layout))
+    settings    <- core$settings
+    state       <- core$state
+    stream_task <- core$stream_task
+    cwd <- settings$cwd %||% getwd()
     if (.web_citations_enabled(settings$web_citations)) {
       # The app-level opt-in may be applied after a factory built its client.
       # Refresh prompt and already-registered web tools before the first turn.
@@ -689,45 +689,6 @@ codeagent_app <- function(
         tryCatch(register_web_tools(chat_obj, citations = TRUE),
                  error = function(e) NULL)
     }
-
-    # SessionEnd hook (CC parity): fire when the browser session ends, matching
-    # CC's executeSessionEndHooks. hooks live on the session's settings.
-    # Also start filesystem-watch hooks (FileChanged / ConfigChange) here, since
-    # the Shiny reactive loop pumps `later` so watcher callbacks dispatch.
-    local({
-      sess_hooks <- tryCatch(settings$hooks_registry, error = function(e) NULL)
-      watch_handle <- tryCatch(.start_hook_watchers(sess_hooks, cwd = cwd),
-                               error = function(e) NULL)
-      session$onSessionEnded(function() {
-        if (!is.null(watch_handle)) tryCatch(watch_handle$stop(), error = function(e) NULL)
-        if (!is.null(sess_hooks))
-          tryCatch(sess_hooks$run_session_end("other", list()),
-                   error = function(e) NULL)
-        # Release the Data Shield's sensitive closures/state at session teardown
-        # (kiro round-2 #10): a per-session shield holds datasets, a value index,
-        # reviewer/ask closures and (custom) scanner closures. close() is
-        # idempotent and the R6 finalizer is only a GC backstop, so close here.
-        sh <- tryCatch(settings$data_shield_engine, error = function(e) NULL)
-        if (inherits(sh, "DataShield")) tryCatch(sh$close(), error = function(e) NULL)
-      })
-    })
-
-    # Shared reactive state (single reactiveValues, no scattered reactiveVal)
-    state <- shiny::reactiveValues(
-      session_id      = tryCatch(.generate_uuid_v4(), error = function(e) "default"),
-      initializing    = TRUE,       # deferred tool registration in progress -> gate input
-      init_step       = "Loading tools & skills\u2026",
-      iteration       = 0L,
-      interrupt       = FALSE,
-      main_output     = NULL,
-      settings_changed = 0L,
-      sessions_dirty  = 0L,         # bumped after a session is saved/new/deleted
-                                    # -> the Sessions list re-renders (see server_sessions)
-      pending_interaction = NULL,   # Phase 3: approval / question pause slot
-      compaction_ctrl = CompactionController$new(),
-      budget_tracker  = BudgetTracker$new(),
-      resource_state  = ContentReplacementState$new()
-    )
 
     # Pre-fill the input with an initial greeting (e.g. the IDE "Chat about
     # selection" addin seeds the selected code). Guarded: default NULL leaves the
@@ -740,43 +701,6 @@ codeagent_app <- function(
           error = function(e) NULL)
       }, once = TRUE)
     }
-
-    # Wire server modules
-    # NOTE: We do NOT call shinychat::chat_server() here. In shinychat >= 0.4 it
-    # unconditionally registers its own observeEvent(input$chat_user_input) that
-    # auto-streams the response via client$stream_async(). That conflicts with
-    # codeagent's harness stream_task (server_chat) -- both would fire on every
-    # submit, producing duplicate/broken streams. codeagent owns streaming so it
-    # can wrap it with skill preprocessing, compaction, hooks and session save.
-    # Typed slash commands still work: server_chat's observeEvent runs the input
-    # through .preprocess_input()/.handle_chat_command() before the LLM.
-    # Trade-off: no native shinychat slash autocomplete palette.
-    chat_server_mod <- NULL
-
-    # Phase 3: wire the interaction bar (approval / question) and build the
-    # promise-returning Shiny ask callbacks. Stash them in `settings` BEFORE the
-    # deferred registration below, so .register_all_tools() (in onFlushed) builds
-    # the interactive tools (Write/Edit/MultiEdit/Bash/RunR + AskUserQuestion) as
-    # async, UI-gated variants.
-    interaction <- server_interaction(input, output, session, state)
-    settings$shiny_ask_fn          <- interaction$ask_fn
-    settings$shiny_ask_question_fn <- interaction$ask_question_fn
-    if (inherits(session_client$data_shield,"DataShield"))
-      session_client$data_shield$set_egress_ask(interaction$egress_ask_fn)
-    # NB: tools are registered LAZILY in the onFlushed() init below (after the UI
-    # + progress overlay render). Registering here would block the first flush and
-    # defeat the instant-UI / overlay. (server_settings re-registers on mode change.)
-
-    stream_task <- server_chat(input, output, session,
-                               chat            = chat_obj,
-                               settings        = settings,
-                               state           = state,
-                               cwd             = cwd,
-                               chat_server_mod = chat_server_mod,
-                               drawer_id       = if (identical(ui_layout, "page_chat"))
-                                 "chat" else NULL)
-
-    .genui_server(input, session, settings, stream_task)
 
     server_sessions(input, output, session,
                     chat        = chat_obj,
@@ -804,24 +728,14 @@ codeagent_app <- function(
       )
     })
 
-    # Deferred initialization: register tools (btw + skills, ~15-40s) AFTER the UI
-    # (incl. the overlay above) has been flushed to the client, so the overlay is
-    # visible throughout. Input stays gated (state$initializing) until ready. A
-    # pre-built client already has its tools (tools_ready) -> overlay clears fast.
+    # Deferred initialization (tools, skills, canvas, shield): AFTER the UI
+    # (incl. the overlay above) has been flushed, so the overlay is visible
+    # throughout. Input stays gated (state$initializing) until ready.
     session$onFlushed(function() {
-      genui_on <- .genui_attach(settings, session)
-      if (!isTRUE(tools_ready) || isTRUE(genui_on))
-        tryCatch(.register_all_tools(chat_obj, settings), error = function(e) NULL)
-      if (isTRUE(genui_on))
-        tryCatch(.sync_genui_prompt(chat_obj, settings), error = function(e) NULL)
+      genui_on <- core$ready()
       if (isTRUE(genui_ui) && !isTRUE(genui_on))
         tryCatch(bslib::nav_hide("main_tab", "canvas", session = session),
                  error = function(e) NULL)
-      # Harness-only/session factories register tools lazily; install/re-install
-      # the shield afterwards so newly attached tools capture this session state.
-      if (inherits(session_client$data_shield, "DataShield"))
-        tryCatch(session_client$data_shield$install(chat_obj), error = function(e) NULL)
-      state$initializing <- FALSE
     }, once = TRUE)
 
     # Auto-continue: restore only after the first UI flush. The former
