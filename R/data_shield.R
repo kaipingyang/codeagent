@@ -175,6 +175,11 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
   }
   if(length(spans)) sanitized <- .data_shield_redact_spans(
     sanitized,do.call(rbind,spans),"[PROTECTED_VALUE]")
+  # Identifier variants / shapes (R/data_shield_ids.R), as on every other edge.
+  if (is.environment(index))
+    for (sp in .ds_id_spans(sanitized, index))
+      sanitized <- gsub(paste0("(?<![[:alnum:]])", .data_shield_escape_regex(sp), "(?![[:alnum:]])"),
+                        "[PROTECTED_VALUE]", sanitized, perl = TRUE)
   .data_shield_redact_code_literals(sanitized)
 }
 
@@ -436,7 +441,18 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
 .data_shield_default_regex_patterns <- function() {
   c(
     email = "[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}",
-    phone = "(?:\\+?[0-9][0-9 .()\\-]{7,}[0-9])",
+    # Phone numbers in their written forms only: "+<country> ..." groups,
+    # NANP-style 3-3-4, and 11-digit mainland-China mobiles. The former
+    # "8+ digits/spaces/brackets" rule also redacted ISO dates (2024-01-15) and
+    # clinical count-percent cells such as "40 (100.0%)".
+    phone = paste0(
+      "(?<![0-9A-Za-z])(?:",
+      "\\+[0-9]{1,3}(?:[ -]?\\([0-9]{1,4}\\))?(?:[ -][0-9]{2,4}){3,4}",
+      "|\\+[0-9]{10,15}",
+      "|\\([0-9]{3}\\)[ .-]?[0-9]{3}[ .-][0-9]{4}",
+      "|[0-9]{3}-[0-9]{3}-[0-9]{4}|[0-9]{3}\\.[0-9]{3}\\.[0-9]{4}",
+      "|1[3-9][0-9]{9}",
+      ")(?![0-9])"),
     api_token = "\\b(?:sk|ghp|dapi)[_-]?[A-Z0-9]{16,}\\b",
     identity_18 = "\\b[0-9]{17}[0-9X]\\b")
 }
@@ -823,9 +839,17 @@ DataShield <- R6::R6Class(
     #'   keys). On overflow, indexing stops and a warning is emitted; unindexed
     #'   values are not caught by value_match and rely on the other egress
     #'   layers. `NULL`/`Inf` disables the cap.
+    #' @param id_variants If `TRUE` (default), value_match also catches the
+    #'   indexed values written another way (separators changed or dropped,
+    #'   leading zeros dropped: `BGB 001 0007`, `BGB0010007`, `BGB-1-7` for
+    #'   `BGB-001-0007`), and each identifier column whose values share a
+    #'   dominant character shape with a literal letter prefix contributes a
+    #'   pattern (e.g. `BGB-[0-9]{3}-[0-9]{4}`) that catches identifiers of that
+    #'   form even when they were never registered.
     register_data = function(df, name = NULL, sensitivity = NULL, cols = NULL,
                              min_len = 3L, min_card = 8L,
-                             max_index_values = 500000L, column_access = NULL) {
+                             max_index_values = 500000L, column_access = NULL,
+                             id_variants = TRUE) {
       private$assert_open()
       if (!is.data.frame(df)) stop("`df` must be a data.frame.", call. = FALSE)
       if (is.null(name)) name <- paste0("dataset_", length(private$datasets) + 1L)
@@ -884,11 +908,19 @@ DataShield <- R6::R6Class(
           df, cols = none_egress_cols, min_len = min_len, min_card = min_card,
           max_values = max_index_values, deny_all = TRUE)
         else NULL
+      # Identifier variants and shapes (R/data_shield_ids.R): format variants of
+      # the indexed values, and id-shaped patterns inferred from identifier
+      # columns so unregistered ids of the same form are caught too.
+      id_tables <- if (isTRUE(id_variants))
+        .ds_build_id_tables(
+          df, id_cols = setdiff(names(sensitivity)[sensitivity == "identifier"], raw_egress_cols),
+          min_len = min_len, min_card = min_card, max_values = max_index_values)
       private$datasets[[name]] <- list(
         name = name, data = df, sensitivity = sensitivity,
         column_access = col_access,
         index = idx, index_columns = index_cols,
-        deny_index = deny_idx, deny_columns = none_egress_cols)
+        deny_index = deny_idx, deny_columns = none_egress_cols,
+        id_tables = id_tables)
       # Initialize this dataset's DP privacy budget (31x). One-time allowance,
       # no time-window reset; consumed by describe()/schema_block() and never
       # replenished except by re-registering the dataset.
@@ -1544,6 +1576,7 @@ DataShield <- R6::R6Class(
         private$assets <- list()
         private$audit_log <- list()
         rm(list = ls(private$index, all.names = TRUE), envir = private$index)
+        .ds_reset_id_tables(private$index)   # variants are derived from protected values
         if (!is.null(private$deny_index))
           rm(list = ls(private$deny_index, all.names = TRUE), envir = private$deny_index)
         # Also release reviewer/factory/approval closures -- an explicit
@@ -1802,10 +1835,13 @@ DataShield <- R6::R6Class(
     rebuild_index = function() {
       rm(list = ls(private$index, all.names = TRUE), envir = private$index)
       rm(list = ls(private$deny_index, all.names = TRUE), envir = private$deny_index)
+      .ds_reset_id_tables(private$index)
       deny_raw <- character()   # merge fixed-string deny values across datasets
       for (dataset in private$datasets) {
         keys <- ls(dataset$index, all.names = TRUE)
         for (key in keys) assign(key, TRUE, envir = private$index)
+        if (!is.null(dataset$id_tables))
+          .ds_merge_id_tables(private$index, dataset$id_tables)
         if (!is.null(dataset$deny_index)) {
           dkeys <- ls(dataset$deny_index, all.names = TRUE)
           for (key in dkeys) assign(key, TRUE, envir = private$deny_index)
@@ -2352,8 +2388,9 @@ refresh_data_shield_context <- function(client) {
 # row-cap lets through (e.g. printing one subject's name/id). We index only
 # HIGH-ENTROPY values (unique, long enough, high-cardinality columns, non
 # small-int) so common/categorical values don't cause false positives -- those
-# are the describe layer's job. Token-hash matching (v0); delimited/multi-word
-# values are a known gap (Aho-Corasick is a later enhancement).
+# are the describe layer's job. Token-hash matching on compound tokens and
+# their part runs; identifier format variants and id shapes live in
+# R/data_shield_ids.R. Free multi-word values remain unmatched.
 # ---------------------------------------------------------------------------
 
 # Normalise a value/token for matching: casefold + canonical numeric form.
@@ -2438,37 +2475,52 @@ refresh_data_shield_context <- function(client) {
 .DATA_SHIELD_MAX_SEGMENTS <- 8L
 
 #' @keywords internal
-.data_shield_tokens <- function(text) {
-  compound <- strsplit(text, "[^[:alnum:]._/-]+", perl = TRUE)[[1L]]
-  compound <- gsub("^[._/-]+|[._/-]+$", "", compound)
-  compound <- unique(compound[nzchar(compound)])
-  runs <- lapply(compound, function(tok) {
-    pos <- gregexpr("[^_/-]+", tok, perl = TRUE)[[1L]]
-    if (pos[1L] < 0L) return(character(0))
-    starts <- as.integer(pos)
-    ends <- starts + attr(pos, "match.length") - 1L
-    k <- length(starts)
-    out <- character(0)
-    for (i in seq_len(k)) {
-      last <- min(k, i + .DATA_SHIELD_MAX_SEGMENTS - 1L)
-      out <- c(out, substring(tok, starts[i], ends[i:last]))
-    }
-    c(out, tok)
-  })
-  toks <- gsub("^\\.+|\\.+$", "", unique(unlist(runs, use.names = FALSE)))
-  toks <- unique(toks)
+.data_shield_tokens <- function(text, max_runs = .DATA_SHIELD_MAX_SEGMENTS) {
+  # Extract the token runs rather than strsplit(perl = TRUE) on the gaps: the
+  # latter is quadratic on long text (~40 s for a 0.5 MB tool result).
+  compound <- regmatches(text, gregexpr("[[:alnum:]._/-]+", text, perl = TRUE))[[1L]]
+  compound <- unique(gsub("^[._/-]+|[._/-]+$", "", compound))
+  compound <- compound[nzchar(compound)]
+  # Only tokens with an inner separator have runs to enumerate; most text
+  # (words, numbers) skips the per-token work entirely.
+  multi <- compound[grepl("[_/-]", compound)]
+  runs <- if (length(multi))
+    unlist(lapply(multi, .data_shield_token_runs, max_runs = max_runs), use.names = FALSE)
+  toks <- unique(gsub("^\\.+|\\.+$", "", c(compound, runs)))
   toks[nchar(toks) >= 3L]
+}
+
+# Contiguous runs of separator-joined segments of one compound token, kept
+# with their separators: "a-b-c" -> a, a-b, a-b-c, b, b-c, c.
+.data_shield_token_runs <- function(tok, max_runs = .DATA_SHIELD_MAX_SEGMENTS) {
+  pos <- gregexpr("[^_/-]+", tok, perl = TRUE)[[1L]]
+  if (pos[1L] < 0L) return(character(0))
+  starts <- as.integer(pos)
+  ends <- starts + attr(pos, "match.length") - 1L
+  k <- length(starts)
+  i <- rep(seq_len(k), times = pmin(max_runs, k - seq_len(k) + 1L))
+  j <- i + sequence(pmin(max_runs, k - seq_len(k) + 1L)) - 1L
+  substring(tok, starts[i], ends[j])
 }
 
 .data_shield_value_scan <- function(text, index) {
   if (!is.environment(index) || !is.character(text) || length(text) != 1L)
-    return(list(hit = FALSE, n = 0L, values = character(0)))
-  toks <- .data_shield_tokens(text)
-  if (!length(toks)) return(list(hit = FALSE, n = 0L, values = character(0)))
+    return(list(hit = FALSE, n = 0L, values = character(0), spans = character(0)))
+  toks <- .data_shield_tokens(text, .ds_max_runs(index))
   norm <- .data_shield_normalize(toks)
   hit  <- norm[vapply(norm, function(t) exists(t, envir = index, inherits = FALSE),
                       logical(1))]
-  list(hit = length(hit) > 0L, n = length(hit), values = unique(hit))
+  # Identifier variants and shapes (R/data_shield_ids.R).
+  spans <- .ds_id_spans(text, index)
+  # One protected value found both exactly and as a span counts once.
+  n <- length(unique(c(hit, .data_shield_normalize(spans))))
+  list(hit = n > 0L, n = n, values = unique(hit), spans = spans)
+}
+
+# Segment runs to try per compound token: the default, or more when the index
+# holds longer identifiers.
+.ds_max_runs <- function(index) {
+  max(.DATA_SHIELD_MAX_SEGMENTS, as.integer(attr(index, "max_segments") %||% 0L) + 2L)
 }
 
 # Redact protected values FROM a user prompt, keeping the rest of the text.
@@ -2484,10 +2536,15 @@ refresh_data_shield_context <- function(client) {
   # casing/format) whose normalized form is a protected value.
   # Longest first, so a compound identifier is replaced whole before any of
   # its parts.
-  toks <- .data_shield_tokens(text)
+  toks <- .data_shield_tokens(text, .ds_max_runs(index))
   toks <- toks[order(-nchar(toks))]
-  if (!length(toks)) return(text)
   out <- text
+  # Identifier variants / shapes first (longest first): whole spans.
+  spans <- .ds_id_spans(text, index)
+  for (sp in spans[order(-nchar(spans))])
+    out <- gsub(paste0("(?<![[:alnum:]])", .data_shield_escape_regex(sp), "(?![[:alnum:]])"),
+                replacement, out, perl = TRUE)
+  if (!length(toks)) return(out)
   for (tok in toks) {
     norm <- .data_shield_normalize(tok)
     if (!exists(norm, envir = index, inherits = FALSE)) next
@@ -2512,7 +2569,7 @@ refresh_data_shield_context <- function(client) {
 .data_shield_classify_columns <- function(df, sensitivity = NULL) {
   out <- stats::setNames(rep("measure", ncol(df)), names(df))
   nms <- tolower(names(df))
-  id_pat <- "(^|_)(id|identifier|subjid|subject|patient|name|email|phone|ssn|mrn|address)(_|$)"
+  id_pat <- "(^|_)(id|identifier|u?subjid|subject|patient|name|email|phone|ssn|mrn|address)(_|$)"
   quasi_pat <- "(^|_)(age|sex|gender|race|ethnic|site|country|region|zip|postal|birth|dob)(_|$)"
   out[grepl(id_pat, nms, perl = TRUE)] <- "identifier"
   out[grepl(quasi_pat, nms, perl = TRUE)] <- "quasi"

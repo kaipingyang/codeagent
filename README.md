@@ -296,6 +296,20 @@ Shiny stream — when a shield is active. It is kept separate from the
 `UserPromptSubmit` hook, which may block or append context but — matching Claude
 Code — never rewrites the user's input; only the shield redacts.
 
+value_match does not need the identifier written exactly as registered. With
+`register_data(id_variants = TRUE)` (the default), identifier columns also
+catch format variants of ids that contain a letter -- separators changed or
+dropped, leading zeros dropped (`BGB 001 0007`, `BGB0010007`, `BGB-1-7` for
+`BGB-001-0007`), or joined to other words (`BGB-001-0007_AE.csv`) -- and each
+identifier column with a dominant character shape and a literal letter prefix
+contributes a pattern (`BGB-[0-9]{3}-[0-9]{4}`) that catches ids of that form
+that were never registered. Purely numeric ids keep exact matching, since their
+variants look like decimals and counts; treatment labels, codes, counts,
+percentages and dates stay clear.
+For columns whose values must never appear in a tool result at all, use
+`column_access = list(COL = list(egress = "none"))`: any match denies the whole
+result.
+
 Edge 3 (the model's reply back to the user) is the **output gate**:
 `.output_gate_scan()` / `DataShield$scan_response()` scan the finalized reply
 with the same detectors, catching a protected value the model reproduced (e.g.
