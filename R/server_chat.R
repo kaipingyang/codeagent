@@ -17,6 +17,33 @@ NULL
   list(text = gated$text %||% text, finish = finish)
 }
 
+# Buffered (Data Shield / citation) mode: which stream chunks may be shown
+# before the reply is finalised. Tool requests and results are; model text
+# and thinking are not. A tool call's arguments are model-authored, so they
+# pass the output gate first and are dropped from the card if the gate would
+# change anything. Returns the chunk to show, or NULL.
+.buffered_display_chunk <- function(chunk, settings, chat) {
+  if (S7::S7_inherits(chunk, ellmer::ContentToolRequest))
+    return(.gated_tool_request(chunk, settings, chat))
+  if (S7::S7_inherits(chunk, ellmer::ContentToolResult)) {
+    req <- tryCatch(chunk@request, error = function(e) NULL)
+    if (!is.null(req)) chunk@request <- .gated_tool_request(req, settings, chat)
+    return(chunk)
+  }
+  NULL
+}
+
+.gated_tool_request <- function(req, settings, chat) {
+  args <- req@arguments
+  if (!length(args)) return(req)
+  txt <- tryCatch(as.character(jsonlite::toJSON(args, auto_unbox = TRUE, force = TRUE, null = "null")),
+                  error = function(e) NULL)
+  gated <- if (is.null(txt)) list(action = "redact") else .output_gate_guarded(txt, settings, chat)
+  if (identical(gated$action, "pass")) return(req)
+  req@arguments <- list()
+  req
+}
+
 server_chat <- function(input, output, session, chat, settings,
                          state, cwd, chat_server_mod = NULL,
                          drawer_id = NULL) {
@@ -189,12 +216,23 @@ server_chat <- function(input, output, session, chat, settings,
             c(stream_contents, list(stream = "content", controller = stream_ctrl))
           )
           if (isTRUE(.buffer_output)) {
-            # Buffer: drain without rendering; marker bridge and gate run first.
-            for (chunk in coro::await_each(stream)) { NULL }
-            finalized <- .finalize_server_reply(
-              chat, settings, citation_registry)
-            if (nzchar(finalized$text %||% ""))
-              await(shinychat::chat_append("chat", finalized$text, session = session))
+            # Buffer the model's text: the marker bridge and output gate run on
+            # the whole reply before any of it is shown. Tool cards are not
+            # held back -- their display is the host's output for the user, and
+            # their arguments pass the same output gate (see
+            # .buffered_display_chunk) -- so a turn that runs tools shows them
+            # as it goes, and the gated text closes the same message.
+            fin <- new.env(parent = emptyenv())
+            shown <- coro::async_generator(function() {
+              for (chunk in coro::await_each(stream)) {
+                card <- .buffered_display_chunk(chunk, settings, chat)
+                if (!is.null(card)) yield(card)
+              }
+              fin$value <- .finalize_server_reply(chat, settings, citation_registry)
+              if (nzchar(fin$value$text %||% "")) yield(fin$value$text)
+            })
+            await(shinychat::chat_append("chat", shown(), session = session))
+            finalized <- fin$value
           } else {
             await(shinychat::chat_append("chat", stream, session = session))
             finalized <- .finalize_server_reply(

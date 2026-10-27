@@ -751,7 +751,7 @@ codeagent_app <- function(
         state$session_id <- sid
         # A restored conversation must never carry a stale live approval/question
         # pause: pending_interaction is per-session UI state, not conversation.
-        state$pending_interaction <- NULL
+        .clear_interactions(state)
         shinychat::chat_clear("chat", session = session)
         # Replay via contents_shinychat -- native tool card rendering.
         .replay_turns_to_ui(chat_obj, session, settings)

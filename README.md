@@ -316,8 +316,10 @@ with the same detectors, catching a protected value the model reproduced (e.g.
 inferred from tool output) even when the user's input was clean. The CLI redacts
 the reply in place; when a shield is active the Shiny/CLI streaming paths
 **buffer the reply, scan it, then show the (possibly redacted) text once** —
-nothing reaches the browser until the output gate has run (no plaintext-then-
-warning). Configure via
+no model text reaches the browser until the output gate has run (no plaintext-then-
+warning). Tool cards still appear as the tools run in the Shiny app (a host
+tool's display is output for the user); the arguments shown on a card pass the
+same output gate and are dropped from the card if it would change them. Configure via
 `data_shield_response_on_fail` and `data_shield_output_scanners`. Both gates take
 a **configurable scanner list** (`data_shield_input_scanners` /
 `data_shield_output_scanners`, default `c("value_match", "regex")`,

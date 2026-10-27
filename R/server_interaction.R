@@ -6,8 +6,9 @@
 #'   * **ask_question_fn** -- `AskUserQuestion` clarifying-question input.
 #'   * **egress_ask_fn** -- Data Shield result choice (redact/block/raw-once).
 #'
-#'   All store a single `state$pending_interaction` slot and expose an
-#'   interaction bar in the chat footer. The promise returned by the ask
+#'   One request is shown at a time in `state$pending_interaction` (the
+#'   interaction bar in the chat footer); requests that arrive meanwhile wait
+#'   in `state$interaction_queue` and are shown in order. The promise returned by the ask
 #'   functions is awaited by the (async) tool inside the streaming task; it is
 #'   resolved by the Allow/Deny/Submit observers here.
 #'
@@ -26,13 +27,11 @@ NULL
 .shiny_ask_fn <- function(session, state) {
   function(tool_name, tool_input) {
     promises::promise(function(resolve, reject) {
-      shiny::isolate({
-        state$pending_interaction <- list(
-          type    = "approval",
-          payload = list(tool_name = tool_name, tool_input = tool_input),
-          resolve = resolve
-        )
-      })
+      .enqueue_interaction(state, list(
+        type    = "approval",
+        payload = list(tool_name = tool_name, tool_input = tool_input),
+        resolve = resolve
+      ))
     })
   }
 }
@@ -42,14 +41,12 @@ NULL
 .shiny_ask_question_fn <- function(session, state) {
   function(question, choices = NULL) {
     promises::promise(function(resolve, reject) {
-      shiny::isolate({
-        state$pending_interaction <- list(
-          type    = "question",
-          payload = list(question = question,
-                         choices  = as.character(choices %||% character(0))),
-          resolve = resolve
-        )
-      })
+      .enqueue_interaction(state, list(
+        type    = "question",
+        payload = list(question = question,
+                       choices  = as.character(choices %||% character(0))),
+        resolve = resolve
+      ))
     })
 
   }
@@ -61,14 +58,12 @@ NULL
 .shiny_ask_form_fn <- function(session, state) {
   function(title, fields, submit_label = "Submit") {
     promises::promise(function(resolve, reject) {
-      shiny::isolate({
-        state$pending_interaction <- list(
-          type    = "form",
-          payload = list(title = title, fields = fields,
-                         submit_label = submit_label %||% "Submit"),
-          resolve = resolve
-        )
-      })
+      .enqueue_interaction(state, list(
+        type    = "form",
+        payload = list(title = title, fields = fields,
+                       submit_label = submit_label %||% "Submit"),
+        resolve = resolve
+      ))
     })
   }
 }
@@ -110,30 +105,71 @@ NULL
   function(event) {
     promises::promise(function(resolve, reject) {
       token <- tryCatch(.generate_uuid_v4(),error=function(e)paste0("egress-",Sys.time()))
-      shiny::isolate({
-        state$pending_interaction <- list(
-          type="egress", token=token, payload=event, resolve=resolve)
-      })
+      .enqueue_interaction(state, list(
+        type="egress", token=token, payload=event, resolve=resolve))
+      # Timeout counts from the request, shown or still queued: unanswered
+      # results are redacted (the safe default) either way.
       timeout <- max(0,as.numeric(event$timeout %||% 60))
       later::later(function() {
         if (isTRUE(tryCatch(session$isClosed(),error=function(e) TRUE)))
           return(invisible(NULL))
-        pending <- shiny::isolate(state$pending_interaction)
-        if (!is.null(pending) && identical(pending$type,"egress") &&
-            identical(pending$token,token))
-          .resolve_pending(state,"redact")
+        .resolve_interaction_token(state, token, "redact")
       },delay=timeout)
     })
   }
 }
 
-# Resolve + clear the pending interaction safely (idempotent).
+# Interactions are shown one at a time. Tools run concurrently (several tool
+# calls in one turn, a form while an approval is open), so a request that
+# arrives while another is shown waits in `state$interaction_queue` instead of
+# overwriting the slot -- an overwritten request's promise never resolved and
+# its tool, and the turn, hung.
+.enqueue_interaction <- function(state, item) {
+  if (is.null(item$token))
+    item$token <- tryCatch(.generate_uuid_v4(), error = function(e) paste0("ia-", as.numeric(Sys.time())))
+  shiny::isolate({
+    if (is.null(state$pending_interaction)) state$pending_interaction <- item
+    else state$interaction_queue <- c(state$interaction_queue, list(item))
+  })
+  invisible(item$token)
+}
+
+# Resolve + clear the shown interaction safely (idempotent), then show the
+# next queued one.
 .resolve_pending <- function(state, value) {
   pending <- shiny::isolate(state$pending_interaction)
   if (is.null(pending)) return(invisible(FALSE))
-  state$pending_interaction <- NULL
+  queue <- shiny::isolate(state$interaction_queue)
+  state$pending_interaction <- if (length(queue)) queue[[1L]] else NULL
+  state$interaction_queue <- if (length(queue) > 1L) queue[-1L] else NULL
   tryCatch(pending$resolve(value), error = function(e) NULL)
   invisible(TRUE)
+}
+
+# Resolve one interaction by token, whether shown or still queued (timeouts).
+.resolve_interaction_token <- function(state, token, value) {
+  pending <- shiny::isolate(state$pending_interaction)
+  if (!is.null(pending) && identical(pending$token, token))
+    return(.resolve_pending(state, value))
+  queue <- shiny::isolate(state$interaction_queue)
+  hit <- vapply(queue, function(it) identical(it$token, token), logical(1))
+  if (!any(hit)) return(invisible(FALSE))
+  item <- queue[[which(hit)[1L]]]
+  rest <- queue[-which(hit)[1L]]
+  state$interaction_queue <- if (length(rest)) rest else NULL
+  tryCatch(item$resolve(value), error = function(e) NULL)
+  invisible(TRUE)
+}
+
+# Drop every shown and queued interaction, resolving each with its cancel
+# value so no tool is left waiting (session restore / clear).
+.clear_interactions <- function(state) {
+  items <- c(list(shiny::isolate(state$pending_interaction)), shiny::isolate(state$interaction_queue))
+  state$pending_interaction <- NULL
+  state$interaction_queue <- NULL
+  for (it in Filter(Negate(is.null), items))
+    tryCatch(it$resolve(.interaction_cancel_value(it)), error = function(e) NULL)
+  invisible(NULL)
 }
 
 # Build the in-chat interaction bar for a pending approval / question. PURE:
@@ -262,7 +298,12 @@ server_interaction <- function(input, output, session, state) {
   # The bar's layout is built by the pure .interaction_bar_ui(); this observer
   # just re-renders it whenever the pending slot changes.
   output$ca_interaction_ui <- shiny::renderUI({
-    .interaction_bar_ui(state$pending_interaction)
+    bar <- .interaction_bar_ui(state$pending_interaction)
+    waiting <- length(state$interaction_queue)
+    if (is.null(bar) || !waiting) return(bar)
+    htmltools::tagList(bar, htmltools::tags$div(
+      class = "ca-interaction-queue small text-muted", style = "padding:2px 16px; text-align:left;",
+      sprintf("%d more request%s waiting", waiting, if (waiting == 1L) "" else "s")))
   })
 
   # ---- Allow / Deny (permission approval) ----
