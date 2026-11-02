@@ -198,6 +198,9 @@ test_that("csp = TRUE, FALSE or a string decides the Canvas tab's policy", {
     regmatches(html, regexpr('content="[^"]*"', html))
   }
   expect_match(meta(canvas_options()), "img-src &#39;self&#39;", fixed = TRUE)
+  # The policy covers the host page: its own iframes must still load.
+  expect_match(meta(canvas_options()), "frame-src &#39;self&#39;", fixed = TRUE)
+  expect_no_match(meta(canvas_options()), "frame-src &#39;none&#39;", fixed = TRUE)
   expect_length(meta(canvas_options(csp = FALSE)), 0L)
   expect_match(meta(canvas_options(csp = "img-src *")), "img-src \\*")
 })

@@ -24,8 +24,9 @@ features that ride the same promise-as-pause-signal design:
 \item \strong{egress_ask_fn} -- Data Shield result choice (redact/block/raw-once).
 }
 
-All store a single \code{state$pending_interaction} slot and expose an
-interaction bar in the chat footer. The promise returned by the ask
+One request is shown at a time in \code{state$pending_interaction} (the
+interaction bar in the chat footer); requests that arrive meanwhile wait
+in \code{state$interaction_queue} and are shown in order. The promise returned by the ask
 functions is awaited by the (async) tool inside the streaming task; it is
 resolved by the Allow/Deny/Submit observers here.
 

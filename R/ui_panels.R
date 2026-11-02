@@ -274,12 +274,15 @@ chat_codeagent_ui <- function(skill_meta, submit_key = "enter") {
 
 # Content Security Policy for apps that may show a generative UI canvas. Canvas
 # text is model-authored; even though components render it as text, the page
-# must not be able to fetch a model-chosen image, media file, frame or plugin.
+# must not be able to fetch a model-chosen image, media file, frame or plugin
+# from another origin. The policy covers the whole page, not just the canvas:
+# frames from the app itself stay allowed, so a host that shows its own output
+# in an iframe (a rendered report, a table preview) keeps working.
 # Scripts and styles are untouched (Shiny, bslib and shinychat need inline ones).
 .GENUI_CSP <- paste(
   "img-src 'self' data: blob:;",
   "media-src 'self' data: blob:;",
-  "frame-src 'none';",
+  "frame-src 'self';",
   "object-src 'none'")
 
 # The static Canvas tab: one persistent container the GenUI executor inserts

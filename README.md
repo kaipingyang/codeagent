@@ -671,7 +671,8 @@ Your components are trusted code: codeagent registers them as read-only canvas
 tools behind the permission gate and runs them through the same executor,
 Data Shield scanning and strict restore, and leaves what they render to you.
 Two switches loosen the defaults when your components need it: `csp`
-(`TRUE`, `FALSE` or your own policy string) and `validate_text` (set `FALSE`
+(`TRUE`, `FALSE` or your own policy string; the default allows images, media
+and frames from the app itself only, and it applies to the whole host page) and `validate_text` (set `FALSE`
 when the model must pass URLs to a component).
 
 The model calls one tool per component (`canvas_histogram(dataset = "mtcars",

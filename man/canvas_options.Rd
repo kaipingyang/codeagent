@@ -25,7 +25,8 @@ them, the default), \code{FALSE} (none), or a character vector of their names
 \item{csp}{Content Security Policy for the page while the canvas is
 available: \code{TRUE} (default; images, media, frames and plugins only from
 the app itself), \code{FALSE} (none), or a policy string of your own -- for
-example when a component loads map tiles from another origin.}
+example when a component loads map tiles from another origin. The policy
+applies to the whole host page, including the host's own content.}
 
 \item{validate_text}{If \code{TRUE} (default), every string the model passes to
 a canvas tool is refused when it contains markup, links, URLs or control
