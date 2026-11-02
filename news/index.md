@@ -2,6 +2,14 @@
 
 ## codeagent (development version)
 
+- Fixed: the canvas Content Security Policy
+  (`canvas_options(csp = TRUE)`, the default) had `frame-src 'none'`. It
+  applies to the whole host page, so a host that shows its own output in
+  an iframe (a report preview, a tool card with an iframe) got a blocked
+  frame as soon as the Canvas tab was on the page. Frames from the app
+  itself are now allowed (`frame-src 'self'`), as documented; frames,
+  images and media from other origins stay blocked.
+
 - Fixed: approval, question, form and Data Shield requests that arrived
   while another one was open (parallel tool calls, a form during an
   approval) replaced it, and the replaced tool – and the turn – waited

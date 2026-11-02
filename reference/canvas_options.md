@@ -45,7 +45,8 @@ canvas_options(
   Content Security Policy for the page while the canvas is available:
   `TRUE` (default; images, media, frames and plugins only from the app
   itself), `FALSE` (none), or a policy string of your own – for example
-  when a component loads map tiles from another origin.
+  when a component loads map tiles from another origin. The policy
+  applies to the whole host page, including the host's own content.
 
 - validate_text:
 
