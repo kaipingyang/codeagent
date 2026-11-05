@@ -105,6 +105,37 @@ codeagent_head_assets <- function() {
   head_assets()
 }
 
+#' Saved conversations for a host app that embeds codeagent
+#'
+#' The list of this workspace's saved conversations (newest first, by their
+#' first message) with "New" and "Delete" buttons, as in [codeagent_app()]'s
+#' Sessions panel. Clicking one restores it into the chat -- tool cards and the
+#' canvas included. Put it wherever the host wants it (a sidebar, an
+#' accordion) and pass `sessions = TRUE` to [codeagent_server()]. Only one per
+#' page.
+#'
+#' Conversations are saved per turn under `CODEAGENT_HOME`, keyed by the
+#' client's working directory (`cwd`): give each user a fixed `cwd` so the
+#' list survives a restart of the app process and holds only that user's
+#' conversations. A page always opens on a new conversation.
+#'
+#' @param title Heading above the list, or `NULL` for none.
+#' @return A Shiny tag.
+#' @seealso [codeagent_server()]
+#' @export
+codeagent_sessions_ui <- function(title = "History") {
+  htmltools::div(
+    class = "ca-sessions",
+    if (!is.null(title)) htmltools::tags$h6(class = "mb-2", title),
+    htmltools::div(
+      class = "d-flex gap-2 mb-2",
+      shiny::actionButton("new_session", "New",
+                          class = "btn-outline-secondary btn-sm flex-fill"),
+      shiny::actionButton("delete_session_btn", "Delete",
+                          class = "btn-outline-danger btn-sm flex-fill")),
+    shiny::uiOutput("session_list_ui"))
+}
+
 #' Run codeagent's chat engine inside a host Shiny app
 #'
 #' Wires the same server side that [codeagent_app()] uses -- streaming with
@@ -131,16 +162,23 @@ codeagent_head_assets <- function() {
 #' @param canvas `NULL` (no canvas) or [canvas_options()] to enable the
 #'   generative UI canvas; place [codeagent_canvas_ui()] in the page. With a
 #'   `tools=` selection on the client, include `"genui"` in it.
+#' @param sessions If `TRUE`, serve the saved-conversation list of
+#'   [codeagent_sessions_ui()] (place it in the page): New, Delete and restore
+#'   on click. Default `FALSE`.
 #' @return Invisibly, a list with `state` (the session `reactiveValues`),
 #'   `stream_task` (the `ExtendedTask`), `chat` and `settings`.
-#' @seealso [codeagent_chat_ui()], [codeagent_canvas_ui()], [codeagent_app()]
+#' @seealso [codeagent_chat_ui()], [codeagent_canvas_ui()],
+#'   [codeagent_sessions_ui()], [codeagent_app()]
 #' @export
 codeagent_server <- function(input, output, session, client, tools = list(),
-                             tool_meta = list(), canvas = NULL) {
+                             tool_meta = list(), canvas = NULL,
+                             sessions = FALSE) {
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
     stop("`canvas` must be NULL or come from canvas_options().", call. = FALSE)
+  if (!is.logical(sessions) || length(sessions) != 1L || is.na(sessions))
+    stop("`sessions` must be TRUE or FALSE.", call. = FALSE)
   .check_host_tools(tools, tool_meta)
   # One live browser session per client: a second session on the same Chat
   # would rebind the approval / question / form callbacks and the canvas to
@@ -164,6 +202,11 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   server_slash(input, session, cwd = core$settings$cwd %||% getwd(),
                stream_task = core$stream_task, chat = client$chat,
                settings = core$settings, state = core$state)
+  if (isTRUE(sessions))
+    server_sessions(input, output, session, chat = client$chat,
+                    cwd = core$settings$cwd %||% getwd(), state = core$state,
+                    stream_task = core$stream_task, settings = core$settings,
+                    default_greeting = FALSE)
   session$onFlushed(function() core$ready(), once = TRUE)
   invisible(list(state = core$state, stream_task = core$stream_task,
                  chat = client$chat, settings = core$settings))

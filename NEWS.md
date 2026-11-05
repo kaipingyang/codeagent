@@ -1,5 +1,13 @@
 # codeagent (development version)
 
+* Host apps can offer saved conversations: `codeagent_sessions_ui()` (the list
+  with New / Delete) and `codeagent_server(sessions = TRUE)`. A click restores
+  the conversation with its tool cards and canvas; New and restore keep the
+  host's greeting. The list is the client's `cwd` under `CODEAGENT_HOME`, so a
+  fixed per-user `cwd` gives each user their own history across restarts.
+* Fixed: a restored conversation showed a host tool's result as its raw value
+  instead of the card the tool returned in `extra$display` (title + html /
+  markdown); replay now keeps that card, as the live chat does.
 * Fixed: with `shield_sandbox()` whose project root is read-only, every
   write-capability tool was blocked ("sandbox root lacks 'w' capability"),
   even tools with no path argument: the sandbox treated the session cwd the

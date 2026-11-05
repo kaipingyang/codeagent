@@ -10,8 +10,15 @@ NULL
   invisible(NULL)
 }
 
+# `default_greeting = FALSE` (host apps): New / load clear the messages but keep
+# the greeting the host gave codeagent_chat_ui() instead of codeagent's own.
 server_sessions <- function(input, output, session, chat, cwd,
-                              state, stream_task, settings = list()) {
+                              state, stream_task, settings = list(),
+                              default_greeting = TRUE) {
+  reset_ui <- function() {
+    if (isTRUE(default_greeting)) .reset_chat_ui_greeting(session)
+    else shinychat::chat_clear("chat", greeting = FALSE, session = session)
+  }
 
   output$session_list_ui <- shiny::renderUI({
     # Re-render whenever a session is saved (sessions_dirty, bumped after
@@ -51,7 +58,7 @@ onclick = sprintf(
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .genui_reset(settings)
     .reset_session_state(state)
-    .reset_chat_ui_greeting(session)
+    reset_ui()
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
   })
 
@@ -65,7 +72,7 @@ onclick = sprintf(
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
     .genui_reset(settings)
     .reset_session_state(state)
-    .reset_chat_ui_greeting(session)
+    reset_ui()
     state$sessions_dirty <- (state$sessions_dirty %||% 0L) + 1L
     .ui_toast("Session deleted.", "message")
   })
@@ -91,7 +98,7 @@ onclick = sprintf(
       return()
     }
     state$session_id <- sid
-    .reset_chat_ui_greeting(session)
+    reset_ui()
     # Replay via contents_shinychat -- native tool card rendering.
     .replay_turns_to_ui(chat, session, settings)
     .genui_restore_ui(settings, chat, sid, cwd)

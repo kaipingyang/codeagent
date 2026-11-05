@@ -145,3 +145,72 @@ test_that("a client serving an open session cannot be bound to a second one", {
     codeagent_server(input, output, session, client)
   }, {}))
 })
+
+test_that("codeagent_sessions_ui holds the session list and its buttons", {
+  html <- as.character(codeagent_sessions_ui())
+  expect_match(html, "session_list_ui")
+  expect_match(html, "new_session")
+  expect_match(html, "delete_session_btn")
+  expect_match(html, "History")
+  expect_false(grepl("<h6", as.character(codeagent_sessions_ui(title = NULL))))
+})
+
+test_that("codeagent_server(sessions = TRUE) lists, restores and starts conversations", {
+  home <- withr::local_tempdir(); withr::local_envvar(CODEAGENT_HOME = home)
+  client <- .embed_client(permission_mode = "plan")
+  cwd <- client$settings$cwd
+  # an earlier conversation of this workspace
+  old <- ellmer::chat_openai_compatible(base_url = "http://127.0.0.1:1", model = "m", credentials = function() "k")
+  old$set_turns(list(ellmer::Turn("user", "earlier question"), ellmer::Turn("assistant", "earlier answer")))
+  sid <- save_session(old, cwd = cwd)
+  expect_error(shiny::testServer(function(input, output, session)
+    codeagent_server(input, output, session, client, sessions = NA), {}), "sessions")
+  shiny::testServer(function(input, output, session) {
+    session$userData$srv <- codeagent_server(input, output, session, client, sessions = TRUE)
+  }, {
+    srv <- session$userData$srv
+    session$flushReact()
+    expect_match(output$session_list_ui$html, "earlier question")
+    expect_match(output$session_list_ui$html, sid, fixed = TRUE)
+    expect_length(client$chat$get_turns(), 0L)               # a page opens on a new conversation
+    session$setInputs(ca_load_session = sid)
+    expect_length(client$chat$get_turns(), 2L)
+    expect_identical(shiny::isolate(srv$state$session_id), sid)
+    session$setInputs(new_session = 1)
+    expect_length(client$chat$get_turns(), 0L)
+    expect_false(identical(shiny::isolate(srv$state$session_id), sid))
+    session$setInputs(ca_load_session = "../../etc/passwd")  # not a session id
+    expect_length(client$chat$get_turns(), 0L)
+  })
+})
+
+test_that("codeagent_server without sessions serves no session list", {
+  client <- .embed_client()
+  shiny::testServer(function(input, output, session) codeagent_server(input, output, session, client), {
+    session$flushReact()
+    expect_error(output$session_list_ui)
+  })
+})
+
+test_that("a host tool's own card survives save and restore (replay keeps extra$display)", {
+  home <- withr::local_tempdir(); withr::local_envvar(CODEAGENT_HOME = home)
+  cwd <- withr::local_tempdir()
+  ch <- ellmer::chat_openai_compatible(base_url = "http://127.0.0.1:1", model = "m", credentials = function() "k")
+  req <- ellmer::ContentToolRequest(id = "c1", name = "HostTFL", arguments = list(key = "t_dm"))
+  res <- ellmer::ContentToolResult(value = "{\"key\":\"t_dm\"}", request = req,
+    extra = list(display = list(title = "t_dm: Demographics",
+                                html = htmltools::div(htmltools::tags$iframe(src = "out/t_dm.html")))))
+  ch$set_turns(list(ellmer::Turn("user", "go"), ellmer::Turn("assistant", list(req)),
+                    ellmer::Turn("user", list(res)), ellmer::Turn("assistant", "done")))
+  sid <- save_session(ch, cwd = cwd)
+  ch2 <- ellmer::chat_openai_compatible(base_url = "http://127.0.0.1:1", model = "m", credentials = function() "k")
+  restore_session_into_chat(ch2, session_id = sid, cwd = cwd)
+  restored <- ch2$get_turns()[[3]]@contents[[1]]
+  adapted <- .adapt_tool_result(restored)
+  html <- paste(as.character(adapted@extra$display$html), collapse = "")
+  expect_match(html, "out/t_dm.html", fixed = TRUE)
+  expect_match(as.character(adapted@extra$display$title), "t_dm: Demographics")
+  # a result without a host card still gets codeagent's own presentation
+  plain <- .adapt_tool_result(ellmer::ContentToolResult(value = "hello", request = req))
+  expect_false(grepl("iframe", paste(as.character(plain@extra$display$html), collapse = "")))
+})

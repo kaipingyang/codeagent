@@ -36,6 +36,7 @@ reference:
       - codeagent_server
       - codeagent_chat_ui
       - codeagent_canvas_ui
+      - codeagent_sessions_ui
       - codeagent_head_assets
       - canvas_options
       - canvas_component_output

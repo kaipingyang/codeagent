@@ -11,7 +11,8 @@ codeagent_server(
   client,
   tools = list(),
   tool_meta = list(),
-  canvas = NULL
+  canvas = NULL,
+  sessions = FALSE
 )
 }
 \arguments{
@@ -30,6 +31,10 @@ capability (\code{"read"}, \code{"write"}, \code{"exec"} or \code{"net"}).}
 \item{canvas}{\code{NULL} (no canvas) or \code{\link[=canvas_options]{canvas_options()}} to enable the
 generative UI canvas; place \code{\link[=codeagent_canvas_ui]{codeagent_canvas_ui()}} in the page. With a
 \verb{tools=} selection on the client, include \code{"genui"} in it.}
+
+\item{sessions}{If \code{TRUE}, serve the saved-conversation list of
+\code{\link[=codeagent_sessions_ui]{codeagent_sessions_ui()}} (place it in the page): New, Delete and restore
+on click. Default \code{FALSE}.}
 }
 \value{
 Invisibly, a list with \code{state} (the session \code{reactiveValues}),
@@ -50,5 +55,6 @@ approval / question callbacks exist, so the interactive tools are created
 in their UI-gated form. Select built-in tools with the client's \verb{tools=}.
 }
 \seealso{
-\code{\link[=codeagent_chat_ui]{codeagent_chat_ui()}}, \code{\link[=codeagent_canvas_ui]{codeagent_canvas_ui()}}, \code{\link[=codeagent_app]{codeagent_app()}}
+\code{\link[=codeagent_chat_ui]{codeagent_chat_ui()}}, \code{\link[=codeagent_canvas_ui]{codeagent_canvas_ui()}},
+\code{\link[=codeagent_sessions_ui]{codeagent_sessions_ui()}}, \code{\link[=codeagent_app]{codeagent_app()}}
 }

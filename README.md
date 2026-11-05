@@ -612,6 +612,15 @@ UI's approval / question callbacks exist. Host tools get a declared
 capability, codeagent's result normalization (a structured `ContentToolResult`
 value is sent as one JSON string) and the permission gate / Data Shield.
 
+Saved conversations: put `codeagent_sessions_ui()` in the page (a sidebar,
+an accordion) and pass `sessions = TRUE` to `codeagent_server()`. Users see
+their earlier conversations (newest first, by the first message), restore one
+with a click -- tool cards and the canvas included -- or start a new one; the
+page always opens on a new conversation and keeps the host's greeting.
+Conversations are saved per turn under `CODEAGENT_HOME`, keyed by the client's
+`cwd`: give each user a fixed `cwd` (not a temp dir) so the list survives an
+app restart and holds only that user's conversations.
+
 `AskUserForm` collects or confirms several values at once: the model sends a
 title and fields (`text`, `textarea`, `number`, `select`, `multiselect`,
 `checkbox`, `date`, with `default`, `required`, `help`), the form opens in the

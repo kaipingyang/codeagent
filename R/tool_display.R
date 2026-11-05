@@ -966,6 +966,14 @@ render_artifact <- function(artifact, mode = c("panel", "bubble")) {
       original_display, value,
       tool_result_artifact(res)$title %||% title,
       tool_result_artifact(res))
+  } else if (is.list(original_display) &&
+             (!is.null(original_display$html) || !is.null(original_display$markdown))) {
+    # A host tool's own card (extra$display = list(title, html / markdown)): the
+    # live card shows it, so a restored conversation must too -- not the
+    # model-facing value.
+    new_extra$display <- .safe_official_tool_display(
+      original_display, value, original_display$title %||% title,
+      tool_result_artifact(res))
   }
   new_extra$codeagent <- utils::modifyList(
     original_codeagent, new_extra$codeagent %||% list())
