@@ -300,7 +300,15 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
            error=function(e)list(error=TRUE,reason="reviewer returned invalid structured output"))
 }
 
+# Arguments the permission gate adds to a tool request for its own use (the
+# session cwd every relative path resolves against). They are not paths the
+# tool reads or writes: treating the cwd as one made every write-capability
+# tool fail a sandbox whose project root is read-only.
+.DATA_SHIELD_INTERNAL_ARGS <- c(".permission_cwd")
+
 .data_shield_extract_paths <- function(input) {
+  if (is.list(input) && !is.null(names(input)))
+    input <- input[!names(input) %in% .DATA_SHIELD_INTERNAL_ARGS]
   out <- character()
   walk <- function(x, key="") {
     if (is.list(x)) {

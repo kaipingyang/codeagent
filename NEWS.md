@@ -1,5 +1,10 @@
 # codeagent (development version)
 
+* Fixed: with `shield_sandbox()` whose project root is read-only, every
+  write-capability tool was blocked ("sandbox root lacks 'w' capability"),
+  even tools with no path argument: the sandbox treated the session cwd the
+  permission gate adds to each request (`.permission_cwd`) as a path the tool
+  writes. That internal argument is no longer checked; real path arguments are.
 * Fixed: the canvas Content Security Policy (`canvas_options(csp = TRUE)`, the
   default) had `frame-src 'none'`. It applies to the whole host page, so a host
   that shows its own output in an iframe (a report preview, a tool card with an
