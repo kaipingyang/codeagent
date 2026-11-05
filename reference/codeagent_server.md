@@ -24,7 +24,8 @@ codeagent_server(
   client,
   tools = list(),
   tool_meta = list(),
-  canvas = NULL
+  canvas = NULL,
+  sessions = FALSE
 )
 ```
 
@@ -62,6 +63,13 @@ codeagent_server(
   in the page. With a `tools=` selection on the client, include
   `"genui"` in it.
 
+- sessions:
+
+  If `TRUE`, serve the saved-conversation list of
+  [`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)
+  (place it in the page): New, Delete and restore on click. Default
+  `FALSE`.
+
 ## Value
 
 Invisibly, a list with `state` (the session `reactiveValues`),
@@ -79,4 +87,5 @@ Select built-in tools with the client's `tools=`.
 
 [`codeagent_chat_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.md),
 [`codeagent_canvas_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_canvas_ui.md),
+[`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md),
 [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)

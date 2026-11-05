@@ -40,6 +40,8 @@ Interactive chat interface.
   : Chat UI for a host app that embeds codeagent
 - [`codeagent_canvas_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_canvas_ui.md)
   : Generative UI canvas for a host app
+- [`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)
+  : Saved conversations for a host app that embeds codeagent
 - [`codeagent_head_assets()`](https://kaipingyang.github.io/codeagent/reference/codeagent_head_assets.md)
   : Browser assets for a host app that embeds codeagent
 - [`canvas_options()`](https://kaipingyang.github.io/codeagent/reference/canvas_options.md)

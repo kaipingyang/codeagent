@@ -690,6 +690,18 @@ a declared capability, codeagent’s result normalization (a structured
 `ContentToolResult` value is sent as one JSON string) and the permission
 gate / Data Shield.
 
+Saved conversations: put
+[`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)
+in the page (a sidebar, an accordion) and pass `sessions = TRUE` to
+[`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md).
+Users see their earlier conversations (newest first, by the first
+message), restore one with a click – tool cards and the canvas included
+– or start a new one; the page always opens on a new conversation and
+keeps the host’s greeting. Conversations are saved per turn under
+`CODEAGENT_HOME`, keyed by the client’s `cwd`: give each user a fixed
+`cwd` (not a temp dir) so the list survives an app restart and holds
+only that user’s conversations.
+
 `AskUserForm` collects or confirms several values at once: the model
 sends a title and fields (`text`, `textarea`, `number`, `select`,
 `multiselect`, `checkbox`, `date`, with `default`, `required`, `help`),
@@ -902,6 +914,8 @@ Interactive chat interface.
   : Chat UI for a host app that embeds codeagent
 - [`codeagent_canvas_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_canvas_ui.md)
   : Generative UI canvas for a host app
+- [`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)
+  : Saved conversations for a host app that embeds codeagent
 - [`codeagent_head_assets()`](https://kaipingyang.github.io/codeagent/reference/codeagent_head_assets.md)
   : Browser assets for a host app that embeds codeagent
 - [`canvas_options()`](https://kaipingyang.github.io/codeagent/reference/canvas_options.md)
