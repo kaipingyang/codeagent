@@ -2,6 +2,17 @@
 
 ## codeagent (development version)
 
+- The approval bar has “Always allow” (this tool, this session): allows
+  the request, the same tool’s requests already waiting, and every later
+  one in the session.
+
+- Host apps:
+  [`codeagent_mode_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mode_ui.md) +
+  `codeagent_server(modes =)` let the user switch the session’s
+  permission mode (e.g. ask before changes / run without asking);
+  `codeagent_server(on_restore =)` is called with the Chat after a saved
+  conversation is opened from either history backend.
+
 - Fixed: with Data Shield on, `scan_tool_args()` turned a data frame
   argument into a list of its columns and dropped the names of character
   vectors. ellmer passes array-of-objects arguments as data frames, so

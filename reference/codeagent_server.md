@@ -27,6 +27,8 @@ codeagent_server(
   canvas = NULL,
   history = NULL,
   greeting = NULL,
+  modes = NULL,
+  on_restore = NULL,
   sessions = FALSE
 )
 ```
@@ -83,6 +85,19 @@ codeagent_server(
   With `history`: the greeting shown again on a new conversation (the
   one given to
   [`codeagent_chat_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.md)).
+
+- modes:
+
+  `NULL` (the client's permission mode, fixed) or the named modes of
+  [`codeagent_mode_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mode_ui.md)
+  (place it in the page): the user switches the session's permission
+  mode between them; not while a reply is running.
+
+- on_restore:
+
+  Optional `function(chat)` called after a saved conversation is opened
+  from the history (either backend), with the Chat holding the restored
+  context – e.g. to show its last result in the host's own panels.
 
 - sessions:
 

@@ -737,6 +737,14 @@ still shows every earlier turn, with a note where the context was
 compacted. Version 1 files are read as before and migrated on their next
 save.
 
+Permission mode switch:
+`codeagent_mode_ui(c("Ask before changes" = "default", "Run without asking" = "bypass"))`
+in the page and the same `modes =` in
+[`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md).
+The approval bar also offers “Always allow” (this tool) (for the rest of
+the session). `on_restore = function(chat)` lets the host refresh its
+own panels when a saved conversation is opened.
+
 `AskUserForm` collects or confirms several values at once: the model
 sends a title and fields (`text`, `textarea`, `number`, `select`,
 `multiselect`, `checkbox`, `date`, with `default`, `required`, `help`),
@@ -951,6 +959,8 @@ Interactive chat interface.
   : Generative UI canvas for a host app
 - [`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)
   : Saved conversations for a host app that embeds codeagent
+- [`codeagent_mode_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mode_ui.md)
+  : Permission mode switch for a host app
 - [`codeagent_head_assets()`](https://kaipingyang.github.io/codeagent/reference/codeagent_head_assets.md)
   : Browser assets for a host app that embeds codeagent
 - [`canvas_options()`](https://kaipingyang.github.io/codeagent/reference/canvas_options.md)

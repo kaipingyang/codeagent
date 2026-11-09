@@ -108,6 +108,8 @@ client the host built for this Shiny session. Pair it with
 <span>  canvas <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  history <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  greeting <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  modes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  on_restore <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sessions <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -156,6 +158,19 @@ codeagent's session log (<code><a href="save_session.html">save_session()</a></c
 <dt id="arg-greeting">greeting<a class="anchor" aria-label="anchor" href="#arg-greeting"></a></dt>
 <dd><p>With <code>history</code>: the greeting shown again on a new
 conversation (the one given to <code><a href="codeagent_chat_ui.html">codeagent_chat_ui()</a></code>).</p></dd>
+
+
+<dt id="arg-modes">modes<a class="anchor" aria-label="anchor" href="#arg-modes"></a></dt>
+<dd><p><code>NULL</code> (the client's permission mode, fixed) or the named
+modes of <code><a href="codeagent_mode_ui.html">codeagent_mode_ui()</a></code> (place it in the page): the user switches the
+session's permission mode between them; not while a reply is running.</p></dd>
+
+
+<dt id="arg-on-restore">on_restore<a class="anchor" aria-label="anchor" href="#arg-on-restore"></a></dt>
+<dd><p>Optional <code>function(chat)</code> called after a saved
+conversation is opened from the history (either backend), with the Chat
+holding the restored context – e.g. to show its last result in the host's
+own panels.</p></dd>
 
 
 <dt id="arg-sessions">sessions<a class="anchor" aria-label="anchor" href="#arg-sessions"></a></dt>
