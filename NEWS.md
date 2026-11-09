@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+* Fixed: with Data Shield on, `scan_tool_args()` turned a data frame argument
+  into a list of its columns and dropped the names of character vectors.
+  ellmer passes array-of-objects arguments as data frames, so tools saw a
+  different shape -- `AskUserForm` rejected every form ("Field 1: `name` must
+  start with a letter ..."). Argument structure is now kept; string values are
+  still scanned and redacted.
 * Session files are append-only logs (format version 2), matching the public
   shape of Claude Code's session log: one entry per new turn (display text +
   lossless record, `uuid`/`parentUuid` chain); a context change -- compaction,

@@ -329,3 +329,48 @@ test_that("#15 server_chat.R has no literal non-ASCII characters", {
   non_ascii <- grepl("[^\x01-\x7F]", src, useBytes = TRUE)
   expect_false(any(non_ascii))
 })
+
+test_that("scan_tool_args keeps the structure of data frame and named arguments", {
+  # ellmer converts an array-of-objects argument (AskUserForm `fields`) into a
+  # data frame; scanning it must not turn it into a list of columns.
+  sh <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
+  sh$register_data(data.frame(id = sprintf("FAKEID%03d", 1:20), stringsAsFactors = FALSE), "d", cols = "id")
+  fields <- tibble::tibble(name = c("sourcevar", "blocklabel"), label = c("Var", "Label FAKEID002"),
+                           choices = list(c("CMCAT", "CMSCAT"), NULL))
+  args <- list(title = "Confirm", fields = fields, tags = c(a = "x", b = "FAKEID003"))
+  out <- sh$scan_tool_args(args)
+  expect_s3_class(out$args$fields, "data.frame")
+  expect_identical(nrow(out$args$fields), 2L)
+  expect_identical(out$args$fields$name, c("sourcevar", "blocklabel"))
+  expect_identical(out$args$fields$choices[[1]], c("CMCAT", "CMSCAT"))
+  expect_false(grepl("FAKEID002", out$args$fields$label[2], fixed = TRUE))   # still scanned
+  expect_identical(names(out$args$tags), c("a", "b"))
+  expect_false(grepl("FAKEID003", out$args$tags[["b"]], fixed = TRUE))
+  expect_identical(out$action, "redact")
+  # nothing to redact: the arguments come back identical
+  clean <- list(fields = fields[1, ])
+  expect_identical(sh$scan_tool_args(clean)$args, clean)
+})
+
+test_that("AskUserForm opens its form when the Data Shield is on (array-of-objects fields)", {
+  sh <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
+  sh$register_data(data.frame(id = sprintf("FAKEID%03d", 1:20), stringsAsFactors = FALSE), "d", cols = "id")
+  chat <- ellmer::chat_openai_compatible(base_url = "http://127.0.0.1:1", model = "m", credentials = function() "k")
+  client <- codeagent_client(chat, register_tools = FALSE, tools = "interact", cwd = withr::local_tempdir(),
+                             permission_mode = "default", data_shield = sh)
+  req <- ellmer::ContentToolRequest(id = "f1", name = "AskUserForm", arguments = list(
+    title = "Confirm the ADCM block",
+    fields = list(list(name = "source_variable", label = "Variable", type = "select", choices = list("CMCAT", "CMSCAT"),
+                       default = "CMCAT", required = TRUE),
+                  list(name = "blocklabel", label = "Label", type = "text", default = "Medication Category"))))
+  shiny::testServer(function(input, output, session) codeagent_server(input, output, session, client), {
+    session$flushReact()
+    req@tool <- client$chat$get_tools()$AskUserForm
+    out <- NULL
+    promises::then(ellmer:::invoke_tool_async(req), function(v) out <<- v)
+    for (i in 1:20) { later::run_now(0.02); session$flushReact() }
+    # the form is waiting for the user -- not rejected as invalid
+    expect_null(out)
+    expect_match(paste(output$ca_interaction_ui$html, collapse = ""), "Confirm the ADCM block", fixed = TRUE)
+  })
+})

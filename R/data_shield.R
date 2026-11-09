@@ -1342,9 +1342,20 @@ DataShield <- R6::R6Class(
       # Recurse through nested lists so a protected value buried in e.g.
       # edits=list(list(content="SUBJECT001")) is scanned, not skipped (kiro
       # round-2 #4: the old single-level loop only saw top-level character(1)).
+      # Attributes are kept: ellmer hands an array-of-objects argument over as a
+      # data frame, and lapply() alone would return it as a list of columns
+      # (the tool then saw a different shape -- AskUserForm rejected its fields).
       walk <- function(x) {
-        if (is.list(x)) return(lapply(x, walk))
-        if (is.character(x) && length(x) > 1L) return(vapply(x, scan_leaf, character(1), USE.NAMES = FALSE))
+        if (is.list(x)) {
+          y <- lapply(x, walk)
+          attributes(y) <- attributes(x)
+          return(y)
+        }
+        if (is.character(x) && length(x) > 1L) {
+          y <- vapply(x, scan_leaf, character(1), USE.NAMES = FALSE)
+          attributes(y) <- attributes(x)
+          return(y)
+        }
         scan_leaf(x)
       }
       out <- walk(args)
