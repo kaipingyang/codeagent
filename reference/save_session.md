@@ -1,7 +1,19 @@
 # Save an ellmer Chat session to disk
 
-Serialises all turns in `chat` to a JSONL file under
-`~/.codeagent/projects/<project_hash>/<session_id>.jsonl`.
+Appends the conversation to a JSONL log under
+`<CODEAGENT_HOME>/projects/<project>/<session_id>.jsonl` (format version
+2). Each new turn is one `user` / `assistant` entry holding its display
+text and its lossless record; entries are chained by `uuid` /
+`parentUuid`. Turns already in the file are not written again. When the
+chat's context is no longer "the saved turns plus new ones" –
+compaction, rewind, clear – a `system` / `compact_boundary` entry is
+appended with a snapshot of the new context (`parentUuid: null`,
+`logicalParentUuid` pointing at the last entry before it), so earlier
+turns stay in the file. The model context restores from the last
+boundary on
+([`restore_session_into_chat()`](https://kaipingyang.github.io/codeagent/reference/restore_session_into_chat.md));
+the display keeps every turn. A version 1 file (rewritten whole on every
+save) is migrated on its first save.
 
 ## Usage
 
@@ -12,7 +24,8 @@ save_session(
   session_id = NULL,
   title = NULL,
   assistant_text_override = NULL,
-  genui_state = NULL
+  genui_state = NULL,
+  context_event = NULL
 )
 ```
 
@@ -38,15 +51,17 @@ save_session(
 - assistant_text_override:
 
   Character or NULL. Safe finalized text for the last assistant turn's
-  presentation line. Lossless chat-state remains intact.
+  presentation line. The lossless record keeps the provider-facing turn.
 
 - genui_state:
 
   List or NULL. The generative UI canvas state to persist with the
-  conversation, written in the same atomic file replacement as the chat
-  state. Supplied by
-  [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md);
-  `NULL` writes no canvas line.
+  conversation; appended when it differs from the last saved one.
+
+- context_event:
+
+  Character or NULL. What changed the context when it is not a
+  continuation (`"compact"`, `"rewind"`, `"clear"`); inferred when NULL.
 
 ## Value
 

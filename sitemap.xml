@@ -148,6 +148,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-parse_client_spec.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-preprocess_input.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-read_codeagent_config.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-read_session_display_turns.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-read_session_state.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-register_all_tools.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-render_markdown.html</loc></url>
@@ -159,6 +160,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-sandbox_profile.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-sandbox_unshare_available.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-sandbox_unshare_wrap.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/dot-session_sync_context.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-start_hook_watchers.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-swap_provider.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/dot-tool_result2.html</loc></url>
@@ -183,6 +185,7 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/get_session_messages.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/glob_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/grep_tool.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/history_shinychat.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/hooks.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/hooks_watch.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/index.html</loc></url>

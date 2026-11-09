@@ -13,7 +13,7 @@ host page, together with
 ## Usage
 
 ``` r
-codeagent_chat_ui(..., greeting = NULL, footer = NULL)
+codeagent_chat_ui(..., greeting = NULL, footer = NULL, history = FALSE)
 ```
 
 ## Arguments
@@ -33,6 +33,11 @@ codeagent_chat_ui(..., greeting = NULL, footer = NULL)
 - footer:
 
   Optional extra UI placed under the interaction bar.
+
+- history:
+
+  If `TRUE`, show shinychat's conversation history selector; pair it
+  with `codeagent_server(history = shinychat::history_options(...))`.
 
 ## Value
 

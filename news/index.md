@@ -2,6 +2,28 @@
 
 ## codeagent (development version)
 
+- Session files are append-only logs (format version 2), matching the
+  public shape of Claude Code’s session log: one entry per new turn
+  (display text + lossless record, `uuid`/`parentUuid` chain); a context
+  change – compaction, `/rewind`, `/clear` – appends a
+  `compact_boundary` entry with a snapshot of the new context. Fixes:
+  compaction no longer erases the earlier turns from the file, a
+  restored conversation shows all of them (with a note where the context
+  was compacted) while the model resumes from the last boundary, and
+  [`rename_session()`](https://kaipingyang.github.io/codeagent/reference/rename_session.md)
+  /
+  [`tag_session()`](https://kaipingyang.github.io/codeagent/reference/tag_session.md)
+  entries survive later saves. Version 1 files are read as before and
+  migrated on their next save.
+
+- `codeagent_server(history = shinychat::history_options(...))` with
+  `codeagent_chat_ui(history = TRUE)`: shinychat’s conversation history
+  in a host app. The record holds what the user saw (output gate
+  applied, no injected context) and is not shortened by compaction;
+  opening a conversation restores the model context from codeagent’s
+  session log and the canvas. `history = "codeagent"` is codeagent’s own
+  list; `sessions = TRUE` is kept as its alias.
+
 - Host apps can offer saved conversations:
   [`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)
   (the list with New / Delete) and `codeagent_server(sessions = TRUE)`.

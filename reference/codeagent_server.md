@@ -25,6 +25,8 @@ codeagent_server(
   tools = list(),
   tool_meta = list(),
   canvas = NULL,
+  history = NULL,
+  greeting = NULL,
   sessions = FALSE
 )
 ```
@@ -63,12 +65,28 @@ codeagent_server(
   in the page. With a `tools=` selection on the client, include
   `"genui"` in it.
 
+- history:
+
+  Conversation history: `NULL` (default, none);
+  [`shinychat::history_options()`](https://posit-dev.github.io/shinychat/r/reference/history_options.html)
+  for shinychat's history (list, switch, new, rename, delete in the
+  chat's history selector – set `codeagent_chat_ui(history = TRUE)`); or
+  `"codeagent"` for codeagent's own list
+  ([`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)).
+  With shinychat's history the record holds what the user saw (Data
+  Shield output gate applied, no injected context) and is not shortened
+  by compaction; the model continues from codeagent's session log
+  ([`save_session()`](https://kaipingyang.github.io/codeagent/reference/save_session.md)).
+
+- greeting:
+
+  With `history`: the greeting shown again on a new conversation (the
+  one given to
+  [`codeagent_chat_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.md)).
+
 - sessions:
 
-  If `TRUE`, serve the saved-conversation list of
-  [`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)
-  (place it in the page): New, Delete and restore on click. Default
-  `FALSE`.
+  Deprecated: `TRUE` is `history = "codeagent"`.
 
 ## Value
 

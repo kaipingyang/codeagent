@@ -12,7 +12,8 @@ injection.
   iteration = 1L,
   cwd = NULL,
   compaction_ctrl = NULL,
-  resource_state = NULL
+  resource_state = NULL,
+  session_id = NULL
 )
 ```
 
@@ -42,6 +43,13 @@ injection.
 - resource_state:
 
   A `ContentReplacementState` or NULL.
+
+- session_id:
+
+  Character or NULL. When the context changed before this turn
+  (compaction here, or a /compact /clear /rewind since the last save),
+  the session log records a boundary now, so the end-of-turn save only
+  appends the new turns.
 
 ## Value
 

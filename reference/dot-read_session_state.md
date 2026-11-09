@@ -1,9 +1,9 @@
-# Read a session's lossless chat-state (if present)
+# Read a session's lossless model context (if present)
 
-Scans the session file for a `chat-state` line and decodes it into
-ellmer turns. Returns `NULL` if the session predates lossless state
-(legacy text-only sessions) so callers can fall back to text
-restoration.
+Version 2: the snapshot of the last `compact_boundary` plus every turn
+saved after it (the model sees only what follows the last boundary).
+Version 1: its `chat-state` line. `NULL` for text-only legacy sessions
+so callers can fall back to text restoration.
 
 ## Usage
 
