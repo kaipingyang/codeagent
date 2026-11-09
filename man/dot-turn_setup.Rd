@@ -10,7 +10,8 @@
   iteration = 1L,
   cwd = NULL,
   compaction_ctrl = NULL,
-  resource_state = NULL
+  resource_state = NULL,
+  session_id = NULL
 )
 }
 \arguments{
@@ -25,6 +26,11 @@
 \item{compaction_ctrl}{A \code{CompactionController} or NULL.}
 
 \item{resource_state}{A \code{ContentReplacementState} or NULL.}
+
+\item{session_id}{Character or NULL. When the context changed before this
+turn (compaction here, or a /compact /clear /rewind since the last save),
+the session log records a boundary now, so the end-of-turn save only
+appends the new turns.}
 }
 \value{
 \code{input} with system-reminder injected (same type as input).

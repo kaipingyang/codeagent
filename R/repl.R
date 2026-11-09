@@ -675,7 +675,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
 
     # 1+2. Compaction + resource management + system-reminder injection
     actual_input <- .turn_setup(client, user_input, iteration, cwd,
-                                compaction_ctrl, resource_state)
+                                compaction_ctrl, resource_state, session_id = session_id)
 
     # 3. Stream / send (with full error recovery: PTL/rate-limit/network/auth)
     if (isTRUE(stream)) {

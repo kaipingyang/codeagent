@@ -23,15 +23,17 @@
 #' @param greeting Optional greeting (markdown or HTML string, or a
 #'   [shinychat::chat_greeting()]). A string is shown as a persistent greeting.
 #' @param footer Optional extra UI placed under the interaction bar.
+#' @param history If `TRUE`, show shinychat's conversation history selector;
+#'   pair it with `codeagent_server(history = shinychat::history_options(...))`.
 #' @return A Shiny tag.
 #' @seealso [codeagent_server()], [codeagent_canvas_ui()]
 #' @export
-codeagent_chat_ui <- function(..., greeting = NULL, footer = NULL) {
+codeagent_chat_ui <- function(..., greeting = NULL, footer = NULL, history = FALSE) {
   args <- list(
     id            = "chat",
     fill          = TRUE,
     drawer        = FALSE,
-    show_history  = FALSE,
+    show_history  = isTRUE(history),
     enable_cancel = TRUE,
     tool_grouping = "tool",
     `aside-favicon` = "false",
@@ -162,9 +164,17 @@ codeagent_sessions_ui <- function(title = "History") {
 #' @param canvas `NULL` (no canvas) or [canvas_options()] to enable the
 #'   generative UI canvas; place [codeagent_canvas_ui()] in the page. With a
 #'   `tools=` selection on the client, include `"genui"` in it.
-#' @param sessions If `TRUE`, serve the saved-conversation list of
-#'   [codeagent_sessions_ui()] (place it in the page): New, Delete and restore
-#'   on click. Default `FALSE`.
+#' @param history Conversation history: `NULL` (default, none);
+#'   [shinychat::history_options()] for shinychat's history (list, switch, new,
+#'   rename, delete in the chat's history selector -- set
+#'   `codeagent_chat_ui(history = TRUE)`); or `"codeagent"` for codeagent's own
+#'   list ([codeagent_sessions_ui()]). With shinychat's history the record
+#'   holds what the user saw (Data Shield output gate applied, no injected
+#'   context) and is not shortened by compaction; the model continues from
+#'   codeagent's session log ([save_session()]).
+#' @param greeting With `history`: the greeting shown again on a new
+#'   conversation (the one given to [codeagent_chat_ui()]).
+#' @param sessions Deprecated: `TRUE` is `history = "codeagent"`.
 #' @return Invisibly, a list with `state` (the session `reactiveValues`),
 #'   `stream_task` (the `ExtendedTask`), `chat` and `settings`.
 #' @seealso [codeagent_chat_ui()], [codeagent_canvas_ui()],
@@ -172,6 +182,7 @@ codeagent_sessions_ui <- function(title = "History") {
 #' @export
 codeagent_server <- function(input, output, session, client, tools = list(),
                              tool_meta = list(), canvas = NULL,
+                             history = NULL, greeting = NULL,
                              sessions = FALSE) {
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
@@ -179,6 +190,11 @@ codeagent_server <- function(input, output, session, client, tools = list(),
     stop("`canvas` must be NULL or come from canvas_options().", call. = FALSE)
   if (!is.logical(sessions) || length(sessions) != 1L || is.na(sessions))
     stop("`sessions` must be TRUE or FALSE.", call. = FALSE)
+  if (isTRUE(sessions) && is.null(history)) history <- "codeagent"
+  if (!is.null(history) && !identical(history, "codeagent") &&
+      !inherits(history, "chat_history_config"))
+    stop("`history` must be NULL, \"codeagent\" or shinychat::history_options().",
+         call. = FALSE)
   .check_host_tools(tools, tool_meta)
   # One live browser session per client: a second session on the same Chat
   # would rebind the approval / question / form callbacks and the canvas to
@@ -202,11 +218,14 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   server_slash(input, session, cwd = core$settings$cwd %||% getwd(),
                stream_task = core$stream_task, chat = client$chat,
                settings = core$settings, state = core$state)
-  if (isTRUE(sessions))
+  if (identical(history, "codeagent"))
     server_sessions(input, output, session, chat = client$chat,
                     cwd = core$settings$cwd %||% getwd(), state = core$state,
                     stream_task = core$stream_task, settings = core$settings,
                     default_greeting = FALSE)
+  else if (inherits(history, "chat_history_config"))
+    .enable_shinychat_history(input, session, client$chat, core, history,
+                              greeting = greeting)
   session$onFlushed(function() core$ready(), once = TRUE)
   invisible(list(state = core$state, stream_task = core$stream_task,
                  chat = client$chat, settings = core$settings))

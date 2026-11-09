@@ -214,3 +214,85 @@ test_that("a host tool's own card survives save and restore (replay keeps extra$
   plain <- .adapt_tool_result(ellmer::ContentToolResult(value = "hello", request = req))
   expect_false(grepl("iframe", paste(as.character(plain@extra$display$html), collapse = "")))
 })
+
+# shinychat history backend ----------------------------------------------------
+
+.hist_round <- function(chat, raw_reply, gated_reply, session) {
+  # one finished round as the stream leaves it: user (with injected context),
+  # a tool call, the model's raw reply; then the gated text closes the stream
+  round_start <- length(chat$get_turns())
+  req <- ellmer::ContentToolRequest(id = paste0("c", round_start), name = "HostT", arguments = list(k = "v"))
+  res <- ellmer::ContentToolResult(value = "{}", request = req,
+                                   extra = list(display = list(title = "Card", html = htmltools::div("card"))))
+  chat$set_turns(c(chat$get_turns(), list(
+    ellmer::Turn("user", "Generate t_dm\n<system-reminder>internal context</system-reminder>"),
+    ellmer::Turn("assistant", list(req)), ellmer::Turn("user", list(res)),
+    ellmer::Turn("assistant", raw_reply))))
+  .append_presentation(list(), chat, round_start, gated_reply)
+  p <- shinychat::chat_append("chat", gated_reply, session = session)
+  for (i in 1:30) later::run_now(0.02)
+  invisible(p)
+}
+
+test_that("codeagent_server validates history", {
+  client <- .embed_client()
+  expect_error(shiny::testServer(function(input, output, session)
+    codeagent_server(input, output, session, client, history = "yes"), {}), "history")
+  expect_match(as.character(codeagent_chat_ui()), "show-history=\"false\"", fixed = TRUE)
+  expect_false(grepl("show-history", as.character(codeagent_chat_ui(history = TRUE)), fixed = TRUE))
+})
+
+test_that("shinychat history records what the user saw and restores the model context from the session log", {
+  home <- withr::local_tempdir(); withr::local_envvar(CODEAGENT_HOME = home)
+  store_dir <- withr::local_tempdir()
+  client <- .embed_client(permission_mode = "plan")
+  chat <- client$chat
+  cwd <- client$settings$cwd
+  opts <- shinychat::history_options(restore_mode = "none", title = NULL, scope = "u1",
+                                     store = shinychat::FileConversationStore$new(dir = store_dir))
+  shiny::testServer(function(input, output, session) {
+    session$userData$srv <- codeagent_server(input, output, session, client, history = opts,
+                                             greeting = "Hi")
+  }, {
+    srv <- session$userData$srv
+    session$flushReact()
+    expect_false(is.null(attr(chat, "codeagent_presentation_chat")))
+    sid_a <- shiny::isolate(srv$state$session_id)
+    .hist_round(chat, "Raw reply naming BGB-001-0007", "Gated reply [redacted]", session)
+    save_session(chat, cwd, sid_a)                                  # the end-of-round save
+    session$flushReact()
+
+    store <- shinychat::FileConversationStore$new(dir = store_dir)
+    files <- list.files(store_dir, recursive = TRUE, full.names = TRUE)
+    txt <- paste(unlist(lapply(files, readLines, warn = FALSE)), collapse = "\n")
+    expect_true(grepl("Gated reply [redacted]", txt, fixed = TRUE))
+    expect_false(grepl("BGB-001-0007", txt, fixed = TRUE))          # output gate before the record
+    expect_false(grepl("internal context", txt, fixed = TRUE))      # no injected context
+    expect_true(grepl("Card", txt, fixed = TRUE))                   # the host's card
+    expect_true(grepl(sid_a, txt, fixed = TRUE))                    # codeagent session id saved
+
+    # a new conversation empties the model context and starts a new session
+    session$setInputs(chat_history_new = 1)
+    expect_length(chat$get_turns(), 0L)
+    expect_false(identical(shiny::isolate(srv$state$session_id), sid_a))
+
+    # opening the first one again: model context from the session log (raw,
+    # as the model had it), session id back
+    conv <- unique(basename(dirname(list.files(store_dir, pattern = "^record\\.json$", recursive = TRUE))))
+    expect_length(conv, 1L)
+    session$setInputs(chat_history_select = list(id = conv[[1]]))
+    expect_identical(shiny::isolate(srv$state$session_id), sid_a)
+    expect_true(any(grepl("BGB-001-0007", vapply(chat$get_turns(), function(t) t@text, ""), fixed = TRUE)))
+  })
+})
+
+test_that("presentation turns: reminders stripped, gated text, tool cards kept", {
+  req <- ellmer::ContentToolRequest(id = "c1", name = "HostT", arguments = list(k = "v"))
+  turns <- list(ellmer::Turn("user", "go <system-reminder>secret</system-reminder>"),
+                ellmer::Turn("assistant", list(ellmer::ContentText("thinking aloud"), req)),
+                ellmer::Turn("assistant", "raw final"))
+  out <- .presentation_turns(turns, list(), NULL, shown_text = "shown final")
+  expect_identical(out[[1]]@text, "go")
+  expect_s3_class(out[[2]]@contents[[2]], "ellmer::ContentToolRequest")
+  expect_identical(out[[3]]@text, "shown final")
+})

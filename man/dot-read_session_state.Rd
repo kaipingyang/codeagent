@@ -2,7 +2,7 @@
 % Please edit documentation in R/sessions.R
 \name{.read_session_state}
 \alias{.read_session_state}
-\title{Read a session's lossless chat-state (if present)}
+\title{Read a session's lossless model context (if present)}
 \usage{
 .read_session_state(session_id, cwd = getwd(), tools = list())
 }
@@ -17,8 +17,9 @@
 List of ellmer turns, or \code{NULL}.
 }
 \description{
-Scans the session file for a \code{chat-state} line and decodes it into ellmer
-turns. Returns \code{NULL} if the session predates lossless state (legacy
-text-only sessions) so callers can fall back to text restoration.
+Version 2: the snapshot of the last \code{compact_boundary} plus every turn
+saved after it (the model sees only what follows the last boundary).
+Version 1: its \code{chat-state} line. \code{NULL} for text-only legacy sessions so
+callers can fall back to text restoration.
 }
 \keyword{internal}

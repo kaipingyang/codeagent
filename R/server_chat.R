@@ -178,7 +178,12 @@ server_chat <- function(input, output, session, chat, settings,
     ctrl <- shiny::isolate(state$compaction_ctrl)
     rs   <- shiny::isolate(state$resource_state)
     iter <- shiny::isolate(state$iteration %||% 1L)
-    actual_input <- .turn_setup(chat, actual_input, iter, cwd, ctrl, rs)
+    actual_input <- .turn_setup(chat, actual_input, iter, cwd, ctrl, rs,
+                                session_id = shiny::isolate(state$session_id))
+    # Turns before this round (after any compaction above): what the round adds
+    # is appended to the history's presentation record (history_shinychat.R).
+    round_start <- length(tryCatch(chat$get_turns(), error = function(e) list()))
+    .presenting <- !is.null(tryCatch(attr(chat, "codeagent_presentation_chat"), error = function(e) NULL))
     if (identical(parsed$type, "skill")) {
       actual_input <- .as_skill_slash_content(
         actual_input, parsed,
@@ -229,10 +234,23 @@ server_chat <- function(input, output, session, chat, settings,
                 if (!is.null(card)) yield(card)
               }
               fin$value <- .finalize_server_reply(chat, settings, citation_registry)
+              # before the stream ends: shinychat saves the record when it does
+              .append_presentation(settings, chat, round_start, fin$value$text)
               if (nzchar(fin$value$text %||% "")) yield(fin$value$text)
             })
             await(shinychat::chat_append("chat", shown(), session = session))
             finalized <- fin$value
+          } else if (isTRUE(.presenting)) {
+            shown_live <- coro::async_generator(function() {
+              for (chunk in coro::await_each(stream)) yield(chunk)
+              .append_presentation(settings, chat, round_start, NULL)
+            })
+            await(shinychat::chat_append("chat", shown_live(), session = session))
+            finalized <- .finalize_server_reply(
+              chat, settings, citation_registry)
+            if (!is.null(finalized$finish$note))
+              await(shinychat::chat_append(
+                "chat", paste0("\n\n", finalized$finish$note), session = session))
           } else {
             await(shinychat::chat_append("chat", stream, session = session))
             finalized <- .finalize_server_reply(
@@ -512,6 +530,7 @@ server_chat <- function(input, output, session, chat, settings,
                        instructions = if (nzchar(instr)) instr else NULL)
           TRUE
         }, error = function(e) FALSE)
+        if (ok) .session_sync_context(chat, cwd, shiny::isolate(state$session_id), "compact")
         tryCatch(shiny::removeNotification("ca_compact_progress", session = session),
                  error = function(e) NULL)
         tryCatch(shinychat::chat_append("chat",
@@ -530,9 +549,11 @@ server_chat <- function(input, output, session, chat, settings,
     NULL
   )
 
-  if (isTRUE(res$action %in% c("clear", "rewind")))
+  if (isTRUE(res$action %in% c("clear", "rewind"))) {
+    .session_sync_context(chat, cwd, shiny::isolate(state$session_id), res$action)
     .genui_after_history_change(settings, chat, request_ids_before, cwd,
                                 shiny::isolate(state$session_id))
+  }
 
   # Append feedback to chat (NULL means the command handled its own UI, e.g. modal
   # returned early). Use the string + role form (NOT a Turn object): shinychat's
@@ -608,6 +629,7 @@ server_chat <- function(input, output, session, chat, settings,
     tryCatch({
       full_compact(chat, model = .resolve_compact_model(chat, settings),
                    instructions = if (nzchar(instr)) instr else NULL)
+      .session_sync_context(chat, cwd, shiny::isolate(state$session_id), "compact")
       mod$append("OK Context compacted.", role = "assistant")
     }, error = function(e)
       mod$append(paste0("ERR Compact failed: ", conditionMessage(e)), role = "assistant"))
@@ -616,6 +638,7 @@ server_chat <- function(input, output, session, chat, settings,
   # /clear -- clear UI + client history
   mod$slash_command("clear", "Clear chat history", function() {
     tryCatch(chat$set_turns(list()), error = function(e) NULL)
+    .session_sync_context(chat, cwd, shiny::isolate(state$session_id), "clear")
     mod$clear(
       messages       = list(list(role = "assistant", content = "OK History cleared.")),
       client_history = "keep"   # already cleared above
@@ -630,6 +653,7 @@ server_chat <- function(input, output, session, chat, settings,
     cur    <- length(tryCatch(chat$get_turns(), error = function(e) list()))
     keep   <- max(0L, cur - 2L * n_back)
     kept   <- tryCatch(truncate_chat_turns(chat, keep), error = function(e) cur)
+    .session_sync_context(chat, cwd, shiny::isolate(state$session_id), "rewind")
     mod$append(sprintf("<<< Rewound %d exchange(s); %d turns kept.", n_back, kept),
                role = "assistant")
   })

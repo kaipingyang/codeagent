@@ -165,7 +165,7 @@ codeagent_stream_async <- function(
   # Run turn setup OUTSIDE the coro::async body: coro cannot assign the result
   # of an `if` expression, and .turn_setup contains such branches.
   actual_input <- .turn_setup(client, input, iteration, cwd,
-                               compaction_ctrl, resource_state)
+                               compaction_ctrl, resource_state, session_id = session_id)
   # ellmer's `...` contract expects each text/content part as its own argument.
   # Preserve scalar input as one argument, but expand Shiny's multimodal list
   # (text followed by Content attachments) across the dots.

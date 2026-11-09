@@ -99,8 +99,9 @@ onclick = sprintf(
     }
     state$session_id <- sid
     reset_ui()
-    # Replay via contents_shinychat -- native tool card rendering.
-    .replay_turns_to_ui(chat, session, settings)
+    # Replay what the user saw -- every turn, earlier context included -- while
+    # the model continues from the restored (post-compaction) context.
+    .replay_display_to_ui(chat, sid, cwd, session, settings)
     .genui_restore_ui(settings, chat, sid, cwd)
     # Refresh the CONTEXT token meter for the restored conversation (the stream
     # task only updates it on new turns, so a freshly restored session would
@@ -279,3 +280,40 @@ onclick = sprintf(
   }
   invisible(NULL)
 }
+
+# Replay a saved session's display turns (all of them; a compaction only
+# shortened the model's context) with a short note where the context was
+# compacted. Falls back to the chat's own turns when there is no display log.
+.replay_display_to_ui <- function(chat, session_id, cwd, session, settings = list()) {
+  tools <- tryCatch(chat$get_tools(), error = function(e) list())
+  shown <- tryCatch(.read_session_display_turns(session_id, cwd, tools = tools),
+                    error = function(e) NULL)
+  if (is.null(shown) || !length(shown$turns))
+    return(.replay_turns_to_ui(chat, session, settings))
+  cuts <- sort(unique(shown$boundaries[shown$boundaries < length(shown$turns)]))
+  starts <- c(1L, cuts + 1L); ends <- c(cuts, length(shown$turns))
+  for (k in seq_along(starts)) {
+    view <- tryCatch(chat$clone(deep = FALSE), error = function(e) NULL)
+    if (is.null(view)) return(.replay_turns_to_ui(chat, session, settings))
+    .copy_chat_attrs(chat, view)          # Data Shield etc.: replay must stay gated
+    view$set_turns(shown$turns[starts[k]:ends[k]])
+    .replay_turns_to_ui(view, session, settings)
+    if (k < length(starts))
+      tryCatch(shinychat::chat_append_message("chat",
+        list(role = "assistant", content = .COMPACTED_NOTE), chunk = FALSE, session = session),
+        error = function(e) NULL)
+  }
+  invisible(NULL)
+}
+
+.COMPACTED_NOTE <- "*Earlier context was compacted here: the assistant continues from a summary of the messages above.*"
+
+
+# R6 clones drop the attributes codeagent hangs on a Chat (the Data Shield,
+# the genui adapter, ...): copy them so a view behaves like its source.
+.copy_chat_attrs <- function(from, to) {
+  for (nm in setdiff(names(attributes(from)), c("class", "names")))
+    attr(to, nm) <- attr(from, nm)
+  invisible(to)
+}
+

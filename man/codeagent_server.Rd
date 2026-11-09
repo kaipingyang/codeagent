@@ -12,6 +12,8 @@ codeagent_server(
   tools = list(),
   tool_meta = list(),
   canvas = NULL,
+  history = NULL,
+  greeting = NULL,
   sessions = FALSE
 )
 }
@@ -32,9 +34,19 @@ capability (\code{"read"}, \code{"write"}, \code{"exec"} or \code{"net"}).}
 generative UI canvas; place \code{\link[=codeagent_canvas_ui]{codeagent_canvas_ui()}} in the page. With a
 \verb{tools=} selection on the client, include \code{"genui"} in it.}
 
-\item{sessions}{If \code{TRUE}, serve the saved-conversation list of
-\code{\link[=codeagent_sessions_ui]{codeagent_sessions_ui()}} (place it in the page): New, Delete and restore
-on click. Default \code{FALSE}.}
+\item{history}{Conversation history: \code{NULL} (default, none);
+\code{\link[shinychat:history_options]{shinychat::history_options()}} for shinychat's history (list, switch, new,
+rename, delete in the chat's history selector -- set
+\code{codeagent_chat_ui(history = TRUE)}); or \code{"codeagent"} for codeagent's own
+list (\code{\link[=codeagent_sessions_ui]{codeagent_sessions_ui()}}). With shinychat's history the record
+holds what the user saw (Data Shield output gate applied, no injected
+context) and is not shortened by compaction; the model continues from
+codeagent's session log (\code{\link[=save_session]{save_session()}}).}
+
+\item{greeting}{With \code{history}: the greeting shown again on a new
+conversation (the one given to \code{\link[=codeagent_chat_ui]{codeagent_chat_ui()}}).}
+
+\item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
 }
 \value{
 Invisibly, a list with \code{state} (the session \code{reactiveValues}),

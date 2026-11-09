@@ -10,7 +10,8 @@ save_session(
   session_id = NULL,
   title = NULL,
   assistant_text_override = NULL,
-  genui_state = NULL
+  genui_state = NULL,
+  context_event = NULL
 )
 }
 \arguments{
@@ -23,16 +24,29 @@ save_session(
 \item{title}{Character or NULL. Optional human-readable title.}
 
 \item{assistant_text_override}{Character or NULL. Safe finalized text for the
-last assistant turn's presentation line. Lossless chat-state remains intact.}
+last assistant turn's presentation line. The lossless record keeps the
+provider-facing turn.}
 
 \item{genui_state}{List or NULL. The generative UI canvas state to persist
-with the conversation, written in the same atomic file replacement as the
-chat state. Supplied by \code{\link[=codeagent_app]{codeagent_app()}}; \code{NULL} writes no canvas line.}
+with the conversation; appended when it differs from the last saved one.}
+
+\item{context_event}{Character or NULL. What changed the context when it is
+not a continuation (\code{"compact"}, \code{"rewind"}, \code{"clear"}); inferred when NULL.}
 }
 \value{
 Character(1). The session UUID.
 }
 \description{
-Serialises all turns in \code{chat} to a JSONL file under
-\verb{~/.codeagent/projects/<project_hash>/<session_id>.jsonl}.
+Appends the conversation to a JSONL log under
+\verb{<CODEAGENT_HOME>/projects/<project>/<session_id>.jsonl} (format version 2).
+Each new turn is one \code{user} / \code{assistant} entry holding its display text and
+its lossless record; entries are chained by \code{uuid} / \code{parentUuid}. Turns
+already in the file are not written again. When the chat's context is no
+longer "the saved turns plus new ones" -- compaction, rewind, clear -- a
+\code{system} / \code{compact_boundary} entry is appended with a snapshot of the new
+context (\code{parentUuid: null}, \code{logicalParentUuid} pointing at the last entry
+before it), so earlier turns stay in the file. The model context restores
+from the last boundary on (\code{\link[=restore_session_into_chat]{restore_session_into_chat()}}); the display keeps
+every turn. A version 1 file (rewritten whole on every save) is migrated on
+its first save.
 }

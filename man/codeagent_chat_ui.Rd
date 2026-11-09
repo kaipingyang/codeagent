@@ -4,7 +4,7 @@
 \alias{codeagent_chat_ui}
 \title{Chat UI for a host app that embeds codeagent}
 \usage{
-codeagent_chat_ui(..., greeting = NULL, footer = NULL)
+codeagent_chat_ui(..., greeting = NULL, footer = NULL, history = FALSE)
 }
 \arguments{
 \item{...}{Further arguments passed to \code{\link[shinychat:chat_ui]{shinychat::chat_ui()}}; they override
@@ -14,6 +14,9 @@ the defaults described above (except \code{id}).}
 \code{\link[shinychat:chat_greeting]{shinychat::chat_greeting()}}). A string is shown as a persistent greeting.}
 
 \item{footer}{Optional extra UI placed under the interaction bar.}
+
+\item{history}{If \code{TRUE}, show shinychat's conversation history selector;
+pair it with \code{codeagent_server(history = shinychat::history_options(...))}.}
 }
 \value{
 A Shiny tag.

@@ -612,14 +612,43 @@ UI's approval / question callbacks exist. Host tools get a declared
 capability, codeagent's result normalization (a structured `ContentToolResult`
 value is sent as one JSON string) and the permission gate / Data Shield.
 
-Saved conversations: put `codeagent_sessions_ui()` in the page (a sidebar,
-an accordion) and pass `sessions = TRUE` to `codeagent_server()`. Users see
+Conversation history, two ways. **shinychat's history selector**: pass
+`history = shinychat::history_options(...)` to `codeagent_server()` (and
+`greeting =` with the greeting you gave the UI) and `history = TRUE` to
+`codeagent_chat_ui()`. Users list, open, start, rename and delete their
+conversations in the chat itself. The record holds what the user saw --
+the Data Shield output gate applied, tool cards with gated arguments, no
+injected `<system-reminder>` -- and compaction never shortens it; opening a
+conversation brings the model back to its saved context (codeagent's session
+log) and the canvas.
+
+```r
+codeagent_chat_ui(greeting = "Hi!", history = TRUE)
+codeagent_server(input, output, session, client,
+  history = shinychat::history_options(
+    restore_mode = "none", scope = function(session) session$user,
+    store = shinychat::FileConversationStore$new(dir = "/shared/app/history")),
+  greeting = "Hi!")
+```
+
+**codeagent's own list**: put `codeagent_sessions_ui()` in the page (a sidebar,
+an accordion) and pass `history = "codeagent"` to `codeagent_server()`. Users see
 their earlier conversations (newest first, by the first message), restore one
 with a click -- tool cards and the canvas included -- or start a new one; the
 page always opens on a new conversation and keeps the host's greeting.
 Conversations are saved per turn under `CODEAGENT_HOME`, keyed by the client's
 `cwd`: give each user a fixed `cwd` (not a temp dir) so the list survives an
 app restart and holds only that user's conversations.
+
+Session files are append-only logs (format version 2): each new turn is one
+entry with its display text and its lossless record, chained by `uuid` /
+`parentUuid`. When compaction, `/rewind` or `/clear` changes the context, a
+`compact_boundary` entry with a snapshot of the new context is appended
+(`parentUuid: null`, `logicalParentUuid` to the entry before it) -- the same
+shape as Claude Code's public session log. The model resumes from the last
+boundary on; a restored conversation still shows every earlier turn, with a
+note where the context was compacted. Version 1 files are read as before and
+migrated on their next save.
 
 `AskUserForm` collects or confirms several values at once: the model sends a
 title and fields (`text`, `textarea`, `number`, `select`, `multiselect`,

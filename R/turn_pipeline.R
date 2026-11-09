@@ -37,10 +37,15 @@ NULL
 #' @param cwd Character or NULL. Working directory.
 #' @param compaction_ctrl A `CompactionController` or NULL.
 #' @param resource_state A `ContentReplacementState` or NULL.
+#' @param session_id Character or NULL. When the context changed before this
+#'   turn (compaction here, or a /compact /clear /rewind since the last save),
+#'   the session log records a boundary now, so the end-of-turn save only
+#'   appends the new turns.
 #' @return `input` with system-reminder injected (same type as input).
 #' @keywords internal
 .turn_setup <- function(client, input, iteration = 1L, cwd = NULL,
-                         compaction_ctrl = NULL, resource_state = NULL) {
+                         compaction_ctrl = NULL, resource_state = NULL,
+                         session_id = NULL) {
   chat     <- if (inherits(client, "CodeagentClient")) client$chat else client
   settings <- if (inherits(client, "CodeagentClient")) client$settings else list()
   if (is.null(cwd)) cwd <- settings$cwd %||% getwd()
@@ -64,6 +69,7 @@ NULL
         hooks = settings$hooks_registry %||% NULL,
         use_provider_usage = !resource_changed),
       error = function(e) NULL)
+  if (!is.null(session_id)) .session_sync_context(chat, cwd, session_id)
 
   # system-reminder injection: extract text for the reminder query,
   # then inject back into the original input (preserving list shape).
