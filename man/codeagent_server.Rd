@@ -14,6 +14,8 @@ codeagent_server(
   canvas = NULL,
   history = NULL,
   greeting = NULL,
+  modes = NULL,
+  on_restore = NULL,
   sessions = FALSE
 )
 }
@@ -45,6 +47,15 @@ codeagent's session log (\code{\link[=save_session]{save_session()}}).}
 
 \item{greeting}{With \code{history}: the greeting shown again on a new
 conversation (the one given to \code{\link[=codeagent_chat_ui]{codeagent_chat_ui()}}).}
+
+\item{modes}{\code{NULL} (the client's permission mode, fixed) or the named
+modes of \code{\link[=codeagent_mode_ui]{codeagent_mode_ui()}} (place it in the page): the user switches the
+session's permission mode between them; not while a reply is running.}
+
+\item{on_restore}{Optional \verb{function(chat)} called after a saved
+conversation is opened from the history (either backend), with the Chat
+holding the restored context -- e.g. to show its last result in the host's
+own panels.}
 
 \item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
 }

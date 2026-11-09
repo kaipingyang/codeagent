@@ -14,7 +14,7 @@ NULL
 # the greeting the host gave codeagent_chat_ui() instead of codeagent's own.
 server_sessions <- function(input, output, session, chat, cwd,
                               state, stream_task, settings = list(),
-                              default_greeting = TRUE) {
+                              default_greeting = TRUE, on_restore = NULL) {
   reset_ui <- function() {
     if (isTRUE(default_greeting)) .reset_chat_ui_greeting(session)
     else shinychat::chat_clear("chat", greeting = FALSE, session = session)
@@ -102,6 +102,8 @@ onclick = sprintf(
     # Replay what the user saw -- every turn, earlier context included -- while
     # the model continues from the restored (post-compaction) context.
     .replay_display_to_ui(chat, sid, cwd, session, settings)
+    if (is.function(on_restore)) tryCatch(on_restore(chat), error = function(e)
+      .ui_toast(paste0("Restoring the host view failed: ", conditionMessage(e)), "warning"))
     .genui_restore_ui(settings, chat, sid, cwd)
     # Refresh the CONTEXT token meter for the restored conversation (the stream
     # task only updates it on new turns, so a freshly restored session would

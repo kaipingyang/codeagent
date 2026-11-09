@@ -26,6 +26,9 @@ NULL
 # Allow/Deny observers.
 .shiny_ask_fn <- function(session, state) {
   function(tool_name, tool_input) {
+    # "Always allow" for this tool in this session: no bar.
+    if (tool_name %in% (shiny::isolate(state$always_allow) %||% character()))
+      return(promises::promise_resolve(TRUE))
     promises::promise(function(resolve, reject) {
       .enqueue_interaction(state, list(
         type    = "approval",
@@ -201,6 +204,9 @@ NULL
       ),
       shiny::actionButton("ca_tool_allow", "\u2714 Allow",
                           class = "btn-success btn-sm"),
+      shiny::actionButton("ca_tool_allow_always", "\u2714 Always allow",
+                          class = "btn-outline-success btn-sm",
+                          title = "Allow this tool for the rest of this session without asking again"),
       shiny::actionButton("ca_tool_deny", "\u2716 Deny",
                           class = "btn-danger btn-sm")
     )
@@ -312,6 +318,25 @@ server_interaction <- function(input, output, session, state) {
       shinychat::chat_append_message(
         "chat", list(role = "assistant", content = "\u2705 Tool allowed."),
         session = session)
+  })
+  # Allow, and stop asking for this tool in this session: approvals of the
+  # same tool already waiting in the queue are allowed too.
+  shiny::observeEvent(input$ca_tool_allow_always, ignoreInit = TRUE, {
+    pending <- shiny::isolate(state$pending_interaction)
+    if (is.null(pending) || !identical(pending$type, "approval")) return()
+    tool <- as.character(pending$payload$tool_name %||% "")
+    if (!nzchar(tool)) return()
+    state$always_allow <- unique(c(shiny::isolate(state$always_allow), tool))
+    same <- function(it) !is.null(it) && identical(it$type, "approval") &&
+      identical(as.character(it$payload$tool_name %||% ""), tool)
+    .resolve_pending(state, TRUE)
+    # the next shown request may be the same tool (promoted from the queue)
+    while (same(shiny::isolate(state$pending_interaction))) .resolve_pending(state, TRUE)
+    queued <- Filter(same, shiny::isolate(state$interaction_queue) %||% list())
+    for (it in queued) .resolve_interaction_token(state, it$token, TRUE)
+    shinychat::chat_append_message(
+      "chat", list(role = "assistant", content = paste0("\u2705 `", tool,
+        "` allowed for the rest of this session.")), session = session)
   })
   shiny::observeEvent(input$ca_tool_deny, ignoreInit = TRUE, {
     if (.resolve_pending(state, FALSE))

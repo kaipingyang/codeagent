@@ -16,7 +16,7 @@
 NULL
 
 .enable_shinychat_history <- function(input, session, chat, core, options,
-                                      greeting = NULL) {
+                                      greeting = NULL, on_restore = NULL) {
   if (!inherits(options, "chat_history_config"))
     stop("`history` must be NULL, \"codeagent\" or shinychat::history_options().",
          call. = FALSE)
@@ -63,6 +63,8 @@ NULL
       shiny::isolate(state$session_id <- sid)
       tryCatch(.genui_restore_ui(settings, chat, sid, cwd), error = function(e) NULL)
       send_budget()
+      if (is.function(on_restore)) tryCatch(on_restore(chat), error = function(e)
+        .ui_toast(paste0("Restoring the host view failed: ", conditionMessage(e)), "warning"))
     })
 
   # New chat: shinychat empties the presentation Chat; empty the model's too.

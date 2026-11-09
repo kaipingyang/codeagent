@@ -296,3 +296,68 @@ test_that("presentation turns: reminders stripped, gated text, tool cards kept",
   expect_s3_class(out[[2]]@contents[[2]], "ellmer::ContentToolRequest")
   expect_identical(out[[3]]@text, "shown final")
 })
+
+# Always allow / mode switch / on_restore ---------------------------------------
+
+test_that("'Always allow this tool' approves now, the queued same-tool requests, and later ones", {
+  client <- .embed_client(permission_mode = "default")
+  shiny::testServer(function(input, output, session) {
+    session$userData$srv <- codeagent_server(input, output, session, client)
+  }, {
+    srv <- session$userData$srv
+    session$flushReact()
+    ask <- srv$settings$shiny_ask_fn
+    got <- list()
+    keep <- function(tag) function(v) got[[tag]] <<- v
+    promises::then(ask("HostWrite", list(a = 1)), keep("first"))
+    promises::then(ask("HostWrite", list(a = 2)), keep("queued"))
+    promises::then(ask("OtherTool", list()), keep("other"))
+    session$flushReact()
+    expect_match(paste(output$ca_interaction_ui$html, collapse = ""), "ca_tool_allow_always")
+    session$setInputs(ca_tool_allow_always = 1)
+    for (i in 1:10) later::run_now(0.01)
+    expect_true(isTRUE(got$first)); expect_true(isTRUE(got$queued))
+    expect_null(got$other)                                   # another tool still asks
+    expect_identical(shiny::isolate(srv$state$pending_interaction$payload$tool_name), "OtherTool")
+    promises::then(ask("HostWrite", list(a = 3)), keep("later"))
+    for (i in 1:10) later::run_now(0.01)
+    expect_true(isTRUE(got$later))                           # no bar for it any more
+  })
+})
+
+test_that("codeagent_mode_ui + codeagent_server(modes =) switch the session's permission mode", {
+  modes <- c("Ask before changes" = "default", "Run without asking" = "bypass")
+  html <- as.character(codeagent_mode_ui(modes))
+  expect_match(html, "ca_perm_mode"); expect_match(html, "Run without asking")
+  expect_error(codeagent_mode_ui(c(x = "plan")), "modes")
+  client <- .embed_client(permission_mode = "default")
+  shiny::testServer(function(input, output, session) codeagent_server(input, output, session, client, modes = modes), {
+    session$flushReact()
+    ctx <- .gate_ctx_for(client$chat)
+    expect_identical(ctx$mode_env$mode, "default")
+    session$setInputs(ca_perm_mode = "bypass")
+    expect_identical(ctx$mode_env$mode, "bypass")
+    session$setInputs(ca_perm_mode = "plan")                 # not offered: ignored
+    expect_identical(ctx$mode_env$mode, "bypass")
+    session$setInputs(ca_perm_mode = "default")
+    expect_identical(ctx$mode_env$mode, "default")
+  })
+  expect_error(shiny::testServer(function(input, output, session)
+    codeagent_server(input, output, session, .embed_client(), on_restore = "x"), {}), "on_restore")
+})
+
+test_that("on_restore runs after a conversation is opened from codeagent's list", {
+  home <- withr::local_tempdir(); withr::local_envvar(CODEAGENT_HOME = home)
+  client <- .embed_client(permission_mode = "plan")
+  old <- ellmer::chat_openai_compatible(base_url = "http://127.0.0.1:1", model = "m", credentials = function() "k")
+  old$set_turns(list(ellmer::Turn("user", "q"), ellmer::Turn("assistant", "a")))
+  sid <- save_session(old, cwd = client$settings$cwd)
+  seen <- NULL
+  shiny::testServer(function(input, output, session)
+    codeagent_server(input, output, session, client, history = "codeagent",
+                     on_restore = function(chat) seen <<- length(chat$get_turns())), {
+    session$flushReact()
+    session$setInputs(ca_load_session = sid)
+    expect_identical(seen, 2L)
+  })
+})
