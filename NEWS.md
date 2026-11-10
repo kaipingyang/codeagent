@@ -1,5 +1,12 @@
 # codeagent (development version)
 
+* Fixed: a host tool card built from components with render hooks
+  (`bslib::card()`, `tagFunction()`, widgets) could not be recorded -- every
+  later save of the conversation failed ("Could not save conversation", and
+  the session log stopped at that turn). Such objects in a tool result's
+  `extra` are rendered to static HTML (dependencies kept) when the tool
+  returns; plain tags are left as they are.
+
 * The approval bar has "Always allow" (this tool, this session): allows the request, the
   same tool's requests already waiting, and every later one in the session.
 * Host apps: `codeagent_mode_ui()` + `codeagent_server(modes =)` let the user

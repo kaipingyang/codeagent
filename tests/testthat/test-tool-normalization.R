@@ -83,3 +83,29 @@ test_that("a value JSON cannot encode is sent as its printed text, never as a li
   big <- .tool_value_printed(paste(rep("x", 30000), collapse = ""))
   expect_match(big, "truncated", fixed = TRUE)
 })
+
+test_that("a host card holding render hooks is recorded as static HTML", {
+  skip_if_not_installed("bslib")
+  card <- bslib::card(bslib::card_header("Head"), bslib::card_body(htmltools::tags$p("Body")))
+  res <- ellmer::ContentToolResult(value = "ok", extra = list(
+    display = list(title = "t", html = htmltools::div(id = "x1", card)),
+    meta = list(button_id = "x1", n = 1L)))
+  expect_true(.holds_closure(res@extra))
+  out <- .normalize_tool_output(res)
+  expect_false(.holds_closure(out@extra))
+  html <- out@extra$display$html
+  expect_s3_class(html, "html")
+  expect_match(as.character(html), "bslib-card", fixed = TRUE)
+  expect_match(as.character(html), "id=\"x1\"", fixed = TRUE)
+  expect_true(length(htmltools::htmlDependencies(html)) > 0)
+  expect_identical(out@extra$meta, list(button_id = "x1", n = 1L))      # untouched
+  # the conversation can be recorded (shinychat history / session log)
+  rec <- ellmer::contents_record(ellmer::Turn("user", list(out)))
+  expect_type(jsonlite::serializeJSON(rec), "character")
+})
+
+test_that("results without render hooks are not touched", {
+  disp <- list(title = "t", html = htmltools::div(class = "a", "x"))
+  res <- ellmer::ContentToolResult(value = "ok", extra = list(display = disp))
+  expect_identical(.normalize_tool_output(res)@extra$display, disp)
+})
