@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+* Host apps: `codeagent_server(on_tool_open =)` is called with a tool card's
+  `ContentToolResult` when the user opens (expands) that card in the chat, live
+  or in a restored conversation, e.g. to show it in the host's own panel. Tool
+  results with an HTML display carry a result id (`data-ca-result`, recorded
+  with the conversation); the chat reports it as `input$ca_tool_open`.
+
 * Fixed: a host tool card built from components with render hooks
   (`bslib::card()`, `tagFunction()`, widgets) could not be recorded -- every
   later save of the conversation failed ("Could not save conversation", and

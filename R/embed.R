@@ -215,6 +215,11 @@ codeagent_mode_ui <- function(modes = c("Ask before changes" = "default",
 #'   conversation is opened from the history (either backend), with the Chat
 #'   holding the restored context -- e.g. to show its last result in the host's
 #'   own panels.
+#' @param on_tool_open Optional `function(result)` called when the user opens
+#'   (expands) a tool card in the chat -- live or in a restored conversation --
+#'   with that card's `ellmer::ContentToolResult`, e.g. to show the result in
+#'   the host's own panel. Only results with an HTML display
+#'   (`extra$display$html`) are reported.
 #' @param sessions Deprecated: `TRUE` is `history = "codeagent"`.
 #' @return Invisibly, a list with `state` (the session `reactiveValues`),
 #'   `stream_task` (the `ExtendedTask`), `chat` and `settings`.
@@ -225,7 +230,7 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                              tool_meta = list(), canvas = NULL,
                              history = NULL, greeting = NULL,
                              modes = NULL, on_restore = NULL,
-                             sessions = FALSE) {
+                             on_tool_open = NULL, sessions = FALSE) {
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
@@ -235,6 +240,8 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   if (!is.null(modes)) .check_host_modes(modes)
   if (!is.null(on_restore) && !is.function(on_restore))
     stop("`on_restore` must be NULL or a function(chat).", call. = FALSE)
+  if (!is.null(on_tool_open) && !is.function(on_tool_open))
+    stop("`on_tool_open` must be NULL or a function(result).", call. = FALSE)
   if (isTRUE(sessions) && is.null(history)) history <- "codeagent"
   if (!is.null(history) && !identical(history, "codeagent") &&
       !inherits(history, "chat_history_config"))
@@ -273,6 +280,12 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                               greeting = greeting, on_restore = on_restore)
   if (!is.null(modes))
     .serve_host_modes(input, client$chat, core, modes)
+  if (is.function(on_tool_open))
+    shiny::observeEvent(input$ca_tool_open, {
+      res <- .find_tool_result(client$chat$get_turns(), input$ca_tool_open$id)
+      if (!is.null(res)) tryCatch(on_tool_open(res), error = function(e)
+        .ui_toast(paste0("Showing the tool result failed: ", conditionMessage(e)), "warning"))
+    }, ignoreInit = TRUE)
   session$onFlushed(function() core$ready(), once = TRUE)
   invisible(list(state = core$state, stream_task = core$stream_task,
                  chat = client$chat, settings = core$settings))

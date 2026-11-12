@@ -21,7 +21,7 @@
                             paste0("[Error] Tool returned a rejected promise: ",
                                    conditionMessage(e))
                           }))
-  if (.is_ellmer_content(value)) return(.encode_tool_result_value(value))
+  if (.is_ellmer_content(value)) return(.mark_tool_result(.encode_tool_result_value(value)))
   if (is.list(value) && length(value) &&
       all(vapply(value, .is_ellmer_content, logical(1L)))) return(value)
   if (!is.list(value) && !is.data.frame(value)) return(value)
@@ -151,6 +151,33 @@
     for (i in seq_along(x)) if (!is.null(x[[i]])) x[i] <- list(.static_html(x[[i]]))
     return(x)
   }
+  NULL
+}
+
+
+# A tool card the user opens in the chat is reported to the host
+# (codeagent_server(on_tool_open =)): the card's HTML carries the result's
+# id (data-ca-result), recorded with the conversation so restored cards keep
+# it. Results without an HTML display (text / markdown only) are not marked.
+.mark_tool_result <- function(result) {
+  is_result <- tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult), error = function(e) FALSE)
+  if (!isTRUE(is_result)) return(result)
+  extra <- tryCatch(result@extra, error = function(e) NULL)
+  html <- extra$display$html
+  if (is.null(html) || !is.null(extra$codeagent$result_id)) return(result)
+  id <- paste0("car_", gsub("-", "", .generate_uuid_v4()))
+  extra$display$html <- htmltools::div(class = "ca-tool-result", `data-ca-result` = id, html)
+  extra$codeagent$result_id <- id
+  result@extra <- extra
+  result
+}
+
+# The tool result with this id in the chat's turns (NULL if none).
+.find_tool_result <- function(turns, id) {
+  if (!is.character(id) || length(id) != 1L || !nzchar(id)) return(NULL)
+  for (t in rev(turns)) for (x in tryCatch(t@contents, error = function(e) list()))
+    if (inherits(x, "ellmer::ContentToolResult") &&
+        identical(tryCatch(x@extra$codeagent$result_id, error = function(e) NULL), id)) return(x)
   NULL
 }
 

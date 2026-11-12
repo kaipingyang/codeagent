@@ -147,6 +147,40 @@
     });
 
     // ---------------------------------------------------------------------------
+    // Opening a tool card in the chat -> input$ca_tool_open = {id} for the host
+    // (codeagent_server(on_tool_open =)). shinychat renders a card's body only
+    // once it is expanded (later in a big conversation): watch the card until
+    // the result's id (data-ca-result) appears, or the card is closed again.
+    // ---------------------------------------------------------------------------
+    $(document).on("click",
+      "#chat button.shiny-chat-tool-group__row, #chat button.shiny-chat-tool-call-row__summary",
+      function () {
+        var btn = this;
+        var scope = btn.closest("li.shiny-chat-tool-call-row") || btn.closest(".shiny-chat-tool-group");
+        if (!scope) return;
+        var obs = null, timer = null;
+        function open() { return btn.getAttribute("aria-expanded") === "true"; }
+        function stop() { if (obs) obs.disconnect(); if (timer) clearTimeout(timer); }
+        function look() {
+          if (!open()) return false;
+          var marks = scope.querySelectorAll("[data-ca-result]");
+          if (!marks.length) return false;
+          stop();
+          Shiny.setInputValue("ca_tool_open",
+            { id: marks[marks.length - 1].getAttribute("data-ca-result"), nonce: Date.now() },
+            { priority: "event" });
+          return true;
+        }
+        setTimeout(function () {
+          if (look() || !open()) return;
+          obs = new MutationObserver(function () { if (!open()) { stop(); return; } look(); });
+          obs.observe(scope, { childList: true, subtree: true, attributes: true });
+          obs.observe(btn, { attributes: true });
+          timer = setTimeout(stop, 60000);
+        }, 50);
+      });
+
+    // ---------------------------------------------------------------------------
     // Tool card click → switch Output tab + select result (LiveTFLAI pattern)
     // MutationObserver binds click to shiny-tool-result elements
     // ---------------------------------------------------------------------------

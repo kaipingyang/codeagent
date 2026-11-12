@@ -16,6 +16,7 @@ codeagent_server(
   greeting = NULL,
   modes = NULL,
   on_restore = NULL,
+  on_tool_open = NULL,
   sessions = FALSE
 )
 }
@@ -56,6 +57,12 @@ session's permission mode between them; not while a reply is running.}
 conversation is opened from the history (either backend), with the Chat
 holding the restored context -- e.g. to show its last result in the host's
 own panels.}
+
+\item{on_tool_open}{Optional \verb{function(result)} called when the user opens
+(expands) a tool card in the chat -- live or in a restored conversation --
+with that card's \code{ellmer::ContentToolResult}, e.g. to show the result in
+the host's own panel. Only results with an HTML display
+(\code{extra$display$html}) are reported.}
 
 \item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
 }
