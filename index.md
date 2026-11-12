@@ -742,8 +742,11 @@ Permission mode switch:
 in the page and the same `modes =` in
 [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md).
 The approval bar also offers “Always allow” (this tool) (for the rest of
-the session). `on_restore = function(chat)` lets the host refresh its
-own panels when a saved conversation is opened.
+the session). `on_tool_open = function(result)` is called when the user
+opens a tool card in the chat (live or restored), with that card’s
+result, so the host can show it in its own panel.
+`on_restore = function(chat)` lets the host refresh its own panels when
+a saved conversation is opened.
 
 `AskUserForm` collects or confirms several values at once: the model
 sends a title and fields (`text`, `textarea`, `number`, `select`,

@@ -29,6 +29,7 @@ codeagent_server(
   greeting = NULL,
   modes = NULL,
   on_restore = NULL,
+  on_tool_open = NULL,
   sessions = FALSE
 )
 ```
@@ -98,6 +99,15 @@ codeagent_server(
   Optional `function(chat)` called after a saved conversation is opened
   from the history (either backend), with the Chat holding the restored
   context – e.g. to show its last result in the host's own panels.
+
+- on_tool_open:
+
+  Optional `function(result)` called when the user opens (expands) a
+  tool card in the chat – live or in a restored conversation – with that
+  card's
+  [`ellmer::ContentToolResult`](https://ellmer.tidyverse.org/reference/Content.html),
+  e.g. to show the result in the host's own panel. Only results with an
+  HTML display (`extra$display$html`) are reported.
 
 - sessions:
 

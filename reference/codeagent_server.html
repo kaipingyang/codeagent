@@ -110,6 +110,7 @@ client the host built for this Shiny session. Pair it with
 <span>  greeting <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  modes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  on_restore <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  on_tool_open <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sessions <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -171,6 +172,14 @@ session's permission mode between them; not while a reply is running.</p></dd>
 conversation is opened from the history (either backend), with the Chat
 holding the restored context – e.g. to show its last result in the host's
 own panels.</p></dd>
+
+
+<dt id="arg-on-tool-open">on_tool_open<a class="anchor" aria-label="anchor" href="#arg-on-tool-open"></a></dt>
+<dd><p>Optional <code>function(result)</code> called when the user opens
+(expands) a tool card in the chat – live or in a restored conversation –
+with that card's <code><a href="https://ellmer.tidyverse.org/reference/Content.html" class="external-link">ellmer::ContentToolResult</a></code>, e.g. to show the result in
+the host's own panel. Only results with an HTML display
+(<code>extra$display$html</code>) are reported.</p></dd>
 
 
 <dt id="arg-sessions">sessions<a class="anchor" aria-label="anchor" href="#arg-sessions"></a></dt>
