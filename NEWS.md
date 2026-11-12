@@ -1,5 +1,13 @@
 # codeagent (development version)
 
+* Fixed: `UserPromptSubmit` hooks ran only in `agent_loop()`. The Shiny chat
+  (`codeagent_app()`, `codeagent_server()`), `codeagent_stream_async()` and the
+  REPL skipped them, so a hook could neither block a turn nor add context
+  there. They now run on every entry point, on the text the user typed and
+  before the Data Shield input gate, as in `agent_loop()`: a block ends the
+  turn with the hook's message, and `additional_context` is sent with the
+  turn's system-reminder (the chat still shows only what the user typed).
+
 * Host apps: `codeagent_server(on_tool_open =)` is called with a tool card's
   `ContentToolResult` when the user opens (expands) that card in the chat, live
   or in a restored conversation, e.g. to show it in the host's own panel. Tool
