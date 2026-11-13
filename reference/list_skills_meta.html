@@ -89,7 +89,7 @@ Results are cached per cwd; invalidated when any SKILL.md mtime changes.</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">list_skills_meta</span><span class="op">(</span>cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">list_skills_meta</span><span class="op">(</span>cwd <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/getwd.html" class="external-link">getwd</a></span><span class="op">(</span><span class="op">)</span>, skills <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -98,6 +98,14 @@ Results are cached per cwd; invalidated when any SKILL.md mtime changes.</p>
 
 <dl><dt id="arg-cwd">cwd<a class="anchor" aria-label="anchor" href="#arg-cwd"></a></dt>
 <dd><p>Character. Project working directory.</p></dd>
+
+
+<dt id="arg-skills">skills<a class="anchor" aria-label="anchor" href="#arg-skills"></a></dt>
+<dd><p>Which skills to use: <code>NULL</code> (default) every skill discovered
+as above; <code>FALSE</code> none; or a character vector whose entries are skill
+directories (every <code>&lt;name&gt;/SKILL.md</code> inside; relative paths are resolved
+against <code>cwd</code>) and/or names of discovered skills. See the <code>skills</code>
+argument of <code><a href="codeagent_client.html">codeagent_client()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -25,7 +25,8 @@ codeagent_client(
   max_budget_usd = NULL,
   tools = NULL,
   disallowed_tools = NULL,
-  setting_sources = c("user", "project")
+  setting_sources = c("user", "project"),
+  skills = NULL
 )
 ```
 
@@ -158,6 +159,20 @@ codeagent_client(
   personal settings and instructions never reach the app when it runs
   under their account. See
   [`load_settings()`](https://kaipingyang.github.io/codeagent/reference/load_settings.md).
+
+- skills:
+
+  Which skills the client offers (the `use_skill` tool, `/name` commands
+  and the system prompt's skill list): `NULL` (default) every skill
+  codeagent discovers – its built-ins, btw's and the user's skill
+  directories, and `.claude/skills` / `.codex/skills` under `cwd`;
+  `FALSE` none; or a character vector of skill directories (every
+  `<name>/SKILL.md` inside; relative paths resolve against `cwd`) and/or
+  names of discovered skills, e.g. `c("skills", "compact")` for a host's
+  own skills plus one built-in. An entry that is neither an existing
+  directory nor a discovered skill is an error. The `use_skill` tool
+  itself is registered only when `tools` includes the `skills` group (or
+  is `NULL`).
 
 ## Value
 

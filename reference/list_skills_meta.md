@@ -8,7 +8,7 @@ invalidated when any SKILL.md mtime changes.
 ## Usage
 
 ``` r
-list_skills_meta(cwd = getwd())
+list_skills_meta(cwd = getwd(), skills = NULL)
 ```
 
 ## Arguments
@@ -16,6 +16,15 @@ list_skills_meta(cwd = getwd())
 - cwd:
 
   Character. Project working directory.
+
+- skills:
+
+  Which skills to use: `NULL` (default) every skill discovered as above;
+  `FALSE` none; or a character vector whose entries are skill
+  directories (every `<name>/SKILL.md` inside; relative paths are
+  resolved against `cwd`) and/or names of discovered skills. See the
+  `skills` argument of
+  [`codeagent_client()`](https://kaipingyang.github.io/codeagent/reference/codeagent_client.md).
 
 ## Value
 

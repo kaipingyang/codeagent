@@ -7,7 +7,7 @@ intent to skills and load them automatically – even without explicit
 ## Usage
 
 ``` r
-.make_skill_tool(cwd = getwd())
+.make_skill_tool(cwd = getwd(), skills = NULL)
 ```
 
 ## Arguments
@@ -15,6 +15,11 @@ intent to skills and load them automatically – even without explicit
 - cwd:
 
   Character. Project working directory.
+
+- skills:
+
+  The skill set, as in
+  [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md).
 
 ## Value
 

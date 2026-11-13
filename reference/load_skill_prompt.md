@@ -6,7 +6,7 @@ btw's `find_skill()` when available, falls back to direct file read.
 ## Usage
 
 ``` r
-load_skill_prompt(name, args = "", cwd = getwd())
+load_skill_prompt(name, args = "", cwd = getwd(), skills = NULL)
 ```
 
 ## Arguments
@@ -22,6 +22,11 @@ load_skill_prompt(name, args = "", cwd = getwd())
 - cwd:
 
   Character. Project working directory.
+
+- skills:
+
+  The skill set, as in
+  [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md).
 
 ## Value
 

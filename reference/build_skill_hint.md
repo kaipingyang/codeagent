@@ -6,7 +6,7 @@ format when available; falls back to simple list.
 ## Usage
 
 ``` r
-build_skill_hint(cwd = getwd(), max_tokens = 1000L)
+build_skill_hint(cwd = getwd(), max_tokens = 1000L, skills = NULL)
 ```
 
 ## Arguments
@@ -18,6 +18,11 @@ build_skill_hint(cwd = getwd(), max_tokens = 1000L)
 - max_tokens:
 
   Integer. Approximate token budget.
+
+- skills:
+
+  The skill set, as in
+  [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md).
 
 ## Value
 

@@ -2,6 +2,20 @@
 
 ## codeagent (development version)
 
+- `codeagent_client(skills =)` lets a host choose the skills it offers
+  (the `use_skill` tool, `/name` commands and the prompt’s skill list):
+  `NULL` (default) keeps every discovered skill; `FALSE` offers none; a
+  character vector names skill directories (every `<name>/SKILL.md`
+  inside, relative to `cwd`) and/or discovered skills,
+  e.g. `c("skills", "compact")`. An entry that is neither is an error at
+  client creation. Before, an embedding app offered the model every
+  built-in and user skill, unrelated to its domain.
+  [`list_skills_meta()`](https://kaipingyang.github.io/codeagent/reference/list_skills_meta.md),
+  [`load_skill_prompt()`](https://kaipingyang.github.io/codeagent/reference/load_skill_prompt.md)
+  and
+  [`build_skill_hint()`](https://kaipingyang.github.io/codeagent/reference/build_skill_hint.md)
+  take the same `skills` argument.
+
 - Fixed: `UserPromptSubmit` hooks ran only in
   [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md).
   The Shiny chat
