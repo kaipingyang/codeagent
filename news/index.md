@@ -2,6 +2,12 @@
 
 ## codeagent (development version)
 
+- Fixed: with `CODEAGENT_HOME` set, the one-time migration of a legacy
+  `~/.codeagent` still ran and copied the account’s personal sessions,
+  settings and skills into it – e.g. a developer’s data into a host
+  app’s shared history directory. An explicit `CODEAGENT_HOME` is now
+  used as is.
+
 - `codeagent_client(skills =)` lets a host choose the skills it offers
   (the `use_skill` tool, `/name` commands and the prompt’s skill list):
   `NULL` (default) keeps every discovered skill; `FALSE` offers none; a
