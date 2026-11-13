@@ -152,6 +152,11 @@ NULL
 # ---------------------------------------------------------------------------
 
 .get_codeagent_dir <- function() {
+  # An explicit CODEAGENT_HOME is the caller's own directory (a host app's
+  # shared history, a test sandbox): used as is, never filled with the
+  # account's personal ~/.codeagent.
+  home <- Sys.getenv("CODEAGENT_HOME", "")
+  if (nzchar(home)) return(home)
   new_dir <- .new_codeagent_dir()
   old_dir <- .legacy_codeagent_dir()
   # One-time, lazy migration of a pre-rappdirs ~/.codeagent into the
