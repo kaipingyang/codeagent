@@ -13,7 +13,7 @@ server_settings <- function(input, output, session, chat, settings, cwd,
 
   # Live Customizations counts (Copilot style)
   output$customizations_counts <- shiny::renderUI({
-    n_skills <- tryCatch(length(list_skills_meta(cwd)), error = function(e) 0L)
+    n_skills <- tryCatch(length(list_skills_meta(cwd, settings$skills)), error = function(e) 0L)
     n_hooks  <- if (!is.null(hooks)) tryCatch(hooks$count(), error = function(e) 0L) else 0L
     n_tools  <- tryCatch(length(chat$get_tools()), error = function(e) 0L)
 

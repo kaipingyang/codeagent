@@ -148,7 +148,7 @@ server_chat <- function(input, output, session, chat, settings,
     parsed <- .preprocess_input(text_part, cwd)
     # For skill trigger: replace text part with skill prompt; keep attachments
     actual_input <- if (identical(parsed$type, "skill")) {
-      sp <- tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd),
+      sp <- tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd, settings$skills),
                      error = function(e) text_part)
       if (is.list(user_contents) && length(user_contents) > 1)
         c(list(sp), user_contents[-1L])   # skill text + original attachments
@@ -672,7 +672,7 @@ server_chat <- function(input, output, session, chat, settings,
 
   # Skills -- register each installed skill as a slash command
   tryCatch({
-    metas <- list_skills_meta(cwd)
+    metas <- list_skills_meta(cwd, settings$skills)
     for (nm in names(metas)) {
       local({
         skill_name <- nm
@@ -681,14 +681,14 @@ server_chat <- function(input, output, session, chat, settings,
         if (has_args) {
           mod$slash_command(skill_name, skill_desc, function(content) {
             args   <- trimws(content@user_text)
-            prompt <- tryCatch(load_skill_prompt(skill_name, args, cwd),
+            prompt <- tryCatch(load_skill_prompt(skill_name, args, cwd, settings$skills),
                                error = function(e) paste0("/", skill_name, " ", args))
             # Inject skill prompt directly into the chat (as a user turn)
             tryCatch(chat$chat(prompt), error = function(e) NULL)
           })
         } else {
           mod$slash_command(skill_name, skill_desc, function() {
-            prompt <- tryCatch(load_skill_prompt(skill_name, "", cwd),
+            prompt <- tryCatch(load_skill_prompt(skill_name, "", cwd, settings$skills),
                                error = function(e) paste0("/", skill_name))
             tryCatch(chat$chat(prompt), error = function(e) NULL)
           })
