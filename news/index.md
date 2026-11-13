@@ -2,6 +2,20 @@
 
 ## codeagent (development version)
 
+- Fixed: `UserPromptSubmit` hooks ran only in
+  [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md).
+  The Shiny chat
+  ([`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md),
+  [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md)),
+  [`codeagent_stream_async()`](https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.md)
+  and the REPL skipped them, so a hook could neither block a turn nor
+  add context there. They now run on every entry point, on the text the
+  user typed and before the Data Shield input gate, as in
+  [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md):
+  a block ends the turn with the hook’s message, and
+  `additional_context` is sent with the turn’s system-reminder (the chat
+  still shows only what the user typed).
+
 - Host apps: `codeagent_server(on_tool_open =)` is called with a tool
   card’s `ContentToolResult` when the user opens (expands) that card in
   the chat, live or in a restored conversation, e.g. to show it in the

@@ -87,7 +87,8 @@
 <span>  cwd <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  compaction_ctrl <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resource_state <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  session_id <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  session_id <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  additional_context <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -124,6 +125,12 @@
 turn (compaction here, or a /compact /clear /rewind since the last save),
 the session log records a boundary now, so the end-of-turn save only
 appends the new turns.</p></dd>
+
+
+<dt id="arg-additional-context">additional_context<a class="anchor" aria-label="anchor" href="#arg-additional-context"></a></dt>
+<dd><p>Character or NULL. Context a UserPromptSubmit
+hook added (see <code>.run_user_prompt_submit()</code>); appended after the
+system-reminder, as <code><a href="agent_loop.html">agent_loop()</a></code> does.</p></dd>
 
 </dl></div>
     <div class="section level2">

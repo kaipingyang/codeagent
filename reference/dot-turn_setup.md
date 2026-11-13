@@ -13,7 +13,8 @@ injection.
   cwd = NULL,
   compaction_ctrl = NULL,
   resource_state = NULL,
-  session_id = NULL
+  session_id = NULL,
+  additional_context = NULL
 )
 ```
 
@@ -50,6 +51,13 @@ injection.
   (compaction here, or a /compact /clear /rewind since the last save),
   the session log records a boundary now, so the end-of-turn save only
   appends the new turns.
+
+- additional_context:
+
+  Character or NULL. Context a UserPromptSubmit hook added (see
+  `.run_user_prompt_submit()`); appended after the system-reminder, as
+  [`agent_loop()`](https://kaipingyang.github.io/codeagent/reference/agent_loop.md)
+  does.
 
 ## Value
 
