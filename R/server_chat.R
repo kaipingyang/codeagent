@@ -157,6 +157,17 @@ server_chat <- function(input, output, session, chat, settings,
       user_contents  # "normal" or anything else -> send as-is (text or contents list)
     }
 
+    # UserPromptSubmit hooks (CC parity with agent_loop): run on the text the
+    # user typed, before the Data Shield gate. A block ends the turn with the
+    # hook's message; added context rides with the system-reminder.
+    ups <- .run_user_prompt_submit(settings, text_part)
+    if (identical(ups$action, "block")) {
+      tryCatch(shinychat::chat_append(
+        "chat", ups$message %||% "[Blocked by UserPromptSubmit hook]", session = session),
+        error = function(e) NULL)
+      return(promises::promise_resolve("blocked"))
+    }
+
     # Data Shield input gate (edge 1): scan typed text + attachments before the
     # turn reaches the model. This is the Shiny app's real stream path (the
     # standalone codeagent_stream_async() guards its own copy). No-op when no
@@ -179,7 +190,8 @@ server_chat <- function(input, output, session, chat, settings,
     rs   <- shiny::isolate(state$resource_state)
     iter <- shiny::isolate(state$iteration %||% 1L)
     actual_input <- .turn_setup(chat, actual_input, iter, cwd, ctrl, rs,
-                                session_id = shiny::isolate(state$session_id))
+                                session_id = shiny::isolate(state$session_id),
+                                additional_context = ups$additional_context)
     # Turns before this round (after any compaction above): what the round adds
     # is appended to the history's presentation record (history_shinychat.R).
     round_start <- length(tryCatch(chat$get_turns(), error = function(e) list()))

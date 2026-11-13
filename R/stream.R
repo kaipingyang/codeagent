@@ -137,6 +137,17 @@ codeagent_stream_async <- function(
   settings <- if (inherits(client, "CodeagentClient")) client$settings else list()
   if (is.null(cwd)) cwd <- settings$cwd %||% getwd()
 
+  # UserPromptSubmit hooks (CC parity with agent_loop's 1a.5): block ends the
+  # turn; added context rides with the system-reminder (.turn_setup below).
+  ups <- .run_user_prompt_submit(settings, input)
+  if (identical(ups$action, "block")) {
+    msg <- ups$message %||% "[Blocked by UserPromptSubmit hook]"
+    if (!is.null(on_delta)) tryCatch(on_delta(msg), error = function(e) NULL)
+    return(promises::promise_resolve(
+      list(text = msg, usage = NULL, stop_reason = "hook_blocked",
+           finish_reason = NA_character_)))
+  }
+
   # Data Shield input gate (edge 1): scan the user's text + attachments before
   # the turn reaches the model. Mirrors agent_loop's 1a.6 for the Shiny/stream
   # path so both entry points guard edge 1. No-op when no shield is active.
@@ -165,7 +176,8 @@ codeagent_stream_async <- function(
   # Run turn setup OUTSIDE the coro::async body: coro cannot assign the result
   # of an `if` expression, and .turn_setup contains such branches.
   actual_input <- .turn_setup(client, input, iteration, cwd,
-                               compaction_ctrl, resource_state, session_id = session_id)
+                               compaction_ctrl, resource_state, session_id = session_id,
+                               additional_context = ups$additional_context)
   # ellmer's `...` contract expects each text/content part as its own argument.
   # Preserve scalar input as one argument, but expand Shiny's multimodal list
   # (text followed by Content attachments) across the dots.

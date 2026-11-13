@@ -41,11 +41,14 @@ NULL
 #'   turn (compaction here, or a /compact /clear /rewind since the last save),
 #'   the session log records a boundary now, so the end-of-turn save only
 #'   appends the new turns.
+#' @param additional_context Character or NULL. Context a UserPromptSubmit
+#'   hook added (see `.run_user_prompt_submit()`); appended after the
+#'   system-reminder, as [agent_loop()] does.
 #' @return `input` with system-reminder injected (same type as input).
 #' @keywords internal
 .turn_setup <- function(client, input, iteration = 1L, cwd = NULL,
                          compaction_ctrl = NULL, resource_state = NULL,
-                         session_id = NULL) {
+                         session_id = NULL, additional_context = NULL) {
   chat     <- if (inherits(client, "CodeagentClient")) client$chat else client
   settings <- if (inherits(client, "CodeagentClient")) client$settings else list()
   if (is.null(cwd)) cwd <- settings$cwd %||% getwd()
@@ -82,8 +85,30 @@ NULL
   reminder <- tryCatch(
     .build_system_reminder(settings, as.integer(iteration), cwd, query = text_part),
     error = function(e) "")
+  if (length(additional_context) && nzchar(additional_context))
+    reminder <- if (nzchar(reminder)) paste0(reminder, "\n\n", additional_context)
+                else additional_context
 
   .inject_reminder_to_input(input, reminder)
+}
+
+# ---------------------------------------------------------------------------
+# .run_user_prompt_submit
+# ---------------------------------------------------------------------------
+# UserPromptSubmit hooks (Claude Code parity) for the entry points that do not
+# go through agent_loop(): the Shiny chat, codeagent_stream_async() and the
+# REPL. Runs on the text the user typed, before the Data Shield input gate,
+# as agent_loop() does. Returns list(action = "allow", additional_context =
+# <chr or NULL>) or list(action = "block", message = <chr>). A failing
+# registry never blocks the turn.
+.run_user_prompt_submit <- function(settings, input) {
+  hooks <- tryCatch(settings$hooks_registry, error = function(e) NULL)
+  if (is.null(hooks)) return(list(action = "allow", additional_context = NULL))
+  # the REPL hands codeagent_stream_async() input that already carries a
+  # system-reminder; hooks see only what the user typed
+  text <- .strip_system_reminder(.user_input_text(input))
+  tryCatch(hooks$run_user_prompt_submit(text),
+           error = function(e) list(action = "allow", additional_context = NULL))
 }
 
 # ---------------------------------------------------------------------------
