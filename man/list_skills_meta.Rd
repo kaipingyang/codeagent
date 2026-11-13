@@ -4,10 +4,16 @@
 \alias{list_skills_meta}
 \title{List skill metadata from all skill directories}
 \usage{
-list_skills_meta(cwd = getwd())
+list_skills_meta(cwd = getwd(), skills = NULL)
 }
 \arguments{
 \item{cwd}{Character. Project working directory.}
+
+\item{skills}{Which skills to use: \code{NULL} (default) every skill discovered
+as above; \code{FALSE} none; or a character vector whose entries are skill
+directories (every \verb{<name>/SKILL.md} inside; relative paths are resolved
+against \code{cwd}) and/or names of discovered skills. See the \code{skills}
+argument of \code{\link[=codeagent_client]{codeagent_client()}}.}
 }
 \value{
 Named list of \code{SkillMeta} objects (keyed by skill name).

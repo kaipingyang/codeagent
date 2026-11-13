@@ -668,7 +668,7 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       parsed <- tryCatch(.preprocess_input(user_input, cwd),
                          error = function(e) list(type = "text"))
       if (identical(parsed$type, "skill")) {
-        user_input <- tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd),
+        user_input <- tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd, settings$skills),
                                error = function(e) user_input)
       }
     }

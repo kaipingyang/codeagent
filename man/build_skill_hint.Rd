@@ -4,12 +4,14 @@
 \alias{build_skill_hint}
 \title{Build skill hint for system prompt}
 \usage{
-build_skill_hint(cwd = getwd(), max_tokens = 1000L)
+build_skill_hint(cwd = getwd(), max_tokens = 1000L, skills = NULL)
 }
 \arguments{
 \item{cwd}{Character. Project working directory.}
 
 \item{max_tokens}{Integer. Approximate token budget.}
+
+\item{skills}{The skill set, as in \code{\link[=list_skills_meta]{list_skills_meta()}}.}
 }
 \value{
 Character(1). The skill hint block, or \code{""} if no skills found.

@@ -4,10 +4,12 @@
 \alias{.make_skill_tool}
 \title{Create the skill tool for LLM auto-triggering}
 \usage{
-.make_skill_tool(cwd = getwd())
+.make_skill_tool(cwd = getwd(), skills = NULL)
 }
 \arguments{
 \item{cwd}{Character. Project working directory.}
+
+\item{skills}{The skill set, as in \code{\link[=list_skills_meta]{list_skills_meta()}}.}
 }
 \value{
 An \code{ellmer::tool()} object, or \code{NULL} if no skills exist.

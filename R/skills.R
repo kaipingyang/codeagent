@@ -142,9 +142,82 @@ NULL
 #' Results are cached per cwd; invalidated when any SKILL.md mtime changes.
 #'
 #' @param cwd Character. Project working directory.
+#' @param skills Which skills to use: `NULL` (default) every skill discovered
+#'   as above; `FALSE` none; or a character vector whose entries are skill
+#'   directories (every `<name>/SKILL.md` inside; relative paths are resolved
+#'   against `cwd`) and/or names of discovered skills. See the `skills`
+#'   argument of [codeagent_client()].
 #' @return Named list of `SkillMeta` objects (keyed by skill name).
 #' @export
-list_skills_meta <- function(cwd = getwd()) {
+list_skills_meta <- function(cwd = getwd(), skills = NULL) {
+  if (is.null(skills)) return(.discover_skills(cwd))
+  .select_skills(skills, cwd)
+}
+
+# A host-chosen skill set (codeagent_client(skills =)). Directories are read
+# directly; names are looked up among them first, then among the default
+# discovery -- which is only scanned (cold: ~20 s with btw) when a name needs it.
+.select_skills <- function(skills, cwd = getwd()) {
+  if (isFALSE(skills)) return(list())
+  .check_skills_arg(skills)
+  paths  <- ifelse(.is_absolute_path(skills), skills, file.path(cwd, skills))
+  is_dir <- dir.exists(paths)
+  metas  <- list()
+  for (d in paths[is_dir]) {
+    found <- .skills_in_dir(d)
+    metas[names(found)] <- found
+  }
+  wanted <- skills[!is_dir]
+  if (length(wanted)) {
+    missing <- setdiff(wanted, names(metas))
+    if (length(missing)) {
+      pool <- .discover_skills(cwd)
+      unknown <- setdiff(missing, names(pool))
+      if (length(unknown))
+        stop("Unknown skill", if (length(unknown) > 1L) "s", ": ",
+             paste0("'", unknown, "'", collapse = ", "),
+             ". Not a directory and not a discovered skill. Available: ",
+             paste(sort(names(pool)), collapse = ", "), call. = FALSE)
+      metas[missing] <- pool[missing]
+    }
+  }
+  metas
+}
+
+.check_skills_arg <- function(skills) {
+  if (is.null(skills) || isFALSE(skills)) return(invisible(TRUE))
+  if (!is.character(skills) || !length(skills) || anyNA(skills) || any(!nzchar(skills)))
+    stop("`skills` must be NULL, FALSE, or a character vector of skill ",
+         "directories and/or skill names.", call. = FALSE)
+  invisible(TRUE)
+}
+
+.is_absolute_path <- function(x) grepl("^(/|~|[A-Za-z]:[/\\\\]|\\\\\\\\)", x)
+
+# Directory entries of a skills selection as absolute paths (names unchanged),
+# so later lookups do not depend on which cwd they are given.
+.absolute_skill_dirs <- function(skills, cwd = getwd()) {
+  if (isFALSE(skills)) return(skills)
+  paths <- ifelse(.is_absolute_path(skills), skills, file.path(cwd, skills))
+  is_dir <- dir.exists(paths)
+  skills[is_dir] <- normalizePath(paths[is_dir], mustWork = FALSE)
+  skills
+}
+
+# Every `<name>/SKILL.md` directly under `dir`, keyed by skill name.
+.skills_in_dir <- function(dir) {
+  metas <- list()
+  for (subdir in list.dirs(dir, full.names = TRUE, recursive = FALSE)) {
+    skill_md <- file.path(subdir, "SKILL.md")
+    if (!file.exists(skill_md)) next
+    meta <- .parse_skill_md(skill_md)
+    if (!is.null(meta)) metas[[meta$name]] <- meta
+  }
+  metas
+}
+
+# Default discovery: every configured skill directory (cached per cwd).
+.discover_skills <- function(cwd = getwd()) {
   dirs      <- .skill_dirs(cwd)
   cache_key <- .sanitize_path(.canonicalize_path(cwd))
   sig       <- .skill_dirs_mtime_sig(dirs)
@@ -226,17 +299,20 @@ list_skills_meta <- function(cwd = getwd()) {
 #' @param name Character. Skill name.
 #' @param args Character. Arguments passed after the skill name.
 #' @param cwd Character. Project working directory.
+#' @param skills The skill set, as in [list_skills_meta()].
 #' @return Character(1). The fully resolved prompt string.
 #' @export
-load_skill_prompt <- function(name, args = "", cwd = getwd()) {
-  metas <- list_skills_meta(cwd)
+load_skill_prompt <- function(name, args = "", cwd = getwd(), skills = NULL) {
+  metas <- list_skills_meta(cwd, skills)
   meta  <- metas[[name]]
   if (is.null(meta))
     stop("Skill not found: '", name, "'. Available: ",
          paste(names(metas), collapse = ", "), call. = FALSE)
 
-  # Use btw's find_skill if available (handles resources listing too)
-  if (requireNamespace("btw", quietly = TRUE)) {
+  # Use btw's find_skill if available (handles resources listing too). Not
+  # for a host-chosen set: btw looks the name up in its own directories and
+  # could return a different skill of the same name.
+  if (is.null(skills) && requireNamespace("btw", quietly = TRUE)) {
     skill_info <- tryCatch(utils::getFromNamespace("find_skill", "btw")(name), error = function(e) NULL)
     if (!is.null(skill_info) && skill_info$validation$valid) {
       fm   <- tryCatch(
@@ -265,10 +341,11 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
 #' `/name` syntax from the user.
 #'
 #' @param cwd Character. Project working directory.
+#' @param skills The skill set, as in [list_skills_meta()].
 #' @return An `ellmer::tool()` object, or `NULL` if no skills exist.
 #' @keywords internal
-.make_skill_tool <- function(cwd = getwd()) {
-  metas       <- list_skills_meta(cwd)
+.make_skill_tool <- function(cwd = getwd(), skills = NULL) {
+  metas       <- list_skills_meta(cwd, skills)
   auto_skills <- Filter(function(m) isTRUE(m$auto_trigger), metas)
   if (length(auto_skills) == 0L) return(NULL)
 
@@ -282,7 +359,7 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
     name = "use_skill",
     fun = function(name, args = "", `_intent` = NULL) {
       result <- tryCatch(
-        load_skill_prompt(name, args, cwd),
+        load_skill_prompt(name, args, cwd, skills),
         error = function(e) paste0("[Skill error] ", conditionMessage(e))
       )
       intent_val <- `_intent`
@@ -345,10 +422,11 @@ load_skill_prompt <- function(name, args = "", cwd = getwd()) {
 #'
 #' @param cwd Character. Project working directory.
 #' @param max_tokens Integer. Approximate token budget.
+#' @param skills The skill set, as in [list_skills_meta()].
 #' @return Character(1). The skill hint block, or `""` if no skills found.
 #' @export
-build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L) {
-  metas <- list_skills_meta(cwd)
+build_skill_hint <- function(cwd = getwd(), max_tokens = 1000L, skills = NULL) {
+  metas <- list_skills_meta(cwd, skills)
   if (length(metas) == 0L) return("")
 
   # Build unified XML-style listing (mirrors btw format) covering all skills

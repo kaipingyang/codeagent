@@ -11,7 +11,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   # -- Count badges ----------------------------------------------------------
 
   n_skills <- shiny::reactive({
-    tryCatch(length(list_skills_meta(cwd)), error = function(e) 0L)
+    tryCatch(length(list_skills_meta(cwd, settings$skills)), error = function(e) 0L)
   })
 
   n_agents <- shiny::reactive({
@@ -40,7 +40,7 @@ server_customizations <- function(input, output, session, chat, settings, cwd, h
   # -- Skills modal ----------------------------------------------------------
 
   shiny::observeEvent(input$ca_open_skills, {
-    skill_list <- tryCatch(list_skills_meta(cwd), error = function(e) list())
+    skill_list <- tryCatch(list_skills_meta(cwd, settings$skills), error = function(e) list())
     shiny::showModal(modal_skills_ui(skill_list))
   })
 
