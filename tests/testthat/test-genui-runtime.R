@@ -380,12 +380,15 @@ test_that("Shiny's module destroy stops a mounted component's render observer", 
   skip_if_not(is.function(session$destroy), "Shiny without session$destroy()")
   ops <- .genui_shiny_ops(session)
   catalog <- .genui_build_catalog()
-  observer <- function() session$.__enclos_env__$private$outs[["ca_genui_c1-plot"]]$obs
   rt <- shiny::isolate(.genui_mount(catalog$histogram, "c1", list(column = "mpg"),
                                     function() mtcars, ops))
-  expect_false(isTRUE(observer()$.destroyed))
+  # Hold the observer: Shiny (>= rstudio/shiny#4451) also drops a destroyed
+  # module's outputs from MockShinySession.
+  obs <- session$.__enclos_env__$private$outs[["ca_genui_c1-plot"]]$obs
+  expect_false(isTRUE(obs$.destroyed))
   .genui_unmount("c1", rt, ops)
-  expect_true(observer()$.destroyed)
+  expect_true(obs$.destroyed)
+  expect_null(session$.__enclos_env__$private$outs[["ca_genui_c1-plot"]])
 })
 
 # -- shinygenui's full component set (containers and markdown) ------------------

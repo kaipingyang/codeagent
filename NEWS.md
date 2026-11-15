@@ -1,5 +1,10 @@
 # codeagent (development version)
 
+* Development pins moved to the 2026-11-15 upstream heads: ellmer 0.5.2.9000,
+  btw, shinychat (exchange-history fixes; tool-card code highlighting), shiny
+  (`MockShinySession` drops a destroyed module's outputs), httr2, shinyglass
+  0.6.0.9000 and shinygenui (dispatch validates raw tool arguments). bslib,
+  mcptools and Rapp are unchanged.
 * Fixed: approval, question, form and Data Shield requests that arrived while
   another one was open (parallel tool calls, a form during an approval)
   replaced it, and the replaced tool -- and the turn -- waited forever. They

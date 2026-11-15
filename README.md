@@ -468,7 +468,7 @@ codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
 
 # Liquid Glass is the optional pinned shinyglass package (>= 0.5.0), which also
 # styles shinychat and follows dark mode itself; codeagent adds no rules:
-pak::pak("ericrayanderson/shinyglass@1236b69a128414be67e597c407319c419f265f7a")
+pak::pak("ericrayanderson/shinyglass@f55232ab370214f0d40d11ab3bd06c34deccc89d")
 liquid_theme <- codeagent_theme(
   "glass", preset = "auto", intensity = 0.45,
   tint = TRUE, specular = TRUE
