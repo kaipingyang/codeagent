@@ -667,6 +667,10 @@ codeagent_app(chat, canvas = canvas_options(
   csp        = FALSE))  # the map loads tiles from another origin
 ```
 
+A runnable walkthrough -- sample data, a base-graphics and a plotly host
+component, suggested prompts -- is in `inst/examples/demo_10_genui_canvas.R`
+(`Rscript inst/examples/demo_10_genui_canvas.R`).
+
 Your components are trusted code: codeagent registers them as read-only canvas
 tools behind the permission gate and runs them through the same executor,
 Data Shield scanning and strict restore, and leaves what they render to you.
