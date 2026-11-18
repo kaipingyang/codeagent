@@ -1328,7 +1328,7 @@ DataShield <- R6::R6Class(
       changed <- FALSE
       scan_leaf <- function(v) {
         # Scan a single scalar-character leaf; return possibly-redacted value.
-        if (!is.character(v) || length(v) != 1L || !nzchar(v)) return(v)
+        if (!is.character(v) || length(v) != 1L || is.na(v) || !nzchar(v)) return(v)
         r <- tryCatch(self$scan_prompt(v, on_fail = "redact", scanners = scanners,
                                        context = list(edge = "tool_args")),
                       error = function(e) list(action = "redact",

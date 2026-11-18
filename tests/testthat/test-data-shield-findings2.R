@@ -374,3 +374,17 @@ test_that("AskUserForm opens its form when the Data Shield is on (array-of-objec
     expect_match(paste(output$ca_interaction_ui$html, collapse = ""), "Confirm the ADCM block", fixed = TRUE)
   })
 })
+
+test_that("scan_tool_args leaves NA leaves alone (optional fields the model omitted)", {
+  # ellmer fills an omitted optional attribute of an array of objects with NA;
+  # scanning NA failed and every such cell became "scan failed (fail-closed)"
+  # (AskUserQuestion: only the first option had a description).
+  sh <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
+  sh$register_data(data.frame(id = sprintf("FAKEID%03d", 1:20), stringsAsFactors = FALSE), "d", cols = "id")
+  opts <- data.frame(label = c("A", "B", "C"), description = c("first", NA, "about FAKEID004"))
+  out <- sh$scan_tool_args(list(questions = list(list(question = "Q?", options = opts))))
+  d <- out$args$questions[[1]]$options$description
+  expect_identical(d[1:2], c("first", NA))
+  expect_false(grepl("FAKEID004", d[3], fixed = TRUE))
+  expect_false(any(grepl("scan failed", d, fixed = TRUE)))
+})
