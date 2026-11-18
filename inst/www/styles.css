@@ -404,3 +404,30 @@ ul#main_tab { flex-shrink: 0; }
   pointer-events: none;
 }
 .ca-genui-toolbar { flex: 0 0 auto; padding: 4px 8px 0; }
+
+/* --- shinyglass: the chat/workspace split is a grid, not a floating sidebar ---
+   shinyglass reserves --glass-sidebar-reserve on the main of every right-side
+   sidebar layout, for a sidebar that floats over the content. bslib already
+   gives the Workspace its own grid column, so the reserve took the width a
+   second time and squeezed the chat to a narrow strip. Keep shinyglass's own
+   nested-layout padding instead. */
+html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed) > .main.ca-chat-layout {
+  padding-right: 0.5rem !important;
+}
+
+/* --- Model picker: shrink to the sidebar instead of overflowing it --- */
+/* The select sizes to its longest option name; in a 240px sidebar that gave
+   the sidebar body a horizontal scrollbar. */
+.ca-model-toolbar {
+  max-width: 100%;
+  min-width: 0;
+}
+.ca-model-toolbar .bslib-toolbar-input-select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.ca-model-toolbar select {
+  width: 100%;
+  min-width: 0;
+  text-overflow: ellipsis;
+}

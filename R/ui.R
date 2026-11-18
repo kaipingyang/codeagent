@@ -51,7 +51,7 @@ NULL
   install_hint <- paste0(
     "Install the verified build with ",
     "`pak::pak(\"ericrayanderson/shinyglass@",
-    "1236b69a128414be67e597c407319c419f265f7a\")`.")
+    "f55232ab370214f0d40d11ab3bd06c34deccc89d\")`.")
   if (!.shinyglass_available()) {
     cli::cli_abort(c(
       "The optional package `shinyglass` is required for `style = \"glass\"`.",
@@ -639,6 +639,7 @@ codeagent_app <- function(
       shiny::uiOutput("ca_init_overlay"),
       sidebar = left_sidebar,
       bslib::layout_sidebar(
+        class = "ca-chat-layout",
         fill = TRUE,
         fillable = TRUE,
         border = FALSE,

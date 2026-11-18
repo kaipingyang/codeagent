@@ -5,6 +5,24 @@
   chat sidebar still got a 760px input. `codeagent_chat_ui(width = ...)` caps
   it again.
 
+* Fixed: with a large registered identifier column (e.g. 1e5 subject ids),
+  every Data Shield scan of a prompt or tool result took seconds: an
+  emptiness check listed the whole value index with `ls()`. It now uses the
+  environment's length; a short scan takes milliseconds again.
+
+* Fixed: with `theme = "glass"` in the classic layout, the chat column was
+  squeezed to a narrow strip: shinyglass reserves room on the main of a
+  right-side sidebar layout for a sidebar that floats over it, but the
+  Workspace has its own column, so that width was taken twice. The model
+  picker also no longer gives the left sidebar a horizontal scrollbar when a
+  model name is long (all themes and layouts); it shrinks and truncates.
+
+* Development pins moved to the 2026-11-15 upstream heads: ellmer 0.5.2.9000,
+  btw, shinychat (exchange-history fixes; tool-card code highlighting), shiny
+  (`MockShinySession` drops a destroyed module's outputs), httr2, shinyglass
+  0.6.0.9000 and shinygenui (dispatch validates raw tool arguments). bslib,
+  mcptools and Rapp are unchanged.
+
 * Fixed: with `CODEAGENT_HOME` set, the one-time migration of a legacy
   `~/.codeagent` still ran and copied the account's personal sessions,
   settings and skills into it -- e.g. a developer's data into a host app's

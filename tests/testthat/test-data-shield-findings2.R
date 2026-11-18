@@ -335,8 +335,8 @@ test_that("scan_tool_args keeps the structure of data frame and named arguments"
   # data frame; scanning it must not turn it into a list of columns.
   sh <- DataShield$new(strategies = list(shield_egress(max_rows = 0L)))
   sh$register_data(data.frame(id = sprintf("FAKEID%03d", 1:20), stringsAsFactors = FALSE), "d", cols = "id")
-  fields <- tibble::tibble(name = c("sourcevar", "blocklabel"), label = c("Var", "Label FAKEID002"),
-                           choices = list(c("CMCAT", "CMSCAT"), NULL))
+  fields <- data.frame(name = c("sourcevar", "blocklabel"), label = c("Var", "Label FAKEID002"))
+  fields$choices <- list(c("CMCAT", "CMSCAT"), NULL)
   args <- list(title = "Confirm", fields = fields, tags = c(a = "x", b = "FAKEID003"))
   out <- sh$scan_tool_args(args)
   expect_s3_class(out$args$fields, "data.frame")

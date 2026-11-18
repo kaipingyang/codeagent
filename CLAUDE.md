@@ -158,18 +158,18 @@ my_tool <- function(con, mode = "bypass") {
 - `mcptools` >= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
 - `httr2` 1.3.0（保持稳定版）
 
-**当前个人默认开发环境（2026-10-21）：**
+**当前个人默认开发环境（2026-11-15）：**
 
 个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
 
-- `ellmer` 0.5.0.9000 @ `7853e0c784b188ed48fe9b0617cc4c52ba3f7471`
-- `btw` 1.5.0.9000 @ `6a27d997120f11cfda15bf0a5953a22329b01715`
-- `shinychat` 0.5.0.9000 @ `2fa02a27fdac0fb1e956719048c7388a63bf2b05`（monorepo：`posit-dev/shinychat/pkg-r`）
-- `shiny` 1.14.0.9000 @ `bbc43849f06059f5daa7310ea0f40ec901f0ed0f`
+- `ellmer` 0.5.2.9000 @ `3ebd68f749d77d66587ad6e779e90c53a9372b5c`
+- `btw` 1.5.0.9000 @ `df0f3d345829664d1a483063279896c0777e9f96`
+- `shinychat` 0.5.0.9000 @ `2a1d456cb640692d58a51c8f58d87df8aa043d39`（monorepo：`posit-dev/shinychat/pkg-r`）
+- `shiny` 1.14.0.9000 @ `1f85217932665592b9715be794eee87c53f6bb3f`
 - `bslib` 0.12.0.9000 @ `20b165f78ca479ffdcf5314a959dcf6f5e64ab10`
 - `mcptools` 1.0.3.9000 @ `714803bdfce903707a27d9c4740591d87f601aae`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
-- `httr2` 1.3.0.9000 @ `34b49ae3fa1ca3995a556ee6023d30b6e00b6f95`
+- `httr2` 1.3.0.9000 @ `74e3eec77263fd6e339095a1164e0a4af8df5ea0`
 
 普通R环境直接使用该个人库，不依赖`/tmp` candidate或硬编码`.libPaths()`。
 上方0.2.0 shared release保持不变，除非另行执行发布promote。当前工作树

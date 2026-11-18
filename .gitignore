@@ -51,3 +51,6 @@ image/
 vignettes/*.R
 otelsdk-install-issue.md
 vignettes/*.html
+
+# testthat failure snapshots
+tests/testthat/_problems/

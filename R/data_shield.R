@@ -1187,7 +1187,7 @@ DataShield <- R6::R6Class(
       # these values must never reach the model. Runs before the redact pipeline;
       # a match blocks rather than redacts. No-op when no none-tier column exists.
       if (!is.null(private$deny_index) &&
-          length(ls(private$deny_index, all.names = TRUE))) {
+          length(private$deny_index) > 0L) {
         deny_ser_failed <- FALSE
         deny_text <- tryCatch(
           if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),

@@ -153,7 +153,9 @@
   variants <- attr(index, "variants")
   shapes <- attr(index, "shapes") %||% character(0)
   spans <- character(0)
-  if (is.environment(variants) && length(ls(variants, all.names = TRUE)) &&
+  # length() of an environment counts its objects without listing (and
+  # sorting) them; ls() here cost seconds per scan on a 1e5-value index.
+  if (is.environment(variants) && length(variants) > 0L &&
       grepl("[[:alpha:]]", text, perl = TRUE)) {
     max_seg <- max(1L, min(as.integer(attr(index, "max_segments") %||% 1L),
                            .DATA_SHIELD_MAX_ID_PARTS))

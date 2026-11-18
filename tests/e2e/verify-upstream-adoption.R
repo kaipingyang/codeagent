@@ -59,14 +59,14 @@ mandatory_preflight <- function(start_wd) {
 
   frozen <- list(
     codeagent = c(version = "0.2.3", sha = ""),
-    ellmer = c(version = "0.5.0.9000",
-               sha = "7853e0c784b188ed48fe9b0617cc4c52ba3f7471"),
+    ellmer = c(version = "0.5.2.9000",
+               sha = "3ebd68f749d77d66587ad6e779e90c53a9372b5c"),
     btw = c(version = "1.5.0.9000",
-            sha = "6a27d997120f11cfda15bf0a5953a22329b01715"),
+            sha = "df0f3d345829664d1a483063279896c0777e9f96"),
     shinychat = c(version = "0.5.0.9000",
-                  sha = "2fa02a27fdac0fb1e956719048c7388a63bf2b05"),
+                  sha = "2a1d456cb640692d58a51c8f58d87df8aa043d39"),
     shiny = c(version = "1.14.0.9000",
-              sha = "bbc43849f06059f5daa7310ea0f40ec901f0ed0f"),
+              sha = "1f85217932665592b9715be794eee87c53f6bb3f"),
     bslib = c(version = "0.12.0.9000",
               sha = "20b165f78ca479ffdcf5314a959dcf6f5e64ab10"),
     mcptools = c(version = "1.0.3.9000",
@@ -74,7 +74,7 @@ mandatory_preflight <- function(start_wd) {
     Rapp = c(version = "0.4.1.9000",
              sha = "489655f24945042791ddb083d0d5518c4a905d9f"),
     httr2 = c(version = "1.3.0.9000",
-              sha = "34b49ae3fa1ca3995a556ee6023d30b6e00b6f95")
+              sha = "74e3eec77263fd6e339095a1164e0a4af8df5ea0")
   )
   for (package in names(frozen)) {
     info <- utils::packageDescription(package)
