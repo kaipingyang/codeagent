@@ -19,7 +19,8 @@ codeagent_client(
   max_budget_usd = NULL,
   tools = NULL,
   disallowed_tools = NULL,
-  setting_sources = c("user", "project")
+  setting_sources = c("user", "project"),
+  skills = NULL
 )
 }
 \arguments{
@@ -102,6 +103,17 @@ upwards). Default both, as the CLI does. A host app that ships its own
 \code{CLAUDE.md} in \code{cwd} passes \code{"project"}, so a developer's personal
 settings and instructions never reach the app when it runs under their
 account. See \code{\link[=load_settings]{load_settings()}}.}
+
+\item{skills}{Which skills the client offers (the \code{use_skill} tool, \verb{/name}
+commands and the system prompt's skill list): \code{NULL} (default) every
+skill codeagent discovers -- its built-ins, btw's and the user's skill
+directories, and \code{.claude/skills} / \code{.codex/skills} under \code{cwd}; \code{FALSE}
+none; or a character vector of skill directories (every \verb{<name>/SKILL.md}
+inside; relative paths resolve against \code{cwd}) and/or names of discovered
+skills, e.g. \code{c("skills", "compact")} for a host's own skills plus one
+built-in. An entry that is neither an existing directory nor a
+discovered skill is an error. The \code{use_skill} tool itself is registered
+only when \code{tools} includes the \code{skills} group (or is \code{NULL}).}
 }
 \value{
 Object of class \code{CodeagentClient} with \verb{$chat}, \verb{$settings}, and

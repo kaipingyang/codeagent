@@ -83,3 +83,59 @@ test_that("a value JSON cannot encode is sent as its printed text, never as a li
   big <- .tool_value_printed(paste(rep("x", 30000), collapse = ""))
   expect_match(big, "truncated", fixed = TRUE)
 })
+
+test_that("a host card holding render hooks is recorded as static HTML", {
+  skip_if_not_installed("bslib")
+  card <- bslib::card(bslib::card_header("Head"), bslib::card_body(htmltools::tags$p("Body")))
+  res <- ellmer::ContentToolResult(value = "ok", extra = list(
+    display = list(title = "t", html = htmltools::div(id = "x1", card)),
+    meta = list(button_id = "x1", n = 1L)))
+  expect_true(.holds_closure(res@extra))
+  out <- .normalize_tool_output(res)
+  expect_false(.holds_closure(out@extra))
+  html <- out@extra$display$html$children[[1]]     # inside the result-id wrapper
+  expect_s3_class(html, "html")
+  expect_match(as.character(html), "bslib-card", fixed = TRUE)
+  expect_match(as.character(html), "id=\"x1\"", fixed = TRUE)
+  expect_true(length(htmltools::htmlDependencies(html)) > 0)
+  expect_identical(out@extra$meta, list(button_id = "x1", n = 1L))      # untouched
+  # the conversation can be recorded (shinychat history / session log)
+  rec <- ellmer::contents_record(ellmer::Turn("user", list(out)))
+  expect_type(jsonlite::serializeJSON(rec), "character")
+})
+
+test_that("results without render hooks are not touched", {
+  disp <- list(title = "t", html = htmltools::div(class = "a", "x"))
+  res <- ellmer::ContentToolResult(value = "ok", extra = list(display = disp))
+  out <- .normalize_tool_output(res)@extra$display
+  expect_identical(out$html$children[[1]], disp$html)     # only wrapped with the result id
+  expect_identical(out$title, disp$title)
+})
+
+test_that("tool results with an HTML card carry a result id for on_tool_open", {
+  req <- ellmer::ContentToolRequest(id = "c1", name = "host_tool", arguments = list())
+  res <- ellmer::ContentToolResult(value = "ok", request = req, extra = list(
+    display = list(title = "t", html = htmltools::div("card")), meta = list(k = 1L)))
+  out <- .normalize_tool_output(res)
+  id <- out@extra$codeagent$result_id
+  expect_match(id, "^car_[0-9a-f]{32}$")
+  html <- as.character(out@extra$display$html)
+  expect_match(html, sprintf("data-ca-result=\"%s\"", id), fixed = TRUE)
+  expect_match(html, "<div>card</div>", fixed = TRUE)
+  expect_identical(out@extra$meta, list(k = 1L))
+  # idempotent; text-only results are not marked
+  expect_identical(.mark_tool_result(out)@extra$codeagent$result_id, id)
+  txt <- .normalize_tool_output(ellmer::ContentToolResult(value = "ok", extra = list(display = list(markdown = "x"))))
+  expect_null(txt@extra$codeagent$result_id)
+  # found in the turns; the id survives recording (restored conversations)
+  turns <- list(ellmer::Turn("user", list(out)))
+  expect_identical(.find_tool_result(turns, id)@value, "ok")
+  expect_null(.find_tool_result(turns, "car_nope")); expect_null(.find_tool_result(turns, NULL))
+  back <- ellmer::contents_replay(ellmer::contents_record(turns[[1]]))
+  expect_identical(.find_tool_result(list(back), id)@extra$codeagent$result_id, id)
+})
+
+test_that("codeagent_server checks on_tool_open", {
+  expect_error(codeagent_server(NULL, NULL, NULL, client = structure(list(), class = "CodeagentClient"),
+                                on_tool_open = "x"), "on_tool_open")
+})

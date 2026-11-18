@@ -222,6 +222,16 @@ print.CodeagentClient <- function(x, ...) {
 #'   `CLAUDE.md` in `cwd` passes `"project"`, so a developer's personal
 #'   settings and instructions never reach the app when it runs under their
 #'   account. See [load_settings()].
+#' @param skills Which skills the client offers (the `use_skill` tool, `/name`
+#'   commands and the system prompt's skill list): `NULL` (default) every
+#'   skill codeagent discovers -- its built-ins, btw's and the user's skill
+#'   directories, and `.claude/skills` / `.codex/skills` under `cwd`; `FALSE`
+#'   none; or a character vector of skill directories (every `<name>/SKILL.md`
+#'   inside; relative paths resolve against `cwd`) and/or names of discovered
+#'   skills, e.g. `c("skills", "compact")` for a host's own skills plus one
+#'   built-in. An entry that is neither an existing directory nor a
+#'   discovered skill is an error. The `use_skill` tool itself is registered
+#'   only when `tools` includes the `skills` group (or is `NULL`).
 #' @return Object of class `CodeagentClient` with `$chat`, `$settings`, and
 #'   `$data_shield` (NULL when disabled).
 #' @export
@@ -240,7 +250,8 @@ codeagent_client <- function(
   max_budget_usd     = NULL,
   tools              = NULL,
   disallowed_tools   = NULL,
-  setting_sources    = c("user", "project")
+  setting_sources    = c("user", "project"),
+  skills             = NULL
 ) {
   chat_supplied <- !is.null(chat)
 
@@ -260,6 +271,7 @@ codeagent_client <- function(
       (!is.numeric(max_budget_usd) || length(max_budget_usd) != 1L ||
        is.na(max_budget_usd) || max_budget_usd <= 0))
     cli::cli_abort("{.arg max_budget_usd} must be NULL or a single positive number.")
+  .check_skills_arg(skills)
 
   setting_sources <- .check_setting_sources(setting_sources)
   settings <- load_settings(cwd, setting_sources = setting_sources)
@@ -295,6 +307,12 @@ codeagent_client <- function(
   # NULL (default) preserves whatever settings.json/CODEAGENT_MAX_BUDGET_USD
   # already loaded; only an explicit caller value overrides it.
   if (!is.null(max_budget_usd)) settings$max_budget_usd <- as.numeric(max_budget_usd)
+  # Host-chosen skill set; resolved now so an unknown name fails here, not
+  # on the first turn.
+  if (!is.null(skills)) {
+    .select_skills(skills, cwd)
+    settings$skills <- .absolute_skill_dirs(skills, cwd)
+  }
   shield_state <- .data_shield_resolve(data_shield)
   settings$data_shield <- if (is.null(shield_state)) NULL else shield_state$coverage()$config
   settings$data_shield_engine <- shield_state
@@ -810,7 +828,7 @@ agent_loop <- function(user_input,
   if (!identical(mode_env$mode, "bypass"))
     tryCatch(register_plan_mode_tools(chat, mode_env), error = function(e) NULL)
   tryCatch({
-    st <- .make_skill_tool(cwd)
+    st <- .make_skill_tool(cwd, settings$skills)
     if (!is.null(st)) chat$register_tool(st)
   }, error = function(e) NULL)
   # AskUserQuestion: always registered (read-only, all permission modes).

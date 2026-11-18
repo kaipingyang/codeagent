@@ -38,24 +38,36 @@ NULL
 
 #' Save an ellmer Chat session to disk
 #'
-#' Serialises all turns in `chat` to a JSONL file under
-#' `~/.codeagent/projects/<project_hash>/<session_id>.jsonl`.
+#' Appends the conversation to a JSONL log under
+#' `<CODEAGENT_HOME>/projects/<project>/<session_id>.jsonl` (format version 2).
+#' Each new turn is one `user` / `assistant` entry holding its display text and
+#' its lossless record; entries are chained by `uuid` / `parentUuid`. Turns
+#' already in the file are not written again. When the chat's context is no
+#' longer "the saved turns plus new ones" -- compaction, rewind, clear -- a
+#' `system` / `compact_boundary` entry is appended with a snapshot of the new
+#' context (`parentUuid: null`, `logicalParentUuid` pointing at the last entry
+#' before it), so earlier turns stay in the file. The model context restores
+#' from the last boundary on ([restore_session_into_chat()]); the display keeps
+#' every turn. A version 1 file (rewritten whole on every save) is migrated on
+#' its first save.
 #'
 #' @param chat An `ellmer::Chat` object.
 #' @param cwd Character. Working directory (used to key the project).
 #' @param session_id Character or NULL. UUID; generated if NULL.
 #' @param title Character or NULL. Optional human-readable title.
 #' @param assistant_text_override Character or NULL. Safe finalized text for the
-#'   last assistant turn's presentation line. Lossless chat-state remains intact.
+#'   last assistant turn's presentation line. The lossless record keeps the
+#'   provider-facing turn.
 #' @param genui_state List or NULL. The generative UI canvas state to persist
-#'   with the conversation, written in the same atomic file replacement as the
-#'   chat state. Supplied by [codeagent_app()]; `NULL` writes no canvas line.
+#'   with the conversation; appended when it differs from the last saved one.
+#' @param context_event Character or NULL. What changed the context when it is
+#'   not a continuation (`"compact"`, `"rewind"`, `"clear"`); inferred when NULL.
 #' @return Character(1). The session UUID.
 #' @export
 save_session <- function(chat, cwd = getwd(),
                           session_id = NULL, title = NULL,
                           assistant_text_override = NULL,
-                          genui_state = NULL) {
+                          genui_state = NULL, context_event = NULL) {
   if (is.null(session_id)) session_id <- .generate_uuid_v4()
   session_dir <- .ensure_session_dir(cwd)
   file_path   <- file.path(session_dir, paste0(session_id, ".jsonl"))
@@ -64,80 +76,310 @@ save_session <- function(chat, cwd = getwd(),
   # Drop empty assistant turns (no text, no tool request/result, no thinking --
   # e.g. a failed/interrupted stream). Persisting them makes a restored session
   # show a perpetual "..." typing bubble, and sends useless empties to the LLM
-  # on continuation. Applies to BOTH the text lines and the lossless state.
+  # on continuation.
   turns <- Filter(function(t) !.turn_is_empty(t), turns)
-  now <- paste0(format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", tz = "UTC"), "Z")
+  now <- .session_now()
+
+  log <- .session_log_read(file_path)
+  if (!is.null(log) && log$version < 2L) {
+    .session_log_migrate(file_path, log, session_id)
+    log <- .session_log_read(file_path)
+  }
 
   lines <- character(0)
-
-  # Header line
-  header <- list(
-    type           = "session-start",
-    sessionId      = session_id,
-    cwd            = cwd,
-    timestamp      = now,
-    model          = tryCatch(chat$get_model() %||% "unknown", error = function(e) "unknown"),
-    format_version = 1L
-  )
-  if (!is.null(title)) header$customTitle <- title
-  lines <- c(lines, jsonlite::toJSON(header, auto_unbox = TRUE))
-
-  # Lossless chat-state line (contents_record -> gzip -> base64). Preserves tool
-  # requests/results that the per-message text lines below flatten away. Read
-  # back by restore_session_into_chat() for true history restoration.
-  state_str <- tryCatch(.session_state_encode(chat, turns = turns), error = function(e) NULL)
-  if (!is.null(state_str)) {
-    lines <- c(lines, jsonlite::toJSON(
-      list(type = "chat-state", sessionId = session_id,
-           timestamp = now, state = state_str),
-      auto_unbox = TRUE))
+  parent <- if (is.null(log)) NULL else log$last_uuid
+  add_line <- function(entry) {
+    lines <<- c(lines, as.character(jsonlite::toJSON(entry, auto_unbox = TRUE, null = "null")))
+    if (!is.null(entry$uuid)) parent <<- entry$uuid
   }
 
-  # Canvas state rides in the same file and the same rename as the chat state,
-  # so a saved conversation and its canvas can never come from different saves.
-  if (!is.null(genui_state)) {
-    lines <- c(lines, jsonlite::toJSON(
-      list(type = "genui-state", sessionId = session_id,
-           timestamp = now, state = genui_state),
-      auto_unbox = TRUE, null = "null"))
+  if (is.null(log)) {
+    header <- list(
+      type           = "session-start",
+      sessionId      = session_id,
+      cwd            = cwd,
+      timestamp      = now,
+      model          = tryCatch(chat$get_model() %||% "unknown", error = function(e) "unknown"),
+      format_version = .SESSION_FORMAT_VERSION
+    )
+    if (!is.null(title)) header$customTitle <- title
+    add_line(header)
+  } else if (!is.null(title) && !identical(title, log$title)) {
+    add_line(list(type = "custom-title", customTitle = title, sessionId = session_id))
   }
 
-  # Turn lines (text-level -- drives UI display, titles, and legacy fallback).
+  records <- lapply(turns, function(t) tryCatch(ellmer::contents_record(t), error = function(e) NULL))
+  digests <- vapply(records, .session_digest, character(1))
+  ctx <- if (is.null(log)) character(0) else log$context_digests
+  continuation <- length(ctx) <= length(digests) &&
+    identical(ctx, digests[seq_along(ctx)])
+
+  if (continuation) {
+    add <- setdiff(seq_along(turns), seq_along(ctx))
+  } else {
+    # Longest common prefix of the saved context and the chat's turns.
+    n <- min(length(ctx), length(digests))
+    common <- if (n) { d <- which(ctx[seq_len(n)] != digests[seq_len(n)]); if (length(d)) d[1] - 1L else n } else 0L
+    is_summary <- vapply(turns, .is_compaction_summary_turn, logical(1))
+    trigger <- context_event %||% if (!length(digests)) "clear"
+      else if (any(is_summary)) "compact"
+      else if (common == length(digests) || common > 0L) "rewind"
+      else "compact"
+    # The new context: what precedes the turns this save adds. Turns the display
+    # has not shown -- a reply that arrived in the same save as the compaction,
+    # or the turns after a rewind -- follow the boundary as ordinary entries.
+    # The compaction summary itself is context, not conversation.
+    shown <- if (is.null(log)) character(0) else log$shown_digests
+    add <- if (identical(trigger, "rewind")) setdiff(seq_along(turns), seq_len(common))
+           else which(!(digests %in% shown) & !is_summary)
+    tail_ok <- !length(add) || identical(add, seq.int(length(turns) - length(add) + 1L, length(turns)))
+    if (!tail_ok) add <- integer(0)          # cannot split the context: snapshot it whole
+    base <- setdiff(seq_along(turns), add)
+    removed <- if (trigger %in% c("rewind", "clear")) setdiff(ctx, digests[base]) else character(0)
+    add_line(list(
+      type              = "system",
+      subtype           = "compact_boundary",
+      content           = "Conversation compacted",
+      uuid              = .generate_uuid_v4(),
+      parentUuid        = NULL,
+      logicalParentUuid = parent,
+      sessionId         = session_id,
+      timestamp         = now,
+      compactMetadata   = list(
+        trigger        = trigger,
+        preTurns       = length(ctx),
+        postTurns      = length(digests),
+        removedDigests = I(removed)),
+      contextDigests    = I(digests[base]),
+      state             = .session_records_encode(records[base])
+    ))
+  }
+
   roles <- vapply(turns, function(turn)
     tryCatch(turn@role, error = function(e) "unknown"), character(1L))
   assistant_idx <- which(roles == "assistant")
   last_assistant <- if (length(assistant_idx)) utils::tail(assistant_idx, 1L) else NA_integer_
-  for (i in seq_along(turns)) {
-    turn <- turns[[i]]
-    role <- roles[[i]]
-    contents <- tryCatch(turn@contents, error = function(e) list())
-    text_parts <- vapply(contents, function(c) {
-      tryCatch(as.character(c@text %||% ""), error = function(e) "")
-    }, character(1))
-    text <- paste(text_parts[nzchar(text_parts)], collapse = "\n")
+  for (i in add) {
+    text <- .session_turn_text(turns[[i]])
     if (!is.null(assistant_text_override) && identical(i, last_assistant))
       text <- as.character(assistant_text_override)[1L]
+    add_line(list(
+      type       = if (identical(roles[[i]], "user")) "user" else "assistant",
+      uuid       = .generate_uuid_v4(),
+      parentUuid = parent,
+      sessionId  = session_id,
+      timestamp  = now,
+      message    = list(role = roles[[i]], content = text),
+      digest     = digests[[i]],
+      state      = .session_records_encode(records[i])
+    ))
+  }
 
-    entry <- list(
-      type      = if (identical(role, "user")) "user" else "assistant",
-      uuid      = .generate_uuid_v4(),
-      sessionId = session_id,
-      timestamp = now,
-      message   = list(role = role, content = text)
-    )
-    lines <- c(lines, jsonlite::toJSON(entry, auto_unbox = TRUE))
+  # Canvas state: appended when it changed (readers take the last one).
+  if (!is.null(genui_state)) {
+    gd <- .session_digest(genui_state)
+    if (!identical(gd, if (is.null(log)) NULL else log$genui_digest))
+      lines <- c(lines, as.character(jsonlite::toJSON(
+        list(type = "genui-state", sessionId = session_id, timestamp = now,
+             digest = gd, state = genui_state),
+        auto_unbox = TRUE, null = "null")))
+  }
+
+  if (length(lines)) {
+    if (is.null(log)) .session_write_new(file_path, lines)
+    else .session_append_lines(file_path, lines)
+  }
+  session_id
 }
 
-  # Checked replacement: atomic rename where supported, recoverable copy on
-  # platforms that cannot rename over an existing destination.
-  # Prevents partial/corrupt session files on crash mid-write.
-  dir <- dirname(file_path)
-  tmp_file <- tempfile(pattern = "session_", tmpdir = dir, fileext = ".jsonl")
+#' Record a context change in a saved session
+#'
+#' Appends a `compact_boundary` to the session's log when the chat's context
+#' is no longer a continuation of what was saved (compaction, rewind, clear).
+#' Called where the context changes -- before a turn, after `/compact`,
+#' `/clear`, `/rewind` -- so the end-of-turn save only appends the new turns.
+#' A session that has no file yet is left alone.
+#' @param chat An `ellmer::Chat` object.
+#' @param cwd Character. Project directory.
+#' @param session_id Character or NULL. Session UUID.
+#' @param context_event Character or NULL. See [save_session()].
+#' @return Invisibly TRUE when the session file exists.
+#' @keywords internal
+.session_sync_context <- function(chat, cwd, session_id, context_event = NULL) {
+  if (is.null(session_id) || is.null(.validate_uuid(session_id))) return(invisible(FALSE))
+  path <- file.path(.get_project_session_dir(cwd), paste0(session_id, ".jsonl"))
+  if (!file.exists(path)) return(invisible(FALSE))
+  tryCatch(save_session(chat, cwd, session_id, context_event = context_event),
+           error = function(e) NULL)
+  invisible(TRUE)
+}
+
+.SESSION_FORMAT_VERSION <- 2L
+
+.session_now <- function()
+  paste0(format(Sys.time(), "%Y-%m-%dT%H:%M:%OS3", tz = "UTC"), "Z")
+
+.session_digest <- function(x) {
+  f <- tempfile(fileext = ".rds")
+  on.exit(unlink(f), add = TRUE)
+  saveRDS(x, f, version = 2L, compress = FALSE)
+  unname(tools::md5sum(f))
+}
+
+.session_turn_text <- function(turn) {
+  contents <- tryCatch(turn@contents, error = function(e) list())
+  parts <- vapply(contents, function(c)
+    tryCatch(as.character(c@text %||% ""), error = function(e) ""), character(1))
+  paste(parts[nzchar(parts)], collapse = "\n")
+}
+
+# The summary turn a compaction puts at the head of the context.
+.is_compaction_summary_turn <- function(turn) {
+  if (!identical(tryCatch(turn@role, error = function(e) ""), "user")) return(FALSE)
+  txt <- .session_turn_text(turn)
+  grepl("^(Summary:\\n|\\[Session Memory Summary\\]\\n)", txt)
+}
+
+.session_records_encode <- function(records) {
+  json <- jsonlite::serializeJSON(records)
+  base64enc::base64encode(memCompress(charToRaw(json), "gzip"))
+}
+
+.session_records_decode <- function(state_str, tools = list()) {
+  raw  <- base64enc::base64decode(state_str)
+  json <- rawToChar(memDecompress(raw, "gzip"))
+  recorded <- jsonlite::unserializeJSON(json)
+  lapply(recorded, ellmer::contents_replay, tools = tools)
+}
+
+# Append whole lines. A previous write cut short leaves the file without a
+# final newline: start on a fresh line so the new entries stay parseable.
+.session_append_lines <- function(file_path, lines) {
+  size <- file.size(file_path)
+  lead <- ""
+  if (isTRUE(size > 0)) {
+    con <- file(file_path, "rb"); on.exit(close(con), add = TRUE)
+    seek(con, size - 1L)
+    if (!identical(readBin(con, "raw", 1L), charToRaw("\n"))) lead <- "\n"
+  }
+  cat(lead, paste0(lines, "\n"), sep = "", file = file_path, append = TRUE)
+}
+
+.session_write_new <- function(file_path, lines) {
+  tmp_file <- tempfile(pattern = "session_", tmpdir = dirname(file_path), fileext = ".jsonl")
   on.exit(if (file.exists(tmp_file)) unlink(tmp_file), add = TRUE)
   writeLines(lines, tmp_file)
   .replace_file_checked(tmp_file, file_path)
-  session_id
 }
+
+# Parse a session file. NULL when it does not exist. Lines that do not parse
+# (a write cut short) are skipped.
+.session_log_read <- function(path) {
+  if (!file.exists(path)) return(NULL)
+  lines <- tryCatch(readLines(path, warn = FALSE), error = function(e) character(0))
+  entries <- list()
+  for (ln in lines) {
+    if (!nzchar(trimws(ln))) next
+    e <- tryCatch(jsonlite::fromJSON(ln, simplifyVector = FALSE), error = function(e) NULL)
+    if (is.list(e) && !is.null(e[["type"]])) entries[[length(entries) + 1L]] <- e
+  }
+  header <- Filter(function(e) identical(e$type, "session-start"), entries)
+  version <- if (length(header)) as.integer(header[[1]]$format_version %||% 1L) else 1L
+  ctx <- character(0); shown <- character(0); title <- NULL; genui <- NULL; last_uuid <- NULL
+  for (e in entries) {
+    if (!is.null(e$uuid)) last_uuid <- e$uuid
+    if (identical(e$type, "session-start") && !is.null(e$customTitle)) title <- e$customTitle
+    else if (identical(e$type, "custom-title")) title <- e$customTitle
+    else if (identical(e$type, "genui-state")) genui <- e$digest %||% .session_digest(e$state)
+    else if (identical(e$subtype, "compact_boundary")) {
+      ctx <- as.character(unlist(e$contextDigests))
+      for (d in as.character(unlist(e$compactMetadata$removedDigests))) {
+        hit <- which(shown == d)
+        if (length(hit)) shown <- shown[-utils::tail(hit, 1L)]
+      }
+    } else if (e$type %in% c("user", "assistant") && !is.null(e$digest)) {
+      ctx <- c(ctx, e$digest); shown <- c(shown, e$digest)
+    }
+  }
+  list(version = version, entries = entries, context_digests = ctx, shown_digests = shown,
+       title = title, genui_digest = genui, last_uuid = last_uuid)
+}
+
+# Rewrite a version 1 file (one chat-state line + text lines) as version 2:
+# header, one entry per turn, then the other lines (titles, tags, canvas).
+.session_log_migrate <- function(path, log, session_id) {
+  turns <- tryCatch(.session_v1_state(log$entries), error = function(e) NULL)
+  text_lines <- Filter(function(e) e$type %in% c("user", "assistant"), log$entries)
+  if (is.null(turns)) turns <- lapply(text_lines, function(e)
+    ellmer::Turn(e$type, list(ellmer::ContentText(as.character(e$message$content %||% "")))))
+  header <- Filter(function(e) identical(e$type, "session-start"), log$entries)
+  header <- if (length(header)) header[[1]] else
+    list(type = "session-start", sessionId = session_id, timestamp = .session_now())
+  header$format_version <- .SESSION_FORMAT_VERSION
+  out <- as.character(jsonlite::toJSON(header, auto_unbox = TRUE, null = "null"))
+  parent <- NULL
+  same <- length(text_lines) == length(turns)
+  for (i in seq_along(turns)) {
+    rec <- ellmer::contents_record(turns[[i]])
+    role <- tryCatch(turns[[i]]@role, error = function(e) "user")
+    uuid <- .generate_uuid_v4()
+    out <- c(out, as.character(jsonlite::toJSON(list(
+      type = if (identical(role, "user")) "user" else "assistant", uuid = uuid, parentUuid = parent,
+      sessionId = session_id, timestamp = header$timestamp %||% .session_now(),
+      message = list(role = role, content = if (same) as.character(text_lines[[i]]$message$content %||% "")
+                                             else .session_turn_text(turns[[i]])),
+      digest = .session_digest(rec), state = .session_records_encode(list(rec))),
+      auto_unbox = TRUE, null = "null")))
+    parent <- uuid
+  }
+  keep <- Filter(function(e) !e$type %in% c("session-start", "chat-state", "user", "assistant"), log$entries)
+  for (e in keep) out <- c(out, as.character(jsonlite::toJSON(e, auto_unbox = TRUE, null = "null")))
+  .session_write_new(path, out)
+}
+
+.session_v1_state <- function(entries, tools = list()) {
+  st <- Filter(function(e) identical(e$type, "chat-state"), entries)
+  if (!length(st)) return(NULL)
+  .session_state_decode(st[[length(st)]]$state, tools = tools)
+}
+
+#' Turns of a saved session as the user saw them
+#'
+#' Every turn of the log in order, without the turns a rewind or clear
+#' removed; compaction does not remove anything. For a version 1 file, its
+#' saved turns.
+#' @param session_id Character. Session UUID.
+#' @param cwd Character. Project directory.
+#' @param tools List of `ellmer::tool()` objects to rebind on replay.
+#' @return `list(turns, boundaries)`: ellmer turns, and for each compaction the
+#'   number of turns shown before it. `NULL` when the session is not found.
+#' @keywords internal
+.read_session_display_turns <- function(session_id, cwd = getwd(), tools = list()) {
+  path <- .find_session_path(session_id, cwd)
+  if (is.null(path)) return(NULL)
+  log <- .session_log_read(path)
+  if (log$version < 2L) {
+    turns <- .session_v1_state(log$entries, tools) %||% list()
+    return(list(turns = turns, boundaries = integer(0)))
+  }
+  shown <- list(); dig <- character(0); boundaries <- integer(0)
+  for (e in log$entries) {
+    if (identical(e$subtype, "compact_boundary")) {
+      removed <- as.character(unlist(e$compactMetadata$removedDigests))
+      for (d in removed) {
+        hit <- which(dig == d)
+        if (length(hit)) { k <- utils::tail(hit, 1L); shown <- shown[-k]; dig <- dig[-k] }
+      }
+      if (identical(e$compactMetadata$trigger, "compact") && length(shown))
+        boundaries <- c(boundaries, length(shown))
+    } else if (e$type %in% c("user", "assistant") && !is.null(e$state)) {
+      t <- tryCatch(.session_records_decode(e$state, tools)[[1]], error = function(err) NULL)
+      if (!is.null(t)) { shown[[length(shown) + 1L]] <- t; dig <- c(dig, e$digest %||% "") }
+    }
+  }
+  list(turns = shown, boundaries = unique(boundaries))
+}
+
 
 # ---------------------------------------------------------------------------
 # Lossless chat-state codec (contents_record + gzip + base64)
@@ -176,11 +418,12 @@ save_session <- function(chat, cwd = getwd(),
   lapply(recorded, ellmer::contents_replay, tools = tools)
 }
 
-#' Read a session's lossless chat-state (if present)
+#' Read a session's lossless model context (if present)
 #'
-#' Scans the session file for a `chat-state` line and decodes it into ellmer
-#' turns. Returns `NULL` if the session predates lossless state (legacy
-#' text-only sessions) so callers can fall back to text restoration.
+#' Version 2: the snapshot of the last `compact_boundary` plus every turn
+#' saved after it (the model sees only what follows the last boundary).
+#' Version 1: its `chat-state` line. `NULL` for text-only legacy sessions so
+#' callers can fall back to text restoration.
 #'
 #' @param session_id Character. Session UUID.
 #' @param cwd Character. Project directory.
@@ -190,19 +433,20 @@ save_session <- function(chat, cwd = getwd(),
 .read_session_state <- function(session_id, cwd = getwd(), tools = list()) {
   path <- .find_session_path(session_id, cwd)
   if (is.null(path)) return(NULL)
-  lines <- tryCatch(readLines(path, warn = FALSE), error = function(e) character(0))
-  for (ln in lines) {
-    ln <- trimws(ln)
-    if (!nzchar(ln)) next
-    entry <- tryCatch(jsonlite::fromJSON(ln, simplifyVector = FALSE),
-                      error = function(e) NULL)
-    if (is.null(entry) || !identical(entry[["type"]], "chat-state")) next
-    return(tryCatch(.session_state_decode(entry[["state"]], tools = tools),
-                    error = function(e) NULL))
+  log <- .session_log_read(path)
+  if (log$version < 2L)
+    return(tryCatch(.session_v1_state(log$entries, tools), error = function(e) NULL))
+  turns <- list()
+  for (e in log$entries) {
+    if (identical(e$subtype, "compact_boundary")) {
+      turns <- tryCatch(.session_records_decode(e$state, tools), error = function(err) list())
+    } else if (e$type %in% c("user", "assistant") && !is.null(e$state)) {
+      t <- tryCatch(.session_records_decode(e$state, tools), error = function(err) list())
+      turns <- c(turns, t)
+    }
   }
-  NULL
+  turns
 }
-
 # ---------------------------------------------------------------------------
 # List sessions
 # ---------------------------------------------------------------------------

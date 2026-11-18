@@ -5,6 +5,90 @@
   (`MockShinySession` drops a destroyed module's outputs), httr2, shinyglass
   0.6.0.9000 and shinygenui (dispatch validates raw tool arguments). bslib,
   mcptools and Rapp are unchanged.
+
+* Fixed: with `CODEAGENT_HOME` set, the one-time migration of a legacy
+  `~/.codeagent` still ran and copied the account's personal sessions,
+  settings and skills into it -- e.g. a developer's data into a host app's
+  shared history directory. An explicit `CODEAGENT_HOME` is now used as is.
+
+* `codeagent_client(skills =)` lets a host choose the skills it offers (the
+  `use_skill` tool, `/name` commands and the prompt's skill list): `NULL`
+  (default) keeps every discovered skill; `FALSE` offers none; a character
+  vector names skill directories (every `<name>/SKILL.md` inside, relative to
+  `cwd`) and/or discovered skills, e.g. `c("skills", "compact")`. An entry that
+  is neither is an error at client creation. Before, an embedding app offered
+  the model every built-in and user skill, unrelated to its domain.
+  `list_skills_meta()`, `load_skill_prompt()` and `build_skill_hint()` take the
+  same `skills` argument.
+
+* Fixed: `UserPromptSubmit` hooks ran only in `agent_loop()`. The Shiny chat
+  (`codeagent_app()`, `codeagent_server()`), `codeagent_stream_async()` and the
+  REPL skipped them, so a hook could neither block a turn nor add context
+  there. They now run on every entry point, on the text the user typed and
+  before the Data Shield input gate, as in `agent_loop()`: a block ends the
+  turn with the hook's message, and `additional_context` is sent with the
+  turn's system-reminder (the chat still shows only what the user typed).
+
+* Host apps: `codeagent_server(on_tool_open =)` is called with a tool card's
+  `ContentToolResult` when the user opens (expands) that card in the chat, live
+  or in a restored conversation, e.g. to show it in the host's own panel. Tool
+  results with an HTML display carry a result id (`data-ca-result`, recorded
+  with the conversation); the chat reports it as `input$ca_tool_open`.
+
+* Fixed: a host tool card built from components with render hooks
+  (`bslib::card()`, `tagFunction()`, widgets) could not be recorded -- every
+  later save of the conversation failed ("Could not save conversation", and
+  the session log stopped at that turn). Such objects in a tool result's
+  `extra` are rendered to static HTML (dependencies kept) when the tool
+  returns; plain tags are left as they are.
+
+* The approval bar has "Always allow" (this tool, this session): allows the request, the
+  same tool's requests already waiting, and every later one in the session.
+* Host apps: `codeagent_mode_ui()` + `codeagent_server(modes =)` let the user
+  switch the session's permission mode (e.g. ask before changes / run without
+  asking); `codeagent_server(on_restore =)` is called with the Chat after a
+  saved conversation is opened from either history backend.
+* Fixed: with Data Shield on, `scan_tool_args()` turned a data frame argument
+  into a list of its columns and dropped the names of character vectors.
+  ellmer passes array-of-objects arguments as data frames, so tools saw a
+  different shape -- `AskUserForm` rejected every form ("Field 1: `name` must
+  start with a letter ..."). Argument structure is now kept; string values are
+  still scanned and redacted.
+* Session files are append-only logs (format version 2), matching the public
+  shape of Claude Code's session log: one entry per new turn (display text +
+  lossless record, `uuid`/`parentUuid` chain); a context change -- compaction,
+  `/rewind`, `/clear` -- appends a `compact_boundary` entry with a snapshot of
+  the new context. Fixes: compaction no longer erases the earlier turns from
+  the file, a restored conversation shows all of them (with a note where the
+  context was compacted) while the model resumes from the last boundary, and
+  `rename_session()` / `tag_session()` entries survive later saves. Version 1
+  files are read as before and migrated on their next save.
+* `codeagent_server(history = shinychat::history_options(...))` with
+  `codeagent_chat_ui(history = TRUE)`: shinychat's conversation history in a
+  host app. The record holds what the user saw (output gate applied, no
+  injected context) and is not shortened by compaction; opening a conversation
+  restores the model context from codeagent's session log and the canvas.
+  `history = "codeagent"` is codeagent's own list; `sessions = TRUE` is kept
+  as its alias.
+* Host apps can offer saved conversations: `codeagent_sessions_ui()` (the list
+  with New / Delete) and `codeagent_server(sessions = TRUE)`. A click restores
+  the conversation with its tool cards and canvas; New and restore keep the
+  host's greeting. The list is the client's `cwd` under `CODEAGENT_HOME`, so a
+  fixed per-user `cwd` gives each user their own history across restarts.
+* Fixed: a restored conversation showed a host tool's result as its raw value
+  instead of the card the tool returned in `extra$display` (title + html /
+  markdown); replay now keeps that card, as the live chat does.
+* Fixed: with `shield_sandbox()` whose project root is read-only, every
+  write-capability tool was blocked ("sandbox root lacks 'w' capability"),
+  even tools with no path argument: the sandbox treated the session cwd the
+  permission gate adds to each request (`.permission_cwd`) as a path the tool
+  writes. That internal argument is no longer checked; real path arguments are.
+* Fixed: the canvas Content Security Policy (`canvas_options(csp = TRUE)`, the
+  default) had `frame-src 'none'`. It applies to the whole host page, so a host
+  that shows its own output in an iframe (a report preview, a tool card with an
+  iframe) got a blocked frame as soon as the Canvas tab was on the page. Frames
+  from the app itself are now allowed (`frame-src 'self'`), as documented;
+  frames, images and media from other origins stay blocked.
 * Fixed: approval, question, form and Data Shield requests that arrived while
   another one was open (parallel tool calls, a form during an approval)
   replaced it, and the replaced tool -- and the turn -- waited forever. They

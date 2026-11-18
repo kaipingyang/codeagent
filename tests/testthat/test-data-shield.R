@@ -597,6 +597,22 @@ test_that("shield_sandbox blocks outside and symlink escapes, allows session tmp
   expect_identical(shield$scan_ingress("Write",list(file_path=file.path(root,"tmp","x.txt")),capability="write")$action,"pass")
 })
 
+test_that("shield_sandbox ignores the gate's .permission_cwd on path-less tools", {
+  root <- withr::local_tempdir(); dir.create(file.path(root, "tmp"))
+  shield <- DataShield$new(strategies = list(shield_sandbox(
+    project_root = root, temp_root = file.path(root, "tmp"),
+    modes = list(project = "r", protected_data = "r", temp = "r"), backend = "policy")))
+  # A host write tool with no path argument, as the gate passes it.
+  expect_identical(shield$scan_ingress("save_draft", list(reset = FALSE, .permission_cwd = root),
+                                       capability = "write")$action, "pass")
+  # Real path arguments are still checked against the root modes.
+  expect_identical(shield$scan_ingress("Write", list(file_path = file.path(root, "x.txt"),
+                                                    .permission_cwd = root),
+                                       capability = "write")$action, "block")
+  expect_identical(shield$scan_ingress("Read", list(file_path = "/etc/hostname", .permission_cwd = root),
+                                       capability = "read")$action, "block")
+})
+
 test_that("sandbox network/process/fallback policy is explicit and audited", {
   auto <- DataShield$new(strategies=list(shield_sandbox(backend="auto",on_unavailable="policy")))
   expect_identical(auto$scan_ingress("RunR",list(code="1+1"),capability="exec")$action,"block")

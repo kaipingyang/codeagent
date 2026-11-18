@@ -4,7 +4,7 @@
 \alias{load_skill_prompt}
 \title{Load a skill's full prompt}
 \usage{
-load_skill_prompt(name, args = "", cwd = getwd())
+load_skill_prompt(name, args = "", cwd = getwd(), skills = NULL)
 }
 \arguments{
 \item{name}{Character. Skill name.}
@@ -12,6 +12,8 @@ load_skill_prompt(name, args = "", cwd = getwd())
 \item{args}{Character. Arguments passed after the skill name.}
 
 \item{cwd}{Character. Project working directory.}
+
+\item{skills}{The skill set, as in \code{\link[=list_skills_meta]{list_skills_meta()}}.}
 }
 \value{
 Character(1). The fully resolved prompt string.

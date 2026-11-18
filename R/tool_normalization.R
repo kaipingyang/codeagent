@@ -21,7 +21,7 @@
                             paste0("[Error] Tool returned a rejected promise: ",
                                    conditionMessage(e))
                           }))
-  if (.is_ellmer_content(value)) return(.encode_tool_result_value(value))
+  if (.is_ellmer_content(value)) return(.mark_tool_result(.encode_tool_result_value(value)))
   if (is.list(value) && length(value) &&
       all(vapply(value, .is_ellmer_content, logical(1L)))) return(value)
   if (!is.list(value) && !is.data.frame(value)) return(value)
@@ -58,6 +58,7 @@
   is_result <- tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
                         error = function(e) FALSE)
   if (!isTRUE(is_result)) return(result)
+  result <- .record_safe_extra(result)
   value <- result@value
   if (is.null(value) || is.character(value) || .is_ellmer_content(value))
     return(result)
@@ -115,3 +116,68 @@
     stop("tool result normalizer could not update the tool snapshot.", call. = FALSE)
   invisible(chat)
 }
+# A tool result is recorded with the conversation (session log, shinychat
+# history). A host card built from components that carry render hooks
+# (bslib::card(), tagFunction(), widgets) holds functions, which cannot be
+# recorded: every later save of that conversation failed. Such objects in
+# `extra` are rendered to static HTML here, keeping their dependencies; plain
+# tags and strings are left as they are.
+.record_safe_extra <- function(result) {
+  extra <- tryCatch(result@extra, error = function(e) NULL)
+  if (!length(extra) || !.holds_closure(extra)) return(result)
+  result@extra <- .static_html(extra)
+  result
+}
+
+.holds_closure <- function(x) {
+  if (is.function(x) || is.environment(x)) return(TRUE)
+  if (is.list(x) && length(x) &&
+      any(vapply(x, .holds_closure, logical(1L)))) return(TRUE)
+  a <- attributes(x)
+  a <- a[setdiff(names(a), c("names", "class", "dim", "dimnames", "row.names"))]
+  length(a) > 0L && .holds_closure(unname(a))
+}
+
+.static_html <- function(x) {
+  if (!.holds_closure(x)) return(x)
+  if (inherits(x, c("shiny.tag", "shiny.tag.list", "shiny.tag.function", "htmlwidget")) ||
+      is.function(x)) {
+    r <- tryCatch(htmltools::renderTags(x), error = function(e) NULL)
+    if (is.null(r)) return(htmltools::HTML(""))
+    html <- htmltools::HTML(paste0(if (nzchar(r$head)) paste0(r$head, "\n"), r$html))
+    return(if (length(r$dependencies)) htmltools::attachDependencies(html, r$dependencies) else html)
+  }
+  if (is.list(x)) {
+    for (i in seq_along(x)) if (!is.null(x[[i]])) x[i] <- list(.static_html(x[[i]]))
+    return(x)
+  }
+  NULL
+}
+
+
+# A tool card the user opens in the chat is reported to the host
+# (codeagent_server(on_tool_open =)): the card's HTML carries the result's
+# id (data-ca-result), recorded with the conversation so restored cards keep
+# it. Results without an HTML display (text / markdown only) are not marked.
+.mark_tool_result <- function(result) {
+  is_result <- tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult), error = function(e) FALSE)
+  if (!isTRUE(is_result)) return(result)
+  extra <- tryCatch(result@extra, error = function(e) NULL)
+  html <- extra$display$html
+  if (is.null(html) || !is.null(extra$codeagent$result_id)) return(result)
+  id <- paste0("car_", gsub("-", "", .generate_uuid_v4()))
+  extra$display$html <- htmltools::div(class = "ca-tool-result", `data-ca-result` = id, html)
+  extra$codeagent$result_id <- id
+  result@extra <- extra
+  result
+}
+
+# The tool result with this id in the chat's turns (NULL if none).
+.find_tool_result <- function(turns, id) {
+  if (!is.character(id) || length(id) != 1L || !nzchar(id)) return(NULL)
+  for (t in rev(turns)) for (x in tryCatch(t@contents, error = function(e) list()))
+    if (inherits(x, "ellmer::ContentToolResult") &&
+        identical(tryCatch(x@extra$codeagent$result_id, error = function(e) NULL), id)) return(x)
+  NULL
+}
+

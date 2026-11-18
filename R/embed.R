@@ -23,15 +23,17 @@
 #' @param greeting Optional greeting (markdown or HTML string, or a
 #'   [shinychat::chat_greeting()]). A string is shown as a persistent greeting.
 #' @param footer Optional extra UI placed under the interaction bar.
+#' @param history If `TRUE`, show shinychat's conversation history selector;
+#'   pair it with `codeagent_server(history = shinychat::history_options(...))`.
 #' @return A Shiny tag.
 #' @seealso [codeagent_server()], [codeagent_canvas_ui()]
 #' @export
-codeagent_chat_ui <- function(..., greeting = NULL, footer = NULL) {
+codeagent_chat_ui <- function(..., greeting = NULL, footer = NULL, history = FALSE) {
   args <- list(
     id            = "chat",
     fill          = TRUE,
     drawer        = FALSE,
-    show_history  = FALSE,
+    show_history  = isTRUE(history),
     enable_cancel = TRUE,
     tool_grouping = "tool",
     `aside-favicon` = "false",
@@ -105,6 +107,71 @@ codeagent_head_assets <- function() {
   head_assets()
 }
 
+#' Saved conversations for a host app that embeds codeagent
+#'
+#' The list of this workspace's saved conversations (newest first, by their
+#' first message) with "New" and "Delete" buttons, as in [codeagent_app()]'s
+#' Sessions panel. Clicking one restores it into the chat -- tool cards and the
+#' canvas included. Put it wherever the host wants it (a sidebar, an
+#' accordion) and pass `sessions = TRUE` to [codeagent_server()]. Only one per
+#' page.
+#'
+#' Conversations are saved per turn under `CODEAGENT_HOME`, keyed by the
+#' client's working directory (`cwd`): give each user a fixed `cwd` so the
+#' list survives a restart of the app process and holds only that user's
+#' conversations. A page always opens on a new conversation.
+#'
+#' @param title Heading above the list, or `NULL` for none.
+#' @return A Shiny tag.
+#' @seealso [codeagent_server()]
+#' @export
+codeagent_sessions_ui <- function(title = "History") {
+  htmltools::div(
+    class = "ca-sessions",
+    if (!is.null(title)) htmltools::tags$h6(class = "mb-2", title),
+    htmltools::div(
+      class = "d-flex gap-2 mb-2",
+      shiny::actionButton("new_session", "New",
+                          class = "btn-outline-secondary btn-sm flex-fill"),
+      shiny::actionButton("delete_session_btn", "Delete",
+                          class = "btn-outline-danger btn-sm flex-fill")),
+    shiny::uiOutput("session_list_ui"))
+}
+
+#' Permission mode switch for a host app
+#'
+#' A small radio group the user switches the session's permission mode with,
+#' for example between asking before every change and running without asking.
+#' Pass the same `modes` to [codeagent_server()]. Only one per page.
+#'
+#' @param modes Named character vector: label -> mode. Modes: `"default"` (ask
+#'   before tools that change something), `"accept_edits"` (file edits run,
+#'   other changes ask), `"bypass"` (nothing asks), `"dont_ask"` (what would
+#'   ask is refused).
+#' @param selected The mode selected at start (default: the first).
+#' @param label Optional label shown before the choices.
+#' @return A Shiny tag.
+#' @seealso [codeagent_server()]
+#' @export
+codeagent_mode_ui <- function(modes = c("Ask before changes" = "default",
+                                        "Run without asking" = "bypass"),
+                              selected = NULL, label = NULL) {
+  .check_host_modes(modes)
+  htmltools::div(class = "ca-mode-switch small",
+    shiny::radioButtons("ca_perm_mode", label, choices = modes,
+                        selected = selected %||% unname(modes[[1L]]), inline = TRUE))
+}
+
+.HOST_MODES <- c("default", "accept_edits", "bypass", "dont_ask")
+
+.check_host_modes <- function(modes) {
+  if (!is.character(modes) || !length(modes) || is.null(names(modes)) ||
+      any(!nzchar(names(modes))) || any(!modes %in% .HOST_MODES))
+    stop("`modes` must be a named character vector of ",
+         paste0('"', .HOST_MODES, '"', collapse = ", "), ".", call. = FALSE)
+  invisible(TRUE)
+}
+
 #' Run codeagent's chat engine inside a host Shiny app
 #'
 #' Wires the same server side that [codeagent_app()] uses -- streaming with
@@ -131,16 +198,55 @@ codeagent_head_assets <- function() {
 #' @param canvas `NULL` (no canvas) or [canvas_options()] to enable the
 #'   generative UI canvas; place [codeagent_canvas_ui()] in the page. With a
 #'   `tools=` selection on the client, include `"genui"` in it.
+#' @param history Conversation history: `NULL` (default, none);
+#'   [shinychat::history_options()] for shinychat's history (list, switch, new,
+#'   rename, delete in the chat's history selector -- set
+#'   `codeagent_chat_ui(history = TRUE)`); or `"codeagent"` for codeagent's own
+#'   list ([codeagent_sessions_ui()]). With shinychat's history the record
+#'   holds what the user saw (Data Shield output gate applied, no injected
+#'   context) and is not shortened by compaction; the model continues from
+#'   codeagent's session log ([save_session()]).
+#' @param greeting With `history`: the greeting shown again on a new
+#'   conversation (the one given to [codeagent_chat_ui()]).
+#' @param modes `NULL` (the client's permission mode, fixed) or the named
+#'   modes of [codeagent_mode_ui()] (place it in the page): the user switches the
+#'   session's permission mode between them; not while a reply is running.
+#' @param on_restore Optional `function(chat)` called after a saved
+#'   conversation is opened from the history (either backend), with the Chat
+#'   holding the restored context -- e.g. to show its last result in the host's
+#'   own panels.
+#' @param on_tool_open Optional `function(result)` called when the user opens
+#'   (expands) a tool card in the chat -- live or in a restored conversation --
+#'   with that card's `ellmer::ContentToolResult`, e.g. to show the result in
+#'   the host's own panel. Only results with an HTML display
+#'   (`extra$display$html`) are reported.
+#' @param sessions Deprecated: `TRUE` is `history = "codeagent"`.
 #' @return Invisibly, a list with `state` (the session `reactiveValues`),
 #'   `stream_task` (the `ExtendedTask`), `chat` and `settings`.
-#' @seealso [codeagent_chat_ui()], [codeagent_canvas_ui()], [codeagent_app()]
+#' @seealso [codeagent_chat_ui()], [codeagent_canvas_ui()],
+#'   [codeagent_sessions_ui()], [codeagent_app()]
 #' @export
 codeagent_server <- function(input, output, session, client, tools = list(),
-                             tool_meta = list(), canvas = NULL) {
+                             tool_meta = list(), canvas = NULL,
+                             history = NULL, greeting = NULL,
+                             modes = NULL, on_restore = NULL,
+                             on_tool_open = NULL, sessions = FALSE) {
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
     stop("`canvas` must be NULL or come from canvas_options().", call. = FALSE)
+  if (!is.logical(sessions) || length(sessions) != 1L || is.na(sessions))
+    stop("`sessions` must be TRUE or FALSE.", call. = FALSE)
+  if (!is.null(modes)) .check_host_modes(modes)
+  if (!is.null(on_restore) && !is.function(on_restore))
+    stop("`on_restore` must be NULL or a function(chat).", call. = FALSE)
+  if (!is.null(on_tool_open) && !is.function(on_tool_open))
+    stop("`on_tool_open` must be NULL or a function(result).", call. = FALSE)
+  if (isTRUE(sessions) && is.null(history)) history <- "codeagent"
+  if (!is.null(history) && !identical(history, "codeagent") &&
+      !inherits(history, "chat_history_config"))
+    stop("`history` must be NULL, \"codeagent\" or shinychat::history_options().",
+         call. = FALSE)
   .check_host_tools(tools, tool_meta)
   # One live browser session per client: a second session on the same Chat
   # would rebind the approval / question / form callbacks and the canvas to
@@ -164,6 +270,22 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   server_slash(input, session, cwd = core$settings$cwd %||% getwd(),
                stream_task = core$stream_task, chat = client$chat,
                settings = core$settings, state = core$state)
+  if (identical(history, "codeagent"))
+    server_sessions(input, output, session, chat = client$chat,
+                    cwd = core$settings$cwd %||% getwd(), state = core$state,
+                    stream_task = core$stream_task, settings = core$settings,
+                    default_greeting = FALSE, on_restore = on_restore)
+  else if (inherits(history, "chat_history_config"))
+    .enable_shinychat_history(input, session, client$chat, core, history,
+                              greeting = greeting, on_restore = on_restore)
+  if (!is.null(modes))
+    .serve_host_modes(input, client$chat, core, modes)
+  if (is.function(on_tool_open))
+    shiny::observeEvent(input$ca_tool_open, {
+      res <- .find_tool_result(client$chat$get_turns(), input$ca_tool_open$id)
+      if (!is.null(res)) tryCatch(on_tool_open(res), error = function(e)
+        .ui_toast(paste0("Showing the tool result failed: ", conditionMessage(e)), "warning"))
+    }, ignoreInit = TRUE)
   session$onFlushed(function() core$ready(), once = TRUE)
   invisible(list(state = core$state, stream_task = core$stream_task,
                  chat = client$chat, settings = core$settings))
@@ -312,3 +434,21 @@ codeagent_server <- function(input, output, session, client, tools = list(),
 .tool_spec_allows_genui <- function(spec) {
   is.null(spec) || isTRUE(spec$all) || any(.genui_tool_names() %in% spec$native)
 }
+
+# The session's permission mode follows the host's mode switch. The gate reads
+# its mode from the live context, so no tools are re-registered.
+.serve_host_modes <- function(input, chat, core, modes) {
+  shiny::observeEvent(input$ca_perm_mode, {
+    new <- input$ca_perm_mode
+    if (!is.character(new) || length(new) != 1L || !new %in% modes) return()
+    if (.stream_is_running(core$stream_task)) {
+      .ui_toast("The mode changes after the current reply.", "warning")
+      return()
+    }
+    ctx <- tryCatch(.gate_ctx_for(chat), error = function(e) NULL)
+    if (is.null(ctx)) return()
+    ctx$mode_env$mode <- new
+    ctx$mode_env$plan_exit_allowed <- FALSE
+  })
+}
+

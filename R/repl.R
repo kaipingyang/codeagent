@@ -668,14 +668,14 @@ codeagent_console <- function(client, stream = TRUE, prompt_str = "\u203a ",
       parsed <- tryCatch(.preprocess_input(user_input, cwd),
                          error = function(e) list(type = "text"))
       if (identical(parsed$type, "skill")) {
-        user_input <- tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd),
+        user_input <- tryCatch(load_skill_prompt(parsed$name, parsed$args, cwd, settings$skills),
                                error = function(e) user_input)
       }
     }
 
     # 1+2. Compaction + resource management + system-reminder injection
     actual_input <- .turn_setup(client, user_input, iteration, cwd,
-                                compaction_ctrl, resource_state)
+                                compaction_ctrl, resource_state, session_id = session_id)
 
     # 3. Stream / send (with full error recovery: PTL/rate-limit/network/auth)
     if (isTRUE(stream)) {

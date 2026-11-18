@@ -300,7 +300,15 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
            error=function(e)list(error=TRUE,reason="reviewer returned invalid structured output"))
 }
 
+# Arguments the permission gate adds to a tool request for its own use (the
+# session cwd every relative path resolves against). They are not paths the
+# tool reads or writes: treating the cwd as one made every write-capability
+# tool fail a sandbox whose project root is read-only.
+.DATA_SHIELD_INTERNAL_ARGS <- c(".permission_cwd")
+
 .data_shield_extract_paths <- function(input) {
+  if (is.list(input) && !is.null(names(input)))
+    input <- input[!names(input) %in% .DATA_SHIELD_INTERNAL_ARGS]
   out <- character()
   walk <- function(x, key="") {
     if (is.list(x)) {
@@ -1334,9 +1342,20 @@ DataShield <- R6::R6Class(
       # Recurse through nested lists so a protected value buried in e.g.
       # edits=list(list(content="SUBJECT001")) is scanned, not skipped (kiro
       # round-2 #4: the old single-level loop only saw top-level character(1)).
+      # Attributes are kept: ellmer hands an array-of-objects argument over as a
+      # data frame, and lapply() alone would return it as a list of columns
+      # (the tool then saw a different shape -- AskUserForm rejected its fields).
       walk <- function(x) {
-        if (is.list(x)) return(lapply(x, walk))
-        if (is.character(x) && length(x) > 1L) return(vapply(x, scan_leaf, character(1), USE.NAMES = FALSE))
+        if (is.list(x)) {
+          y <- lapply(x, walk)
+          attributes(y) <- attributes(x)
+          return(y)
+        }
+        if (is.character(x) && length(x) > 1L) {
+          y <- vapply(x, scan_leaf, character(1), USE.NAMES = FALSE)
+          attributes(y) <- attributes(x)
+          return(y)
+        }
         scan_leaf(x)
       }
       out <- walk(args)

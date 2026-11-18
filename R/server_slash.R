@@ -39,7 +39,7 @@ NULL
   paste0(substr(x, 1L, n - 1L), "\u2026")
 }
 
-.slash_command_defs <- function(cwd = getwd()) {
+.slash_command_defs <- function(cwd = getwd(), skills = NULL) {
   local_desc <- c(
     model    = "Switch the model", compact = "Compact the context now",
     clear    = "Clear the conversation", rewind = "Rewind the last turn(s)",
@@ -61,7 +61,7 @@ NULL
   # commands). shinychat renders the "/skill args" user bubble and enters the
   # awaitResponse state, which is correct because skills DO invoke the LLM.
   skill_defs <- tryCatch({
-    metas <- list_skills_meta(cwd)
+    metas <- list_skills_meta(cwd, skills)
     lapply(metas, function(m) {
       list(name = m$name,
            description = .truncate_desc(m$description %||% m$name),
@@ -83,8 +83,8 @@ NULL
 }
 
 # Send the command definitions to the client typeahead (shinychat protocol).
-.send_slash_commands <- function(session, cwd = getwd(), id = "chat") {
-  defs <- tryCatch(.slash_command_defs(cwd), error = function(e) list())
+.send_slash_commands <- function(session, cwd = getwd(), id = "chat", skills = NULL) {
+  defs <- tryCatch(.slash_command_defs(cwd, skills), error = function(e) list())
   if (!length(defs)) return(invisible(FALSE))
   resolved <- tryCatch(session$ns(id), error = function(e) id)
   if (is.null(resolved) || !nzchar(resolved)) resolved <- id
@@ -126,9 +126,9 @@ server_slash <- function(input, session, cwd = getwd(), id = "chat",
                          chat = NULL, settings = NULL, state = NULL) {
   # Register commands once the client has connected (after the first flush).
   tryCatch(
-    session$onFlushed(function() .send_slash_commands(session, cwd, id),
+    session$onFlushed(function() .send_slash_commands(session, cwd, id, settings$skills),
                       once = TRUE),
-    error = function(e) .send_slash_commands(session, cwd, id))
+    error = function(e) .send_slash_commands(session, cwd, id, settings$skills))
 
   # Selection -> dispatch DIRECTLY (never re-submit; see @details).
   shiny::observeEvent(input[[paste0(id, "_slash_command")]], {

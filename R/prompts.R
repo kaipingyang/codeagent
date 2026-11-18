@@ -238,7 +238,7 @@ NULL
   }
 
   skill_hint <- tryCatch(
-    build_skill_hint(cwd = cwd, max_tokens = 1000L),
+    build_skill_hint(cwd = cwd, max_tokens = 1000L, skills = settings$skills),
     error = function(e) NULL)
   if (!is.null(skill_hint) && nzchar(skill_hint))
     parts <- c(parts, skill_hint)

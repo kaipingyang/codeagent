@@ -11,7 +11,13 @@ codeagent_server(
   client,
   tools = list(),
   tool_meta = list(),
-  canvas = NULL
+  canvas = NULL,
+  history = NULL,
+  greeting = NULL,
+  modes = NULL,
+  on_restore = NULL,
+  on_tool_open = NULL,
+  sessions = FALSE
 )
 }
 \arguments{
@@ -30,6 +36,35 @@ capability (\code{"read"}, \code{"write"}, \code{"exec"} or \code{"net"}).}
 \item{canvas}{\code{NULL} (no canvas) or \code{\link[=canvas_options]{canvas_options()}} to enable the
 generative UI canvas; place \code{\link[=codeagent_canvas_ui]{codeagent_canvas_ui()}} in the page. With a
 \verb{tools=} selection on the client, include \code{"genui"} in it.}
+
+\item{history}{Conversation history: \code{NULL} (default, none);
+\code{\link[shinychat:history_options]{shinychat::history_options()}} for shinychat's history (list, switch, new,
+rename, delete in the chat's history selector -- set
+\code{codeagent_chat_ui(history = TRUE)}); or \code{"codeagent"} for codeagent's own
+list (\code{\link[=codeagent_sessions_ui]{codeagent_sessions_ui()}}). With shinychat's history the record
+holds what the user saw (Data Shield output gate applied, no injected
+context) and is not shortened by compaction; the model continues from
+codeagent's session log (\code{\link[=save_session]{save_session()}}).}
+
+\item{greeting}{With \code{history}: the greeting shown again on a new
+conversation (the one given to \code{\link[=codeagent_chat_ui]{codeagent_chat_ui()}}).}
+
+\item{modes}{\code{NULL} (the client's permission mode, fixed) or the named
+modes of \code{\link[=codeagent_mode_ui]{codeagent_mode_ui()}} (place it in the page): the user switches the
+session's permission mode between them; not while a reply is running.}
+
+\item{on_restore}{Optional \verb{function(chat)} called after a saved
+conversation is opened from the history (either backend), with the Chat
+holding the restored context -- e.g. to show its last result in the host's
+own panels.}
+
+\item{on_tool_open}{Optional \verb{function(result)} called when the user opens
+(expands) a tool card in the chat -- live or in a restored conversation --
+with that card's \code{ellmer::ContentToolResult}, e.g. to show the result in
+the host's own panel. Only results with an HTML display
+(\code{extra$display$html}) are reported.}
+
+\item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
 }
 \value{
 Invisibly, a list with \code{state} (the session \code{reactiveValues}),
@@ -50,5 +85,6 @@ approval / question callbacks exist, so the interactive tools are created
 in their UI-gated form. Select built-in tools with the client's \verb{tools=}.
 }
 \seealso{
-\code{\link[=codeagent_chat_ui]{codeagent_chat_ui()}}, \code{\link[=codeagent_canvas_ui]{codeagent_canvas_ui()}}, \code{\link[=codeagent_app]{codeagent_app()}}
+\code{\link[=codeagent_chat_ui]{codeagent_chat_ui()}}, \code{\link[=codeagent_canvas_ui]{codeagent_canvas_ui()}},
+\code{\link[=codeagent_sessions_ui]{codeagent_sessions_ui()}}, \code{\link[=codeagent_app]{codeagent_app()}}
 }
