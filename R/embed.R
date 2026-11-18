@@ -14,9 +14,11 @@
 #'
 #' A `shinychat::chat_ui()` configured the way [codeagent_server()] expects:
 #' the input id is `"chat"`, the approval / question bar sits above the input
-#' (it renders into output `ca_interaction_ui`), cancel is enabled, and tool
-#' calls are grouped per tool. Place it anywhere in the host page, together
-#' with [codeagent_head_assets()].
+#' (it renders into output `ca_interaction_ui`), cancel is enabled, tool
+#' calls are grouped per tool, and the chat fills the width of its container
+#' (`width = "100%"`; shinychat alone caps it at 760px, so widening a sidebar
+#' left the input at that width). Pass `width =` to cap it again. Place it
+#' anywhere in the host page, together with [codeagent_head_assets()].
 #'
 #' @param ... Further arguments passed to [shinychat::chat_ui()]; they override
 #'   the defaults described above (except `id`).
@@ -36,6 +38,7 @@ codeagent_chat_ui <- function(..., greeting = NULL, footer = NULL, history = FAL
     show_history  = isTRUE(history),
     enable_cancel = TRUE,
     tool_grouping = "tool",
+    width         = "100%",
     `aside-favicon` = "false",
     footer = htmltools::tagList(shiny::uiOutput("ca_interaction_ui"), footer)
   )

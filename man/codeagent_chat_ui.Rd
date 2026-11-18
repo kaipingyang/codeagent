@@ -24,9 +24,11 @@ A Shiny tag.
 \description{
 A \code{shinychat::chat_ui()} configured the way \code{\link[=codeagent_server]{codeagent_server()}} expects:
 the input id is \code{"chat"}, the approval / question bar sits above the input
-(it renders into output \code{ca_interaction_ui}), cancel is enabled, and tool
-calls are grouped per tool. Place it anywhere in the host page, together
-with \code{\link[=codeagent_head_assets]{codeagent_head_assets()}}.
+(it renders into output \code{ca_interaction_ui}), cancel is enabled, tool
+calls are grouped per tool, and the chat fills the width of its container
+(\code{width = "100\%"}; shinychat alone caps it at 760px, so widening a sidebar
+left the input at that width). Pass \verb{width =} to cap it again. Place it
+anywhere in the host page, together with \code{\link[=codeagent_head_assets]{codeagent_head_assets()}}.
 }
 \seealso{
 \code{\link[=codeagent_server]{codeagent_server()}}, \code{\link[=codeagent_canvas_ui]{codeagent_canvas_ui()}}

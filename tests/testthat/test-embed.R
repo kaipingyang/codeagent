@@ -13,6 +13,9 @@ test_that("codeagent_chat_ui is the chat the server modules address", {
   expect_match(html, "Hello host")
   expect_match(html, "Ask")
   expect_match(as.character(codeagent_chat_ui(id = "other")), 'id="chat"')  # id is fixed
+  # fills its container (shinychat alone caps it at 760px); a host can cap it again
+  expect_match(html, "--_chat-width:100%", fixed = TRUE)
+  expect_match(as.character(codeagent_chat_ui(width = "760px")), "--_chat-width:760px", fixed = TRUE)
 })
 
 test_that("codeagent_canvas_ui holds the canvas container and refresh button", {

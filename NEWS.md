@@ -1,5 +1,10 @@
 # codeagent (development version)
 
+* `codeagent_chat_ui()` fills the width of its container (`width = "100%"`).
+  shinychat's own default caps the chat at 760px, so a host that widened its
+  chat sidebar still got a 760px input. `codeagent_chat_ui(width = ...)` caps
+  it again.
+
 * Fixed: with `CODEAGENT_HOME` set, the one-time migration of a legacy
   `~/.codeagent` still ran and copied the account's personal sessions,
   settings and skills into it -- e.g. a developer's data into a host app's
