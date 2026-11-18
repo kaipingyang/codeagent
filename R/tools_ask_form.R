@@ -16,7 +16,7 @@
 NULL
 
 .FORM_FIELD_TYPES <- c("text", "textarea", "number", "select", "multiselect",
-                       "checkbox", "date")
+                       "checkbox", "date", "grouping")
 .FORM_MAX_FIELDS <- 20L
 
 #' Create the AskUserForm tool
@@ -81,13 +81,17 @@ ask_user_form_tool <- function(ask_form_fn = NULL, async = FALSE) {
           label    = ellmer::type_string("Label shown to the user.", required = FALSE),
           type     = ellmer::type_enum(
             values = .FORM_FIELD_TYPES,
-            description = "Input type. select/multiselect need `choices`."),
+            description = paste("Input type. select / multiselect / grouping need `choices`.",
+              "grouping: the user puts each choice (e.g. treatment arms) into a named group;",
+              "the value is {group: [choices]}.")),
           choices  = ellmer::type_array(
-            "Options for select / multiselect.",
+            "Options for select / multiselect, or the items to group for grouping.",
             items = ellmer::type_string(), required = FALSE),
           default  = ellmer::type_string(
             paste0("Pre-filled value as text. multiselect: comma-separated; ",
-                   "checkbox: \"true\"/\"false\"; date: YYYY-MM-DD."),
+                   "checkbox: \"true\"/\"false\"; date: YYYY-MM-DD; ",
+                   "grouping: \"Group A: choice1, choice2; Group B: choice3\" ",
+                   "(choices not named stay on their own)."),
             required = FALSE),
           required = ellmer::type_boolean(
             "Whether the user must fill it in.", required = FALSE),
@@ -150,7 +154,7 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
                      paste(.FORM_FIELD_TYPES, collapse = ", ")))
     choices <- as.character(unlist(f$choices %||% character(0), use.names = FALSE))
     choices <- choices[!is.na(choices)]
-    if (type %in% c("select", "multiselect") && !length(choices))
+    if (type %in% c("select", "multiselect", "grouping") && !length(choices))
       return(sprintf("Field `%s`: type \"%s\" needs `choices`.", name, type))
     default <- unlist(f$default, use.names = FALSE)
     default <- default[!is.na(default)]
@@ -180,6 +184,7 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
       if (length(v) && !is.na(v[1])) v[1] else NULL
     },
     checkbox = isTRUE(as.logical(raw %||% FALSE)),
+    grouping = .grouping_value(raw, field$choices),
     multiselect = {
       v <- as.character(unlist(raw %||% character(0)))
       if (length(v) == 1L && grepl(",", v)) v <- trimws(strsplit(v, ",", fixed = TRUE)[[1]])
@@ -194,6 +199,35 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
       if (is.na(v)) "" else v
     }
   )
+}
+
+# grouping fields --------------------------------------------------------------
+
+# Group name per choice from the text form "G1: a, b; G2: c" (a choice not
+# named keeps its own name). PURE.
+.grouping_preset <- function(text, choices) {
+  out <- choices
+  text <- as.character(text %||% "")
+  if (!nzchar(text)) return(out)
+  for (part in strsplit(text, ";", fixed = TRUE)[[1]]) {
+    kv <- regmatches(part, regexpr(":", part), invert = TRUE)[[1]]
+    if (length(kv) != 2L) next
+    g <- trimws(kv[1]); items <- trimws(strsplit(kv[2], ",", fixed = TRUE)[[1]])
+    if (nzchar(g)) out[choices %in% items] <- g
+  }
+  out
+}
+
+# The submitted grouping as list(group = choices), groups in order of first
+# appearance. `raw` is one group name per choice (the form), or the text form
+# (CLI / test answers). A blank name keeps the choice on its own. PURE.
+.grouping_value <- function(raw, choices) {
+  raw <- as.character(unlist(raw %||% character(0)))
+  g <- if (length(raw) == length(choices) && length(choices) > 1L) raw
+       else .grouping_preset(paste(raw, collapse = ";"), choices)
+  g <- trimws(g); g[is.na(g) | !nzchar(g)] <- choices[is.na(g) | !nzchar(g)]
+  groups <- unique(g)
+  stats::setNames(lapply(groups, function(x) choices[g == x]), groups)
 }
 
 .form_is_empty <- function(field, value) {

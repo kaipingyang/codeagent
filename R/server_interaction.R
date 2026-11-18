@@ -40,9 +40,15 @@ NULL
 }
 
 # Build the promise-returning ask_question_fn (AskUserQuestion). Returns
-# promise<character>. resolve(answer) is called by the Submit observer.
+# promise<character> for one question, promise<list> (one answer per question)
+# for `questions` (normalized by .normalize_questions()). resolve(answer) is
+# called by the Submit observer.
 .shiny_ask_question_fn <- function(session, state) {
-  function(question, choices = NULL) {
+  function(question, choices = NULL, questions = NULL) {
+    if (!is.null(questions)) return(promises::promise(function(resolve, reject) {
+      .enqueue_interaction(state, list(type = "questions", payload = list(questions = questions),
+                                       resolve = resolve))
+    }))
     promises::promise(function(resolve, reject) {
       .enqueue_interaction(state, list(
         type    = "question",
@@ -92,6 +98,16 @@ NULL
       id, label, choices = field$choices, multiple = TRUE, width = "100%",
       selected = if (nzchar(def)) trimws(strsplit(def, ",", fixed = TRUE)[[1]]) else NULL),
     checkbox = shiny::checkboxInput(id, label, value = isTRUE(as.logical(def))),
+    grouping = {
+      preset <- .grouping_preset(def, field$choices)
+      htmltools::tags$div(class = "ca-grouping mb-2",
+        htmltools::tags$label(class = "form-label", label),
+        htmltools::tags$table(class = "table table-sm align-middle mb-0",
+          htmltools::tags$thead(htmltools::tags$tr(htmltools::tags$th("Item"), htmltools::tags$th("Group"))),
+          htmltools::tags$tbody(lapply(seq_along(field$choices), function(j) htmltools::tags$tr(
+            htmltools::tags$td(field$choices[j]),
+            htmltools::tags$td(shiny::textInput(paste0(id, "_g", j), NULL, value = preset[j], width = "100%")))))))
+    },
     date     = shiny::dateInput(id, label, value = if (nzchar(def)) def else NULL,
                                 width = "100%")
   )
@@ -100,6 +116,28 @@ NULL
     if (nzchar(field$help))
       htmltools::tags$small(class = "form-text text-muted d-block mb-2", field$help)
   )
+}
+
+# One question of AskUserQuestion(questions =): header chip, question, the
+# options (radio, or checkboxes for multiSelect) with their descriptions,
+# and "Other" with a text box. Single choice starts on the first option
+# (the recommended one by convention). PURE.
+.question_input <- function(q, i) {
+  labels <- vapply(q$options, `[[`, "", "label")
+  names_html <- c(lapply(q$options, function(o) htmltools::tags$span(o$label,
+    if (nzchar(o$description)) htmltools::tags$small(class = "text-muted", paste0(" \u2014 ", o$description)))),
+    list(htmltools::tags$span("Other")))
+  id <- paste0("ca_qs_", i)
+  htmltools::tags$div(class = "ca-question mb-2",
+    htmltools::tags$p(style = "font-weight:600; margin-bottom:4px;",
+      if (nzchar(q$header)) htmltools::tags$span(class = "badge text-bg-secondary me-2", q$header),
+      q$question),
+    if (isTRUE(q$multiSelect))
+      shiny::checkboxGroupInput(id, NULL, choiceNames = names_html, choiceValues = c(labels, "__other__"))
+    else
+      shiny::radioButtons(id, NULL, choiceNames = names_html, choiceValues = c(labels, "__other__"),
+                          selected = labels[1]),
+    shiny::textInput(paste0("ca_qs_other_", i), NULL, placeholder = "Other: type your answer", width = "100%"))
 }
 
 # Build the promise-returning Data Shield egress approval callback. Payload is
@@ -230,6 +268,18 @@ NULL
                          placeholder = "Type your answer..."),
       shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm")
     )
+  } else if (identical(pending$type, "questions")) {
+    qs <- pending$payload$questions
+    htmltools::tags$div(
+      class = "ca-questions-bar",
+      style = paste(
+        "border-top:2px solid var(--bs-info,#0dcaf0);",
+        "background:var(--bs-body-bg,#fff);",
+        "padding:8px 16px; text-align:left;",
+        "box-shadow:0 -2px 8px rgba(0,0,0,.08);",
+        "max-height:60vh; overflow-y:auto;"),
+      htmltools::tagList(lapply(seq_along(qs), function(i) .question_input(qs[[i]], i))),
+      shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm"))
   } else if (identical(pending$type, "form")) {
     p <- pending$payload
     htmltools::tags$div(
@@ -288,6 +338,7 @@ NULL
   if (identical(pending$type, "approval")) return(FALSE)
   if (identical(pending$type, "egress")) return("redact")
   if (identical(pending$type, "form")) return(list(submitted = FALSE))
+  if (identical(pending$type, "questions")) return(list())
   ""
 }
 
@@ -366,6 +417,19 @@ server_interaction <- function(input, output, session, state) {
   # ---- Submit (question answer) ----
   shiny::observeEvent(input$ca_q_submit, ignoreInit = TRUE, {
     pending <- shiny::isolate(state$pending_interaction)
+    if (!is.null(pending) && identical(pending$type, "questions")) {
+      qs <- pending$payload$questions
+      # typing in Other is choosing it: it replaces a single choice and is
+      # added to multiple ones
+      answers <- lapply(seq_along(qs), function(i) {
+        picked <- setdiff(as.character(input[[paste0("ca_qs_", i)]] %||% character()), "__other__")
+        other <- trimws(as.character(input[[paste0("ca_qs_other_", i)]] %||% ""))
+        if (!nzchar(other)) return(picked)
+        if (isTRUE(qs[[i]]$multiSelect)) c(picked, other) else other
+      })
+      .resolve_pending(state, answers)
+      return()
+    }
     if (is.null(pending) || !identical(pending$type, "question")) return()
     answer <- input$ca_q_choice %||% input$ca_q_text %||% ""
     .resolve_pending(state, answer)
@@ -378,8 +442,13 @@ server_interaction <- function(input, output, session, state) {
     pending <- shiny::isolate(state$pending_interaction)
     if (is.null(pending) || !identical(pending$type, "form")) return()
     spec <- pending$payload$fields
-    raw <- stats::setNames(lapply(seq_along(spec), function(i) input[[.form_input_id(i)]]),
-                           vapply(spec, `[[`, character(1L), "name"))
+    raw <- stats::setNames(lapply(seq_along(spec), function(i) {
+      id <- .form_input_id(i)
+      if (identical(spec[[i]]$type, "grouping"))   # one group box per choice
+        return(vapply(seq_along(spec[[i]]$choices), function(j)
+          as.character(input[[paste0(id, "_g", j)]] %||% "")[1], character(1L)))
+      input[[id]]
+    }), vapply(spec, `[[`, character(1L), "name"))
     # dateInput gives a Date; keep the ISO text the model was told about.
     raw <- lapply(raw, function(v) if (inherits(v, "Date")) format(v) else v)
     collected <- .form_collect(spec, raw)

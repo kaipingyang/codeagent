@@ -1,5 +1,16 @@
 # codeagent (development version)
 
+* `AskUserQuestion` follows Claude Code's public interface as well: `questions`
+  asks 1-4 questions at once, each with a `header` chip, 2-4 `options` (label
+  and description) and `multiSelect`; every question offers "Other" with free
+  text. The answers come back as `"question"="answer"` pairs. The single
+  `question` / `choices` form is unchanged.
+
+* `AskUserForm` has a `grouping` field type: each of its `choices` gets a group
+  name the user can edit (preset with `default = "A: x, y; B: z"`), and the
+  value is `{group: [choices]}` -- e.g. combining treatment arms into the
+  columns of a table.
+
 * `codeagent_chat_ui()` fills the width of its container (`width = "100%"`).
   shinychat's own default caps the chat at 760px, so a host that widened its
   chat sidebar still got a 760px input. `codeagent_chat_ui(width = ...)` caps

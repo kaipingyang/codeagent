@@ -8,8 +8,10 @@ ask_user_tool(ask_question_fn = NULL, async = FALSE)
 }
 \arguments{
 \item{ask_question_fn}{Function or NULL. If provided, called with
-\verb{(question, choices)} instead of \code{readline()}. Used by the Shiny UI
-to show an input bar and await the user's answer.}
+\verb{(question, choices, questions = NULL)} instead of \code{readline()}. Used by
+the Shiny UI to show an input bar and await the user's answer: a string
+for a single question, a list with one answer (character) per question
+for \code{questions}.}
 
 \item{async}{Logical. When \code{TRUE}, the tool \code{fun} is a \code{coro::async}
 function that \code{await()}s a promise returned by \code{ask_question_fn} (Shiny
