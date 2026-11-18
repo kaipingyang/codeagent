@@ -89,8 +89,10 @@
 
 <dl><dt id="arg-ask-question-fn">ask_question_fn<a class="anchor" aria-label="anchor" href="#arg-ask-question-fn"></a></dt>
 <dd><p>Function or NULL. If provided, called with
-<code>(question, choices)</code> instead of <code><a href="https://rdrr.io/r/base/readline.html" class="external-link">readline()</a></code>. Used by the Shiny UI
-to show an input bar and await the user's answer.</p></dd>
+<code>(question, choices, questions = NULL)</code> instead of <code><a href="https://rdrr.io/r/base/readline.html" class="external-link">readline()</a></code>. Used by
+the Shiny UI to show an input bar and await the user's answer: a string
+for a single question, a list with one answer (character) per question
+for <code>questions</code>.</p></dd>
 
 
 <dt id="arg-async">async<a class="anchor" aria-label="anchor" href="#arg-async"></a></dt>

@@ -748,11 +748,20 @@ result, so the host can show it in its own panel.
 `on_restore = function(chat)` lets the host refresh its own panels when
 a saved conversation is opened.
 
+`AskUserQuestion` asks one question (`question`, optional `choices`) or,
+like Claude Code’s public tool, 1-4 questions at once (`questions`: each
+with a short `header`, 2-4 `options` with `label` and `description`, and
+`multiSelect`); the user can always answer “Other” with their own text.
+The answers come back as `"question"="answer"` pairs.
+
 `AskUserForm` collects or confirms several values at once: the model
 sends a title and fields (`text`, `textarea`, `number`, `select`,
-`multiselect`, `checkbox`, `date`, with `default`, `required`, `help`),
-the form opens in the chat’s interaction area, and the tool returns
-`{"submitted": true|false, "values": {...}}`.
+`multiselect`, `checkbox`, `date`, `grouping`, with `default`,
+`required`, `help`), the form opens in the chat’s interaction area, and
+the tool returns `{"submitted": true|false, "values": {...}}`. A
+`grouping` field puts each of its `choices` (e.g. treatment arms) into a
+group the user names; its value is `{group: [choices]}` and its
+`default` presets groups as `"Group A: x, y; Group B: z"`.
 
 ### Generative UI canvas
 

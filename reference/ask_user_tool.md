@@ -12,9 +12,12 @@ ask_user_tool(ask_question_fn = NULL, async = FALSE)
 
 - ask_question_fn:
 
-  Function or NULL. If provided, called with `(question, choices)`
-  instead of [`readline()`](https://rdrr.io/r/base/readline.html). Used
-  by the Shiny UI to show an input bar and await the user's answer.
+  Function or NULL. If provided, called with
+  `(question, choices, questions = NULL)` instead of
+  [`readline()`](https://rdrr.io/r/base/readline.html). Used by the
+  Shiny UI to show an input bar and await the user's answer: a string
+  for a single question, a list with one answer (character) per question
+  for `questions`.
 
 - async:
 
