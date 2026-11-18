@@ -639,6 +639,7 @@ codeagent_app <- function(
       shiny::uiOutput("ca_init_overlay"),
       sidebar = left_sidebar,
       bslib::layout_sidebar(
+        class = "ca-chat-layout",
         fill = TRUE,
         fillable = TRUE,
         border = FALSE,

@@ -1,5 +1,12 @@
 # codeagent (development version)
 
+* Fixed: with `theme = "glass"` in the classic layout, the chat column was
+  squeezed to a narrow strip: shinyglass reserves room on the main of a
+  right-side sidebar layout for a sidebar that floats over it, but the
+  Workspace has its own column, so that width was taken twice. The model
+  picker also no longer gives the left sidebar a horizontal scrollbar when a
+  model name is long (all themes and layouts); it shrinks and truncates.
+
 * Development pins moved to the 2026-11-15 upstream heads: ellmer 0.5.2.9000,
   btw, shinychat (exchange-history fixes; tool-card code highlighting), shiny
   (`MockShinySession` drops a destroyed module's outputs), httr2, shinyglass

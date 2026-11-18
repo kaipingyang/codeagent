@@ -329,3 +329,25 @@ test_that("the composer and its footer stay together when the greeting centers t
                collapse = "\n")
   expect_match(css, "data-composer-centered\\]:has\\([^)]*ca-chat-footer-actions[^)]*\\)\\s*>\\s*\\.shiny-chat-footer")
 })
+
+test_that("the classic chat column does not reserve a floating sidebar's width", {
+  # shinyglass pads the main of a right-side sidebar layout for a sidebar that
+  # floats over it; bslib already gives the Workspace its own column, so the
+  # chat card shrank to a strip. The classic chat main carries a class the
+  # override targets.
+  app <- codeagent_app(ui_layout = "classic", launch.browser = FALSE)
+  req <- as.environment(list(PATH_INFO = "/", REQUEST_METHOD = "GET",
+    HTTP_HOST = "localhost", QUERY_STRING = "",
+    rook.input = list(read = function(...) raw(0))))
+  ui <- app$httpHandler(req)$content
+  expect_match(ui, 'class="main[^"]*\\bca-chat-layout\\b')
+  css <- paste(readLines(system.file("www", "styles.css", package = "codeagent")),
+               collapse = "\n")
+  expect_match(css, "data-glass-mode\\][^{]*sidebar-right:not\\(\\.sidebar-collapsed\\)\\s*>\\s*\\.main\\.ca-chat-layout")
+})
+
+test_that("the model picker shrinks to the sidebar width", {
+  css <- paste(readLines(system.file("www", "styles.css", package = "codeagent")),
+               collapse = "\n")
+  expect_match(css, "\\.ca-model-toolbar select\\s*\\{[^}]*width:\\s*100%")
+})
