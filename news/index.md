@@ -2,6 +2,11 @@
 
 ## codeagent (development version)
 
+- Fixed: Data Shield replaced every omitted optional attribute of an
+  array of objects in tool arguments (NA after ellmer’s conversion) with
+  “tool arg redacted: scan failed (fail-closed)” – e.g. AskUserQuestion
+  option descriptions after the first. NA leaves are left as they are.
+
 - `AskUserQuestion` follows Claude Code’s public interface as well:
   `questions` asks 1-4 questions at once, each with a `header` chip, 2-4
   `options` (label and description) and `multiSelect`; every question
