@@ -6,8 +6,10 @@ configured the way
 [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md)
 expects: the input id is `"chat"`, the approval / question bar sits
 above the input (it renders into output `ca_interaction_ui`), cancel is
-enabled, and tool calls are grouped per tool. Place it anywhere in the
-host page, together with
+enabled, tool calls are grouped per tool, and the chat fills the width
+of its container (`width = "100%"`; shinychat alone caps it at 760px, so
+widening a sidebar left the input at that width). Pass `width =` to cap
+it again. Place it anywhere in the host page, together with
 [`codeagent_head_assets()`](https://kaipingyang.github.io/codeagent/reference/codeagent_head_assets.md).
 
 ## Usage

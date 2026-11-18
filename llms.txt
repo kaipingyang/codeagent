@@ -668,7 +668,7 @@ runs on the same session core.
 ``` r
 
 ui <- bslib::page_sidebar(
-  sidebar = bslib::sidebar(width = 420, codeagent_chat_ui(greeting = "Hi! Ask me ...")),
+  sidebar = bslib::sidebar(width = 420, codeagent_chat_ui(greeting = "Hi! Ask me ...")),   # the chat fills the sidebar
   codeagent_canvas_ui(),                     # optional: only with `canvas =`
   codeagent_head_assets()
 )
