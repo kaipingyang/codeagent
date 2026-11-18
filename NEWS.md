@@ -1,5 +1,10 @@
 # codeagent (development version)
 
+* Fixed: with a large registered identifier column (e.g. 1e5 subject ids),
+  every Data Shield scan of a prompt or tool result took seconds: an
+  emptiness check listed the whole value index with `ls()`. It now uses the
+  environment's length; a short scan takes milliseconds again.
+
 * Fixed: with `theme = "glass"` in the classic layout, the chat column was
   squeezed to a narrow strip: shinyglass reserves room on the main of a
   right-side sidebar layout for a sidebar that floats over it, but the
