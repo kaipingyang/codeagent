@@ -43,7 +43,7 @@ the theme:
 ``` r
 
 pak::pak(
-  "ericrayanderson/shinyglass@1236b69a128414be67e597c407319c419f265f7a"
+  "ericrayanderson/shinyglass@f55232ab370214f0d40d11ab3bd06c34deccc89d"
 )
 
 liquid_theme <- codeagent_theme(
