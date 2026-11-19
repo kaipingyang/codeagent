@@ -454,3 +454,145 @@ shiny-chat-container {
   border-top: 0.5px solid var(--ca-dsh-border-l2);
   opacity: 1;
 }
+
+/* == 8. Composer =============================================================== */
+/* The input row becomes DSH's composer card: R28, no border, soft elevation;
+   text on top, a control row below (attach left, send right). */
+.shiny-chat-input-dropzone {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  padding: 8px 8px 8px;
+  border: 0;
+  border-radius: var(--ca-dsh-radius-panel);
+  background: var(--ca-dsh-bg-input);
+  box-shadow: var(--ca-dsh-elevation-soft);
+}
+.shiny-chat-input-dropzone > #chat_user_input,
+.shiny-chat-input-dropzone > [id$="_user_input"] {
+  order: -1;
+  flex: 1 1 100%;
+  min-width: 0;
+}
+.shiny-chat-input .tiptap.form-control,
+.shiny-chat-input .tiptap.form-control:focus,
+.shiny-chat-input .form-control {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 4px 8px 0 8px;
+  min-height: 48px;
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--ca-dsh-label-primary);
+}
+.shiny-chat-input .tiptap p.is-editor-empty:first-child::before,
+.shiny-chat-input .tiptap .is-empty::before {
+  color: var(--ca-dsh-label-tertiary);
+}
+.shiny-chat-btn-attach {
+  position: static;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  corner-shape: round;
+  color: var(--ca-dsh-label-secondary);
+}
+.shiny-chat-btn-send {
+  position: static;
+  margin-left: auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  corner-shape: round;
+  --shiny-chat-btn-send-color: var(--ca-dsh-label-caption);
+  --shiny-chat-btn-send-color-ready: var(--ca-dsh-accent);
+}
+@media (hover: hover) {
+  .shiny-chat-btn-attach:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+/* Below the card: small ghost actions and a caption line. */
+.ca-chat-footer-actions .btn {
+  border: 0;
+  border-radius: var(--ca-dsh-radius-sm);
+  background: transparent;
+  color: var(--ca-dsh-label-tertiary);
+}
+.ca-chat-footer-actions .text-muted {
+  color: var(--ca-dsh-label-tertiary);
+}
+/* Empty state: greeting and suggestion cards (settings-card material). */
+.shiny-chat-greeting {
+  color: var(--ca-dsh-label-primary);
+}
+.shiny-chat-suggestion-list-item {
+  border: 0.5px solid var(--ca-dsh-border-l4);
+  border-radius: var(--ca-dsh-radius-xl);
+  background: var(--ca-dsh-bg-layer-2);
+  box-shadow: none;
+  color: var(--ca-dsh-label-secondary);
+  font-size: 13px;
+}
+@media (hover: hover) {
+  .shiny-chat-suggestion-list-item:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+
+/* == 9. Process rows (tool calls, thinking) ===================================== */
+/* DSH ToolRow: one 24px line -- 16px glyph, 13px title, summary -- in
+   tertiary ink that turns secondary on hover; 4px between rows. */
+.shiny-chat-tool-group {
+  font-size: 13px;
+  color: var(--ca-dsh-label-tertiary);
+  --_row-pad: 0px;
+  margin: 4px 0;
+}
+.shiny-chat-tool-group__row {
+  min-height: 24px;
+  padding: 0;
+  gap: 6px;
+  border-radius: var(--ca-dsh-radius-sm);
+  line-height: 24px;
+  color: var(--ca-dsh-label-tertiary);
+}
+.shiny-chat-tool-group__title {
+  font-weight: 400;
+}
+.shiny-chat-tool-group__label {
+  opacity: 1;
+}
+.shiny-chat-tool-group__label code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 12px;
+  color: inherit;
+}
+.shiny-chat-tool-call-row__preview {
+  font-style: normal;
+  color: var(--ca-dsh-label-caption);
+}
+@media (hover: hover) {
+  .shiny-chat-tool-group__row:hover {
+    background: transparent;
+    color: var(--ca-dsh-label-secondary);
+  }
+}
+/* Expanded result: R16 module surface without a second frame. */
+.shiny-tool-card {
+  border: 0;
+  border-radius: var(--ca-dsh-radius-lg);
+  background: var(--ca-dsh-bg-code);
+  box-shadow: none;
+}
+/* Thinking: compact grey text. */
+.shiny-chat-thinking {
+  --shiny-chat-thinking-header-color: var(--ca-dsh-label-tertiary);
+  --shiny-chat-thinking-content-color: var(--ca-dsh-label-tertiary);
+  --shiny-chat-thinking-border-color: var(--ca-dsh-border-l2);
+  font-size: 13px;
+}
