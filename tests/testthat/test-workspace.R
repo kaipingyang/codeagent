@@ -75,7 +75,9 @@ test_that("a tab of an unknown kind shows a note, and restore re-mounts", {
     ws$restore(saved)
     session$flushReact()
     expect_identical(ws$tabs()[[1]]$content_id, "x")
-    expect_match(as.character(output[[paste0("ca_ws_out_", t)]]$html), "Cannot show", fixed = TRUE)
+    t2 <- ws$tabs()[[1]]$id
+    expect_false(identical(t2, t))                         # fresh id: re-rendered
+    expect_match(as.character(output[[paste0("ca_ws_out_", t2)]]$html), "Cannot show", fixed = TRUE)
   })
 })
 
@@ -176,4 +178,35 @@ test_that("tool requests left without a result are closed with an error result",
   expect_match(third[[2]]@error, "Interrupted")
   expect_identical(turns[[6]]@contents[[1]]@request@id, "c")
   expect_identical(.close_dangling_tool_requests(ch), 0L)   # nothing left
+})
+
+test_that("a dropped kind's tab is gone and does not come back on restore", {
+  opts <- workspace_options(list(
+    codeagent_workspace_kind("canvas", function(id, s) "c", pinned = TRUE),
+    codeagent_workspace_kind("files", function(id, s) "f", pinned = TRUE)), builtin = FALSE)
+  shiny::testServer(ws_server(opts), {
+    ws <- session$userData$ws
+    expect_length(ws$tabs(), 2L)
+    ws$drop_kind("canvas")
+    expect_identical(vapply(ws$tabs(), `[[`, "", "kind"), "files")
+    ws$restore(NULL)
+    expect_identical(vapply(ws$tabs(), `[[`, "", "kind"), "files")
+  })
+})
+
+test_that("restoring keeps the pinned kinds' tabs mounted and renumbers the rest", {
+  kinds <- list(files = codeagent_workspace_kind("files", function(id, s) "f", pinned = TRUE))
+  cur <- .ws_open(.ws_layout(), "files", "files", pinned = TRUE)
+  cur <- .ws_open(cur, "result", "old")                         # t_2, previous conversation
+  saved <- .ws_open(.ws_open(.ws_layout(), "files", "files", pinned = TRUE), "result", "a")
+  saved <- .ws_open(saved, "result", "b")
+  saved <- .ws_focus(saved, "t_2")                               # "a" was active
+  out <- .ws_merge_restored(cur, saved, kinds)
+  expect_identical(vapply(out$tabs, `[[`, "", "content_id"), c("files", "a", "b"))
+  expect_identical(out$tabs[[1]]$id, "t_1")                     # same mounted Files tab
+  expect_false(any(c("t_2") %in% .ws_ids(out)))                 # no reuse of the old tab's id
+  expect_identical(out$tabs[[which(.ws_ids(out) == out$active)]]$content_id, "a")
+  empty <- .ws_merge_restored(cur, .ws_layout(), kinds)
+  expect_identical(vapply(empty$tabs, `[[`, "", "content_id"), "files")
+  expect_identical(empty$active, "t_1")
 })

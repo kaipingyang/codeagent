@@ -203,6 +203,7 @@ codeagent_workspace_ui <- function(id = "ca_ws") {
   set <- function(layout) { state$ws_layout <- layout; invisible(layout) }
 
   output[[paste0(id, "_strip")]] <- shiny::renderUI(.ws_strip_ui(state$ws_layout %||% .ws_layout()))
+  shiny::outputOptions(output, paste0(id, "_strip"), suspendWhenHidden = FALSE)
 
   mount <- function(t, active) {
     k <- kinds[[t$kind]]
@@ -212,6 +213,9 @@ codeagent_workspace_ui <- function(id = "ca_ws") {
       tryCatch(k$render(content_id, session),
                error = function(e) .ws_note(paste("Could not show this tab:", conditionMessage(e))))
     })
+    # Rendered while hidden too: a tab is mounted once, and containers other
+    # code writes into (the canvas) must exist before the tab is first shown.
+    shiny::outputOptions(output, out_id(t$id), suspendWhenHidden = FALSE)
     shiny::insertUI(
       paste0("#", id, "_body"), where = "beforeEnd", immediate = TRUE, session = session,
       ui = htmltools::tags$div(
@@ -283,13 +287,21 @@ codeagent_workspace_ui <- function(id = "ca_ws") {
       if (is.na(i)) NULL else layout$tabs[[i]]
     },
     tabs   = function() (state$ws_layout %||% .ws_layout())$tabs,
+    # Unregister a kind and close its tabs (e.g. Canvas when the canvas is off).
+    drop_kind = function(kind) {
+      kinds[[kind]] <<- NULL
+      layout <- get()
+      for (t in layout$tabs) if (identical(t$kind, kind)) {
+        layout <- .ws_pin(layout, t$id, FALSE)
+        layout <- .ws_close(layout, t$id)
+      }
+      invisible(set(layout))
+    },
     layout = function() get(),
     # A conversation was opened or a new one started: its layout replaces the
     # current one; every tab re-renders from its content id.
     restore = function(layout = NULL) {
-      for (tab in ls(mounted)) unmount(tab)
-      state$ws_epoch <- (shiny::isolate(state$ws_epoch) %||% 0L) + 1L
-      set(open_pinned(.ws_validate(layout)))
+      set(.ws_merge_restored(get(), .ws_validate(layout), kinds))
     })
   class(ws) <- "codeagent_workspace"
 
@@ -300,6 +312,73 @@ codeagent_workspace_ui <- function(id = "ca_ws") {
   }, ignoreInit = TRUE)
   shiny::observeEvent(state$ws_layout, {
     .ws_save(shiny::isolate(state$session_id), cwd, state$ws_layout)
+  }, ignoreInit = TRUE)
+  ws
+}
+
+.ws_drop_kind <- function(ws, kind) ws$drop_kind(kind)
+
+# The layout after opening a conversation: the pinned kinds' tabs stay as they
+# are (their contents -- the file tree, the canvas -- stay mounted), the
+# conversation's own tabs come from its saved layout under fresh ids, so none
+# of them can reuse a mounted tab of the previous conversation.
+.ws_merge_restored <- function(current, restored, kinds) {
+  is_kind_tab <- function(t) isTRUE(kinds[[t$kind]]$pinned) && identical(t$content_id, t$kind)
+  keep <- Filter(is_kind_tab, current$tabs)
+  out <- current
+  out$tabs <- keep
+  out$seen <- current$seen[current$seen %in% .ws_ids(out)]
+  out$active <- NULL
+  next_id <- max(current$next_id, restored$next_id)
+  map <- character(0)
+  for (t in restored$tabs) {
+    if (is_kind_tab(t) || !is.null(.ws_find(out, t$kind, t$content_id))) next
+    new_id <- paste0("t_", next_id); next_id <- next_id + 1L
+    map[[t$id]] <- new_id
+    t$id <- new_id
+    out$tabs[[length(out$tabs) + 1L]] <- t
+  }
+  out$next_id <- next_id
+  out <- .ws_sort(out)
+  for (s in restored$seen) if (!is.na(map[s])) out$seen <- c(out$seen, map[[s]])
+  for (k in kinds) if (isTRUE(k$pinned) && is.null(.ws_find(out, k$kind, k$kind)))
+    out <- .ws_open(out, k$kind, k$kind,
+                    title = if (is.function(k$title)) k$title(k$kind) else k$kind,
+                    pinned = TRUE, reveal = FALSE)
+  act <- restored$active
+  if (!is.null(act) && !is.na(map[act])) out <- .ws_focus(out, map[[act]])
+  else if (length(out$tabs)) out <- .ws_focus(out, out$tabs[[1L]]$id)
+  out
+}
+
+# The workspace of codeagent_app(ui_layout = "dsh"): pinned Files (and Canvas),
+# results and files in their own tabs. As in DSH, a finished tool call does not
+# open the panel; opening its card in the chat, a file in the tree or the
+# toolbar button does. A canvas change shows the Canvas tab.
+.dsh_workspace_server <- function(input, output, session, state, chat, cwd,
+                                  canvas = NULL) {
+  kinds <- list(codeagent_workspace_kind("files",
+    render = function(id, session) jsTreeR::treeNavigatorUI("file_tree", height = "100%"),
+    title = function(id) "Files", pinned = TRUE))
+  if (!is.null(canvas))
+    kinds <- c(kinds, list(codeagent_workspace_kind("canvas",
+      render = function(id, session) codeagent_canvas_ui(canvas),
+      title = function(id) "Canvas", pinned = TRUE)))
+  ws <- .workspace_server(input, output, session, state, workspace_options(kinds),
+                          chat = chat, cwd = cwd)
+  show <- function() tryCatch(.shinychat_drawer_action("chat", "show", session = session),
+                              error = function(e) NULL)
+  state$tool_output_handler <- function(result) {
+    if (!.is_genui_result(result)) return(invisible(NULL))
+    tab <- .ws_find(ws$layout(), "canvas", "canvas")
+    if (!is.null(tab)) { ws$focus(tab); show() }
+  }
+  shiny::observeEvent(input$ca_tool_open, {
+    id <- input$ca_tool_open$id
+    res <- .find_tool_result(chat$get_turns(), id)
+    if (is.null(res)) return()
+    ws$open("result", id, title = .ws_result_title(res))
+    show()
   }, ignoreInit = TRUE)
   ws
 }

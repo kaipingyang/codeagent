@@ -430,6 +430,7 @@ codeagent_server <- function(input, output, session, client, tools = list(),
     main_output     = NULL,
     ws_layout       = NULL,       # workspace tabs (codeagent_workspace_ui)
     ws_epoch        = 0L,
+    tool_output_handler = NULL,   # set by a workspace layout (dsh)
     settings_changed = 0L,
     sessions_dirty  = 0L,
     pending_interaction = NULL,   # approval / question / form shown now

@@ -526,7 +526,8 @@ codeagent_app <- function(
       id = "ca_page_chat_workspace",
       class = "html-fill-container html-fill-item",
       style = "height:100%;min-height:0;",
-      .codeagent_workspace_card(canvas = genui_ui, canvas_opts = canvas)
+      # Workspace tabs (R/workspace.R): one tab per opened result or file.
+      codeagent_workspace_ui("ca_ws")
     )
     chat_args <- .codeagent_chat_args(skill_meta, chat_submit_key)
     chat_args$toolbar_input <- .dsh_composer_toolbar_ui(
@@ -609,6 +610,7 @@ codeagent_app <- function(
     state       <- core$state
     stream_task <- core$stream_task
     cwd <- settings$cwd %||% getwd()
+    ws <- NULL
     if (.web_citations_enabled(settings$web_citations)) {
       # The app-level opt-in may be applied after a factory built its client.
       # Refresh prompt and already-registered web tools before the first turn.
@@ -636,6 +638,8 @@ codeagent_app <- function(
       # still comes from codeagent's session log, as in codeagent_server().
       .enable_shinychat_history(input, session, chat_obj, core,
                                 codeagent_history_options(cwd))
+      ws <- .dsh_workspace_server(input, output, session, state, chat_obj, cwd,
+                                  canvas = if (isTRUE(genui_ui)) canvas else NULL)
     } else {
       server_sessions(input, output, session,
                       chat        = chat_obj,
@@ -669,9 +673,11 @@ codeagent_app <- function(
     # throughout. Input stays gated (state$initializing) until ready.
     session$onFlushed(function() {
       genui_on <- core$ready()
-      if (isTRUE(genui_ui) && !isTRUE(genui_on))
+      if (isTRUE(genui_ui) && !isTRUE(genui_on)) {
         tryCatch(bslib::nav_hide("main_tab", "canvas", session = session),
                  error = function(e) NULL)
+        if (!is.null(ws)) .ws_drop_kind(ws, "canvas")
+      }
     }, once = TRUE)
 
     # Auto-continue: restore only after the first UI flush. The former
@@ -734,7 +740,11 @@ codeagent_app <- function(
                  show_hidden = isTRUE(file_tree_show_hidden),
                  exclude = file_tree_exclude,
                  drawer_id = if (.uses_page_chat(ui_layout))
-                   "chat" else NULL)
+                   "chat" else NULL,
+                 on_file = if (!is.null(ws)) function(rel) {
+                   ws$open("file", rel)
+                   .shinychat_drawer_action("chat", "show", session = session)
+                 })
 
     if (.uses_page_chat(ui_layout)) {
       shiny::observeEvent(input$ca_workspace_toggle, {

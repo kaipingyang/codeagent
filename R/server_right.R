@@ -19,7 +19,7 @@ server_right <- function(input, output, session, cwd, state,
                          show_hidden = FALSE,
                          exclude = c("renv", "node_modules", "packrat",
                                      ".git", ".Rproj.user"),
-                         drawer_id = NULL) {
+                         drawer_id = NULL, on_file = NULL) {
   root_path <- .canonical_security_path(cwd, cwd, allow_missing = FALSE)
 
   # File tree (jsTreeR). Uses .file_tree_server -- a thin fork of jsTreeR's
@@ -95,6 +95,11 @@ server_right <- function(input, output, session, cwd, state,
     fname <- substring(path, nchar(root_path) + 2L)
     key   <- gsub("[^A-Za-z0-9]+", "_", path)
 
+    # A workspace opens the file in its own tab instead of the File viewer.
+    if (is.function(on_file)) {
+      on_file(substring(path, nchar(root_path) + 2L))
+      return()
+    }
     preview <- .build_file_preview(path, ext, id = paste0("ced__", key))
 
     current_file(list(path = path, fname = basename(fname), preview = preview))
