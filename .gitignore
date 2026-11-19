@@ -54,3 +54,6 @@ vignettes/*.html
 
 # testthat failure snapshots
 tests/testthat/_problems/
+
+# DSH comparison screenshots
+tools/dsh-compare/out/

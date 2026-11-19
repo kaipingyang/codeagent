@@ -454,8 +454,8 @@ stdio and the default loopback HTTP configuration keep them disabled.
 # Single-user / interactive convenience:
 codeagent_app(
   client,
-  ui_layout     = "classic",   # default; opt in with "page_chat"
-  theme         = "default",   # default | ios | aurora | flatly | darkly | glass
+  ui_layout     = "classic",   # default; or "page_chat" / "dsh"
+  theme         = "default",   # default | ios | aurora | dsh | flatly | darkly | glass
   pinned_skills = c("plan", "compact")
 )
 
@@ -465,6 +465,13 @@ codeagent_app(client, ui_layout = "page_chat", theme = "ios")
 # Aurora uses ambient blue-indigo-purple light, selective frosted navigation,
 # and high-opacity content surfaces for dense chat, code, tools, and tables:
 codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
+
+# dsh: flat layered surfaces after the DeepSeek Harness Web UI design system
+# (0.5px hairlines, role-based radii, bubble-free replies, approval cards seated
+# where the composer is). Not affiliated with DeepSeek; no DeepSeek branding:
+# ui_layout = "dsh": conversation history in the left column, permission
+# mode and model in the composer, Settings in a dialog (any theme).
+codeagent_app(client, ui_layout = "dsh", theme = "dsh")
 
 # Liquid Glass is the optional pinned shinyglass package (>= 0.5.0), which also
 # styles shinychat and follows dark mode itself; codeagent adds no rules:
@@ -630,6 +637,17 @@ codeagent_server(input, output, session, client,
     store = shinychat::FileConversationStore$new(dir = "/shared/app/history")),
   greeting = "Hi!")
 ```
+
+That is the setup for a **deployed app**: shinychat keeps its own records in
+the store you choose. For **personal use** -- one person (or a few accounts on
+one server) working in a project -- `codeagent_history_options(cwd)` gives the
+same history selector over codeagent's session log instead: every earlier
+session of the project is listed, no second copy of any conversation is
+written, renames and titles are kept in the log, and conversations are
+partitioned by user. `codeagent_app(ui_layout = "dsh")` uses it. Its
+`max_store_mb` defaults to `NULL`: shinychat deletes the oldest conversations
+above a size limit, which here would delete session logs, so a limit is only
+set when you pass one.
 
 **codeagent's own list**: put `codeagent_sessions_ui()` in the page (a sidebar,
 an accordion) and pass `history = "codeagent"` to `codeagent_server()`. Users see

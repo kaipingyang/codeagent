@@ -15,6 +15,7 @@ NULL
     light  = , default = "default",
     ios    = "ios",
     aurora = "aurora",
+    dsh    = "dsh",
     dark   = , darkly  = "darkly",
     flatly = "flatly",
     glass  = , glassmorphism = "glass",
@@ -69,142 +70,17 @@ NULL
   do.call(shinyglass::glass_theme, args)
 }
 
-.ios_theme_rules <- function() {
-  paste(c(
-    ":root {",
-    "  --ca-app-canvas-bg: #f2f2f7;",
-    "  --ca-app-surface-bg: #ffffff;",
-    "  --ca-card-border: rgba(0,0,0,0.08);",
-    "  --ca-card-radius: 14px;",
-    "  --ca-card-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);",
-    "  --shiny-chat-page-surface-bg: var(--ca-app-canvas-bg);",
-    "  --shiny-chat-page-sidebar-bg: var(--ca-app-surface-bg);",
-    "  --shiny-chat-page-canvas-bg: var(--ca-app-canvas-bg);",
-    "  --shiny-chat-page-drawer-bg: var(--ca-app-surface-bg);",
-    "  --shiny-chat-page-drawer-header-bg: var(--ca-app-surface-bg);",
-    "}",
-    "[data-bs-theme='dark'] {",
-    "  --ca-app-canvas-bg: #1c1c1e;",
-    "  --ca-app-surface-bg: #2c2c2e;",
-    "  --ca-card-border: rgba(84,84,88,0.65);",
-    "  --ca-card-shadow: 0 2px 12px rgba(0,0,0,0.28), 0 1px 3px rgba(0,0,0,0.22);",
-    "}",
-    "body, .bslib-page-fill, .bslib-sidebar-layout > .main {",
-    "  background-color: var(--ca-app-canvas-bg);",
-    "}",
-    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar {",
-    "  background-color: var(--ca-app-surface-bg);",
-    "}",
-    "shiny-chat-page .shiny-chat-page-panel,",
-    "shiny-chat-page shiny-chat-container {",
-    "  background-color: var(--ca-app-canvas-bg);",
-    "}",
-    ".card, .toolcard, .accordion-item, .modal-content,",
-    "shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
-    "  background-color: var(--ca-app-surface-bg);",
-    "  border-color: var(--ca-card-border);",
-    "  border-radius: var(--ca-card-radius);",
-    "}",
-    ".card, shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
-    "  box-shadow: var(--ca-card-shadow);",
-    "}",
-    "shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
-    "  border: 1px solid var(--ca-card-border);",
-    "}",
-    ".shiny-chat-page-sidebar-panel > .card { margin-bottom: 0; }",
-    ".toolcard { --bs-body-bg: var(--ca-app-surface-bg); }"
-  ), collapse = "\n")
+# Extra rules of a built-in theme live in inst/themes/<name>.scss (plain CSS,
+# compiled by sass with the theme) -- never as CSS strings in R. Shipped only
+# with that theme. dsh.scss follows the DeepSeek Harness Web UI design system;
+# see its header.
+.codeagent_theme_file <- function(name) {
+  path <- system.file("themes", paste0(name, ".scss"), package = "codeagent")
+  if (!nzchar(path)) path <- file.path("inst", "themes", paste0(name, ".scss"))
+  path
 }
 
-.aurora_theme_rules <- function() {
-  paste(c(
-    ":root {",
-    "  --ca-aurora-canvas: #f2f2f7;",
-    "  --ca-aurora-glass: rgba(255,255,255,0.76);",
-    "  --ca-aurora-content: rgba(255,255,255,0.94);",
-    "  --ca-aurora-border: rgba(255,255,255,0.72);",
-    "  --ca-aurora-content-border: rgba(67,56,140,0.12);",
-    "  --ca-aurora-shadow: 0 12px 36px rgba(56,45,110,0.11), 0 2px 8px rgba(0,0,0,0.05);",
-    "  --ca-aurora-blue: rgba(0,122,255,0.20);",
-    "  --ca-aurora-purple: rgba(175,82,222,0.17);",
-    "  --ca-aurora-indigo: rgba(88,86,214,0.15);",
-    "  --shiny-chat-page-surface-bg: var(--ca-aurora-canvas);",
-    "  --shiny-chat-page-sidebar-bg: var(--ca-aurora-glass);",
-    "  --shiny-chat-page-canvas-bg: var(--ca-aurora-canvas);",
-    "  --shiny-chat-page-drawer-bg: var(--ca-aurora-glass);",
-    "  --shiny-chat-page-drawer-header-bg: var(--ca-aurora-glass);",
-    "}",
-    "[data-bs-theme='dark'] {",
-    "  --ca-aurora-canvas: #0b0b14;",
-    "  --ca-aurora-glass: rgba(22,22,38,0.76);",
-    "  --ca-aurora-content: rgba(21,22,32,0.94);",
-    "  --ca-aurora-border: rgba(255,255,255,0.12);",
-    "  --ca-aurora-content-border: rgba(255,255,255,0.12);",
-    "  --ca-aurora-shadow: 0 12px 36px rgba(0,0,0,0.30), 0 2px 8px rgba(0,0,0,0.22);",
-    "  --ca-aurora-blue: rgba(69,125,255,0.20);",
-    "  --ca-aurora-purple: rgba(162,89,255,0.18);",
-    "  --ca-aurora-indigo: rgba(99,102,241,0.14);",
-    "}",
-    "body, .bslib-page-fill, shiny-chat-page {",
-    "  background-color: var(--ca-aurora-canvas);",
-    "  background-image: radial-gradient(54rem 38rem at 8% -8%, var(--ca-aurora-blue), transparent 68%), radial-gradient(48rem 40rem at 96% 4%, var(--ca-aurora-purple), transparent 66%), radial-gradient(42rem 34rem at 52% 108%, var(--ca-aurora-indigo), transparent 70%);",
-    "  background-attachment: fixed;",
-    "}",
-    "body > shiny-chat-page.shiny-bound-input {",
-    "  background-color: var(--ca-aurora-canvas) !important;",
-    "  background-image: radial-gradient(54rem 38rem at 8% -8%, var(--ca-aurora-blue), transparent 68%), radial-gradient(48rem 40rem at 96% 4%, var(--ca-aurora-purple), transparent 66%), radial-gradient(42rem 34rem at 52% 108%, var(--ca-aurora-indigo), transparent 70%) !important;",
-    "}",
-    ".bslib-sidebar-layout > .main, shiny-chat-page .shiny-chat-page-panel,",
-    "shiny-chat-page shiny-chat-container { background-color: transparent; }",
-    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
-    ".shiny-chat-drawer, .shiny-chat-page-drawer,",
-    ".shiny-chat-drawer-header, .shiny-chat-page-drawer-header,",
-    ".shiny-chat-composer {",
-    "  background-color: var(--ca-aurora-glass);",
-    "  backdrop-filter: blur(18px) saturate(140%);",
-    "  -webkit-backdrop-filter: blur(18px) saturate(140%);",
-    "  border-color: var(--ca-aurora-border);",
-    "  box-shadow: var(--ca-aurora-shadow);",
-    "}",
-    ".shiny-chat-composer {",
-    "  border: 1px solid var(--ca-aurora-border);",
-    "  border-radius: 14px;",
-    "}",
-    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar {",
-    "  border-right: 1px solid var(--ca-aurora-border);",
-    "}",
-    ".card, .toolcard, .accordion-item, .modal-content,",
-    ".shiny-chat-message-content, .table-responsive, .ca-tool-artifact {",
-    "  background-color: var(--ca-aurora-content);",
-    "  border-color: var(--ca-aurora-content-border);",
-    "}",
-    ".card, .toolcard, .accordion-item, .modal-content {",
-    "  border-radius: 14px;",
-    "}",
-    ".toolcard { --bs-body-bg: var(--ca-aurora-content); }",
-    ".table, table { --bs-table-bg: var(--ca-aurora-content); }",
-    "pre, code { background-color: var(--ca-aurora-content); }",
-    "@media (prefers-reduced-transparency: reduce) {",
-    "  :root { --ca-aurora-glass: #ffffff; --ca-aurora-content: #ffffff; }",
-    "  [data-bs-theme='dark'] { --ca-aurora-glass: #161626; --ca-aurora-content: #151620; }",
-    "  body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
-    "  .shiny-chat-drawer, .shiny-chat-page-drawer, .shiny-chat-composer {",
-    "    backdrop-filter: none; -webkit-backdrop-filter: none;",
-    "  }",
-    "}",
-    "@media (prefers-reduced-motion: reduce) {",
-    "  .shiny-chat-page-sidebar, .shiny-chat-drawer, .shiny-chat-page-drawer,",
-    "  .shiny-chat-composer { transition: none !important; animation: none !important; }",
-    "}",
-    "@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {",
-    "  body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
-    "  .shiny-chat-drawer, .shiny-chat-page-drawer, .shiny-chat-composer {",
-    "    background-color: var(--ca-aurora-content);",
-    "    backdrop-filter: none; -webkit-backdrop-filter: none;",
-    "  }",
-    "}"
-  ), collapse = "\n")
-}
+.codeagent_theme_rules <- function(name) sass::sass_file(.codeagent_theme_file(name))
 
 #' Build a codeagent application theme
 #'
@@ -214,7 +90,7 @@ NULL
 #' package (0.5.0 or later), which also styles shinychat itself. The returned
 #' object can be passed to [codeagent_app()] or further customized with bslib.
 #'
-#' @param style One of `"default"`, `"ios"`, `"aurora"`, `"flatly"`,
+#' @param style One of `"default"`, `"ios"`, `"aurora"`, `"dsh"`, `"flatly"`,
 #'   `"darkly"`, or `"glass"`. CLI aliases `"light"`, `"dark"`, and
 #'   `"glassmorphism"` are also accepted. Unknown values fail soft to
 #'   `"default"`. `"glass"` requires the optional `shinyglass` package.
@@ -230,7 +106,7 @@ codeagent_theme <- function(style = "default", ...) {
   if (identical(key, "glass"))
     return(.codeagent_shinyglass_theme(...))
 
-  preset <- if (key %in% c("default", "ios", "aurora")) "shiny" else key
+  preset <- if (key %in% c("default", "ios", "aurora", "dsh")) "shiny" else key
   defaults <- switch(key,
     ios = list(
       bg = "#ffffff", fg = "#1c1c1e",
@@ -262,6 +138,20 @@ codeagent_theme <- function(style = "default", ...) {
       `shiny-chat-page-drawer-box-shadow` = "0 12px 36px rgba(56,45,110,0.11), 0 2px 8px rgba(0,0,0,0.05)",
       `shiny-chat-suggestion-card-border-radius` = "0.875rem",
       `shiny-chat-user-message-border-radius` = "1.125rem"),
+    dsh = list(
+      bg = "#ffffff", fg = "#0f1115",
+      primary = "#2563eb", secondary = "#61666b",
+      `font-size-base` = "0.875rem",
+      `border-radius` = "0.75rem",
+      `border-radius-sm` = "0.5rem",
+      `border-radius-lg` = "1rem",
+      `card-border-radius` = "1.25rem",
+      `shiny-chat-page-sidebar-bg` = "#f9fafb",
+      `shiny-chat-page-canvas-bg` = "#ffffff",
+      `shiny-chat-page-drawer-header-bg` = "#ffffff",
+      `shiny-chat-suggestion-card-border-radius` = "1.25rem",
+      `shiny-chat-user-message-border-radius` = "1.25rem",
+      `shiny-chat-user-message-padding` = "10px 16px"),
     list())
   args <- .merge_theme_args(defaults, list(...))
   page_theme <- .shinychat_export("page_chat_theme")
@@ -271,9 +161,11 @@ codeagent_theme <- function(style = "default", ...) {
     do.call(bslib::bs_theme, c(list(version = 5, preset = preset), args))
   }
   if (identical(key, "ios"))
-    theme <- bslib::bs_add_rules(theme, .ios_theme_rules())
+    theme <- bslib::bs_add_rules(theme, .codeagent_theme_rules("ios"))
   if (identical(key, "aurora"))
-    theme <- bslib::bs_add_rules(theme, .aurora_theme_rules())
+    theme <- bslib::bs_add_rules(theme, .codeagent_theme_rules("aurora"))
+  if (identical(key, "dsh"))
+    theme <- bslib::bs_add_rules(theme, .codeagent_theme_rules("dsh"))
   theme
 }
 
@@ -365,8 +257,12 @@ codeagent_theme <- function(style = "default", ...) {
 
 # Build the opt-in full-window shinychat page while codeagent keeps server,
 # session, permission, and streaming ownership.
+# Layouts built on shinychat::page_chat() (drawer workspace, global toolbar).
+.uses_page_chat <- function(ui_layout) ui_layout %in% c("page_chat", "dsh")
+
 .codeagent_page_chat_ui <- function(theme, sidebar, workspace,
-                                    chat_args = list()) {
+                                    chat_args = list(), drawer_open = TRUE,
+                                    extra = NULL) {
   if (!.shinychat_page_chat_available()) {
     stop(
       paste0(
@@ -383,12 +279,12 @@ codeagent_theme <- function(style = "default", ...) {
   drawer <- do.call(
     chat_drawer,
     c(list(workspace), list(
-      title = "Workspace", width = "50%", open = TRUE, resizable = TRUE))
+      title = "Workspace", width = "50%", open = drawer_open, resizable = TRUE))
   )
   # page_chat owns the full-window layout; codeagent's primary chat should fill
   # the available main column instead of inheriting shinychat's prose-oriented
   # 760px default cap. The sidebar and drawer still reduce the containing width.
-  chat_args$width <- "100%"
+  chat_args$width <- chat_args$width %||% "100%"
   page <- do.call(
     page_chat,
     c(list(
@@ -400,6 +296,7 @@ codeagent_theme <- function(style = "default", ...) {
   htmltools::tagAppendChildren(
     page,
     head_assets(),
+    extra,
     shiny::uiOutput("ca_init_overlay")
   )
 }
@@ -416,9 +313,15 @@ codeagent_theme <- function(style = "default", ...) {
 #'   three-column layout. `"page_chat"` opts into shinychat's full-window page
 #'   with codeagent controls on the left and the Output/Files/File workspace in
 #'   the official resizable drawer on the right.
+#'   `"dsh"` is the same page with a DeepSeek-Harness-like structure: shinychat's
+#'   conversation history in the left column, permission mode and model in the
+#'   composer row, customizations in a Settings dialog, and the workspace
+#'   drawer closed until a tool result or file opens it. Pairs with
+#'   `theme = "dsh"`.
 #' @param theme UI theme name or a bslib `bs_theme` object. Built-in names are
 #'   `"default"`, `"ios"` (iOS grouped canvas with white cards), `"aurora"`
-#'   (ambient blue-indigo-purple light with selective frosted controls),
+#'   (ambient blue-indigo-purple light with selective frosted controls), `"dsh"`
+#'   (flat layered surfaces after the DeepSeek Harness Web UI design system),
 #'   `"flatly"`, `"darkly"` (dark), and `"glass"` (Liquid Glass from the
 #'   optional `shinyglass` package, 0.5.0 or later, which also styles shinychat). A
 #'   theme from [codeagent_theme()] or `shinychat::page_chat_theme()` is accepted
@@ -484,7 +387,7 @@ codeagent_app <- function(
   chat            = NULL,
   web_citations   = c("off", "shiny_aside"),
   web_allow_private = FALSE,
-  ui_layout       = c("classic", "page_chat"),
+  ui_layout       = c("classic", "page_chat", "dsh"),
   canvas          = NULL
 ) {
 
@@ -613,12 +516,37 @@ codeagent_app <- function(
         btw_groups_selected = btw_groups,
         model_choices = model_choices,
         current_model = sel_model,
-        show_dark_mode = !identical(ui_layout, "page_chat")
+        show_dark_mode = !.uses_page_chat(ui_layout)
       )
     )
   )
 
-  if (identical(ui_layout, "page_chat")) {
+  if (identical(ui_layout, "dsh")) {
+    workspace <- htmltools::div(
+      id = "ca_page_chat_workspace",
+      class = "html-fill-container html-fill-item",
+      style = "height:100%;min-height:0;",
+      .codeagent_workspace_card(canvas = genui_ui, canvas_opts = canvas)
+    )
+    chat_args <- .codeagent_chat_args(skill_meta, chat_submit_key)
+    chat_args$toolbar_input <- .dsh_composer_toolbar_ui(
+      permission_mode, model_choices, sel_model)
+    chat_args$placeholder <- "Message or run a task, / commands"
+    # Voice sits in the composer row (left of send), not under it.
+    chat_args$footer <- htmltools::tagList(
+      shiny::uiOutput("ca_interaction_ui"),
+      .skill_picker_footer(skill_meta, voice = FALSE))
+    # DSH content axis: messages and composer share clamp(680px, 64%, 880px).
+    chat_args$width <- "min(clamp(680px, 64%, 880px), 100%)"
+    ui <- .codeagent_page_chat_ui(
+      theme = ca_bs_theme,
+      sidebar = .dsh_sidebar_ui(),
+      workspace = workspace,
+      chat_args = chat_args,
+      drawer_open = FALSE,
+      extra = .dsh_settings_dialog_ui(btw_available_groups, btw_groups)
+    )
+  } else if (identical(ui_layout, "page_chat")) {
     workspace <- htmltools::div(
       id = "ca_page_chat_workspace",
       class = "html-fill-container html-fill-item",
@@ -675,7 +603,7 @@ codeagent_app <- function(
       canvas_explicit = genui_explicit,
       per_session     = genui_per_session,
       tools_ready     = tools_ready,
-      drawer_id       = if (identical(ui_layout, "page_chat")) "chat" else NULL,
+      drawer_id       = if (.uses_page_chat(ui_layout)) "chat" else NULL,
       settings_overrides = list(web_citations = web_citations, ui_layout = ui_layout))
     settings    <- core$settings
     state       <- core$state
@@ -703,12 +631,19 @@ codeagent_app <- function(
       }, once = TRUE)
     }
 
-    server_sessions(input, output, session,
-                    chat        = chat_obj,
-                    cwd         = cwd,
-                    state       = state,
-                    stream_task = stream_task,
-                    settings    = settings)
+    if (identical(ui_layout, "dsh")) {
+      # Conversation history is shinychat's (left column); the model context
+      # still comes from codeagent's session log, as in codeagent_server().
+      .enable_shinychat_history(input, session, chat_obj, core,
+                                codeagent_history_options(cwd))
+    } else {
+      server_sessions(input, output, session,
+                      chat        = chat_obj,
+                      cwd         = cwd,
+                      state       = state,
+                      stream_task = stream_task,
+                      settings    = settings)
+    }
 
     # Prominent init overlay: a full-window splash shown while the deferred
     # initialization runs, so the user sees clear progress instead of a frozen or
@@ -798,10 +733,10 @@ codeagent_app <- function(
                  state = state,
                  show_hidden = isTRUE(file_tree_show_hidden),
                  exclude = file_tree_exclude,
-                 drawer_id = if (identical(ui_layout, "page_chat"))
+                 drawer_id = if (.uses_page_chat(ui_layout))
                    "chat" else NULL)
 
-    if (identical(ui_layout, "page_chat")) {
+    if (.uses_page_chat(ui_layout)) {
       shiny::observeEvent(input$ca_workspace_toggle, {
         .shinychat_drawer_action("chat", "toggle", session = session)
       }, ignoreInit = TRUE)

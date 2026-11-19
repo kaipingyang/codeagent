@@ -1,5 +1,5 @@
 test_that("theme resolvers return a bs_theme for every supported input", {
-  for (nm in list("default", "ios", "aurora", "flatly", "darkly", "glass",
+  for (nm in list("default", "ios", "aurora", "dsh", "flatly", "darkly", "glass",
                   "light", "dark", "glassmorphism", "GLASS",
                   "unknown-theme", NULL, NA)) {
     expect_s3_class(.resolve_app_theme(nm), "bs_theme")
@@ -17,6 +17,7 @@ test_that("theme vocabularies map to the expected preset", {
   expect_null(bsw("light"))
   expect_null(bsw("ios"))
   expect_null(bsw("aurora"))
+  expect_null(bsw("dsh"))
   expect_null(bsw("glass"))
 })
 
@@ -74,7 +75,7 @@ test_that("glass asks for shinyglass 0.5.0 or later", {
 
 test_that("custom codeagent themes carry additional rules", {
   default <- .resolve_app_theme("default")
-  for (style in c("glass", "ios", "aurora")) {
+  for (style in c("glass", "ios", "aurora", "dsh")) {
     themed <- .resolve_app_theme(style)
     expect_false(identical(
       utils::capture.output(str(themed)),
@@ -130,7 +131,7 @@ test_that("ios theme exposes white cards on an iOS grouped canvas", {
 })
 
 test_that("ios theme mirrors the Young Voice white-card tokens", {
-  css <- .ios_theme_rules()
+  css <- paste(readLines(.codeagent_theme_file("ios")), collapse = "\n")
   expect_match(css, "--ca-card-border: rgba(0,0,0,0.08);", fixed = TRUE)
   expect_match(css, "--ca-card-radius: 14px;", fixed = TRUE)
   expect_match(
@@ -227,7 +228,7 @@ test_that("aurora theme uses the shiny baseline and frosted light tokens", {
 })
 
 test_that("aurora theme separates ambient glass from opaque content", {
-  css <- .aurora_theme_rules()
+  css <- paste(readLines(.codeagent_theme_file("aurora")), collapse = "\n")
   expect_match(css, "--ca-aurora-canvas: #f2f2f7;", fixed = TRUE)
   expect_match(css, "--ca-aurora-glass: rgba(255,255,255,0.76);", fixed = TRUE)
   expect_match(css, "--ca-aurora-content: rgba(255,255,255,0.94);", fixed = TRUE)
@@ -350,4 +351,17 @@ test_that("the model picker shrinks to the sidebar width", {
   css <- paste(readLines(system.file("www", "styles.css", package = "codeagent")),
                collapse = "\n")
   expect_match(css, "\\.ca-model-toolbar select\\s*\\{[^}]*width:\\s*100%")
+})
+
+test_that("styles and scripts live in files, not R strings", {
+  # Theme rules: inst/themes/<name>.scss; app CSS/JS: inst/www/. A CSS or JS
+  # body pasted into R strings is hard to review and lint, and drifts.
+  dir <- test_path("..", "..", "R")
+  skip_if_not(dir.exists(dir), "source tree only (skipped in R CMD check)")
+  src <- unlist(lapply(list.files(dir, "\\.R$", full.names = TRUE), readLines, warn = FALSE))
+  expect_false(any(grepl("bs_add_rules\\([^,]+,\\s*(\"|paste)", src)))
+  expect_false(any(grepl("tags\\$style\\(", src)))
+  expect_false(any(grepl("tags\\$script\\((htmltools::)?HTML\\(", src)))
+  for (name in c("ios", "aurora", "dsh"))
+    expect_true(file.exists(.codeagent_theme_file(name)), info = name)
 })

@@ -190,18 +190,24 @@ SessionMessage <- function(type = "user", role = NULL,
 #' @param cwd Character or NULL.
 #' @param tag Character or NULL.
 #' @param created_at Numeric or NULL. Creation timestamp in ms.
+#' @param user Character or NULL. Owner written in the session header.
+#' @param title_source Character or NULL. `"user"` or `"llm"` for a custom title.
+#' @param shinychat_id Character or NULL. shinychat conversation record id.
 #' @return Object of class `SessionInfo`.
 #' @keywords internal
 SessionInfo <- function(session_id, summary, last_modified,
                          file_size = NULL, custom_title = NULL,
                          first_prompt = NULL, git_branch = NULL,
-                         cwd = NULL, tag = NULL, created_at = NULL) {
+                         cwd = NULL, tag = NULL, created_at = NULL,
+                         user = NULL, title_source = NULL,
+                         shinychat_id = NULL) {
   .new_obj(
     list(session_id = session_id, summary = summary,
          last_modified = last_modified, file_size = file_size,
          custom_title = custom_title, first_prompt = first_prompt,
          git_branch = git_branch, cwd = cwd, tag = tag,
-         created_at = created_at),
+         created_at = created_at, user = user,
+         title_source = title_source, shinychat_id = shinychat_id),
     "SessionInfo"
   )
 }

@@ -31,6 +31,18 @@ NULL
   # task reads it from there.
   attr(chat, "codeagent_presentation_chat") <- pres
 
+  # A session-log store reads conversations for this browser session only:
+  # its own copy, bound to this session's Chat and Data Shield. The owner goes
+  # into the header of every log this session starts.
+  if (inherits(options$store, ".SessionLogStore")) {
+    options$store <- options$store$clone()$bind(chat, settings)
+    owner <- tryCatch(
+      if (is.function(options$scope)) options$scope(session) else options$scope,
+      error = function(e) NULL)
+    if (is.character(owner) && length(owner) == 1L && nzchar(owner))
+      attr(chat, "codeagent_history_owner") <- owner
+  }
+
   send_budget <- function() tryCatch({
     n <- token_count_with_estimation(chat, allow_network = FALSE)
     session$sendCustomMessage("update_budget",
@@ -155,4 +167,48 @@ NULL
     if (length(keep)) out[[length(out) + 1L]] <- ellmer::Turn(roles[[i]], keep)
   }
   out
+}
+
+#' shinychat history over codeagent's session log
+#'
+#' A [shinychat::history_options()] for personal use: the history column lists
+#' every codeagent session of the project -- earlier ones included -- straight
+#' from codeagent's session log, without a second copy of any conversation.
+#' Renames and titles are kept in the log; opening a conversation lets the model
+#' continue from its saved context. Conversations are partitioned by user.
+#'
+#' `codeagent_app(ui_layout = "dsh")` uses it. A deployed host app keeps
+#' shinychat's own history instead: `codeagent_server(history =
+#' shinychat::history_options(...))` with the store of its choice.
+#'
+#' @param cwd Project directory; selects the session directory.
+#' @param user Partition key. A string, or `function(session)` returning one.
+#'   The default uses the authenticated `session$user`, else the account name
+#'   running the app. Sessions saved before owners were recorded belong to the
+#'   account running the app.
+#' @param max_store_mb Size limit per user and project. `NULL` (default): no
+#'   limit. A number lets shinychat delete the oldest session logs of that user
+#'   and project once the limit is exceeded.
+#' @param ... Further arguments to [shinychat::history_options()] (e.g.
+#'   `restore_mode`, `title`).
+#' @return A shinychat history configuration.
+#' @export
+codeagent_history_options <- function(cwd = getwd(), user = NULL,
+                                      max_store_mb = NULL, ...) {
+  if (!is.null(max_store_mb) &&
+      !(is.numeric(max_store_mb) && length(max_store_mb) == 1L &&
+        !is.na(max_store_mb) && max_store_mb > 0))
+    stop("`max_store_mb` must be NULL or a positive number.", call. = FALSE)
+  scope <- if (is.function(user)) user
+    else if (is.character(user) && length(user) == 1L) function(session) user
+    else function(session) {
+      u <- tryCatch(session$user, error = function(e) NULL)
+      if (is.character(u) && length(u) == 1L && nzchar(u)) u
+      else .history_local_user()
+    }
+  shinychat::history_options(
+    scope = scope,
+    store = .SessionLogStore$new(cwd = cwd),
+    max_store_mb = max_store_mb,
+    ...)
 }

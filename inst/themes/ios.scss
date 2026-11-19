@@ -1,0 +1,46 @@
+/* codeagent "ios" theme -- extra rules on top of shinychat::page_chat_theme().
+ * iOS grouped canvas with white cards; shared by classic and page_chat.
+ * Loaded by codeagent_theme() with sass::sass_file(); shipped only with this theme. */
+
+:root {
+  --ca-app-canvas-bg: #f2f2f7;
+  --ca-app-surface-bg: #ffffff;
+  --ca-card-border: rgba(0,0,0,0.08);
+  --ca-card-radius: 14px;
+  --ca-card-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);
+  --shiny-chat-page-surface-bg: var(--ca-app-canvas-bg);
+  --shiny-chat-page-sidebar-bg: var(--ca-app-surface-bg);
+  --shiny-chat-page-canvas-bg: var(--ca-app-canvas-bg);
+  --shiny-chat-page-drawer-bg: var(--ca-app-surface-bg);
+  --shiny-chat-page-drawer-header-bg: var(--ca-app-surface-bg);
+}
+[data-bs-theme='dark'] {
+  --ca-app-canvas-bg: #1c1c1e;
+  --ca-app-surface-bg: #2c2c2e;
+  --ca-card-border: rgba(84,84,88,0.65);
+  --ca-card-shadow: 0 2px 12px rgba(0,0,0,0.28), 0 1px 3px rgba(0,0,0,0.22);
+}
+body, .bslib-page-fill, .bslib-sidebar-layout > .main {
+  background-color: var(--ca-app-canvas-bg);
+}
+body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar {
+  background-color: var(--ca-app-surface-bg);
+}
+shiny-chat-page .shiny-chat-page-panel,
+shiny-chat-page shiny-chat-container {
+  background-color: var(--ca-app-canvas-bg);
+}
+.card, .toolcard, .accordion-item, .modal-content,
+shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {
+  background-color: var(--ca-app-surface-bg);
+  border-color: var(--ca-card-border);
+  border-radius: var(--ca-card-radius);
+}
+.card, shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {
+  box-shadow: var(--ca-card-shadow);
+}
+shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {
+  border: 1px solid var(--ca-card-border);
+}
+.shiny-chat-page-sidebar-panel > .card { margin-bottom: 0; }
+.toolcard { --bs-body-bg: var(--ca-app-surface-bg); }

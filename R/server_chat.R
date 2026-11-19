@@ -256,6 +256,9 @@ server_chat <- function(input, output, session, chat, settings,
             shown_live <- coro::async_generator(function() {
               for (chunk in coro::await_each(stream)) yield(chunk)
               .append_presentation(settings, chat, round_start, NULL)
+              # The generator's last value reaches chat_append() like a chunk:
+              # end on NULL, or the TRUE above is shown as text in the reply.
+              invisible(NULL)
             })
             await(shinychat::chat_append("chat", shown_live(), session = session))
             finalized <- .finalize_server_reply(

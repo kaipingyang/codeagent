@@ -7,7 +7,7 @@
 codeagent_theme(style = "default", ...)
 }
 \arguments{
-\item{style}{One of \code{"default"}, \code{"ios"}, \code{"aurora"}, \code{"flatly"},
+\item{style}{One of \code{"default"}, \code{"ios"}, \code{"aurora"}, \code{"dsh"}, \code{"flatly"},
 \code{"darkly"}, or \code{"glass"}. CLI aliases \code{"light"}, \code{"dark"}, and
 \code{"glassmorphism"} are also accepted. Unknown values fail soft to
 \code{"default"}. \code{"glass"} requires the optional \code{shinyglass} package.}

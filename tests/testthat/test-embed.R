@@ -289,6 +289,47 @@ test_that("shinychat history records what the user saw and restores the model co
   })
 })
 
+test_that("codeagent_history_options(): earlier sessions listed, new ones written to the log only", {
+  home <- withr::local_tempdir(); withr::local_envvar(CODEAGENT_HOME = home)
+  client <- .embed_client(permission_mode = "plan")
+  chat <- client$chat
+  cwd <- client$settings$cwd
+  old <- ellmer::chat_anthropic(model = "claude-sonnet-4-6")
+  old$set_turns(list(ellmer::Turn("user", "an earlier question"), ellmer::Turn("assistant", "old answer")))
+  sid_old <- save_session(old, cwd)
+  opts <- codeagent_history_options(cwd, user = "u1", restore_mode = "none", title = NULL)
+  shiny::testServer(function(input, output, session) {
+    session$userData$srv <- codeagent_server(input, output, session, client, history = opts)
+  }, {
+    srv <- session$userData$srv
+    session$flushReact()
+    expect_identical(attr(chat, "codeagent_history_owner"), "u1")
+    part <- shinychat:::conversation_partition("chat", "u1")
+    # the earlier session belongs to the local account, not to "u1"
+    expect_length(opts$store$list(part), 0L)
+    expect_identical(opts$store$list(shinychat:::conversation_partition("chat", .history_local_user()))[[1]]$id,
+                     sid_old)
+
+    sid_a <- shiny::isolate(srv$state$session_id)
+    .hist_round(chat, "Raw reply", "Shown reply", session)
+    metas <- opts$store$list(part)                 # listed before the log exists
+    expect_length(metas, 1L)
+    rid <- metas[[1]]$id
+    expect_match(rid, "^c_")
+    save_session(chat, cwd, sid_a)
+    expect_identical(get_session_info(sid_a, cwd)$user, "u1")
+    expect_identical(opts$store$list(part)[[1]]$id, rid)
+    expect_identical(get_session_info(sid_a, cwd)$shinychat_id, rid)
+    expect_false(dir.exists(file.path(.get_project_session_dir(cwd), "shinychat")))
+
+    session$setInputs(chat_history_new = 1)
+    expect_length(chat$get_turns(), 0L)
+    session$setInputs(chat_history_select = list(id = rid))
+    expect_identical(shiny::isolate(srv$state$session_id), sid_a)
+    expect_true(any(grepl("Raw reply", vapply(chat$get_turns(), function(t) t@text, ""), fixed = TRUE)))
+  })
+})
+
 test_that("presentation turns: reminders stripped, gated text, tool cards kept", {
   req <- ellmer::ContentToolRequest(id = "c1", name = "HostT", arguments = list(k = "v"))
   turns <- list(ellmer::Turn("user", "go <system-reminder>secret</system-reminder>"),
