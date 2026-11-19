@@ -706,16 +706,34 @@ migrate_sessions <- function(directory = NULL) {
 
   # Walk lines in reverse to find the most recent custom-title mutation
   appended_title <- NULL
+  title_source <- NULL
   if (length(all_lines) > 1L) {
     for (ln in rev(all_lines[-1L])) {
       obj <- tryCatch(jsonlite::fromJSON(ln, simplifyVector = FALSE),
                       error = function(e) NULL)
       if (!is.null(obj) && identical(obj[["type"]], "custom-title")) {
         appended_title <- obj[["customTitle"]]
+        # Titles written before sources were recorded came from a rename.
+        title_source <- obj[["source"]] %||% "user"
         break
       }
     }
   }
+  if (is.null(appended_title) && !is.null(entry[["customTitle"]]))
+    title_source <- "user"
+  # Most recent shinychat record id (only short metadata lines are parsed).
+  shinychat_id <- NULL
+  sc <- grep("\"type\":\"shinychat-record\"", all_lines, fixed = TRUE, value = TRUE)
+  if (length(sc)) {
+    obj <- tryCatch(jsonlite::fromJSON(sc[[length(sc)]], simplifyVector = FALSE),
+                    error = function(e) NULL)
+    shinychat_id <- obj[["recordId"]] %||% NULL
+  }
+  created_at <- tryCatch(
+    as.numeric(as.POSIXct(entry[["timestamp"]], tz = "UTC",
+                          format = "%Y-%m-%dT%H:%M:%OSZ")) * 1000,
+    error = function(e) NA_real_)
+  if (!length(created_at) || is.na(created_at)) created_at <- NULL
 
   custom_title <- appended_title %||% entry[["customTitle"]] %||% NULL
 
@@ -749,6 +767,11 @@ migrate_sessions <- function(directory = NULL) {
     last_modified = mtime,
     file_size     = fi$size,
     custom_title  = custom_title,
-    cwd           = cwd
+    first_prompt  = first_user_msg,
+    cwd           = cwd,
+    created_at    = created_at,
+    user          = entry[["user"]] %||% NULL,
+    title_source  = title_source,
+    shinychat_id  = shinychat_id
   )
 }

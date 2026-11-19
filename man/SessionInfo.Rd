@@ -14,7 +14,10 @@ SessionInfo(
   git_branch = NULL,
   cwd = NULL,
   tag = NULL,
-  created_at = NULL
+  created_at = NULL,
+  user = NULL,
+  title_source = NULL,
+  shinychat_id = NULL
 )
 }
 \arguments{
@@ -37,6 +40,12 @@ SessionInfo(
 \item{tag}{Character or NULL.}
 
 \item{created_at}{Numeric or NULL. Creation timestamp in ms.}
+
+\item{user}{Character or NULL. Owner written in the session header.}
+
+\item{title_source}{Character or NULL. \code{"user"} or \code{"llm"} for a custom title.}
+
+\item{shinychat_id}{Character or NULL. shinychat conversation record id.}
 }
 \value{
 Object of class \code{SessionInfo}.
