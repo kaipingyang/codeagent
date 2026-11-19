@@ -218,3 +218,239 @@ a {
 ::selection {
   background: color-mix(in srgb, var(--ca-dsh-blue-500) 40%, transparent);
 }
+
+/* == 6. Frame: page_chat sidebar, header, drawer ============================== */
+/* Left column: one flat surface (DSH sidebar, 280px), no floating card. */
+.shiny-chat-page-sidebar {
+  background: var(--ca-dsh-bg-sidebar);
+  border-right: 0.5px solid var(--ca-dsh-border-l2);
+}
+.shiny-chat-page-sidebar-panel {
+  padding: 12px 8px;
+}
+.shiny-chat-page-sidebar-panel > .card,
+.shiny-chat-page-sidebar-panel > .card > .card-body {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  margin: 0;
+  padding: 0;
+}
+/* Sections (Sessions / Customizations / Settings): headings, not boxes. */
+.ca-sidebar-accordion {
+  --bs-accordion-bg: transparent;
+  --bs-accordion-border-width: 0;
+  --bs-accordion-active-bg: transparent;
+  --bs-accordion-active-color: var(--ca-dsh-label-tertiary);
+  --bs-accordion-btn-focus-box-shadow: none;
+}
+.ca-sidebar-accordion .accordion-item {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.ca-sidebar-accordion .accordion-button {
+  background: transparent;
+  box-shadow: none;
+  color: var(--ca-dsh-label-tertiary);
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: var(--ca-dsh-radius-md);
+}
+.ca-sidebar-accordion .accordion-body {
+  padding: 4px 4px 12px;
+}
+@media (hover: hover) {
+  .ca-sidebar-accordion .accordion-button:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+/* Sidebar buttons: DSH new-session button (outline, R12) and ghost actions. */
+.shiny-chat-page-sidebar .btn {
+  border: 0.5px solid var(--ca-dsh-border-l4);
+  border-radius: var(--ca-dsh-radius-md);
+  background: var(--ca-dsh-bg-layer-1);
+  color: var(--ca-dsh-label-primary);
+  font-size: 13px;
+  font-weight: 400;
+}
+.ca-model-toolbar,
+.ca-budget-wrap {
+  padding-inline: 12px;
+}
+.ca-budget-label {
+  color: var(--ca-dsh-label-tertiary);
+}
+.token-budget-bar {
+  background: var(--ca-dsh-border-l2);
+}
+.ca-footer {
+  color: var(--ca-dsh-label-caption);
+}
+
+/* Header: title + 0.5px seam. */
+.shiny-chat-page-header {
+  background: var(--ca-dsh-bg-base);
+  border-bottom: 0.5px solid var(--ca-dsh-border-l2);
+}
+.shiny-chat-page-identity-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--ca-dsh-label-primary);
+}
+.shiny-chat-page-toolbar .btn {
+  border: 0;
+  border-radius: var(--ca-dsh-radius-md);
+  background: transparent;
+  color: var(--ca-dsh-label-secondary);
+  font-size: 13px;
+}
+@media (hover: hover) {
+  .shiny-chat-page-toolbar .btn:hover,
+  .shiny-chat-page-sidebar-toggle:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+
+/* Right drawer: flat column with a 0.5px seam, compact header. */
+.shiny-chat-drawer {
+  background: var(--ca-dsh-bg-base);
+  border-left: 0.5px solid var(--ca-dsh-border-l2);
+  box-shadow: none;
+}
+.shiny-chat-drawer-header {
+  background: var(--ca-dsh-bg-base);
+  border-bottom: 0.5px solid var(--ca-dsh-border-l2);
+}
+.shiny-chat-drawer-header h2 {
+  font-size: 14px;
+  font-weight: 500;
+}
+.shiny-chat-drawer-resizer span {
+  background: var(--ca-dsh-border-l4);
+}
+/* Workspace card inside the drawer: flush, no second frame. */
+.shiny-chat-drawer-content > .card,
+.shiny-chat-drawer-content .ca-output-panel > .card {
+  border: 0;
+  box-shadow: none;
+  border-radius: 0;
+  background: transparent;
+}
+/* Session list: DSH rows (H32, R12, no frame), not outlined buttons. */
+.shiny-chat-page-sidebar .ca-session-btn,
+#ca_left_sidebar .ca-session-btn {
+  border: 0;
+  background: transparent;
+  border-radius: var(--ca-dsh-radius-md);
+  min-height: 32px;
+  padding: 6px 12px;
+  margin-bottom: 0;
+  font-size: 14px;
+  line-height: 20px;
+  color: var(--ca-dsh-label-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (hover: hover) {
+  .shiny-chat-page-sidebar .ca-session-btn:hover,
+  #ca_left_sidebar .ca-session-btn:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+/* 280px column like DSH (the sidebar stays user-resizable). */
+.shiny-chat-page-sidebar {
+  --shiny-chat-page-sidebar-width: 280px;
+}
+
+/* == 7. Conversation ========================================================== */
+/* One width axis for messages and composer (DSH clamp(680px, 64%, 880px)). */
+.shiny-chat-page-home > shiny-chat-container,
+shiny-chat-container {
+  --shiny-chat-page-content-width: #{"clamp(680px, 64%, 880px)"};
+}
+.shiny-chat-message-body {
+  font-size: 14px;
+  line-height: 24px;
+  color: var(--ca-dsh-label-primary);
+}
+.shiny-chat-message-body p {
+  margin-bottom: 12px;
+}
+/* User message: tinted R20 bubble, right aligned, at most ~70% wide. */
+.shiny-chat-user-message {
+  background: var(--ca-dsh-bg-bubble);
+  border-radius: var(--ca-dsh-radius-xl);
+  max-width: #{"min(70%, 600px)"};
+  font-size: 14px;
+  line-height: 22px;
+}
+/* Assistant markdown: DSH typography roles. */
+.shiny-chat-message-body h1 { font-size: 22px; line-height: 32px; font-weight: 600; margin: 20px 0 10px; }
+.shiny-chat-message-body h2 { font-size: 19px; line-height: 28px; font-weight: 600; margin: 18px 0 8px; }
+.shiny-chat-message-body h3 { font-size: 16px; line-height: 26px; font-weight: 600; margin: 16px 0 6px; }
+.shiny-chat-message-body h4 { font-size: 14px; line-height: 24px; font-weight: 600; margin: 14px 0 6px; }
+.shiny-chat-message-body :is(h1, h2, h3, h4) > code {
+  font-size: 0.9em;
+}
+/* Inline code: R8, faint hairline. */
+.shiny-chat-message-body :not(pre, h1, h2, h3, h4) > code {
+  background: var(--ca-dsh-bg-code);
+  border: 1px solid var(--ca-dsh-border-l1);
+  border-radius: var(--ca-dsh-radius-sm);
+  padding: 0 5px;
+  font-size: 12.5px;
+  color: var(--ca-dsh-label-primary);
+}
+/* Code block: R16 module fill, no border. */
+.shiny-chat-message-body pre,
+.shiny-chat-message-body pre:has(> code.hljs) {
+  background: var(--ca-dsh-bg-code);
+  border: 0;
+  border-radius: var(--ca-dsh-radius-lg);
+  padding: 16px 20px;
+  font-size: 12px;
+  line-height: 20px;
+}
+.shiny-chat-message-body pre > code.hljs {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+/* Tables: no frame or zebra; 0.5px row lines; 13/22. */
+.shiny-chat-message-body table.table {
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: transparent;
+  --bs-table-border-color: var(--ca-dsh-border-l2);
+  border: 0;
+  font-size: 13px;
+  line-height: 22px;
+  margin: 8px 0 16px;
+}
+.shiny-chat-message-body table.table > :not(caption) > * > * {
+  border-width: 0 0 0.5px 0;
+  padding: 10px 16px 10px 0;
+  background: transparent;
+  box-shadow: none;
+}
+.shiny-chat-message-body table.table th {
+  font-weight: 500;
+  color: var(--ca-dsh-label-primary);
+}
+.shiny-chat-message-body table.table > :not(caption) > * > *:last-child {
+  padding-right: 0;
+}
+/* Quote: left rail, secondary ink. */
+.shiny-chat-message-body blockquote {
+  border-left: 2px solid var(--ca-dsh-border-l3);
+  padding: 0 0 0 12px;
+  margin: 12px 0;
+  color: var(--ca-dsh-label-primary);
+}
+.shiny-chat-message-body blockquote p { margin: 0; }
+.shiny-chat-message-body hr {
+  border: 0;
+  border-top: 0.5px solid var(--ca-dsh-border-l2);
+  opacity: 1;
+}

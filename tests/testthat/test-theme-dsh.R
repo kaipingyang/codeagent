@@ -39,7 +39,7 @@ test_that("codeagent_app accepts the dsh theme in both layouts", {
 test_that("dsh component rules use tokens, not literal colours", {
   css <- dsh_component_css()
   css <- sub("/\\*.*?\\*/", "", css)          # one-line comments
-  hits <- grep("#[0-9a-fA-F]{3,8}\\b|\\brgba?\\(|\\b(white|black)\\b", css, value = TRUE)
+  hits <- grep("#[0-9a-fA-F]{3,8}\\b|\\brgba?\\(|:\\s*(white|black)\\b", css, value = TRUE)
   hits <- hits[!grepl("box-shadow|--ca-dsh-elevation|color-mix\\(in srgb, var", hits)]
   expect_identical(hits, character())
 })

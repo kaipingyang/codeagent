@@ -61,3 +61,9 @@ scenario_steps <- list(
   S8 = list(dsh = c(dsh_send("Explain R/demo.R and summarise it in a table"), W(8), "'@size 760,900'"),
             ca  = c(ca_send("Explain R/demo.R and summarise it in a table"), W(8), "'@size 760,900'"))
 )
+scenario_steps$D <- list(
+  dsh = W(1),
+  ca = c(ca_send("Explain R/demo.R and summarise it in a table"), W(8),
+         "__d.outline('#ca_left_accordion', 7)",
+         "__d.outline('.shiny-chat-drawer', 6)",
+         "__d.outline('.shiny-chat-tool-loop', 7)"))

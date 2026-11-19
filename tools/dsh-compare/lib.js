@@ -72,3 +72,23 @@ window.__d.waitAt = function (text, ms) {
     tick();
   });
 };
+// Outline of a subtree: tag.classes size bg border radius shadow, `depth` levels.
+window.__d.outline = function (sel, depth) {
+  const root = typeof sel === 'string' ? document.querySelector(sel) : sel;
+  if (!root) return 'none: ' + sel;
+  const out = [];
+  const walk = (e, d) => {
+    if (!e.offsetParent && e !== document.body && getComputedStyle(e).position !== 'fixed') return;
+    const r = e.getBoundingClientRect(), c = getComputedStyle(e);
+    const cls = (e.className && e.className.baseVal === undefined ? e.className : '').toString().trim().split(/\s+/).slice(0, 3).join('.');
+    out.push('  '.repeat(d) + e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (cls ? '.' + cls : '') +
+      ` ${Math.round(r.left)},${Math.round(r.top)} ${Math.round(r.width)}x${Math.round(r.height)}` +
+      (c.backgroundColor !== 'rgba(0, 0, 0, 0)' ? ' bg=' + c.backgroundColor : '') +
+      (c.borderTopStyle !== 'none' && c.borderTopWidth !== '0px' ? ' bd=' + c.borderTopWidth + ' ' + c.borderTopColor : '') +
+      (c.borderRadius !== '0px' ? ' r=' + c.borderRadius : '') +
+      (c.boxShadow !== 'none' ? ' sh' : '') + ' f=' + c.fontSize + '/' + c.fontWeight);
+    if (d < depth) for (const k of e.children) walk(k, d + 1);
+  };
+  walk(root, 0);
+  return out.join('\n');
+};
