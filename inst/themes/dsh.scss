@@ -1004,6 +1004,10 @@ body .shiny-chat-page-sidebar-panel:has(.ca-dsh-sidebar-footer) {
 
 /* Settings dialog: DSH settings modal (R28 panel, sections as settings cards). */
 body .ca-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  height: fit-content;
   width: #{"min(720px, calc(100vw - 32px))"};
   max-height: calc(100vh - 64px);
   padding: 0;
