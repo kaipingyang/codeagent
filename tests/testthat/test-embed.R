@@ -405,3 +405,23 @@ test_that("on_restore runs after a conversation is opened from codeagent's list"
     expect_identical(seen, 2L)
   })
 })
+
+test_that("codeagent_server(on_user_prompt =) adds host context to a turn, or blocks it", {
+  client <- .embed_client(tools = "Read")
+  seen <- character()
+  shiny::testServer(function(input, output, session) {
+    session$userData$srv <- codeagent_server(input, output, session, client, on_user_prompt = function(text) {
+      seen <<- c(seen, text)
+      if (identical(text, "stop")) list(action = "block", message = "Not now")
+      else if (length(seen) == 1L) "Study keys: t_dm, t_ae"   # first turn only
+    })
+  }, {
+    reg <- session$userData$srv$settings$hooks_registry
+    expect_identical(reg$run_user_prompt_submit("demographics")$additional_context, "Study keys: t_dm, t_ae")
+    expect_null(reg$run_user_prompt_submit("again")$additional_context)
+    expect_identical(reg$run_user_prompt_submit("stop")$action, "block")
+  })
+  expect_identical(seen, c("demographics", "again", "stop"))
+  expect_error(shiny::testServer(function(input, output, session)
+    codeagent_server(input, output, session, .embed_client(), on_user_prompt = "x"), {}), "on_user_prompt")
+})

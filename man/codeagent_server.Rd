@@ -17,6 +17,7 @@ codeagent_server(
   modes = NULL,
   on_restore = NULL,
   on_tool_open = NULL,
+  on_user_prompt = NULL,
   sessions = FALSE
 )
 }
@@ -63,6 +64,14 @@ own panels.}
 with that card's \code{ellmer::ContentToolResult}, e.g. to show the result in
 the host's own panel. Only results with an HTML display
 (\code{extra$display$html}) are reported.}
+
+\item{on_user_prompt}{Optional \verb{function(text)} called with what the user
+typed before each turn reaches the model -- the host side of Claude Code's
+\code{UserPromptSubmit} hook. Return \code{NULL} to proceed unchanged, a character
+string to add it as context to this turn (the user's text is never
+changed), or \code{list(action = "block", message = )} to stop the turn.
+Typical use: facts the host knows that save the model a tool call (e.g.
+what a project contains), sent once with the first turn.}
 
 \item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
 }

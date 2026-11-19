@@ -672,7 +672,9 @@ Permission mode switch: `codeagent_mode_ui(c("Ask before changes" = "default",
 "Run without asking" = "bypass"))` in the page and the same `modes =` in
 `codeagent_server()`. The approval bar also offers "Always allow" (this tool)
 (for the rest of the session). `on_tool_open = function(result)` is called when the user opens a tool card in the chat (live or restored), with that card's result, so the host can show it in its own panel. `on_restore = function(chat)` lets the host
-refresh its own panels when a saved conversation is opened.
+refresh its own panels when a saved conversation is opened. `on_user_prompt =
+function(text)` runs before each turn reaches the model and may add context to
+it or block it (the host side of the `UserPromptSubmit` hook).
 
 `AskUserQuestion` asks one question (`question`, optional `choices`) or, like
 Claude Code's public tool, 1-4 questions at once (`questions`: each with a short
