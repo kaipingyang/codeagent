@@ -1,5 +1,18 @@
 # codeagent (development version)
 
+* New workspace tabs for the right panel: `codeagent_workspace_ui()`,
+  `workspace_options()`, `codeagent_workspace_kind()` and
+  `codeagent_server(workspace =)`, which returns a `ws` object (`open`, `close`,
+  `focus`, `pin`, `active`, `tabs`). One tab per opened tool result, file or host
+  content, keyed by `(kind, content_id)`; close, close others, pin; least
+  recently viewed eviction past `max_tabs`; contents stay mounted while hidden.
+  The layout is saved with the conversation and restored with it.
+  `ui_layout = "dsh"` uses it in its drawer, and like DSH no longer opens the
+  panel by itself when a tool call finishes.
+* After an interrupt or an error, tool requests left without a result are closed
+  with an error result before the turn is saved, so the next request and a
+  restored conversation stay valid.
+
 * New `codeagent_history_options(cwd, user, max_store_mb = NULL)`: shinychat's
   history selector over codeagent's session log, for personal use. Every earlier
   session of the project is listed, no second copy of a conversation is written
