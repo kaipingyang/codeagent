@@ -78,7 +78,7 @@ window.__d.outline = function (sel, depth) {
   if (!root) return 'none: ' + sel;
   const out = [];
   const walk = (e, d) => {
-    if (!e.offsetParent && e !== document.body && getComputedStyle(e).position !== 'fixed') return;
+    if (getComputedStyle(e).display === 'none') return;
     const r = e.getBoundingClientRect(), c = getComputedStyle(e);
     const cls = (e.className && e.className.baseVal === undefined ? e.className : '').toString().trim().split(/\s+/).slice(0, 3).join('.');
     out.push('  '.repeat(d) + e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (cls ? '.' + cls : '') +

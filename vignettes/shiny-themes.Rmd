@@ -82,6 +82,7 @@ The remaining built-ins do not require shinyglass:
 | `default` | The standard shinychat/bslib page theme |
 | `ios` | Grouped canvas, bright cards, and compact iOS-like surfaces |
 | `aurora` | Ambient blue-indigo-purple lighting with selective frosted chrome |
+| `dsh` | Flat layered surfaces after the DeepSeek Harness Web UI design system: 0.5px hairlines, role-based radii, bubble-free replies, approval cards seated where the composer is (not affiliated with DeepSeek; no DeepSeek branding) |
 | `flatly` | Light Bootswatch theme |
 | `darkly` | Dark Bootswatch theme |
 

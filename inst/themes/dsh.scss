@@ -762,3 +762,107 @@ body .ca-interaction .shiny-options-group .checkbox {
   display: block;
   width: 100%;
 }
+
+/* == 11. Workspace (drawer contents, classic output column) ===================== */
+/* DSH right panel: no inner frame; a tab strip of chips directly under the seam. */
+body #ca_page_chat_workspace > .card,
+body #ca_output_sidebar .card {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body #ca_page_chat_workspace > .card > .card-body {
+  padding: 8px 12px;
+}
+body #main_tab.nav-tabs {
+  border-bottom: 0;
+  gap: 4px;
+  padding-bottom: 8px;
+}
+body #main_tab.nav-tabs .nav-link {
+  border: 0;
+  border-radius: var(--ca-dsh-radius-sm);
+  padding: 4px 12px;
+  font-size: 13px;
+  color: var(--ca-dsh-label-secondary);
+  background: transparent;
+}
+body #main_tab.nav-tabs .nav-link.active {
+  background: var(--ca-dsh-bg-module);
+  color: var(--ca-dsh-label-primary);
+}
+@media (hover: hover) {
+  body #main_tab.nav-tabs .nav-link:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+/* Tool output cards in the workspace: R16 module surface, 0.5px hairline. */
+body .toolcard {
+  border: 0.5px solid var(--ca-dsh-border-l2);
+  border-radius: var(--ca-dsh-radius-lg);
+  box-shadow: none;
+  background: var(--ca-dsh-bg-base);
+}
+body .toolcard pre,
+body .toolcard pre:has(> code.hljs) {
+  background: var(--ca-dsh-bg-code);
+  border: 0;
+  border-radius: var(--ca-dsh-radius-md);
+}
+
+/* == 12. Overlays and form controls ============================================== */
+body .modal-content {
+  border: 0;
+  border-radius: var(--ca-dsh-radius-panel);
+  background: var(--ca-dsh-bg-layer-2);
+  box-shadow: var(--ca-dsh-elevation-prominent);
+}
+body .modal-header,
+body .modal-footer {
+  border-color: var(--ca-dsh-border-l2);
+}
+body .modal-backdrop.show {
+  opacity: 1;
+  background: var(--ca-dsh-bg-mask);
+}
+body .dropdown-menu {
+  border: 0;
+  border-radius: var(--ca-dsh-radius-lg);
+  padding: 4px;
+  background: var(--ca-dsh-bg-layer-2);
+  box-shadow: var(--ca-dsh-elevation-panel);
+}
+body .dropdown-item {
+  border-radius: var(--ca-dsh-radius-md);
+  padding: 6px 10px;
+  font-size: 14px;
+}
+body .toast {
+  border: 0;
+  border-radius: var(--ca-dsh-radius-lg);
+  background: var(--ca-dsh-bg-layer-2);
+  box-shadow: var(--ca-dsh-elevation-prominent);
+  font-size: 13px;
+}
+body .tooltip-inner {
+  border-radius: var(--ca-dsh-radius-sm);
+  font-size: 12px;
+}
+body .form-control,
+body .form-select {
+  border: 0.5px solid var(--ca-dsh-border-l3);
+  border-radius: var(--ca-dsh-radius-md);
+  background-color: var(--ca-dsh-bg-input);
+  font-size: 14px;
+}
+body .form-control:focus,
+body .form-select:focus {
+  border-color: var(--ca-dsh-border-l4);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ca-dsh-accent) 25%, transparent);
+}
+/* Shiny inputs default to 300px; options and text fields span the card. */
+body .ca-interaction .shiny-input-container {
+  width: 100%;
+  max-width: none;
+}

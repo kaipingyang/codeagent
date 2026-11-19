@@ -1,5 +1,13 @@
 # codeagent (development version)
 
+* New theme `codeagent_theme("dsh")` / `codeagent_app(theme = "dsh")`: flat layered
+  surfaces after the DeepSeek Harness Web UI design system -- semantic tokens with
+  dark-mode rebinding, 0.5px hairlines, role-based radii, bubble-free assistant
+  replies, a card composer, one-line tool rows, and approval / question cards seated
+  where the composer is. Not affiliated with DeepSeek; no DeepSeek name, logo or
+  brand colour. The interaction bars (approval, question, form, Data Shield) are now
+  built from one class-based shell (`ca-interaction*`) with the same default look.
+
 * Fixed: Data Shield replaced every omitted optional attribute of an array of
   objects in tool arguments (NA after ellmer's conversion) with "tool arg
   redacted: scan failed (fail-closed)" -- e.g. AskUserQuestion option

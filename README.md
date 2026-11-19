@@ -455,7 +455,7 @@ stdio and the default loopback HTTP configuration keep them disabled.
 codeagent_app(
   client,
   ui_layout     = "classic",   # default; opt in with "page_chat"
-  theme         = "default",   # default | ios | aurora | flatly | darkly | glass
+  theme         = "default",   # default | ios | aurora | dsh | flatly | darkly | glass
   pinned_skills = c("plan", "compact")
 )
 
@@ -465,6 +465,11 @@ codeagent_app(client, ui_layout = "page_chat", theme = "ios")
 # Aurora uses ambient blue-indigo-purple light, selective frosted navigation,
 # and high-opacity content surfaces for dense chat, code, tools, and tables:
 codeagent_app(client, ui_layout = "page_chat", theme = "aurora")
+
+# dsh: flat layered surfaces after the DeepSeek Harness Web UI design system
+# (0.5px hairlines, role-based radii, bubble-free replies, approval cards seated
+# where the composer is). Not affiliated with DeepSeek; no DeepSeek branding:
+codeagent_app(client, ui_layout = "page_chat", theme = "dsh")
 
 # Liquid Glass is the optional pinned shinyglass package (>= 0.5.0), which also
 # styles shinychat and follows dark mode itself; codeagent adds no rules:
