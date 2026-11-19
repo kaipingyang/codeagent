@@ -119,6 +119,23 @@ test_that("get() gates what it returns with the session's Data Shield", {
   expect_false(grepl("123-45-6789", last@contents[[1]]@text, fixed = TRUE))
 })
 
+test_that("get() shows the text of an early log that has no turn records", {
+  proj <- local_store_env()
+  sid <- .generate_uuid_v4()
+  dir <- .ensure_session_dir(proj)
+  line <- function(x) as.character(jsonlite::toJSON(x, auto_unbox = TRUE))
+  writeLines(c(
+    line(list(type = "session-start", sessionId = sid, cwd = proj,
+              timestamp = "2026-06-27T10:00:00.000Z", format_version = 1L)),
+    line(list(type = "user", uuid = "u1", sessionId = sid, message = list(role = "user", content = "early question"))),
+    line(list(type = "assistant", uuid = "a1", sessionId = sid, message = list(role = "assistant", content = ""))),
+    line(list(type = "assistant", uuid = "a2", sessionId = sid, message = list(role = "assistant", content = "early answer")))),
+    file.path(dir, paste0(sid, ".jsonl")))
+  rec <- bound_store(proj)$get(part(), sid)
+  expect_identical(names(rec$nodes), c("n_0001", "n_0002"))
+  expect_identical(contents_replay(rec$nodes$n_0002$turns[[1]])@contents[[1]]@text, "early answer")
+})
+
 test_that("ids that are not this project's sessions resolve to nothing", {
   proj <- local_store_env()
   other <- withr::local_tempdir()
@@ -199,6 +216,32 @@ test_that("a new conversation is listed before its log exists, then written", {
   expect_identical(metas[[1]]$id, rec$id)
   expect_identical(get_session_info(sid, proj)$shinychat_id, rec$id)
   expect_identical(get_session_info(sid, proj)$user, .history_local_user())
+})
+
+test_that("a new conversation's record id reaches its log through the Chat, across store instances", {
+  proj <- local_store_env()
+  ch <- chat_anthropic(model = "claude-sonnet-4-6")
+  attr(ch, "codeagent_history_owner") <- .history_local_user()
+  st <- .SessionLogStore$new(cwd = proj)$bind(ch, list())
+  sid <- .generate_uuid_v4()
+  rec <- new_record(sid, title = "Named early", title_source = "user")
+  st$put(part(), rec)                              # before the log exists
+  ch$set_turns(list(Turn("user", "q"), Turn("assistant", "r")))
+  save_session(ch, cwd = proj, session_id = sid)   # creates the log
+
+  fresh <- bound_store(proj)                       # a reload: new store, empty memory
+  metas <- fresh$list(part())
+  expect_identical(metas[[1]]$id, rec$id)
+  expect_identical(metas[[1]]$title, "Named early")
+  got <- fresh$get(part(), rec$id)
+  expect_identical(got$id, rec$id)
+  expect_identical(got$values$codeagent_session_id, sid)
+
+  # the next conversation in the same Chat does not inherit it
+  sid2 <- .generate_uuid_v4()
+  ch$set_turns(list(Turn("user", "other"), Turn("assistant", "r")))
+  save_session(ch, cwd = proj, session_id = sid2)
+  expect_null(get_session_info(sid2, proj)$shinychat_id)
 })
 
 test_that("save_session() writes the history owner into a new log's header", {

@@ -638,6 +638,17 @@ codeagent_server(input, output, session, client,
   greeting = "Hi!")
 ```
 
+That is the setup for a **deployed app**: shinychat keeps its own records in
+the store you choose. For **personal use** -- one person (or a few accounts on
+one server) working in a project -- `codeagent_history_options(cwd)` gives the
+same history selector over codeagent's session log instead: every earlier
+session of the project is listed, no second copy of any conversation is
+written, renames and titles are kept in the log, and conversations are
+partitioned by user. `codeagent_app(ui_layout = "dsh")` uses it. Its
+`max_store_mb` defaults to `NULL`: shinychat deletes the oldest conversations
+above a size limit, which here would delete session logs, so a limit is only
+set when you pass one.
+
 **codeagent's own list**: put `codeagent_sessions_ui()` in the page (a sidebar,
 an accordion) and pass `history = "codeagent"` to `codeagent_server()`. Users see
 their earlier conversations (newest first, by the first message), restore one

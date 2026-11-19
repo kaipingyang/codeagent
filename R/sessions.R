@@ -107,6 +107,19 @@ save_session <- function(chat, cwd = getwd(),
     owner <- tryCatch(attr(chat, "codeagent_history_owner"), error = function(e) NULL)
     if (is.character(owner) && length(owner) == 1L && nzchar(owner)) header$user <- owner
     add_line(header)
+    # The shinychat conversation this session belongs to (its first save in
+    # shinychat came before this log existed; see R/history_store.R).
+    hr <- tryCatch(attr(chat, "codeagent_history_record"), error = function(e) NULL)
+    if (is.list(hr) && identical(hr$session_id, session_id) &&
+        is.character(hr$record_id) && length(hr$record_id) == 1L) {
+      add_line(list(type = "shinychat-record", recordId = hr$record_id,
+                    sessionId = session_id))
+      src <- hr$title_source
+      if (is.character(src) && length(src) == 1L && src %in% c("user", "llm") &&
+          is.character(hr$title) && length(hr$title) == 1L && nzchar(trimws(hr$title)))
+        add_line(list(type = "custom-title", customTitle = trimws(hr$title),
+                      source = src, sessionId = session_id))
+    }
   } else if (!is.null(title) && !identical(title, log$title)) {
     add_line(list(type = "custom-title", customTitle = title, sessionId = session_id))
   }

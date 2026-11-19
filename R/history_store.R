@@ -32,6 +32,17 @@ NULL
   else tryCatch(turn@role, error = function(e) "assistant")
 }
 
+# Turns from the text lines of a log that has no turn records.
+.history_text_turns <- function(session_id, cwd) {
+  msgs <- tryCatch(get_session_messages(session_id, cwd), error = function(e) list())
+  out <- list()
+  for (m in msgs) {
+    if (!m$role %in% c("user", "assistant") || !nzchar(trimws(m$text %||% ""))) next
+    out[[length(out) + 1L]] <- ellmer::Turn(m$role, m$text)
+  }
+  out
+}
+
 # A linear conversation record (schema 1) from turns as shown.
 .history_record <- function(id, session_id, turns, info) {
   roles <- vapply(turns, .history_turn_role, character(1L))
@@ -79,6 +90,7 @@ NULL
     # Data Shield. An unbound store returns no conversation.
     bind = function(chat, settings) {
       force(chat); force(settings)
+      private$chat <- chat
       private$tools <- function() tryCatch(chat$get_tools(), error = function(e) list())
       private$present <- function(turns) .presentation_turns(turns, settings, chat)
       invisible(self)
@@ -120,7 +132,10 @@ NULL
                                                     tools = private$tools()),
                         error = function(e) NULL)
       if (is.null(shown)) return(NULL)
-      turns <- tryCatch(private$present(shown$turns), error = function(e) NULL)
+      turns <- shown$turns
+      # Early logs kept only the text of each message: show that.
+      if (!length(turns)) turns <- .history_text_turns(info$session_id, self$cwd)
+      turns <- tryCatch(private$present(turns), error = function(e) NULL)
       if (is.null(turns)) return(NULL)
       .history_record(info$shinychat_id %||% info$session_id, info$session_id,
                       turns, info)
@@ -145,6 +160,12 @@ NULL
           created_at = record$created_at, updated_at = record$updated_at),
           envir = private$pending)
         assign(rid, sid, envir = private$index)
+        # save_session() writes it with the log it creates: the store is per
+        # browser session, the log outlives it.
+        if (!is.null(private$chat))
+          attr(private$chat, "codeagent_history_record") <- list(
+            session_id = sid, record_id = rid, title = record$title,
+            title_source = record$title_source)
         return(invisible(NULL))
       }
       info <- tryCatch(.read_session_info(sid, path), error = function(e) NULL)
@@ -173,7 +194,7 @@ NULL
 
   private = list(
     tools = NULL, present = NULL, index = NULL, cache = NULL,
-    pending = NULL,
+    pending = NULL, chat = NULL,
 
     write_meta = function(sid, info, record_id, title, title_source) {
       lines <- character(0)
