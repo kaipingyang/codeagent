@@ -431,3 +431,35 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
   min-width: 0;
   text-overflow: ellipsis;
 }
+
+/* --- Interaction bar (approval / question / form / Data Shield) ---------------
+   One shell for every kind (.interaction_shell() in R/server_interaction.R):
+   strip / body / actions. The default look is a compact bar above the input with a
+   coloured top border; themes (e.g. "dsh") restyle the same classes. */
+.ca-interaction {
+  border-top: 2px solid var(--bs-warning, #f0ad4e);
+  background: var(--bs-body-bg, #fff);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;               /* the chat footer centres text */
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, .08);
+}
+.ca-interaction--question,
+.ca-interaction--questions { border-top-color: var(--bs-info, #0dcaf0); display: block; }
+.ca-interaction--form { border-top-color: var(--bs-primary, #0d6efd); display: block; }
+.ca-interaction--egress { border-top-color: var(--bs-danger, #dc3545); gap: 10px; }
+.ca-interaction--scroll { max-height: 60vh; overflow-y: auto; }
+.ca-interaction-strip { display: none; }
+.ca-interaction-body { flex: 1; min-width: 0; font-size: 0.9em; }
+.ca-interaction-title { font-weight: 600; }
+.ca-interaction--question .ca-interaction-title,
+.ca-interaction--form .ca-interaction-title { margin-bottom: 6px; }
+.ca-interaction-command,
+.ca-interaction-detail { color: var(--bs-secondary-color, #666); font-size: 0.85em; }
+.ca-interaction-actions { display: flex; gap: 8px; align-items: center; }
+.ca-interaction--question .ca-interaction-actions,
+.ca-interaction--questions .ca-interaction-actions,
+.ca-interaction--form .ca-interaction-actions { margin-top: 4px; }
+.ca-question-title { font-weight: 600; margin-bottom: 4px; }

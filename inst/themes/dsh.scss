@@ -596,3 +596,169 @@ shiny-chat-container {
   --shiny-chat-thinking-border-color: var(--ca-dsh-border-l2);
   font-size: 13px;
 }
+
+/* == 10. Interaction cards in the composer seat ================================ */
+/* Footer centres its text; the card is left-aligned. styles.css loads after the
+   theme, so these rules carry a `body` prefix to win over its defaults. */
+body .ca-interaction { text-align: left; }
+body .ca-interaction .badge.text-bg-secondary { background-color: transparent !important; }
+/* DSH ApprovalCard: the card takes the composer's place (the composer stays
+   mounted, so a draft survives); status strip, body, right-aligned actions. */
+body .shiny-chat-layout:has(.ca-interaction) .shiny-chat-composer {
+  display: none;
+}
+body .ca-interaction {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  max-width: var(--shiny-chat-page-content-width, 880px);
+  margin: 8px auto 12px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--ca-dsh-radius-xl);
+  background: var(--ca-dsh-bg-input);
+  box-shadow: var(--ca-dsh-elevation-panel);
+  color: var(--ca-dsh-label-primary);
+  font-size: 14px;
+}
+/* Approval and Data Shield carry the warning state: coloured border and strip. */
+body .ca-interaction--approval,
+body .ca-interaction--egress {
+  border: 1px solid var(--ca-dsh-warn-secondary);
+  box-shadow: var(--ca-dsh-shadow-lv2);
+}
+body .ca-interaction-strip {
+  display: none;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  font-size: 13px;
+  line-height: 18px;
+}
+body .ca-interaction--approval .ca-interaction-strip,
+body .ca-interaction--egress .ca-interaction-strip {
+  display: flex;
+  background: var(--ca-dsh-warn-tertiary);
+  color: var(--ca-dsh-warn-primary);
+}
+body .ca-interaction-strip::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  corner-shape: round;
+  background: currentColor;
+}
+body .ca-interaction-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px 0;
+  font-size: 14px;
+}
+body .ca-interaction-icon {
+  display: none;
+}
+body .ca-interaction-title,
+body .ca-question-title {
+  font-size: 15px;
+  line-height: 24px;
+  font-weight: 500;
+  margin: 0;
+}
+body .ca-interaction-title code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 14px;
+  color: inherit;
+}
+body .ca-interaction-detail {
+  color: var(--ca-dsh-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+}
+body .ca-interaction-command {
+  color: var(--ca-dsh-label-tertiary);
+  font-family: var(--ca-dsh-font-code);
+  font-size: 13px;
+  line-height: 20px;
+  word-break: break-all;
+}
+body .ca-interaction-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  padding: 14px 16px;
+}
+body .ca-interaction-actions .btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--ca-dsh-radius-md);
+  font-size: 14px;
+  font-weight: 400;
+}
+body .ca-interaction-actions .ca-interaction-reject,
+body .ca-interaction-actions .ca-interaction-secondary {
+  border: 0.5px solid var(--ca-dsh-border-l4);
+  background: transparent;
+  color: var(--ca-dsh-label-primary);
+}
+body .ca-interaction-actions .ca-interaction-primary {
+  border: 0;
+  background: var(--ca-dsh-label-primary);
+  color: var(--ca-dsh-bg-base);
+}
+body .ca-interaction-actions .ca-interaction-danger {
+  border: 0;
+  background: var(--ca-dsh-error-primary);
+  color: var(--ca-dsh-label-on-color);
+}
+@media (hover: hover) {
+  body .ca-interaction-actions .ca-interaction-reject:hover {
+    background: var(--ca-dsh-bg-hover-danger);
+    color: var(--ca-dsh-error-primary);
+  }
+}
+/* Questions: header chip, options as selectable rows (DSH QuestionComposer). */
+body .ca-interaction .badge {
+  background: transparent;
+  color: var(--ca-dsh-label-tertiary);
+  font-size: 12px;
+  font-weight: 400;
+  padding: 0;
+  display: block;
+  margin-bottom: 2px;
+  text-align: left;
+}
+body .ca-interaction .shiny-options-group .radio,
+body .ca-interaction .shiny-options-group .checkbox {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: var(--ca-dsh-radius-md);
+}
+body .ca-interaction .shiny-options-group .radio:has(input:checked),
+body .ca-interaction .shiny-options-group .checkbox:has(input:checked) {
+  background: var(--ca-dsh-bg-hover);
+}
+body .ca-interaction .shiny-options-group small {
+  color: var(--ca-dsh-label-tertiary);
+}
+body .ca-interaction .form-control {
+  border: 0.5px solid var(--ca-dsh-border-l3);
+  border-radius: var(--ca-dsh-radius-md);
+  background: transparent;
+}
+body .ca-interaction .shiny-options-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+body .ca-interaction .shiny-options-group .radio,
+body .ca-interaction .shiny-options-group .checkbox {
+  display: block;
+  width: 100%;
+}

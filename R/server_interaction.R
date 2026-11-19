@@ -129,7 +129,7 @@ NULL
     list(htmltools::tags$span("Other")))
   id <- paste0("ca_qs_", i)
   htmltools::tags$div(class = "ca-question mb-2",
-    htmltools::tags$p(style = "font-weight:600; margin-bottom:4px;",
+    htmltools::tags$p(class = "ca-question-title",
       if (nzchar(q$header)) htmltools::tags$span(class = "badge text-bg-secondary me-2", q$header),
       q$question),
     if (isTRUE(q$multiSelect))
@@ -217,6 +217,21 @@ NULL
 # takes the `pending` list (or NULL) and returns an htmltools tag (or NULL); no
 # Shiny input/output/session, so the bar's layout is unit-testable. The
 # observers below own all side effects (append messages, resolve the promise).
+#
+# Every bar has the same shell, styled in inst/www/styles.css (and by themes):
+#   div.ca-interaction.ca-interaction--<kind>
+#     div.ca-interaction-strip    status line ("Waiting for approval")
+#     div.ca-interaction-body     title, detail, inputs
+#     div.ca-interaction-actions  buttons
+.interaction_shell <- function(kind, strip, body, actions, scroll = FALSE) {
+  htmltools::tags$div(
+    class = paste0("ca-interaction ca-interaction--", kind,
+                   if (scroll) " ca-interaction--scroll" else ""),
+    htmltools::tags$div(class = "ca-interaction-strip", strip),
+    htmltools::tags$div(class = "ca-interaction-body", body),
+    htmltools::tags$div(class = "ca-interaction-actions", actions))
+}
+
 .interaction_bar_ui <- function(pending) {
   if (is.null(pending)) return(NULL)
 
@@ -224,108 +239,70 @@ NULL
     p    <- pending$payload
     tin  <- p$tool_input %||% list()
     desc <- as.character(tin$command %||% tin$file_path %||% "")
-    htmltools::tags$div(
-      style = paste(
-        "border-top:2px solid var(--bs-warning,#f0ad4e);",
-        "background:var(--bs-body-bg,#fff);",
-        "padding:8px 16px; display:flex; align-items:center; gap:12px;",
-        "text-align:left;",   # footer sets text-align:center; override it
-        "box-shadow:0 -2px 8px rgba(0,0,0,.08);"
-      ),
-      htmltools::tags$span(
-        style = "font-weight:600; flex:1; font-size:0.9em;",
-        "\u26a0\ufe0f Allow tool: ", htmltools::tags$code(p$tool_name %||% "?"),
-        htmltools::tags$small(
-          style = "color:#666; font-weight:400;",
-          if (nzchar(desc)) paste0(" \u2014 ", substr(desc, 1L, 80L)) else ""
-        )
-      ),
-      shiny::actionButton("ca_tool_allow", "\u2714 Allow",
-                          class = "btn-success btn-sm"),
-      shiny::actionButton("ca_tool_allow_always", "\u2714 Always allow",
-                          class = "btn-outline-success btn-sm",
-                          title = "Allow this tool for the rest of this session without asking again"),
-      shiny::actionButton("ca_tool_deny", "\u2716 Deny",
-                          class = "btn-danger btn-sm")
-    )
+    .interaction_shell("approval", "Waiting for approval",
+      htmltools::tagList(
+        htmltools::tags$div(class = "ca-interaction-title",
+          htmltools::tags$span(class = "ca-interaction-icon", "⚠️ "),
+          "Allow tool: ", htmltools::tags$code(p$tool_name %||% "?")),
+        if (nzchar(desc))
+          htmltools::tags$div(class = "ca-interaction-command", substr(desc, 1L, 80L))),
+      htmltools::tagList(
+        shiny::actionButton("ca_tool_deny", "✖ Deny",
+                            class = "btn-danger btn-sm ca-interaction-reject"),
+        shiny::actionButton("ca_tool_allow_always", "✔ Always allow",
+                            class = "btn-outline-success btn-sm ca-interaction-secondary",
+                            title = "Allow this tool for the rest of this session without asking again"),
+        shiny::actionButton("ca_tool_allow", "✔ Allow",
+                            class = "btn-success btn-sm ca-interaction-primary")))
   } else if (identical(pending$type, "question")) {
     p       <- pending$payload
     choices <- p$choices
-    htmltools::tags$div(
-      style = paste(
-        "border-top:2px solid var(--bs-info,#0dcaf0);",
-        "background:var(--bs-body-bg,#fff);",
-        "padding:8px 16px; text-align:left;",   # override footer centering
-        "box-shadow:0 -2px 8px rgba(0,0,0,.08);"
-      ),
-      htmltools::tags$p(style = "font-weight:600; margin-bottom:6px;",
-                        "\u2753 ", p$question %||% ""),
-      if (length(choices) > 0L)
-        shiny::radioButtons("ca_q_choice", NULL, choices = choices,
-                            inline = FALSE)
-      else
-        shiny::textInput("ca_q_text", NULL,
-                         placeholder = "Type your answer..."),
-      shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm")
-    )
+    .interaction_shell("question", "Waiting for your answer",
+      htmltools::tagList(
+        htmltools::tags$div(class = "ca-interaction-title",
+          htmltools::tags$span(class = "ca-interaction-icon", "❓ "), p$question %||% ""),
+        if (length(choices) > 0L)
+          shiny::radioButtons("ca_q_choice", NULL, choices = choices, inline = FALSE)
+        else
+          shiny::textInput("ca_q_text", NULL, placeholder = "Type your answer...")),
+      shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm ca-interaction-primary"))
   } else if (identical(pending$type, "questions")) {
     qs <- pending$payload$questions
-    htmltools::tags$div(
-      class = "ca-questions-bar",
-      style = paste(
-        "border-top:2px solid var(--bs-info,#0dcaf0);",
-        "background:var(--bs-body-bg,#fff);",
-        "padding:8px 16px; text-align:left;",
-        "box-shadow:0 -2px 8px rgba(0,0,0,.08);",
-        "max-height:60vh; overflow-y:auto;"),
+    .interaction_shell("questions", "Waiting for your answer",
       htmltools::tagList(lapply(seq_along(qs), function(i) .question_input(qs[[i]], i))),
-      shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm"))
+      shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm ca-interaction-primary"),
+      scroll = TRUE)
   } else if (identical(pending$type, "form")) {
     p <- pending$payload
-    htmltools::tags$div(
-      class = "ca-form-bar",
-      style = paste(
-        "border-top:2px solid var(--bs-primary,#0d6efd);",
-        "background:var(--bs-body-bg,#fff);",
-        "padding:8px 16px; text-align:left;",   # override footer centering
-        "box-shadow:0 -2px 8px rgba(0,0,0,.08);",
-        "max-height:60vh; overflow-y:auto;"
-      ),
-      htmltools::tags$p(style = "font-weight:600; margin-bottom:6px;",
-                        "\U0001f4dd ", p$title %||% ""),
-      htmltools::tagList(lapply(seq_along(p$fields), function(i)
-        .form_field_input(p$fields[[i]], i))),
-      htmltools::tags$div(
-        style = "display:flex; gap:8px; margin-top:4px;",
-        shiny::actionButton("ca_form_submit", p$submit_label %||% "Submit",
-                            class = "btn-primary btn-sm"),
+    .interaction_shell("form", "Waiting for your input",
+      htmltools::tagList(
+        htmltools::tags$div(class = "ca-interaction-title",
+          htmltools::tags$span(class = "ca-interaction-icon", "\U0001f4dd "), p$title %||% ""),
+        htmltools::tagList(lapply(seq_along(p$fields), function(i)
+          .form_field_input(p$fields[[i]], i)))),
+      htmltools::tagList(
         shiny::actionButton("ca_form_cancel", "Cancel",
-                            class = "btn-outline-secondary btn-sm"))
-    )
+                            class = "btn-outline-secondary btn-sm ca-interaction-reject"),
+        shiny::actionButton("ca_form_submit", p$submit_label %||% "Submit",
+                            class = "btn-primary btn-sm ca-interaction-primary")),
+      scroll = TRUE)
   } else if (identical(pending$type, "egress")) {
     p <- pending$payload
-    htmltools::tags$div(
-      style = paste(
-        "border-top:2px solid var(--bs-danger,#dc3545);",
-        "background:var(--bs-body-bg,#fff);",
-        "padding:8px 16px; display:flex; align-items:center; gap:10px;",
-        "text-align:left; box-shadow:0 -2px 8px rgba(0,0,0,.08);"),
-      htmltools::tags$span(
-        style="font-weight:600; flex:1; font-size:0.9em;",
-        "Data Shield blocked a tool result: ",
-        htmltools::tags$code(p$tool_name %||% "?"),
-        htmltools::tags$small(
-          style="display:block;color:#666;font-weight:400;",
-          paste0(p$strategy %||% "policy", " \u2014 ", p$reason %||% "policy match",
+    .interaction_shell("egress", "Data Shield",
+      htmltools::tagList(
+        htmltools::tags$div(class = "ca-interaction-title",
+          "Data Shield blocked a tool result: ", htmltools::tags$code(p$tool_name %||% "?")),
+        htmltools::tags$div(class = "ca-interaction-detail",
+          paste0(p$strategy %||% "policy", " — ", p$reason %||% "policy match",
                  " (matches: ", as.integer(p$match_count %||% 0L), ")"))),
-      shiny::actionButton("ca_egress_redact","Redact and continue",
-                          class="btn-warning btn-sm"),
-      shiny::actionButton("ca_egress_block","Block result",
-                          class="btn-secondary btn-sm"),
-      if (isTRUE(p$allow_raw_approval))
-        shiny::actionButton("ca_egress_raw","ALLOW RAW ONCE",
-                            class="btn-danger btn-sm")
-    )
+      htmltools::tagList(
+        if (isTRUE(p$allow_raw_approval))
+          shiny::actionButton("ca_egress_raw", "ALLOW RAW ONCE",
+                              class = "btn-danger btn-sm ca-interaction-danger"),
+        shiny::actionButton("ca_egress_block", "Block result",
+                            class = "btn-secondary btn-sm ca-interaction-reject"),
+        shiny::actionButton("ca_egress_redact", "Redact and continue",
+                            class = "btn-warning btn-sm ca-interaction-primary")))
   } else {
     NULL
   }
