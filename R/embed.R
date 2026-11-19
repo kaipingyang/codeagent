@@ -223,6 +223,13 @@ codeagent_mode_ui <- function(modes = c("Ask before changes" = "default",
 #'   with that card's `ellmer::ContentToolResult`, e.g. to show the result in
 #'   the host's own panel. Only results with an HTML display
 #'   (`extra$display$html`) are reported.
+#' @param on_user_prompt Optional `function(text)` called with what the user
+#'   typed before each turn reaches the model -- the host side of Claude Code's
+#'   `UserPromptSubmit` hook. Return `NULL` to proceed unchanged, a character
+#'   string to add it as context to this turn (the user's text is never
+#'   changed), or `list(action = "block", message = )` to stop the turn.
+#'   Typical use: facts the host knows that save the model a tool call (e.g.
+#'   what a project contains), sent once with the first turn.
 #' @param sessions Deprecated: `TRUE` is `history = "codeagent"`.
 #' @return Invisibly, a list with `state` (the session `reactiveValues`),
 #'   `stream_task` (the `ExtendedTask`), `chat` and `settings`.
@@ -233,7 +240,7 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                              tool_meta = list(), canvas = NULL,
                              history = NULL, greeting = NULL,
                              modes = NULL, on_restore = NULL,
-                             on_tool_open = NULL, sessions = FALSE) {
+                             on_tool_open = NULL, on_user_prompt = NULL, sessions = FALSE) {
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
@@ -265,6 +272,11 @@ codeagent_server <- function(input, output, session, client, tools = list(),
     warning("[codeagent] `canvas` was given but the client's `tools=` selection ",
             "leaves out the canvas tools, so the model cannot draw. Add \"genui\" ",
             "to `tools=`.", call. = FALSE)
+  if (!is.null(on_user_prompt)) {
+    if (!is.function(on_user_prompt))
+      stop("`on_user_prompt` must be NULL or a function(text).", call. = FALSE)
+    client$settings$hooks_registry <- .host_prompt_hook(client$settings$hooks_registry, on_user_prompt)
+  }
   core <- .codeagent_session_server(
     input, output, session, client,
     canvas = canvas, canvas_explicit = !is.null(canvas), per_session = TRUE,
@@ -292,6 +304,20 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   session$onFlushed(function() core$ready(), once = TRUE)
   invisible(list(state = core$state, stream_task = core$stream_task,
                  chat = client$chat, settings = core$settings))
+}
+
+# The host's on_user_prompt as a UserPromptSubmit hook, added to the client's
+# hook registry (one is made when settings declared none).
+.host_prompt_hook <- function(registry, fn) {
+  reg <- registry %||% HookRegistry$new()
+  reg$register(HookEvent$USER_PROMPT_SUBMIT, function(message) {
+    out <- fn(message)
+    if (is.null(out)) return(NULL)
+    if (is.list(out)) return(out)
+    txt <- paste(as.character(out), collapse = "\n")
+    if (nzchar(txt)) list(action = "add_context", additional_context = txt)
+  }, timeout_ms = 5000L)
+  reg
 }
 
 .check_host_tools <- function(tools, tool_meta) {
@@ -454,4 +480,3 @@ codeagent_server <- function(input, output, session, client, tools = list(),
     ctx$mode_env$plan_exit_allowed <- FALSE
   })
 }
-
