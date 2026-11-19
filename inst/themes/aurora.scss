@@ -1,0 +1,89 @@
+/* codeagent "aurora" theme -- extra rules on top of shinychat::page_chat_theme().
+ * Ambient blue-indigo-purple light, selective frosted chrome, opaque content.
+ * Loaded by codeagent_theme() with sass::sass_file(); shipped only with this theme. */
+
+:root {
+  --ca-aurora-canvas: #f2f2f7;
+  --ca-aurora-glass: rgba(255,255,255,0.76);
+  --ca-aurora-content: rgba(255,255,255,0.94);
+  --ca-aurora-border: rgba(255,255,255,0.72);
+  --ca-aurora-content-border: rgba(67,56,140,0.12);
+  --ca-aurora-shadow: 0 12px 36px rgba(56,45,110,0.11), 0 2px 8px rgba(0,0,0,0.05);
+  --ca-aurora-blue: rgba(0,122,255,0.20);
+  --ca-aurora-purple: rgba(175,82,222,0.17);
+  --ca-aurora-indigo: rgba(88,86,214,0.15);
+  --shiny-chat-page-surface-bg: var(--ca-aurora-canvas);
+  --shiny-chat-page-sidebar-bg: var(--ca-aurora-glass);
+  --shiny-chat-page-canvas-bg: var(--ca-aurora-canvas);
+  --shiny-chat-page-drawer-bg: var(--ca-aurora-glass);
+  --shiny-chat-page-drawer-header-bg: var(--ca-aurora-glass);
+}
+[data-bs-theme='dark'] {
+  --ca-aurora-canvas: #0b0b14;
+  --ca-aurora-glass: rgba(22,22,38,0.76);
+  --ca-aurora-content: rgba(21,22,32,0.94);
+  --ca-aurora-border: rgba(255,255,255,0.12);
+  --ca-aurora-content-border: rgba(255,255,255,0.12);
+  --ca-aurora-shadow: 0 12px 36px rgba(0,0,0,0.30), 0 2px 8px rgba(0,0,0,0.22);
+  --ca-aurora-blue: rgba(69,125,255,0.20);
+  --ca-aurora-purple: rgba(162,89,255,0.18);
+  --ca-aurora-indigo: rgba(99,102,241,0.14);
+}
+body, .bslib-page-fill, shiny-chat-page {
+  background-color: var(--ca-aurora-canvas);
+  background-image: radial-gradient(54rem 38rem at 8% -8%, var(--ca-aurora-blue), transparent 68%), radial-gradient(48rem 40rem at 96% 4%, var(--ca-aurora-purple), transparent 66%), radial-gradient(42rem 34rem at 52% 108%, var(--ca-aurora-indigo), transparent 70%);
+  background-attachment: fixed;
+}
+body > shiny-chat-page.shiny-bound-input {
+  background-color: var(--ca-aurora-canvas) !important;
+  background-image: radial-gradient(54rem 38rem at 8% -8%, var(--ca-aurora-blue), transparent 68%), radial-gradient(48rem 40rem at 96% 4%, var(--ca-aurora-purple), transparent 66%), radial-gradient(42rem 34rem at 52% 108%, var(--ca-aurora-indigo), transparent 70%) !important;
+}
+.bslib-sidebar-layout > .main, shiny-chat-page .shiny-chat-page-panel,
+shiny-chat-page shiny-chat-container { background-color: transparent; }
+body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,
+.shiny-chat-drawer, .shiny-chat-page-drawer,
+.shiny-chat-drawer-header, .shiny-chat-page-drawer-header,
+.shiny-chat-composer {
+  background-color: var(--ca-aurora-glass);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border-color: var(--ca-aurora-border);
+  box-shadow: var(--ca-aurora-shadow);
+}
+.shiny-chat-composer {
+  border: 1px solid var(--ca-aurora-border);
+  border-radius: 14px;
+}
+body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar {
+  border-right: 1px solid var(--ca-aurora-border);
+}
+.card, .toolcard, .accordion-item, .modal-content,
+.shiny-chat-message-content, .table-responsive, .ca-tool-artifact {
+  background-color: var(--ca-aurora-content);
+  border-color: var(--ca-aurora-content-border);
+}
+.card, .toolcard, .accordion-item, .modal-content {
+  border-radius: 14px;
+}
+.toolcard { --bs-body-bg: var(--ca-aurora-content); }
+.table, table { --bs-table-bg: var(--ca-aurora-content); }
+pre, code { background-color: var(--ca-aurora-content); }
+@media (prefers-reduced-transparency: reduce) {
+  :root { --ca-aurora-glass: #ffffff; --ca-aurora-content: #ffffff; }
+  [data-bs-theme='dark'] { --ca-aurora-glass: #161626; --ca-aurora-content: #151620; }
+  body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,
+  .shiny-chat-drawer, .shiny-chat-page-drawer, .shiny-chat-composer {
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .shiny-chat-page-sidebar, .shiny-chat-drawer, .shiny-chat-page-drawer,
+  .shiny-chat-composer { transition: none !important; animation: none !important; }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,
+  .shiny-chat-drawer, .shiny-chat-page-drawer, .shiny-chat-composer {
+    background-color: var(--ca-aurora-content);
+    backdrop-filter: none; -webkit-backdrop-filter: none;
+  }
+}

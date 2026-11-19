@@ -70,150 +70,17 @@ NULL
   do.call(shinyglass::glass_theme, args)
 }
 
-.ios_theme_rules <- function() {
-  paste(c(
-    ":root {",
-    "  --ca-app-canvas-bg: #f2f2f7;",
-    "  --ca-app-surface-bg: #ffffff;",
-    "  --ca-card-border: rgba(0,0,0,0.08);",
-    "  --ca-card-radius: 14px;",
-    "  --ca-card-shadow: 0 2px 12px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.04);",
-    "  --shiny-chat-page-surface-bg: var(--ca-app-canvas-bg);",
-    "  --shiny-chat-page-sidebar-bg: var(--ca-app-surface-bg);",
-    "  --shiny-chat-page-canvas-bg: var(--ca-app-canvas-bg);",
-    "  --shiny-chat-page-drawer-bg: var(--ca-app-surface-bg);",
-    "  --shiny-chat-page-drawer-header-bg: var(--ca-app-surface-bg);",
-    "}",
-    "[data-bs-theme='dark'] {",
-    "  --ca-app-canvas-bg: #1c1c1e;",
-    "  --ca-app-surface-bg: #2c2c2e;",
-    "  --ca-card-border: rgba(84,84,88,0.65);",
-    "  --ca-card-shadow: 0 2px 12px rgba(0,0,0,0.28), 0 1px 3px rgba(0,0,0,0.22);",
-    "}",
-    "body, .bslib-page-fill, .bslib-sidebar-layout > .main {",
-    "  background-color: var(--ca-app-canvas-bg);",
-    "}",
-    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar {",
-    "  background-color: var(--ca-app-surface-bg);",
-    "}",
-    "shiny-chat-page .shiny-chat-page-panel,",
-    "shiny-chat-page shiny-chat-container {",
-    "  background-color: var(--ca-app-canvas-bg);",
-    "}",
-    ".card, .toolcard, .accordion-item, .modal-content,",
-    "shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
-    "  background-color: var(--ca-app-surface-bg);",
-    "  border-color: var(--ca-card-border);",
-    "  border-radius: var(--ca-card-radius);",
-    "}",
-    ".card, shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
-    "  box-shadow: var(--ca-card-shadow);",
-    "}",
-    "shiny-chat-container .shiny-chat-suggestion-list .suggestion.shiny-chat-suggestion-list-item {",
-    "  border: 1px solid var(--ca-card-border);",
-    "}",
-    ".shiny-chat-page-sidebar-panel > .card { margin-bottom: 0; }",
-    ".toolcard { --bs-body-bg: var(--ca-app-surface-bg); }"
-  ), collapse = "\n")
+# Extra rules of a built-in theme live in inst/themes/<name>.scss (plain CSS,
+# compiled by sass with the theme) -- never as CSS strings in R. Shipped only
+# with that theme. dsh.scss follows the DeepSeek Harness Web UI design system;
+# see its header.
+.codeagent_theme_file <- function(name) {
+  path <- system.file("themes", paste0(name, ".scss"), package = "codeagent")
+  if (!nzchar(path)) path <- file.path("inst", "themes", paste0(name, ".scss"))
+  path
 }
 
-# Rules for the "dsh" theme (DeepSeek Harness Web UI design system; see the
-# header of inst/themes/dsh.scss). Shipped only with this theme.
-.dsh_theme_rules <- function() {
-  path <- system.file("themes", "dsh.scss", package = "codeagent")
-  if (!nzchar(path)) path <- file.path("inst", "themes", "dsh.scss")
-  sass::sass_file(path)
-}
-
-.aurora_theme_rules <- function() {
-  paste(c(
-    ":root {",
-    "  --ca-aurora-canvas: #f2f2f7;",
-    "  --ca-aurora-glass: rgba(255,255,255,0.76);",
-    "  --ca-aurora-content: rgba(255,255,255,0.94);",
-    "  --ca-aurora-border: rgba(255,255,255,0.72);",
-    "  --ca-aurora-content-border: rgba(67,56,140,0.12);",
-    "  --ca-aurora-shadow: 0 12px 36px rgba(56,45,110,0.11), 0 2px 8px rgba(0,0,0,0.05);",
-    "  --ca-aurora-blue: rgba(0,122,255,0.20);",
-    "  --ca-aurora-purple: rgba(175,82,222,0.17);",
-    "  --ca-aurora-indigo: rgba(88,86,214,0.15);",
-    "  --shiny-chat-page-surface-bg: var(--ca-aurora-canvas);",
-    "  --shiny-chat-page-sidebar-bg: var(--ca-aurora-glass);",
-    "  --shiny-chat-page-canvas-bg: var(--ca-aurora-canvas);",
-    "  --shiny-chat-page-drawer-bg: var(--ca-aurora-glass);",
-    "  --shiny-chat-page-drawer-header-bg: var(--ca-aurora-glass);",
-    "}",
-    "[data-bs-theme='dark'] {",
-    "  --ca-aurora-canvas: #0b0b14;",
-    "  --ca-aurora-glass: rgba(22,22,38,0.76);",
-    "  --ca-aurora-content: rgba(21,22,32,0.94);",
-    "  --ca-aurora-border: rgba(255,255,255,0.12);",
-    "  --ca-aurora-content-border: rgba(255,255,255,0.12);",
-    "  --ca-aurora-shadow: 0 12px 36px rgba(0,0,0,0.30), 0 2px 8px rgba(0,0,0,0.22);",
-    "  --ca-aurora-blue: rgba(69,125,255,0.20);",
-    "  --ca-aurora-purple: rgba(162,89,255,0.18);",
-    "  --ca-aurora-indigo: rgba(99,102,241,0.14);",
-    "}",
-    "body, .bslib-page-fill, shiny-chat-page {",
-    "  background-color: var(--ca-aurora-canvas);",
-    "  background-image: radial-gradient(54rem 38rem at 8% -8%, var(--ca-aurora-blue), transparent 68%), radial-gradient(48rem 40rem at 96% 4%, var(--ca-aurora-purple), transparent 66%), radial-gradient(42rem 34rem at 52% 108%, var(--ca-aurora-indigo), transparent 70%);",
-    "  background-attachment: fixed;",
-    "}",
-    "body > shiny-chat-page.shiny-bound-input {",
-    "  background-color: var(--ca-aurora-canvas) !important;",
-    "  background-image: radial-gradient(54rem 38rem at 8% -8%, var(--ca-aurora-blue), transparent 68%), radial-gradient(48rem 40rem at 96% 4%, var(--ca-aurora-purple), transparent 66%), radial-gradient(42rem 34rem at 52% 108%, var(--ca-aurora-indigo), transparent 70%) !important;",
-    "}",
-    ".bslib-sidebar-layout > .main, shiny-chat-page .shiny-chat-page-panel,",
-    "shiny-chat-page shiny-chat-container { background-color: transparent; }",
-    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
-    ".shiny-chat-drawer, .shiny-chat-page-drawer,",
-    ".shiny-chat-drawer-header, .shiny-chat-page-drawer-header,",
-    ".shiny-chat-composer {",
-    "  background-color: var(--ca-aurora-glass);",
-    "  backdrop-filter: blur(18px) saturate(140%);",
-    "  -webkit-backdrop-filter: blur(18px) saturate(140%);",
-    "  border-color: var(--ca-aurora-border);",
-    "  box-shadow: var(--ca-aurora-shadow);",
-    "}",
-    ".shiny-chat-composer {",
-    "  border: 1px solid var(--ca-aurora-border);",
-    "  border-radius: 14px;",
-    "}",
-    "body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar {",
-    "  border-right: 1px solid var(--ca-aurora-border);",
-    "}",
-    ".card, .toolcard, .accordion-item, .modal-content,",
-    ".shiny-chat-message-content, .table-responsive, .ca-tool-artifact {",
-    "  background-color: var(--ca-aurora-content);",
-    "  border-color: var(--ca-aurora-content-border);",
-    "}",
-    ".card, .toolcard, .accordion-item, .modal-content {",
-    "  border-radius: 14px;",
-    "}",
-    ".toolcard { --bs-body-bg: var(--ca-aurora-content); }",
-    ".table, table { --bs-table-bg: var(--ca-aurora-content); }",
-    "pre, code { background-color: var(--ca-aurora-content); }",
-    "@media (prefers-reduced-transparency: reduce) {",
-    "  :root { --ca-aurora-glass: #ffffff; --ca-aurora-content: #ffffff; }",
-    "  [data-bs-theme='dark'] { --ca-aurora-glass: #161626; --ca-aurora-content: #151620; }",
-    "  body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
-    "  .shiny-chat-drawer, .shiny-chat-page-drawer, .shiny-chat-composer {",
-    "    backdrop-filter: none; -webkit-backdrop-filter: none;",
-    "  }",
-    "}",
-    "@media (prefers-reduced-motion: reduce) {",
-    "  .shiny-chat-page-sidebar, .shiny-chat-drawer, .shiny-chat-page-drawer,",
-    "  .shiny-chat-composer { transition: none !important; animation: none !important; }",
-    "}",
-    "@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {",
-    "  body .bslib-sidebar-layout > .sidebar, .shiny-chat-page-sidebar,",
-    "  .shiny-chat-drawer, .shiny-chat-page-drawer, .shiny-chat-composer {",
-    "    background-color: var(--ca-aurora-content);",
-    "    backdrop-filter: none; -webkit-backdrop-filter: none;",
-    "  }",
-    "}"
-  ), collapse = "\n")
-}
+.codeagent_theme_rules <- function(name) sass::sass_file(.codeagent_theme_file(name))
 
 #' Build a codeagent application theme
 #'
@@ -294,11 +161,11 @@ codeagent_theme <- function(style = "default", ...) {
     do.call(bslib::bs_theme, c(list(version = 5, preset = preset), args))
   }
   if (identical(key, "ios"))
-    theme <- bslib::bs_add_rules(theme, .ios_theme_rules())
+    theme <- bslib::bs_add_rules(theme, .codeagent_theme_rules("ios"))
   if (identical(key, "aurora"))
-    theme <- bslib::bs_add_rules(theme, .aurora_theme_rules())
+    theme <- bslib::bs_add_rules(theme, .codeagent_theme_rules("aurora"))
   if (identical(key, "dsh"))
-    theme <- bslib::bs_add_rules(theme, .dsh_theme_rules())
+    theme <- bslib::bs_add_rules(theme, .codeagent_theme_rules("dsh"))
   theme
 }
 

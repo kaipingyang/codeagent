@@ -253,13 +253,16 @@ test_that("chat_codeagent_ui uses native attachments + voice/server/skill contro
   expect_match(html, "Type / for commands")
 })
 
-test_that("head_assets includes styles.css, agent.js, and inlined voice JS", {
+test_that("head_assets loads styles.css and the scripts from files", {
   html <- as.character(htmltools::renderTags(head_assets())$head)
 
   expect_true(grepl("codeagent-www/styles.css", html, fixed = TRUE))
   expect_true(grepl("codeagent-www/agent.js", html, fixed = TRUE))
-  # voice.js is inlined (not a src reference) so its handlers survive footer render
-  expect_true(grepl("SpeechRecognition", html, fixed = TRUE))
+  # Scripts are files under inst/www, never inline strings. voice.js uses
+  # delegated handlers, so it survives the footer being rendered later.
+  expect_true(grepl("codeagent-www/voice.js", html, fixed = TRUE))
+  expect_true(grepl("codeagent-www/prism-config.js", html, fixed = TRUE))
+  expect_false(grepl("SpeechRecognition", html, fixed = TRUE))
   expect_false(grepl("data-theme", html, fixed = TRUE))
 })
 

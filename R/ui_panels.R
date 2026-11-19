@@ -26,21 +26,12 @@ head_assets <- function() {
     # `.toolcard`; the block surface comes from shinychat's `pre:has(>code.hljs)`.
     htmltools::tags$script(src = "codeagent-www/vendor/prism/prism-core.min.js"),
     htmltools::tags$script(src = "codeagent-www/vendor/prism/prism-autoloader.min.js"),
-    # Point the autoloader at the locally vendored grammars (runs synchronously
-    # right after the autoloader script defines the plugin).
-    htmltools::tags$script(htmltools::HTML(paste0(
-      "if(window.Prism&&Prism.plugins&&Prism.plugins.autoloader){",
-      "Prism.plugins.autoloader.languages_path=",
-      "'codeagent-www/vendor/prism/components/';}"
-    ))),
+    # Points the autoloader at the locally vendored grammars.
+    htmltools::tags$script(src = "codeagent-www/prism-config.js"),
     htmltools::tags$link(rel = "stylesheet", type = "text/css",
                          href = "codeagent-www/styles.css"),
     htmltools::tags$script(src = "codeagent-www/agent.js"),
-    htmltools::tags$script(htmltools::HTML(
-      paste(readLines(
-        system.file("www/voice.js", package = "codeagent")
-      ), collapse = "\n")
-    ))
+    htmltools::tags$script(src = "codeagent-www/voice.js")
   )
 }
 

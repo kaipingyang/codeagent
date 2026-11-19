@@ -1,10 +1,6 @@
 # The "dsh" theme (inst/themes/dsh.scss); design rules in the file header.
 
-dsh_css <- function() {
-  path <- system.file("themes", "dsh.scss", package = "codeagent")
-  if (!nzchar(path)) path <- test_path("..", "..", "inst", "themes", "dsh.scss")
-  readLines(path, warn = FALSE)
-}
+dsh_css <- function() readLines(.codeagent_theme_file("dsh"), warn = FALSE)
 
 # Component rules start after the token sections (1-4).
 dsh_component_css <- function() {
