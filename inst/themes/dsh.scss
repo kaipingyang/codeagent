@@ -866,3 +866,35 @@ body .ca-interaction .shiny-input-container {
   width: 100%;
   max-width: none;
 }
+
+/* == 13. Classic layout ========================================================== */
+/* Same flat frame as page_chat: a sidebar column, a frameless chat, a seam to the
+   workspace column. */
+body .bslib-page-sidebar,
+body .bslib-sidebar-layout {
+  --_main-bg: var(--ca-dsh-bg-base);
+  --_sidebar-bg: var(--ca-dsh-bg-sidebar);
+  --_sidebar-border-color: var(--ca-dsh-border-l2);
+  --_border-color: var(--ca-dsh-border-l2);
+}
+body #ca_left_sidebar {
+  background: var(--ca-dsh-bg-sidebar);
+  border-right: 0.5px solid var(--ca-dsh-border-l2);
+}
+body #ca_left_sidebar .card,
+body #ca_left_sidebar .card > .card-body {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body .card:has(> .card-body > shiny-chat-container) {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+body #ca_output_sidebar {
+  background: var(--ca-dsh-bg-base);
+  border-left: 0.5px solid var(--ca-dsh-border-l2);
+}
