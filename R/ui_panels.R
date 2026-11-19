@@ -76,6 +76,97 @@ head_assets <- function() {
 # Left sidebar: Sessions + Settings (Skills panel removed -- now in footer)
 # ---------------------------------------------------------------------------
 
+# Sidebar pieces. left_sidebar_ui() assembles them for classic and page_chat;
+# ui_layout = "dsh" places the same pieces (same input ids) in the composer row
+# and the settings dialog.
+.model_picker_ui <- function(model_choices = NULL, current_model = NULL) {
+  # Active model as a toolbar select -- switch model in one click. Reuses the
+  # "model_select" input id, so the existing server observer handles it.
+  if (length(model_choices) > 0L) {
+    # Guard: `selected` MUST be one of the choice VALUES or toolbar_input_select
+    # aborts ("`selected` value ... is not in `choices`"). current_model may be a
+    # raw model name while choices are "provider/model" specs, so map it: exact
+    # value -> model-component match -> first choice.
+    sel <- if (!is.null(current_model) && current_model %in% model_choices) {
+      current_model
+    } else {
+      hit <- match(current_model %||% "", sub("^[^/]+/", "", model_choices))
+      if (!is.na(hit)) unname(model_choices[[hit]]) else unname(model_choices[[1L]])
+    }
+    bslib::toolbar(
+      class = "ca-model-toolbar mb-2",
+      bslib::toolbar_input_select(
+        "model_select", label = "Model",
+        choices = model_choices, selected = sel,
+        show_label = FALSE, icon = shiny::icon("robot"),
+        tooltip = "Switch model -- history preserved"
+      )
+    )
+  } else {
+    htmltools::tags$div(
+      class = "ca-model-badge text-muted mb-2",
+      style = "font-size:.8rem;",
+      htmltools::tags$i(class = "fa fa-robot me-1"),
+      "Model: ",
+      htmltools::tags$span(id = "ca-current-model", current_model %||% "(auto)")
+    )
+  }
+}
+
+# Token budget bar
+.budget_ui <- function() {
+  htmltools::tags$div(
+    class = "ca-budget-wrap",
+    htmltools::tags$div(
+      class = "ca-budget-label",
+      htmltools::tags$span("Context"),
+      htmltools::tags$span(id = "token-budget-text", "0 tokens")
+    ),
+    htmltools::tags$div(
+      class = "token-budget-bar",
+      htmltools::tags$div(class = "token-budget-bar-fill", style = "width:0%")
+    )
+  )
+}
+
+.customizations_ui <- function() {
+  htmltools::tags$div(
+    customization_row_ui("ca_open_agents",       "robot",        "Agents"),
+    customization_row_ui("ca_open_skills",       "bolt",         "Skills"),
+    customization_row_ui("ca_open_instructions", "file-lines",   "Instructions"),
+    customization_row_ui("ca_open_hooks",        "plug",         "Hooks"),
+    customization_row_ui("ca_open_mcp",          "server",       "MCP Servers"),
+    customization_row_ui("ca_open_plugins",      "puzzle-piece", "Plugins")
+  )
+}
+
+.permission_select_ui <- function(permission_mode) {
+  shiny::selectInput("perm_mode", NULL,
+    choices  = unlist(PermissionMode),
+    selected = permission_mode,
+    width    = "100%")
+}
+
+.settings_panel_ui <- function(permission_mode, btw_available_groups,
+                               btw_groups_selected, show_permission = TRUE) {
+  htmltools::tags$div(
+    class = "ca-settings",
+    if (isTRUE(show_permission)) htmltools::tagList(
+      htmltools::tags$span("Permission mode", class = "ca-settings-label"),
+      .permission_select_ui(permission_mode)),
+    if (length(btw_available_groups) > 0L) {
+      htmltools::tagList(
+        htmltools::tags$span("btw tools", class = "ca-settings-label"),
+        shiny::checkboxGroupInput(
+          "btw_groups_input", NULL,
+          choices  = btw_available_groups,
+          selected = btw_groups_selected %||% btw_available_groups,
+          inline   = FALSE)
+      )
+    }
+  )
+}
+
 left_sidebar_ui <- function(permission_mode, btw_available_groups,
                              btw_groups_selected,
                              model_choices = NULL, current_model = NULL,
@@ -87,51 +178,8 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
       class = "d-flex justify-content-end mb-1",
       bslib::input_dark_mode(id = "ca_dark_mode")
     ),
-    # Active model as a toolbar select -- switch model in one click (was a
-    # read-only badge + a duplicate selectInput buried in Settings). Reuses the
-    # "model_select" input id, so the existing server observer handles it.
-    if (length(model_choices) > 0L) {
-      # Guard: `selected` MUST be one of the choice VALUES or toolbar_input_select
-      # aborts ("`selected` value ... is not in `choices`"). current_model may be a
-      # raw model name while choices are "provider/model" specs, so map it: exact
-      # value -> model-component match -> first choice.
-      sel <- if (!is.null(current_model) && current_model %in% model_choices) {
-        current_model
-      } else {
-        hit <- match(current_model %||% "", sub("^[^/]+/", "", model_choices))
-        if (!is.na(hit)) unname(model_choices[[hit]]) else unname(model_choices[[1L]])
-      }
-      bslib::toolbar(
-        class = "ca-model-toolbar mb-2",
-        bslib::toolbar_input_select(
-          "model_select", label = "Model",
-          choices = model_choices, selected = sel,
-          show_label = FALSE, icon = shiny::icon("robot"),
-          tooltip = "Switch model -- history preserved"
-        )
-      )
-    } else {
-      htmltools::tags$div(
-        class = "ca-model-badge text-muted mb-2",
-        style = "font-size:.8rem;",
-        htmltools::tags$i(class = "fa fa-robot me-1"),
-        "Model: ",
-        htmltools::tags$span(id = "ca-current-model", current_model %||% "(auto)")
-      )
-    },
-    # Token budget bar
-    htmltools::tags$div(
-      class = "ca-budget-wrap",
-      htmltools::tags$div(
-        class = "ca-budget-label",
-        htmltools::tags$span("Context"),
-        htmltools::tags$span(id = "token-budget-text", "0 tokens")
-      ),
-      htmltools::tags$div(
-        class = "token-budget-bar",
-        htmltools::tags$div(class = "token-budget-bar-fill", style = "width:0%")
-      )
-    ),
+    .model_picker_ui(model_choices, current_model),
+    .budget_ui(),
 
     bslib::accordion(
       id       = "ca_left_accordion",
@@ -155,37 +203,14 @@ left_sidebar_ui <- function(permission_mode, btw_available_groups,
       bslib::accordion_panel(
         title = "Customizations",
         value = "Customizations",
-        htmltools::tags$div(
-          customization_row_ui("ca_open_agents",       "robot",        "Agents"),
-          customization_row_ui("ca_open_skills",       "bolt",         "Skills"),
-          customization_row_ui("ca_open_instructions", "file-lines",   "Instructions"),
-          customization_row_ui("ca_open_hooks",        "plug",         "Hooks"),
-          customization_row_ui("ca_open_mcp",          "server",       "MCP Servers"),
-          customization_row_ui("ca_open_plugins",      "puzzle-piece", "Plugins")
-        )
+        .customizations_ui()
       ),
 
       bslib::accordion_panel(
         title = "Settings",
         value = "Settings",
-        htmltools::tags$div(
-          class = "ca-settings",
-          htmltools::tags$span("Permission mode", class = "ca-settings-label"),
-          shiny::selectInput("perm_mode", NULL,
-            choices  = unlist(PermissionMode),
-            selected = permission_mode,
-            width    = "100%"),
-          if (length(btw_available_groups) > 0L) {
-            htmltools::tagList(
-              htmltools::tags$span("btw tools", class = "ca-settings-label"),
-              shiny::checkboxGroupInput(
-                "btw_groups_input", NULL,
-                choices  = btw_available_groups,
-                selected = btw_groups_selected %||% btw_available_groups,
-                inline   = FALSE)
-            )
-          }
-        )
+        .settings_panel_ui(permission_mode, btw_available_groups,
+                           btw_groups_selected)
       )
     ),
 
@@ -331,4 +356,74 @@ output_panel_ui <- function(canvas = FALSE, canvas_opts = NULL) {
       ),
       if (isTRUE(canvas)) .genui_canvas_panel(canvas_opts %||% canvas_options())
     )
+}
+
+# ---------------------------------------------------------------------------
+# ui_layout = "dsh": DeepSeek-Harness-like page structure on shinychat's
+# page_chat(). Same inputs and ids as the other layouts, placed differently:
+# conversation history in the left column, model and permission in the
+# composer row, customizations and tool groups in a settings dialog.
+# ---------------------------------------------------------------------------
+
+.dsh_sidebar_ui <- function() {
+  chat_sidebar <- .shinychat_export("chat_sidebar")
+  do.call(chat_sidebar, list(
+    htmltools::tags$div(
+      class = "ca-dsh-sidebar-footer",
+      htmltools::tags$button(
+        type = "button", class = "btn ca-dsh-sidebar-link",
+        `data-ca-dialog` = "ca_settings_dialog",
+        shiny::icon("gear"), htmltools::tags$span("Settings"))),
+    history = TRUE, width = 280, open = "open", resizable = TRUE))
+}
+
+.dsh_composer_toolbar_ui <- function(permission_mode, model_choices = NULL,
+                                     current_model = NULL) {
+  modes <- unlist(PermissionMode)
+  bslib::toolbar(
+    class = "ca-dsh-composer-toolbar",
+    bslib::toolbar_input_select(
+      "perm_mode", label = "Permission mode",
+      choices = stats::setNames(modes, modes),
+      selected = if (permission_mode %in% modes) permission_mode else modes[[1L]],
+      show_label = FALSE, icon = shiny::icon("shield-halved"),
+      tooltip = "Permission mode"),
+    if (length(model_choices) > 0L) {
+      sel <- if (!is.null(current_model) && current_model %in% model_choices) {
+        current_model
+      } else {
+        hit <- match(current_model %||% "", sub("^[^/]+/", "", model_choices))
+        if (!is.na(hit)) unname(model_choices[[hit]]) else unname(model_choices[[1L]])
+      }
+      bslib::toolbar_input_select(
+        "model_select", label = "Model",
+        choices = model_choices, selected = sel,
+        show_label = FALSE, icon = shiny::icon("robot"),
+        tooltip = "Switch model -- history preserved")
+    }
+  )
+}
+
+.dsh_settings_dialog_ui <- function(btw_available_groups, btw_groups_selected) {
+  section <- function(title, ...) htmltools::tags$section(
+    class = "ca-dialog-section",
+    htmltools::tags$h3(class = "ca-dialog-section-title", title), ...)
+  htmltools::tags$dialog(
+    id = "ca_settings_dialog", class = "ca-dialog",
+    `aria-labelledby` = "ca_settings_dialog_title",
+    htmltools::tags$div(
+      class = "ca-dialog-header",
+      htmltools::tags$h2(id = "ca_settings_dialog_title", "Settings"),
+      htmltools::tags$button(
+        type = "button", class = "btn ca-dialog-close",
+        `data-ca-dialog-close` = "", `aria-label` = "Close",
+        shiny::icon("xmark"))),
+    htmltools::tags$div(
+      class = "ca-dialog-body",
+      section("Context", .budget_ui()),
+      section("Customizations", .customizations_ui()),
+      section("Tools", .settings_panel_ui(NULL, btw_available_groups,
+                                          btw_groups_selected,
+                                          show_permission = FALSE)),
+      htmltools::tags$p(class = "ca-footer", "codeagent - ESC to interrupt")))
 }

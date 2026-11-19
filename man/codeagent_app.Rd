@@ -22,7 +22,7 @@ codeagent_app(
   chat = NULL,
   web_citations = c("off", "shiny_aside"),
   web_allow_private = FALSE,
-  ui_layout = c("classic", "page_chat"),
+  ui_layout = c("classic", "page_chat", "dsh"),
   canvas = NULL
 )
 }
@@ -94,7 +94,12 @@ closed rather than weakening SSRF protection.}
 \item{ui_layout}{UI shell. \code{"classic"} (default) preserves the existing
 three-column layout. \code{"page_chat"} opts into shinychat's full-window page
 with codeagent controls on the left and the Output/Files/File workspace in
-the official resizable drawer on the right.}
+the official resizable drawer on the right.
+\code{"dsh"} is the same page with a DeepSeek-Harness-like structure: shinychat's
+conversation history in the left column, permission mode and model in the
+composer row, customizations in a Settings dialog, and the workspace
+drawer closed until a tool result or file opens it. Pairs with
+\code{theme = "dsh"}.}
 
 \item{canvas}{Generative UI canvas options from \code{\link[=canvas_options]{canvas_options()}}:
 which components the model may draw (shinygenui's own and your own), the

@@ -344,3 +344,24 @@
   }, true);
 
 })();
+
+// Dialogs (ui_layout = "dsh" settings): [data-ca-dialog="<id>"] opens the
+// <dialog> with that id, [data-ca-dialog-close] closes its dialog. Shiny inputs
+// inside the dialog stay mounted, so their bindings and values persist.
+document.addEventListener('click', function (event) {
+  var opener = event.target.closest && event.target.closest('[data-ca-dialog]');
+  if (opener) {
+    var dlg = document.getElementById(opener.getAttribute('data-ca-dialog'));
+    if (dlg && typeof dlg.showModal === 'function' && !dlg.open) dlg.showModal();
+    return;
+  }
+  var closer = event.target.closest && event.target.closest('[data-ca-dialog-close]');
+  if (closer) {
+    var d = closer.closest('dialog');
+    if (d) d.close();
+    return;
+  }
+  // A click on the backdrop (the dialog element itself) closes it.
+  if (event.target.tagName === 'DIALOG' && event.target.classList.contains('ca-dialog'))
+    event.target.close();
+});

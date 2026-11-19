@@ -1,5 +1,16 @@
 # codeagent (development version)
 
+* New `codeagent_app(ui_layout = "dsh")`: the page_chat page with a
+  DeepSeek-Harness-like structure -- shinychat's conversation history in the left
+  column (the model context still comes from codeagent's session log), permission
+  mode and model in the composer row, customizations and tool groups in a Settings
+  dialog, and the workspace drawer closed until a tool result or file opens it.
+  Pairs with `theme = "dsh"`; works with any theme.
+* Fixed: with shinychat history active, a streamed reply ended with a stray `TRUE`
+  (the presentation-record call was the stream generator's last value).
+* Built-in theme rules are files (`inst/themes/{ios,aurora,dsh}.scss`) and the
+  Prism setup and voice input load from `inst/www` instead of inline strings.
+
 * New theme `codeagent_theme("dsh")` / `codeagent_app(theme = "dsh")`: flat layered
   surfaces after the DeepSeek Harness Web UI design system -- semantic tokens with
   dark-mode rebinding, 0.5px hairlines, role-based radii, bubble-free assistant

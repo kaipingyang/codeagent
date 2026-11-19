@@ -898,3 +898,158 @@ body #ca_output_sidebar {
   background: var(--ca-dsh-bg-base);
   border-left: 0.5px solid var(--ca-dsh-border-l2);
 }
+
+/* == 14. ui_layout = "dsh" regions ============================================== */
+/* Composer: the input and its toolbar row form one card (DSH puts the permission
+   chip and model picker inside the composer). The card moves from the dropzone
+   to the whole .shiny-chat-input when a toolbar row is present. */
+body .shiny-chat-composer:has(> .shiny-chat-input-toolbar) {
+  border-radius: var(--ca-dsh-radius-panel);
+  background: var(--ca-dsh-bg-input);
+  box-shadow: var(--ca-dsh-elevation-soft);
+  padding: 8px 8px 8px;
+}
+body .shiny-chat-composer:has(> .shiny-chat-input-toolbar) .shiny-chat-input-dropzone {
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0;
+}
+body .shiny-chat-input-toolbar {
+  padding: 0 4px;
+}
+body .ca-dsh-composer-toolbar {
+  justify-content: flex-start;
+  gap: 4px;
+}
+body .ca-dsh-composer-toolbar .bslib-toolbar-input-select {
+  border: 0;
+  border-radius: var(--ca-dsh-radius-sm);
+  background: transparent;
+}
+body .ca-dsh-composer-toolbar select {
+  border: 0;
+  background-color: transparent;
+  color: var(--ca-dsh-label-secondary);
+  font-size: 13px;
+  box-shadow: none;
+}
+body .ca-dsh-composer-toolbar #model_select {
+  margin-left: auto;
+}
+@media (hover: hover) {
+  body .ca-dsh-composer-toolbar .bslib-toolbar-input-select:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+
+/* Left column: shinychat history as DSH session rows. */
+body .shiny-chat-history {
+  --shiny-chat-history-bg: transparent;
+  --shiny-chat-history-item-hover-bg: var(--ca-dsh-bg-hover);
+  --shiny-chat-history-item-active-bg: var(--ca-dsh-bg-hover);
+  --shiny-chat-history-accent: var(--ca-dsh-label-primary);
+  --shiny-chat-history-border-color: var(--ca-dsh-border-l2);
+}
+body .shiny-chat-history-new {
+  border: 0.5px solid var(--ca-dsh-border-l4);
+  border-radius: var(--ca-dsh-radius-md);
+  background: var(--ca-dsh-bg-layer-1);
+  color: var(--ca-dsh-label-primary);
+  font-weight: 400;
+}
+body .shiny-chat-history-section {
+  background: transparent;
+  color: var(--ca-dsh-label-tertiary);
+  font-size: 13px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+}
+body .shiny-chat-history-item {
+  min-height: 32px;
+  border-radius: var(--ca-dsh-radius-md);
+  font-size: 14px;
+  color: var(--ca-dsh-label-primary);
+}
+body .shiny-chat-history-item.active {
+  background: var(--ca-dsh-bg-hover);
+}
+/* Sidebar footer: a plain row like DSH's bottom "More". */
+body .ca-dsh-sidebar-footer {
+  margin-top: auto;
+  padding: 8px 0 0;
+}
+body .shiny-chat-page-sidebar .ca-dsh-sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  border-radius: var(--ca-dsh-radius-md);
+  background: transparent;
+  color: var(--ca-dsh-label-primary);
+  font-size: 14px;
+  padding: 6px 12px;
+}
+@media (hover: hover) {
+  body .shiny-chat-page-sidebar .ca-dsh-sidebar-link:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+body .shiny-chat-page-sidebar-panel:has(.ca-dsh-sidebar-footer) {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Settings dialog: DSH settings modal (R28 panel, sections as settings cards). */
+body .ca-dialog {
+  width: #{"min(720px, calc(100vw - 32px))"};
+  max-height: calc(100vh - 64px);
+  padding: 0;
+  border: 0;
+  border-radius: var(--ca-dsh-radius-panel);
+  background: var(--ca-dsh-bg-layer-2);
+  color: var(--ca-dsh-label-primary);
+  box-shadow: var(--ca-dsh-elevation-prominent);
+}
+body .ca-dialog::backdrop {
+  background: var(--ca-dsh-bg-mask);
+}
+body .ca-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px 8px;
+}
+body .ca-dialog-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 500;
+}
+body .ca-dialog-close {
+  border: 0;
+  background: transparent;
+  color: var(--ca-dsh-label-secondary);
+  border-radius: var(--ca-dsh-radius-sm);
+}
+body .ca-dialog-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 8px 24px 24px;
+  overflow-y: auto;
+  max-height: calc(100vh - 140px);
+}
+body .ca-dialog-section {
+  padding: 12px 16px;
+  border: 0.5px solid var(--ca-dsh-border-l4);
+  border-radius: var(--ca-dsh-radius-xl);
+  background: var(--ca-dsh-bg-layer-2);
+}
+body .ca-dialog-section-title {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ca-dsh-label-primary);
+}

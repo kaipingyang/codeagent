@@ -257,8 +257,12 @@ codeagent_theme <- function(style = "default", ...) {
 
 # Build the opt-in full-window shinychat page while codeagent keeps server,
 # session, permission, and streaming ownership.
+# Layouts built on shinychat::page_chat() (drawer workspace, global toolbar).
+.uses_page_chat <- function(ui_layout) ui_layout %in% c("page_chat", "dsh")
+
 .codeagent_page_chat_ui <- function(theme, sidebar, workspace,
-                                    chat_args = list()) {
+                                    chat_args = list(), drawer_open = TRUE,
+                                    extra = NULL) {
   if (!.shinychat_page_chat_available()) {
     stop(
       paste0(
@@ -275,12 +279,12 @@ codeagent_theme <- function(style = "default", ...) {
   drawer <- do.call(
     chat_drawer,
     c(list(workspace), list(
-      title = "Workspace", width = "50%", open = TRUE, resizable = TRUE))
+      title = "Workspace", width = "50%", open = drawer_open, resizable = TRUE))
   )
   # page_chat owns the full-window layout; codeagent's primary chat should fill
   # the available main column instead of inheriting shinychat's prose-oriented
   # 760px default cap. The sidebar and drawer still reduce the containing width.
-  chat_args$width <- "100%"
+  chat_args$width <- chat_args$width %||% "100%"
   page <- do.call(
     page_chat,
     c(list(
@@ -292,6 +296,7 @@ codeagent_theme <- function(style = "default", ...) {
   htmltools::tagAppendChildren(
     page,
     head_assets(),
+    extra,
     shiny::uiOutput("ca_init_overlay")
   )
 }
@@ -308,6 +313,11 @@ codeagent_theme <- function(style = "default", ...) {
 #'   three-column layout. `"page_chat"` opts into shinychat's full-window page
 #'   with codeagent controls on the left and the Output/Files/File workspace in
 #'   the official resizable drawer on the right.
+#'   `"dsh"` is the same page with a DeepSeek-Harness-like structure: shinychat's
+#'   conversation history in the left column, permission mode and model in the
+#'   composer row, customizations in a Settings dialog, and the workspace
+#'   drawer closed until a tool result or file opens it. Pairs with
+#'   `theme = "dsh"`.
 #' @param theme UI theme name or a bslib `bs_theme` object. Built-in names are
 #'   `"default"`, `"ios"` (iOS grouped canvas with white cards), `"aurora"`
 #'   (ambient blue-indigo-purple light with selective frosted controls), `"dsh"`
@@ -377,7 +387,7 @@ codeagent_app <- function(
   chat            = NULL,
   web_citations   = c("off", "shiny_aside"),
   web_allow_private = FALSE,
-  ui_layout       = c("classic", "page_chat"),
+  ui_layout       = c("classic", "page_chat", "dsh"),
   canvas          = NULL
 ) {
 
@@ -506,12 +516,33 @@ codeagent_app <- function(
         btw_groups_selected = btw_groups,
         model_choices = model_choices,
         current_model = sel_model,
-        show_dark_mode = !identical(ui_layout, "page_chat")
+        show_dark_mode = !.uses_page_chat(ui_layout)
       )
     )
   )
 
-  if (identical(ui_layout, "page_chat")) {
+  if (identical(ui_layout, "dsh")) {
+    workspace <- htmltools::div(
+      id = "ca_page_chat_workspace",
+      class = "html-fill-container html-fill-item",
+      style = "height:100%;min-height:0;",
+      .codeagent_workspace_card(canvas = genui_ui, canvas_opts = canvas)
+    )
+    chat_args <- .codeagent_chat_args(skill_meta, chat_submit_key)
+    chat_args$toolbar_input <- .dsh_composer_toolbar_ui(
+      permission_mode, model_choices, sel_model)
+    chat_args$placeholder <- "Message or run a task, / commands"
+    # DSH content axis: messages and composer share clamp(680px, 64%, 880px).
+    chat_args$width <- "min(clamp(680px, 64%, 880px), 100%)"
+    ui <- .codeagent_page_chat_ui(
+      theme = ca_bs_theme,
+      sidebar = .dsh_sidebar_ui(),
+      workspace = workspace,
+      chat_args = chat_args,
+      drawer_open = FALSE,
+      extra = .dsh_settings_dialog_ui(btw_available_groups, btw_groups)
+    )
+  } else if (identical(ui_layout, "page_chat")) {
     workspace <- htmltools::div(
       id = "ca_page_chat_workspace",
       class = "html-fill-container html-fill-item",
@@ -568,7 +599,7 @@ codeagent_app <- function(
       canvas_explicit = genui_explicit,
       per_session     = genui_per_session,
       tools_ready     = tools_ready,
-      drawer_id       = if (identical(ui_layout, "page_chat")) "chat" else NULL,
+      drawer_id       = if (.uses_page_chat(ui_layout)) "chat" else NULL,
       settings_overrides = list(web_citations = web_citations, ui_layout = ui_layout))
     settings    <- core$settings
     state       <- core$state
@@ -596,12 +627,19 @@ codeagent_app <- function(
       }, once = TRUE)
     }
 
-    server_sessions(input, output, session,
-                    chat        = chat_obj,
-                    cwd         = cwd,
-                    state       = state,
-                    stream_task = stream_task,
-                    settings    = settings)
+    if (identical(ui_layout, "dsh")) {
+      # Conversation history is shinychat's (left column); the model context
+      # still comes from codeagent's session log, as in codeagent_server().
+      .enable_shinychat_history(input, session, chat_obj, core,
+                                shinychat::history_options())
+    } else {
+      server_sessions(input, output, session,
+                      chat        = chat_obj,
+                      cwd         = cwd,
+                      state       = state,
+                      stream_task = stream_task,
+                      settings    = settings)
+    }
 
     # Prominent init overlay: a full-window splash shown while the deferred
     # initialization runs, so the user sees clear progress instead of a frozen or
@@ -691,10 +729,10 @@ codeagent_app <- function(
                  state = state,
                  show_hidden = isTRUE(file_tree_show_hidden),
                  exclude = file_tree_exclude,
-                 drawer_id = if (identical(ui_layout, "page_chat"))
+                 drawer_id = if (.uses_page_chat(ui_layout))
                    "chat" else NULL)
 
-    if (identical(ui_layout, "page_chat")) {
+    if (.uses_page_chat(ui_layout)) {
       shiny::observeEvent(input$ca_workspace_toggle, {
         .shinychat_drawer_action("chat", "toggle", session = session)
       }, ignoreInit = TRUE)

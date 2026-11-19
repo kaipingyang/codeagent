@@ -64,4 +64,9 @@ scenario_steps <- list(
 scenario_steps$D <- list(
   dsh = W(1),
   ca = c(ca_send("Explain R/demo.R and summarise it in a table"), W(8),
-         "__d.outline('.shiny-chat-drawer-content', 7)"))
+         "__d.outline('.shiny-chat-page-sidebar', 6)",
+         "__d.outline('.shiny-chat-composer', 6)",
+         "__d.outline('.shiny-chat-footer', 3)"))
+scenario_steps$S7 <- list(
+  dsh = c("__d.waitAt('Account menu')", "__d.waitAt('Settings')"),
+  ca  = c("__d.waitAt('Settings')"))
