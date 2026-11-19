@@ -2,6 +2,44 @@
 
 ## codeagent (development version)
 
+- New `codeagent_history_options(cwd, user, max_store_mb = NULL)`:
+  shinychat’s history selector over codeagent’s session log, for
+  personal use. Every earlier session of the project is listed, no
+  second copy of a conversation is written (the store appends only the
+  shinychat record id and titles to the log), and conversations are
+  partitioned by user (the owner is written into each new log; logs from
+  before belong to the account running the app). `max_store_mb` defaults
+  to `NULL` because shinychat’s size limit deletes conversations.
+  `ui_layout = "dsh"` uses it; deployed host apps keep
+  [`shinychat::history_options()`](https://posit-dev.github.io/shinychat/r/reference/history_options.html)
+  with their own store.
+
+- New `codeagent_app(ui_layout = "dsh")`: the page_chat page with a
+  DeepSeek-Harness-like structure – shinychat’s conversation history in
+  the left column (the model context still comes from codeagent’s
+  session log), permission mode and model in the composer row,
+  customizations and tool groups in a Settings dialog, and the workspace
+  drawer closed until a tool result or file opens it. Pairs with
+  `theme = "dsh"`; works with any theme.
+
+- Fixed: with shinychat history active, a streamed reply ended with a
+  stray `TRUE` (the presentation-record call was the stream generator’s
+  last value).
+
+- Built-in theme rules are files (`inst/themes/{ios,aurora,dsh}.scss`)
+  and the Prism setup and voice input load from `inst/www` instead of
+  inline strings.
+
+- New theme `codeagent_theme("dsh")` / `codeagent_app(theme = "dsh")`:
+  flat layered surfaces after the DeepSeek Harness Web UI design system
+  – semantic tokens with dark-mode rebinding, 0.5px hairlines,
+  role-based radii, bubble-free assistant replies, a card composer,
+  one-line tool rows, and approval / question cards seated where the
+  composer is. Not affiliated with DeepSeek; no DeepSeek name, logo or
+  brand colour. The interaction bars (approval, question, form, Data
+  Shield) are now built from one class-based shell (`ca-interaction*`)
+  with the same default look.
+
 - `codeagent_server(on_user_prompt =)`: a host `function(text)` called
   before each turn reaches the model – the host side of the
   `UserPromptSubmit` hook. It returns `NULL`, context to add to the turn

@@ -90,7 +90,10 @@
 <span>  git_branch <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cwd <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  tag <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  created_at <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  created_at <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  user <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  title_source <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  shinychat_id <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -136,6 +139,18 @@
 
 <dt id="arg-created-at">created_at<a class="anchor" aria-label="anchor" href="#arg-created-at"></a></dt>
 <dd><p>Numeric or NULL. Creation timestamp in ms.</p></dd>
+
+
+<dt id="arg-user">user<a class="anchor" aria-label="anchor" href="#arg-user"></a></dt>
+<dd><p>Character or NULL. Owner written in the session header.</p></dd>
+
+
+<dt id="arg-title-source">title_source<a class="anchor" aria-label="anchor" href="#arg-title-source"></a></dt>
+<dd><p>Character or NULL. <code>"user"</code> or <code>"llm"</code> for a custom title.</p></dd>
+
+
+<dt id="arg-shinychat-id">shinychat_id<a class="anchor" aria-label="anchor" href="#arg-shinychat-id"></a></dt>
+<dd><p>Character or NULL. shinychat conversation record id.</p></dd>
 
 </dl></div>
     <div class="section level2">

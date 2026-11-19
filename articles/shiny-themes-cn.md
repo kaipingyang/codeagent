@@ -68,13 +68,14 @@ codeagent_app(
 
 其余内置主题不依赖 shinyglass：
 
-| 主题      | 外观                                        |
-|-----------|---------------------------------------------|
-| `default` | 标准 shinychat/bslib 页面主题               |
-| `ios`     | 分组画布、明亮卡片和紧凑的 iOS 风格表面     |
-| `aurora`  | 蓝色、靛蓝和紫色环境光以及选择性磨砂 chrome |
-| `flatly`  | 浅色 Bootswatch 主题                        |
-| `darkly`  | 深色 Bootswatch 主题                        |
+| 主题 | 外观 |
+|----|----|
+| `default` | 标准 shinychat/bslib 页面主题 |
+| `ios` | 分组画布、明亮卡片和紧凑的 iOS 风格表面 |
+| `aurora` | 蓝色、靛蓝和紫色环境光以及选择性磨砂 chrome |
+| `dsh` | 参照 DeepSeek Harness Web UI 设计体系的扁平分层界面：0.5px 细线、按角色分档的圆角、无气泡的回复、坐在输入框位置的审批卡（与 DeepSeek 无关，不含其品牌元素） |
+| `flatly` | 浅色 Bootswatch 主题 |
+| `darkly` | 深色 Bootswatch 主题 |
 
 可以把名称直接传给
 [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)，也可以创建可复用的主题对象：

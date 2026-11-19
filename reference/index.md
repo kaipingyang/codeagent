@@ -36,6 +36,8 @@ Interactive chat interface.
   : Launch the codeagent Shiny application
 - [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md)
   : Run codeagent's chat engine inside a host Shiny app
+- [`codeagent_history_options()`](https://kaipingyang.github.io/codeagent/reference/codeagent_history_options.md)
+  : shinychat history over codeagent's session log
 - [`codeagent_chat_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.md)
   : Chat UI for a host app that embeds codeagent
 - [`codeagent_canvas_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_canvas_ui.md)
@@ -206,7 +208,7 @@ Model Context Protocol client and server.
   :
 
   Exposes codeagent's tool set as an MCP server via
-  [`mcptools::mcp_server()`](https://rdrr.io/pkg/mcptools/man/server.html).
+  [`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html).
   Session tools are disabled by default because they expose a separate
   R-session control surface that does not pass through codeagent's Chat
   permission gate or Data Shield.

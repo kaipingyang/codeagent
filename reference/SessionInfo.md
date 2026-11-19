@@ -15,7 +15,10 @@ SessionInfo(
   git_branch = NULL,
   cwd = NULL,
   tag = NULL,
-  created_at = NULL
+  created_at = NULL,
+  user = NULL,
+  title_source = NULL,
+  shinychat_id = NULL
 )
 ```
 
@@ -60,6 +63,18 @@ SessionInfo(
 - created_at:
 
   Numeric or NULL. Creation timestamp in ms.
+
+- user:
+
+  Character or NULL. Owner written in the session header.
+
+- title_source:
+
+  Character or NULL. `"user"` or `"llm"` for a custom title.
+
+- shinychat_id:
+
+  Character or NULL. shinychat conversation record id.
 
 ## Value
 

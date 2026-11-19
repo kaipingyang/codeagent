@@ -19,10 +19,10 @@ codeagent_theme(style = "default", ...)
 
 - style:
 
-  One of `"default"`, `"ios"`, `"aurora"`, `"flatly"`, `"darkly"`, or
-  `"glass"`. CLI aliases `"light"`, `"dark"`, and `"glassmorphism"` are
-  also accepted. Unknown values fail soft to `"default"`. `"glass"`
-  requires the optional `shinyglass` package.
+  One of `"default"`, `"ios"`, `"aurora"`, `"dsh"`, `"flatly"`,
+  `"darkly"`, or `"glass"`. CLI aliases `"light"`, `"dark"`, and
+  `"glassmorphism"` are also accepted. Unknown values fail soft to
+  `"default"`. `"glass"` requires the optional `shinyglass` package.
 
 - ...:
 

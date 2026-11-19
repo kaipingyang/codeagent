@@ -2,7 +2,7 @@
 
 Registers tools exposed by external Model Context Protocol servers onto
 a codeagent Chat, via
-[`mcptools::mcp_tools()`](https://rdrr.io/pkg/mcptools/man/client.html).
+[`mcptools::mcp_tools()`](https://posit-dev.github.io/mcptools/reference/client.html).
 This is the client side (consuming external tools);
 [`codeagent_mcp_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mcp_server.md)
 is the server side (exposing codeagent's tools).

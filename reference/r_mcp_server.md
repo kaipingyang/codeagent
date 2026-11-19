@@ -1,7 +1,7 @@
 # Create an R-based MCP server entry
 
 Builds an `mcp_servers` list entry that launches an R subprocess running
-[`mcptools::mcp_server()`](https://rdrr.io/pkg/mcptools/man/server.html)
+[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
 over stdio.
 
 ## Usage

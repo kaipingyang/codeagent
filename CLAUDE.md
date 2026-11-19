@@ -173,6 +173,20 @@ Shield）、工具权限。
 `network`/`max_rows`/`packages` 并合成 CSP，精简为
 `canvas_options(csp=, validate_text=)` 两个开关。）
 
+**样式和脚本放文件，不写成 R 字符串：** 主题的额外规则放
+`inst/themes/<name>.scss` （纯
+CSS，[`codeagent_theme()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme.md)
+用
+[`sass::sass_file()`](https://rstudio.github.io/sass/reference/sass_import.html)
+和主题一起编译，只随该主题下发）； 应用级 CSS/JS 放 `inst/www/`，用
+`tags$link(href=)` / `tags$script(src=)` 引用。不要
+`bs_add_rules(theme, "...")`、`paste(c("css..."))`、`tags$style(...)`、
+`tags$script(HTML(...))`。这是成熟 Shiny
+组件包的通行做法（shinychat：`htmlDependency()` +
+`inst/lib/`；shinyglass：`bs_add_rules(theme, sass_file("inst/scss/glass.scss"))`；
+bslib/shinyWidgets：`inst/` 下的组件目录 + `htmlDependency()`）。
+`tests/testthat/test-app-theme.R` 有一条源码扫描测试守着。
+
 **工具函数用闭包工厂模式：**
 
 ``` r
@@ -676,7 +690,7 @@ foreground subagent tools. Shielded foreground subagents inherit the
 same live `DataShield`, gate the reply before hooks/callbacks/parent
 results, and do not persist raw sidechains; shielded background agents
 fail closed. `codeagent_mcp_server(..., session_tools=FALSE)` calls
-[`mcptools::mcp_server()`](https://rdrr.io/pkg/mcptools/man/server.html)
+[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
 directly, requires mcptools \>= 1.0.2.9000, and rejects session tools on
 non-loopback HTTP because those controls bypass the Chat permission
 gate/Data Shield.
@@ -845,7 +859,9 @@ retaining the raw provider reason.
 set, uses `chat_openai_compatible` with the configured compact model;
 otherwise `chat_anthropic`.
 
-**`ui.R`** —
+**`ui.R`** — Built-in theme rules are files:
+`inst/themes/{ios,aurora,dsh}.scss`, loaded by
+`.codeagent_theme_rules()`.
 [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
 keeps instant startup: tool/skill registration is deferred behind the
 initialization overlay, and input remains disabled until ready. Citation

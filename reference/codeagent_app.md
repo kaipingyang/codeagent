@@ -23,7 +23,7 @@ codeagent_app(
   chat = NULL,
   web_citations = c("off", "shiny_aside"),
   web_allow_private = FALSE,
-  ui_layout = c("classic", "page_chat"),
+  ui_layout = c("classic", "page_chat", "dsh"),
   canvas = NULL
 )
 ```
@@ -49,9 +49,10 @@ codeagent_app(
   UI theme name or a bslib `bs_theme` object. Built-in names are
   `"default"`, `"ios"` (iOS grouped canvas with white cards), `"aurora"`
   (ambient blue-indigo-purple light with selective frosted controls),
-  `"flatly"`, `"darkly"` (dark), and `"glass"` (Liquid Glass from the
-  optional `shinyglass` package, 0.5.0 or later, which also styles
-  shinychat). A theme from
+  `"dsh"` (flat layered surfaces after the DeepSeek Harness Web UI
+  design system), `"flatly"`, `"darkly"` (dark), and `"glass"` (Liquid
+  Glass from the optional `shinyglass` package, 0.5.0 or later, which
+  also styles shinychat). A theme from
   [`codeagent_theme()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme.md)
   or
   [`shinychat::page_chat_theme()`](https://posit-dev.github.io/shinychat/r/reference/page_chat_theme.html)
@@ -140,7 +141,12 @@ codeagent_app(
   UI shell. `"classic"` (default) preserves the existing three-column
   layout. `"page_chat"` opts into shinychat's full-window page with
   codeagent controls on the left and the Output/Files/File workspace in
-  the official resizable drawer on the right.
+  the official resizable drawer on the right. `"dsh"` is the same page
+  with a DeepSeek-Harness-like structure: shinychat's conversation
+  history in the left column, permission mode and model in the composer
+  row, customizations in a Settings dialog, and the workspace drawer
+  closed until a tool result or file opens it. Pairs with
+  `theme = "dsh"`.
 
 - canvas:
 
