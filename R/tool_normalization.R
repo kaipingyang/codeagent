@@ -181,3 +181,41 @@
   NULL
 }
 
+
+# After an interrupt or an error, a tool request can be left without a
+# result. Providers reject such a history on the next request, and a restored
+# conversation would carry it: close each one with an error result, placed with
+# the other results of its round. Returns the number closed.
+.close_dangling_tool_requests <- function(chat,
+                                          message = "Interrupted before the tool returned.") {
+  turns <- tryCatch(chat$get_turns(), error = function(e) NULL)
+  if (!length(turns)) return(invisible(0L))
+  is_req <- function(x) S7::S7_inherits(x, ellmer::ContentToolRequest)
+  is_res <- function(x) S7::S7_inherits(x, ellmer::ContentToolResult)
+  answered <- character(0)
+  for (t in turns) for (x in tryCatch(t@contents, error = function(e) list()))
+    if (is_res(x)) answered <- c(answered, tryCatch(x@request@id, error = function(e) NA_character_))
+  out <- list(); closed <- 0L; i <- 1L
+  while (i <= length(turns)) {
+    t <- turns[[i]]
+    out[[length(out) + 1L]] <- t
+    contents <- tryCatch(t@contents, error = function(e) list())
+    missing <- Filter(function(x) is_req(x) && !x@id %in% answered, contents)
+    if (identical(tryCatch(t@role, error = function(e) ""), "assistant") && length(missing)) {
+      fill <- lapply(missing, function(r) ellmer::ContentToolResult(error = message, request = r))
+      closed <- closed + length(fill)
+      nxt <- if (i < length(turns)) turns[[i + 1L]] else NULL
+      nxt_contents <- if (is.null(nxt)) list() else tryCatch(nxt@contents, error = function(e) list())
+      if (!is.null(nxt) && identical(nxt@role, "user") && length(nxt_contents) &&
+          all(vapply(nxt_contents, is_res, NA))) {
+        out[[length(out) + 1L]] <- ellmer::Turn("user", c(nxt_contents, fill))
+        i <- i + 1L
+      } else {
+        out[[length(out) + 1L]] <- ellmer::Turn("user", fill)
+      }
+    }
+    i <- i + 1L
+  }
+  if (closed) tryCatch(chat$set_turns(out), error = function(e) NULL)
+  invisible(closed)
+}

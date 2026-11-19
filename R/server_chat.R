@@ -311,10 +311,12 @@ server_chat <- function(input, output, session, chat, settings,
       presentation_text <- NULL
       if (!is.null(finalized)) presentation_text <- finalized$text
       .genui_end_turn(settings, chat)
+      .close_dangling_tool_requests(chat)
       tryCatch(save_session(
         chat, cwd, sid,
         assistant_text_override = presentation_text,
-        genui_state = .genui_snapshot(settings, chat)),
+        genui_state = .genui_snapshot(settings, chat),
+        workspace_state = shiny::isolate(state$ws_layout)),
         error = function(e) NULL)
       if (!is.null(finalized) && !is.null(hooks)) tryCatch(
         hooks$run_stop(finalized$finish$stop_reason,

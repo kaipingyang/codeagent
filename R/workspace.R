@@ -109,6 +109,53 @@ codeagent_workspace_ui <- function(id = "ca_ws") {
 
 .ws_note <- function(text) htmltools::tags$div(class = "ca-ws-note", text)
 
+# -- persistence --------------------------------------------------------------------
+
+# The stored form of a layout: tabs, active, view order, id counter.
+.ws_state <- function(layout) {
+  layout <- .ws_validate(layout)
+  list(tabs = layout$tabs, active = layout$active, seen = as.list(layout$seen),
+       next_id = layout$next_id)
+}
+
+# One `workspace-state` log line, or NULL when the layout is the last saved one.
+.ws_state_line <- function(session_id, layout, timestamp, last_digest = NULL) {
+  st <- .ws_state(layout)
+  d <- .session_digest(st)
+  if (identical(d, last_digest)) return(NULL)
+  as.character(jsonlite::toJSON(
+    list(type = "workspace-state", sessionId = session_id, timestamp = timestamp,
+         digest = d, state = st),
+    auto_unbox = TRUE, null = "null"))
+}
+
+# Save a layout change between replies. Only a session whose log exists: a new
+# conversation's layout goes out with its first reply (save_session()).
+.ws_save <- function(session_id, cwd, layout) {
+  if (is.null(session_id) || is.null(.validate_uuid(session_id))) return(invisible(FALSE))
+  path <- .find_session_path(session_id, cwd)
+  if (is.null(path)) return(invisible(FALSE))
+  log <- tryCatch(.session_log_read(path), error = function(e) NULL)
+  line <- .ws_state_line(session_id, layout, .session_now(), log$workspace_digest)
+  if (is.null(line)) return(invisible(FALSE))
+  tryCatch(.session_append_lines(path, line), error = function(e) NULL)
+  invisible(TRUE)
+}
+
+# The last saved layout of a session, or NULL.
+.ws_read <- function(session_id, cwd) {
+  if (is.null(session_id) || is.null(.validate_uuid(session_id))) return(NULL)
+  path <- .find_session_path(session_id, cwd)
+  if (is.null(path)) return(NULL)
+  lines <- tryCatch(readLines(path, warn = FALSE), error = function(e) character())
+  for (ln in rev(lines)) {
+    if (!grepl("\"workspace-state\"", ln, fixed = TRUE)) next
+    e <- tryCatch(jsonlite::fromJSON(ln, simplifyVector = FALSE), error = function(e) NULL)
+    if (identical(e[["type"]], "workspace-state")) return(.ws_validate(e[["state"]]))
+  }
+  NULL
+}
+
 # Tab title for a tool result: the artifact's title, else the tool name.
 .ws_result_title <- function(result) {
   t <- tryCatch(.artifact_title(tool_result_artifact(result)), error = function(e) NULL)
@@ -245,5 +292,14 @@ codeagent_workspace_ui <- function(id = "ca_ws") {
       set(open_pinned(.ws_validate(layout)))
     })
   class(ws) <- "codeagent_workspace"
+
+  # The layout belongs to the conversation: a change is saved to its log, and
+  # opening another conversation (or a new one) brings its own layout back.
+  shiny::observeEvent(state$session_id, {
+    ws$restore(.ws_read(state$session_id, cwd))
+  }, ignoreInit = TRUE)
+  shiny::observeEvent(state$ws_layout, {
+    .ws_save(shiny::isolate(state$session_id), cwd, state$ws_layout)
+  }, ignoreInit = TRUE)
   ws
 }

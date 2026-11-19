@@ -11,7 +11,8 @@ save_session(
   title = NULL,
   assistant_text_override = NULL,
   genui_state = NULL,
-  context_event = NULL
+  context_event = NULL,
+  workspace_state = NULL
 )
 }
 \arguments{
@@ -32,6 +33,10 @@ with the conversation; appended when it differs from the last saved one.}
 
 \item{context_event}{Character or NULL. What changed the context when it is
 not a continuation (\code{"compact"}, \code{"rewind"}, \code{"clear"}); inferred when NULL.}
+
+\item{workspace_state}{List or NULL. The workspace tab layout
+(\code{\link[=codeagent_workspace_ui]{codeagent_workspace_ui()}}) to persist with the conversation; appended
+when it differs from the last saved one.}
 }
 \value{
 Character(1). The session UUID.

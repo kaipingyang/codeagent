@@ -60,6 +60,9 @@ NULL
 #'   provider-facing turn.
 #' @param genui_state List or NULL. The generative UI canvas state to persist
 #'   with the conversation; appended when it differs from the last saved one.
+#' @param workspace_state List or NULL. The workspace tab layout
+#'   ([codeagent_workspace_ui()]) to persist with the conversation; appended
+#'   when it differs from the last saved one.
 #' @param context_event Character or NULL. What changed the context when it is
 #'   not a continuation (`"compact"`, `"rewind"`, `"clear"`); inferred when NULL.
 #' @return Character(1). The session UUID.
@@ -67,7 +70,8 @@ NULL
 save_session <- function(chat, cwd = getwd(),
                           session_id = NULL, title = NULL,
                           assistant_text_override = NULL,
-                          genui_state = NULL, context_event = NULL) {
+                          genui_state = NULL, context_event = NULL,
+                          workspace_state = NULL) {
   if (is.null(session_id)) session_id <- .generate_uuid_v4()
   session_dir <- .ensure_session_dir(cwd)
   file_path   <- file.path(session_dir, paste0(session_id, ".jsonl"))
@@ -201,6 +205,13 @@ save_session <- function(chat, cwd = getwd(),
         auto_unbox = TRUE, null = "null")))
   }
 
+  # Workspace layout: appended when it changed (readers take the last one).
+  if (!is.null(workspace_state)) {
+    line <- .ws_state_line(session_id, workspace_state, now,
+                           if (is.null(log)) NULL else log$workspace_digest)
+    if (!is.null(line)) lines <- c(lines, line)
+  }
+
   if (length(lines)) {
     if (is.null(log)) .session_write_new(file_path, lines)
     else .session_append_lines(file_path, lines)
@@ -301,12 +312,13 @@ save_session <- function(chat, cwd = getwd(),
   }
   header <- Filter(function(e) identical(e$type, "session-start"), entries)
   version <- if (length(header)) as.integer(header[[1]]$format_version %||% 1L) else 1L
-  ctx <- character(0); shown <- character(0); title <- NULL; genui <- NULL; last_uuid <- NULL
+  ctx <- character(0); shown <- character(0); title <- NULL; genui <- NULL; ws <- NULL; last_uuid <- NULL
   for (e in entries) {
     if (!is.null(e$uuid)) last_uuid <- e$uuid
     if (identical(e$type, "session-start") && !is.null(e$customTitle)) title <- e$customTitle
     else if (identical(e$type, "custom-title")) title <- e$customTitle
     else if (identical(e$type, "genui-state")) genui <- e$digest %||% .session_digest(e$state)
+    else if (identical(e$type, "workspace-state")) ws <- e$digest
     else if (identical(e$subtype, "compact_boundary")) {
       ctx <- as.character(unlist(e$contextDigests))
       for (d in as.character(unlist(e$compactMetadata$removedDigests))) {
@@ -318,7 +330,8 @@ save_session <- function(chat, cwd = getwd(),
     }
   }
   list(version = version, entries = entries, context_digests = ctx, shown_digests = shown,
-       title = title, genui_digest = genui, last_uuid = last_uuid)
+       title = title, genui_digest = genui, workspace_digest = ws,
+       last_uuid = last_uuid)
 }
 
 # Rewrite a version 1 file (one chat-state line + text lines) as version 2:
