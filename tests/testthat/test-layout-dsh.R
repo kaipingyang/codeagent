@@ -50,3 +50,28 @@ test_that("the settings dialog has no permission select of its own", {
   expect_false(grepl('id="perm_mode"', html, fixed = TRUE))
   expect_match(html, 'id="btw_groups_input"', fixed = TRUE)
 })
+
+test_that("voice input sits in the composer row in the dsh layout", {
+  skip_if_not(.shinychat_page_chat_available())
+  html <- dsh_page_html()
+  expect_identical(count_id(html, "ca_voice_btn"), 1L)
+  expect_match(html, 'ca-dsh-voice-btn" id="ca_voice_btn"', fixed = TRUE)
+  # other layouts keep it in the footer
+  expect_match(as.character(.skill_picker_footer(list())), 'id="ca_voice_btn"', fixed = TRUE)
+  expect_false(grepl("ca_voice_btn", as.character(.skill_picker_footer(list(), voice = FALSE)), fixed = TRUE))
+})
+
+test_that("codeagent_history_options() stores next to the session log, per user", {
+  home <- withr::local_tempdir()
+  withr::local_envvar(CODEAGENT_HOME = home)
+  cwd <- withr::local_tempdir()
+  opts <- codeagent_history_options(cwd)
+  expect_s3_class(opts, "chat_history_config")
+  dir <- file.path(.get_project_session_dir(cwd), "shinychat")
+  expect_true(dir.exists(dir))
+  expect_true(startsWith(normalizePath(dir), normalizePath(home)))
+  scope <- opts$scope
+  expect_identical(scope(list(user = "alice")), "alice")
+  expect_identical(scope(list(user = NULL)), unname(Sys.info()[["user"]]))
+  expect_identical(codeagent_history_options(cwd, user = "team")$scope(list(user = "x")), "team")
+})

@@ -532,6 +532,10 @@ codeagent_app <- function(
     chat_args$toolbar_input <- .dsh_composer_toolbar_ui(
       permission_mode, model_choices, sel_model)
     chat_args$placeholder <- "Message or run a task, / commands"
+    # Voice sits in the composer row (left of send), not under it.
+    chat_args$footer <- htmltools::tagList(
+      shiny::uiOutput("ca_interaction_ui"),
+      .skill_picker_footer(skill_meta, voice = FALSE))
     # DSH content axis: messages and composer share clamp(680px, 64%, 880px).
     chat_args$width <- "min(clamp(680px, 64%, 880px), 100%)"
     ui <- .codeagent_page_chat_ui(
@@ -631,7 +635,7 @@ codeagent_app <- function(
       # Conversation history is shinychat's (left column); the model context
       # still comes from codeagent's session log, as in codeagent_server().
       .enable_shinychat_history(input, session, chat_obj, core,
-                                shinychat::history_options())
+                                codeagent_history_options(cwd))
     } else {
       server_sessions(input, output, session,
                       chat        = chat_obj,

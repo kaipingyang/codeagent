@@ -156,3 +156,39 @@ NULL
   }
   out
 }
+
+#' shinychat history stored next to codeagent's session log
+#'
+#' A [shinychat::history_options()] whose records live in a fixed place: a
+#' [shinychat::FileConversationStore] under the project's codeagent session
+#' directory (`<CODEAGENT_HOME>/projects/<project>/shinychat`), partitioned by
+#' user. Without it shinychat keeps conversations under the app process's
+#' working directory, partitioned per browser, so a new browser or a restart
+#' from another directory shows an empty list.
+#'
+#' `codeagent_app(ui_layout = "dsh")` uses it; host apps pass it to
+#' `codeagent_server(history = )`.
+#'
+#' @param cwd Project directory; selects the session directory.
+#' @param user Partition key. A string, or `function(session)` returning one.
+#'   The default uses the authenticated `session$user`, else the account name
+#'   running the app.
+#' @param ... Further arguments to [shinychat::history_options()] (e.g.
+#'   `restore_mode`, `title`).
+#' @return A shinychat history configuration.
+#' @export
+codeagent_history_options <- function(cwd = getwd(), user = NULL, ...) {
+  dir <- file.path(.get_project_session_dir(cwd), "shinychat")
+  dir.create(dir, recursive = TRUE, showWarnings = FALSE)
+  scope <- if (is.function(user)) user
+    else if (is.character(user) && length(user) == 1L) function(session) user
+    else function(session) {
+      u <- tryCatch(session$user, error = function(e) NULL)
+      if (is.character(u) && length(u) == 1L && nzchar(u)) u
+      else unname(Sys.info()[["user"]]) %||% "local"
+    }
+  shinychat::history_options(
+    scope = scope,
+    store = shinychat::FileConversationStore$new(dir = dir),
+    ...)
+}

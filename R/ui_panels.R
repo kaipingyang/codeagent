@@ -39,7 +39,7 @@ head_assets <- function() {
 # Skill picker footer -- shared by both chat sidebar variants
 # ---------------------------------------------------------------------------
 
-.skill_picker_footer <- function(skill_meta) {
+.skill_picker_footer <- function(skill_meta, voice = TRUE) {
   # NOTE: The skill pickerInput was removed in favour of shinychat's official
   # slash-command typeahead (type "/" in the chat input; see R/server_slash.R).
   # The historical pickerInput implementation is archived under
@@ -52,10 +52,7 @@ head_assets <- function() {
     # button (chat_ui(allow_attachments = TRUE)) in the input row -- the old
     # custom paperclip button (ca_upload_local_btn + ca_file_hidden) was a
     # duplicate and has been removed.
-    shiny::actionButton("ca_voice_btn", NULL,
-      icon  = shiny::icon("microphone"),
-      class = "btn-outline-secondary btn-sm flex-shrink-0",
-      title = "Voice input"),
+    if (isTRUE(voice)) .voice_button_ui("btn-outline-secondary btn-sm flex-shrink-0"),
     shinyFiles::shinyFilesButton(
       "ca_server_btn",
       label    = NULL,
@@ -365,6 +362,14 @@ output_panel_ui <- function(canvas = FALSE, canvas_opts = NULL) {
 # composer row, customizations and tool groups in a settings dialog.
 # ---------------------------------------------------------------------------
 
+# Voice input (inst/www/voice.js binds #ca_voice_btn).
+.voice_button_ui <- function(class) {
+  shiny::actionButton("ca_voice_btn", NULL,
+    icon  = shiny::icon("microphone"),
+    class = class,
+    title = "Voice input")
+}
+
 .dsh_sidebar_ui <- function() {
   chat_sidebar <- .shinychat_export("chat_sidebar")
   do.call(chat_sidebar, list(
@@ -400,7 +405,8 @@ output_panel_ui <- function(canvas = FALSE, canvas_opts = NULL) {
         choices = model_choices, selected = sel,
         show_label = FALSE, icon = shiny::icon("robot"),
         tooltip = "Switch model -- history preserved")
-    }
+    },
+    .voice_button_ui("btn ca-dsh-voice-btn")
   )
 }
 

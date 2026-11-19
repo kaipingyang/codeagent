@@ -1,5 +1,10 @@
 # codeagent (development version)
 
+* New `codeagent_history_options(cwd, user)`: shinychat history stored in a
+  `FileConversationStore` under the project's codeagent session directory and
+  partitioned by user (by default shinychat stores under the app's working
+  directory and partitions per browser). `ui_layout = "dsh"` uses it; host apps
+  can pass it to `codeagent_server(history = )`.
 * New `codeagent_app(ui_layout = "dsh")`: the page_chat page with a
   DeepSeek-Harness-like structure -- shinychat's conversation history in the left
   column (the model context still comes from codeagent's session log), permission

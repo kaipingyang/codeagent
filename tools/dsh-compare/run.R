@@ -78,7 +78,7 @@ if ("dsh" %in% targets) {
 ca_url <- NULL
 if ("ca" %in% targets) {
   ca_port <- 3990L
-  procs$ca <- processx::process$new(file.path(R.home("bin"), "Rscript"),
+  procs$ca <- processx::process$new(file.path(R.home("bin"), "Rscript"), wd = project,
     c(file.path(here, "ca-app.R"), opt$ca_theme, opt$ca_layout, ca_port, project),
     # A throwaway HOME keeps the user's ~/.codeagent settings (model, permission
     # rules) out of the comparison; the libraries stay on R_LIBS_USER.
