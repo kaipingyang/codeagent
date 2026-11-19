@@ -2,16 +2,21 @@
 % Please edit documentation in R/history_shinychat.R
 \name{codeagent_history_options}
 \alias{codeagent_history_options}
-\title{shinychat history stored next to codeagent's session log}
+\title{shinychat history over codeagent's session log}
 \usage{
-codeagent_history_options(cwd = getwd(), user = NULL, ...)
+codeagent_history_options(cwd = getwd(), user = NULL, max_store_mb = NULL, ...)
 }
 \arguments{
 \item{cwd}{Project directory; selects the session directory.}
 
 \item{user}{Partition key. A string, or \verb{function(session)} returning one.
 The default uses the authenticated \code{session$user}, else the account name
-running the app.}
+running the app. Sessions saved before owners were recorded belong to the
+account running the app.}
+
+\item{max_store_mb}{Size limit per user and project. \code{NULL} (default): no
+limit. A number lets shinychat delete the oldest session logs of that user
+and project once the limit is exceeded.}
 
 \item{...}{Further arguments to \code{\link[shinychat:history_options]{shinychat::history_options()}} (e.g.
 \code{restore_mode}, \code{title}).}
@@ -20,14 +25,13 @@ running the app.}
 A shinychat history configuration.
 }
 \description{
-A \code{\link[shinychat:history_options]{shinychat::history_options()}} whose records live in a fixed place: a
-\link[shinychat:FileConversationStore]{shinychat::FileConversationStore} under the project's codeagent session
-directory (\verb{<CODEAGENT_HOME>/projects/<project>/shinychat}), partitioned by
-user. Without it shinychat keeps conversations under the app process's
-working directory, partitioned per browser, so a new browser or a restart
-from another directory shows an empty list.
+A \code{\link[shinychat:history_options]{shinychat::history_options()}} for personal use: the history column lists
+every codeagent session of the project -- earlier ones included -- straight
+from codeagent's session log, without a second copy of any conversation.
+Renames and titles are kept in the log; opening a conversation lets the model
+continue from its saved context. Conversations are partitioned by user.
 }
 \details{
-\code{codeagent_app(ui_layout = "dsh")} uses it; host apps pass it to
-\code{codeagent_server(history = )}.
+\code{codeagent_app(ui_layout = "dsh")} uses it. A deployed host app keeps
+shinychat's own history instead: \code{codeagent_server(history = shinychat::history_options(...))} with the store of its choice.
 }

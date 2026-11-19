@@ -61,15 +61,20 @@ test_that("voice input sits in the composer row in the dsh layout", {
   expect_false(grepl("ca_voice_btn", as.character(.skill_picker_footer(list(), voice = FALSE)), fixed = TRUE))
 })
 
-test_that("codeagent_history_options() stores next to the session log, per user", {
+test_that("codeagent_history_options() reads the session log, per user, no eviction", {
   home <- withr::local_tempdir()
   withr::local_envvar(CODEAGENT_HOME = home)
   cwd <- withr::local_tempdir()
   opts <- codeagent_history_options(cwd)
   expect_s3_class(opts, "chat_history_config")
-  dir <- file.path(.get_project_session_dir(cwd), "shinychat")
-  expect_true(dir.exists(dir))
-  expect_true(startsWith(normalizePath(dir), normalizePath(home)))
+  expect_true(inherits(opts$store, ".SessionLogStore"))
+  expect_identical(opts$store$cwd, cwd)
+  expect_false(dir.exists(file.path(.get_project_session_dir(cwd), "shinychat")))
+  # shinychat deletes from the store above max_store_mb: off unless asked for
+  expect_null(opts$max_store_mb)
+  expect_identical(codeagent_history_options(cwd, max_store_mb = 50)$max_store_mb, 50)
+  expect_error(codeagent_history_options(cwd, max_store_mb = -1), "max_store_mb")
+  expect_error(codeagent_history_options(cwd, max_store_mb = "a"), "max_store_mb")
   scope <- opts$scope
   expect_identical(scope(list(user = "alice")), "alice")
   expect_identical(scope(list(user = NULL)), unname(Sys.info()[["user"]]))
