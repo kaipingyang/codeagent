@@ -103,6 +103,9 @@ save_session <- function(chat, cwd = getwd(),
       format_version = .SESSION_FORMAT_VERSION
     )
     if (!is.null(title)) header$customTitle <- title
+    # Owner of the conversation in a shared history (codeagent_history_options()).
+    owner <- tryCatch(attr(chat, "codeagent_history_owner"), error = function(e) NULL)
+    if (is.character(owner) && length(owner) == 1L && nzchar(owner)) header$user <- owner
     add_line(header)
   } else if (!is.null(title) && !identical(title, log$title)) {
     add_line(list(type = "custom-title", customTitle = title, sessionId = session_id))

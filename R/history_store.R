@@ -72,6 +72,7 @@ NULL
       self$default_owner <- default_owner
       private$index <- new.env(parent = emptyenv())
       private$cache <- new.env(parent = emptyenv())
+      private$pending <- new.env(parent = emptyenv())
     },
 
     # Per browser session: what get() returns is gated with this session's
@@ -84,6 +85,7 @@ NULL
     },
 
     list = function(partition) {
+      private$flush_pending()
       infos <- Filter(function(i) private$owned(i, partition), private$infos())
       metas <- lapply(infos, function(i) {
         id <- i$shinychat_id %||% i$session_id
@@ -94,6 +96,15 @@ NULL
              updated_at = .history_iso(i$last_modified),
              size_bytes = as.double(i$file_size %||% 0))
       })
+      # A new conversation is listed from its first reply, before its log is
+      # written (shinychat saves first, codeagent's session log right after).
+      for (sid in ls(private$pending)) {
+        p <- private$pending[[sid]]
+        if (identical(p$owner, partition$scope))
+          metas[[length(metas) + 1L]] <- list(
+            id = p$record_id, title = p$title, created_at = p$created_at,
+            updated_at = p$updated_at, size_bytes = 0)
+      }
       if (length(metas)) {
         created <- vapply(metas, function(m) m$created_at %||% "", "")
         metas <- metas[order(created, decreasing = TRUE)]
@@ -115,13 +126,89 @@ NULL
                       turns, info)
     },
 
-    put = function(partition, record) invisible(NULL),
+    # Turns are never written: codeagent's session log already holds them. The
+    # log gets only what it lacks -- the shinychat record id and a title the
+    # user or the model gave.
+    put = function(partition, record) {
+      sid <- record$values$codeagent_session_id
+      if (!is.character(sid) || length(sid) != 1L || is.null(.validate_uuid(sid)))
+        return(invisible(NULL))
+      rid <- record$id
+      if (!is.character(rid) || length(rid) != 1L ||
+          (is.null(.validate_uuid(rid)) && !grepl("^c_[0-9a-f]{1,64}$", rid)))
+        return(invisible(NULL))
+      path <- .find_session_path(sid, self$cwd)
+      if (is.null(path)) {
+        assign(sid, list(
+          record_id = rid, owner = partition$scope,
+          title = record$title %||% "New chat", title_source = record$title_source,
+          created_at = record$created_at, updated_at = record$updated_at),
+          envir = private$pending)
+        assign(rid, sid, envir = private$index)
+        return(invisible(NULL))
+      }
+      info <- tryCatch(.read_session_info(sid, path), error = function(e) NULL)
+      if (is.null(info) || !private$owned(info, partition)) return(invisible(NULL))
+      private$write_meta(sid, info, rid, record$title, record$title_source)
+      invisible(NULL)
+    },
 
-    delete = function(partition, id) invisible(NULL)
+    delete = function(partition, id) {
+      if (is.character(id) && length(id) == 1L && !is.na(id)) {
+        for (sid in ls(private$pending)) {
+          p <- private$pending[[sid]]
+          if (identical(p$record_id, id) && identical(p$owner, partition$scope))
+            rm(list = sid, envir = private$pending)
+        }
+      }
+      info <- private$resolve(partition, id)
+      if (is.null(info)) return(invisible(NULL))
+      tryCatch(delete_session(info$session_id, directory = self$cwd),
+               error = function(e) NULL)
+      if (exists(info$session_id, envir = private$cache, inherits = FALSE))
+        rm(list = info$session_id, envir = private$cache)
+      invisible(NULL)
+    }
   ),
 
   private = list(
     tools = NULL, present = NULL, index = NULL, cache = NULL,
+    pending = NULL,
+
+    write_meta = function(sid, info, record_id, title, title_source) {
+      lines <- character(0)
+      if (!identical(info$shinychat_id, record_id) && !identical(record_id, sid))
+        lines <- c(lines, jsonlite::toJSON(list(
+          type = "shinychat-record", recordId = record_id, sessionId = sid),
+          auto_unbox = TRUE))
+      # A user's rename always wins; a model title never replaces one.
+      src <- title_source
+      if (is.character(src) && length(src) == 1L && src %in% c("user", "llm") &&
+          is.character(title) && length(title) == 1L && nzchar(trimws(title)) &&
+          !identical(trimws(title), info$custom_title) &&
+          !(identical(src, "llm") && identical(info$title_source, "user")))
+        lines <- c(lines, jsonlite::toJSON(list(
+          type = "custom-title", customTitle = trimws(title), source = src,
+          sessionId = sid), auto_unbox = TRUE))
+      if (length(lines))
+        tryCatch(.session_append(sid, paste0(paste(lines, collapse = "\n"), "\n"),
+                                 self$cwd),
+                 error = function(e) NULL)
+      invisible(NULL)
+    },
+
+    # Pending metadata of new conversations whose log now exists.
+    flush_pending = function() {
+      for (sid in ls(private$pending)) {
+        path <- .find_session_path(sid, self$cwd)
+        if (is.null(path)) next
+        p <- private$pending[[sid]]
+        rm(list = sid, envir = private$pending)
+        info <- tryCatch(.read_session_info(sid, path), error = function(e) NULL)
+        if (is.null(info) || !identical(info$user %||% self$default_owner, p$owner)) next
+        private$write_meta(sid, info, p$record_id, p$title, p$title_source)
+      }
+    },
 
     owned = function(info, partition) {
       scope <- tryCatch(partition$scope, error = function(e) NULL)

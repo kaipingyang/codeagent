@@ -128,13 +128,128 @@ test_that("ids that are not this project's sessions resolve to nothing", {
     expect_null(st$get(part(), id))
 })
 
-test_that("put() and delete() do not touch the log yet", {
+new_record <- function(sid, id = "c_00001a2b3c4d5e6f7a8b9", title = "New chat",
+                       title_source = NULL) {
+  list(schema_version = 1L, id = id, title = title, title_source = title_source,
+       response_count = 1L, created_at = "2026-11-19T10:00:00Z",
+       updated_at = "2026-11-19T10:00:00Z", client_info = list(),
+       nodes = list(n_0001 = list(parent = NULL, children = list(),
+                                  turns = list(contents_record(Turn("user", "x"))), ui = NULL)),
+       current_leaf = "n_0001", values = list(codeagent_session_id = sid),
+       bookmark_state_id = NULL)
+}
+
+test_that("put() never writes turns; it records the shinychat id and titles", {
   proj <- local_store_env()
   sid <- save_fixture(proj, list(Turn("user", "q"), Turn("assistant", "r")))
   path <- .find_session_path(sid, proj)
-  before <- readLines(path)
+  n_before <- length(readLines(path))
   st <- bound_store(proj)
-  st$put(part(), st$get(part(), sid))
-  st$delete(part(), sid)
+  rec <- new_record(sid)
+  st$put(part(), rec)                      # fallback title: nothing to say
+  st$put(part(), rec)
+  lines <- readLines(path)
+  expect_length(lines, n_before + 1L)      # one shinychat-record line, once
+  expect_match(lines[[length(lines)]], "\"type\":\"shinychat-record\"", fixed = TRUE)
+
+  metas <- st$list(part())
+  expect_identical(metas[[1]]$id, rec$id)  # the id shinychat holds as active
+  expect_identical(st$get(part(), rec$id)$values$codeagent_session_id, sid)
+  expect_identical(st$get(part(), rec$id)$id, rec$id)
+  expect_false(any(grepl("\"type\":\"(user|assistant)\"", lines[-seq_len(n_before)])))
+})
+
+test_that("a rename wins over a later model title", {
+  proj <- local_store_env()
+  sid <- save_fixture(proj, list(Turn("user", "q"), Turn("assistant", "r")))
+  st <- bound_store(proj)
+  st$put(part(), new_record(sid, title = "Model title", title_source = "llm"))
+  expect_identical(st$list(part())[[1]]$title, "Model title")
+  st$put(part(), new_record(sid, title = "My name", title_source = "user"))
+  st$put(part(), new_record(sid, title = "Model again", title_source = "llm"))
+  expect_identical(st$list(part())[[1]]$title, "My name")
+  rec <- st$get(part(), sid)
+  expect_identical(rec$title_source, "user")
+})
+
+test_that("an earlier session reopened after two replies keeps its count", {
+  proj <- local_store_env()
+  sid <- save_fixture(proj, list(Turn("user", "a"), Turn("assistant", "b"),
+                                 Turn("user", "c"), Turn("assistant", "d")))
+  expect_identical(bound_store(proj)$get(part(), sid)$response_count, 2L)
+})
+
+test_that("a new conversation is listed before its log exists, then written", {
+  proj <- local_store_env()
+  st <- bound_store(proj)
+  sid <- .generate_uuid_v4()
+  rec <- new_record(sid, title = "fresh question")
+  st$put(part(), rec)
+  expect_null(.find_session_path(sid, proj))
+  metas <- st$list(part())
+  expect_identical(vapply(metas, `[[`, "", "id"), rec$id)
+  expect_length(st$list(part("bob")), 0L)
+
+  ch <- chat_anthropic(model = "claude-sonnet-4-6")
+  attr(ch, "codeagent_history_owner") <- .history_local_user()
+  ch$set_turns(list(Turn("user", "fresh question"), Turn("assistant", "r")))
+  save_session(ch, cwd = proj, session_id = sid)
+  metas <- st$list(part())
+  expect_length(metas, 1L)
+  expect_identical(metas[[1]]$id, rec$id)
+  expect_identical(get_session_info(sid, proj)$shinychat_id, rec$id)
+  expect_identical(get_session_info(sid, proj)$user, .history_local_user())
+})
+
+test_that("save_session() writes the history owner into a new log's header", {
+  proj <- local_store_env()
+  ch <- chat_anthropic(model = "claude-sonnet-4-6")
+  attr(ch, "codeagent_history_owner") <- "alice"
+  ch$set_turns(list(Turn("user", "q"), Turn("assistant", "r")))
+  sid <- save_session(ch, cwd = proj)
+  expect_identical(get_session_info(sid, proj)$user, "alice")
+  expect_identical(vapply(.SessionLogStore$new(cwd = proj)$list(part("alice")), `[[`, "", "id"), sid)
+  expect_length(.SessionLogStore$new(cwd = proj)$list(part()), 0L)
+})
+
+test_that("put() leaves another user's log alone", {
+  proj <- local_store_env()
+  sid <- save_fixture(proj, list(Turn("user", "q"), Turn("assistant", "r")))
+  set_owner(proj, sid, "bob")
+  path <- .find_session_path(sid, proj)
+  before <- readLines(path)
+  bound_store(proj)$put(part(), new_record(sid, title = "x", title_source = "user"))
   expect_identical(readLines(path), before)
+})
+
+test_that("delete() removes only this project's, this user's session", {
+  proj <- local_store_env()
+  other <- withr::local_tempdir()
+  mine <- save_fixture(proj, list(Turn("user", "q"), Turn("assistant", "r")))
+  bobs <- save_fixture(proj, list(Turn("user", "q"), Turn("assistant", "r")))
+  set_owner(proj, bobs, "bob")
+  theirs <- save_fixture(other, list(Turn("user", "q"), Turn("assistant", "r")))
+  st <- bound_store(proj)
+  for (id in list(bobs, theirs, "../x", "c_zz", NA_character_, 1L))
+    st$delete(part(), id)
+  expect_false(is.null(.find_session_path(bobs, proj)))
+  expect_false(is.null(.find_session_path(theirs, other)))
+  st$delete(part(), mine)
+  expect_null(.find_session_path(mine, proj))
+  expect_length(st$list(part()), 0L)
+})
+
+test_that("delete() by shinychat record id and of a pending conversation", {
+  proj <- local_store_env()
+  sid <- save_fixture(proj, list(Turn("user", "q"), Turn("assistant", "r")))
+  st <- bound_store(proj)
+  rec <- new_record(sid)
+  st$put(part(), rec)
+  st$delete(part(), rec$id)
+  expect_null(.find_session_path(sid, proj))
+
+  rec2 <- new_record(.generate_uuid_v4(), id = "c_00001a2b3c4d5e6f7a8ff")
+  st$put(part(), rec2)
+  st$delete(part(), rec2$id)
+  expect_length(st$list(part()), 0L)
 })
