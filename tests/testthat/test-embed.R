@@ -425,3 +425,30 @@ test_that("codeagent_server(on_user_prompt =) adds host context to a turn, or bl
   expect_error(shiny::testServer(function(input, output, session)
     codeagent_server(input, output, session, .embed_client(), on_user_prompt = "x"), {}), "on_user_prompt")
 })
+
+test_that("codeagent_server(workspace =): a tool card opened in the chat opens its result tab", {
+  client <- .embed_client()
+  chat <- client$chat
+  req <- ellmer::ContentToolRequest(id = "c1", name = "HostT", arguments = list(k = "v"))
+  res <- ellmer::ContentToolResult(value = "{}", request = req,
+    extra = list(display = list(title = "Card", html = htmltools::div("card")),
+                 codeagent = list(result_id = "res_c1")))
+  chat$set_turns(list(ellmer::Turn("user", "go"), ellmer::Turn("assistant", list(req)),
+                      ellmer::Turn("user", list(res))))
+  expect_error(shiny::testServer(function(input, output, session)
+    codeagent_server(input, output, session, .embed_client(), workspace = list()), {}), "workspace")
+  shiny::testServer(function(input, output, session) {
+    session$userData$srv <- codeagent_server(input, output, session, client,
+                                             workspace = workspace_options())
+  }, {
+    ws <- session$userData$srv$ws
+    expect_s3_class(ws, "codeagent_workspace")
+    session$setInputs(ca_tool_open = list(id = "res_c1", nonce = 1))
+    session$setInputs(ca_tool_open = list(id = "res_c1", nonce = 2))
+    expect_length(ws$tabs(), 1L)
+    expect_identical(ws$tabs()[[1]]$kind, "result")
+    expect_identical(ws$tabs()[[1]]$content_id, "res_c1")
+    session$setInputs(ca_tool_open = list(id = "res_missing", nonce = 3))
+    expect_length(ws$tabs(), 1L)
+  })
+})

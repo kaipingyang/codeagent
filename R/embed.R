@@ -230,9 +230,16 @@ codeagent_mode_ui <- function(modes = c("Ask before changes" = "default",
 #'   changed), or `list(action = "block", message = )` to stop the turn.
 #'   Typical use: facts the host knows that save the model a tool call (e.g.
 #'   what a project contains), sent once with the first turn.
+#' @param workspace `NULL` (no workspace tabs) or [workspace_options()]: place
+#'   [codeagent_workspace_ui()] in the page. Each opened tool result, file or
+#'   host content gets its own tab; open tabs with the returned `ws`. Without an
+#'   `on_tool_open`, opening a tool card in the chat opens its result tab.
 #' @param sessions Deprecated: `TRUE` is `history = "codeagent"`.
 #' @return Invisibly, a list with `state` (the session `reactiveValues`),
-#'   `stream_task` (the `ExtendedTask`), `chat` and `settings`.
+#'   `stream_task` (the `ExtendedTask`), `chat`, `settings` and, with
+#'   `workspace`, `ws`: `ws$open(kind, content_id, title = NULL, reveal = TRUE)`,
+#'   `ws$close(tab)`, `ws$focus(tab)`, `ws$pin(tab, pinned = TRUE)`, and the
+#'   reactive reads `ws$active()` and `ws$tabs()`.
 #' @seealso [codeagent_chat_ui()], [codeagent_canvas_ui()],
 #'   [codeagent_sessions_ui()], [codeagent_app()]
 #' @export
@@ -240,7 +247,8 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                              tool_meta = list(), canvas = NULL,
                              history = NULL, greeting = NULL,
                              modes = NULL, on_restore = NULL,
-                             on_tool_open = NULL, on_user_prompt = NULL, sessions = FALSE) {
+                             on_tool_open = NULL, on_user_prompt = NULL, workspace = NULL,
+                             sessions = FALSE) {
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
@@ -252,6 +260,8 @@ codeagent_server <- function(input, output, session, client, tools = list(),
     stop("`on_restore` must be NULL or a function(chat).", call. = FALSE)
   if (!is.null(on_tool_open) && !is.function(on_tool_open))
     stop("`on_tool_open` must be NULL or a function(result).", call. = FALSE)
+  if (!is.null(workspace) && !inherits(workspace, "codeagent_workspace_options"))
+    stop("`workspace` must be NULL or come from workspace_options().", call. = FALSE)
   if (isTRUE(sessions) && is.null(history)) history <- "codeagent"
   if (!is.null(history) && !identical(history, "codeagent") &&
       !inherits(history, "chat_history_config"))
@@ -295,15 +305,25 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                               greeting = greeting, on_restore = on_restore)
   if (!is.null(modes))
     .serve_host_modes(input, client$chat, core, modes)
+  ws <- NULL
+  if (!is.null(workspace))
+    ws <- .workspace_server(input, output, session, core$state, workspace,
+                            chat = client$chat, cwd = core$settings$cwd %||% getwd())
   if (is.function(on_tool_open))
     shiny::observeEvent(input$ca_tool_open, {
       res <- .find_tool_result(client$chat$get_turns(), input$ca_tool_open$id)
       if (!is.null(res)) tryCatch(on_tool_open(res), error = function(e)
         .ui_toast(paste0("Showing the tool result failed: ", conditionMessage(e)), "warning"))
     }, ignoreInit = TRUE)
+  else if (!is.null(ws))
+    shiny::observeEvent(input$ca_tool_open, {
+      id <- input$ca_tool_open$id
+      res <- .find_tool_result(client$chat$get_turns(), id)
+      if (!is.null(res)) ws$open("result", id, title = .ws_result_title(res))
+    }, ignoreInit = TRUE)
   session$onFlushed(function() core$ready(), once = TRUE)
   invisible(list(state = core$state, stream_task = core$stream_task,
-                 chat = client$chat, settings = core$settings))
+                 chat = client$chat, settings = core$settings, ws = ws))
 }
 
 # The host's on_user_prompt as a UserPromptSubmit hook, added to the client's
@@ -408,6 +428,8 @@ codeagent_server <- function(input, output, session, client, tools = list(),
     iteration       = 0L,
     interrupt       = FALSE,
     main_output     = NULL,
+    ws_layout       = NULL,       # workspace tabs (codeagent_workspace_ui)
+    ws_epoch        = 0L,
     settings_changed = 0L,
     sessions_dirty  = 0L,
     pending_interaction = NULL,   # approval / question / form shown now

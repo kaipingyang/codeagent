@@ -31,7 +31,8 @@ head_assets <- function() {
     htmltools::tags$link(rel = "stylesheet", type = "text/css",
                          href = "codeagent-www/styles.css"),
     htmltools::tags$script(src = "codeagent-www/agent.js"),
-    htmltools::tags$script(src = "codeagent-www/voice.js")
+    htmltools::tags$script(src = "codeagent-www/voice.js"),
+    htmltools::tags$script(src = "codeagent-www/workspace.js")
   )
 }
 

@@ -18,6 +18,7 @@ codeagent_server(
   on_restore = NULL,
   on_tool_open = NULL,
   on_user_prompt = NULL,
+  workspace = NULL,
   sessions = FALSE
 )
 }
@@ -73,11 +74,19 @@ changed), or \code{list(action = "block", message = )} to stop the turn.
 Typical use: facts the host knows that save the model a tool call (e.g.
 what a project contains), sent once with the first turn.}
 
+\item{workspace}{\code{NULL} (no workspace tabs) or \code{\link[=workspace_options]{workspace_options()}}: place
+\code{\link[=codeagent_workspace_ui]{codeagent_workspace_ui()}} in the page. Each opened tool result, file or
+host content gets its own tab; open tabs with the returned \code{ws}. Without an
+\code{on_tool_open}, opening a tool card in the chat opens its result tab.}
+
 \item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
 }
 \value{
 Invisibly, a list with \code{state} (the session \code{reactiveValues}),
-\code{stream_task} (the \code{ExtendedTask}), \code{chat} and \code{settings}.
+\code{stream_task} (the \code{ExtendedTask}), \code{chat}, \code{settings} and, with
+\code{workspace}, \code{ws}: \code{ws$open(kind, content_id, title = NULL, reveal = TRUE)},
+\code{ws$close(tab)}, \code{ws$focus(tab)}, \code{ws$pin(tab, pinned = TRUE)}, and the
+reactive reads \code{ws$active()} and \code{ws$tabs()}.
 }
 \description{
 Wires the same server side that \code{\link[=codeagent_app]{codeagent_app()}} uses -- streaming with
