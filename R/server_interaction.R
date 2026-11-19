@@ -242,17 +242,17 @@ NULL
     .interaction_shell("approval", "Waiting for approval",
       htmltools::tagList(
         htmltools::tags$div(class = "ca-interaction-title",
-          htmltools::tags$span(class = "ca-interaction-icon", "⚠️ "),
+          htmltools::tags$span(class = "ca-interaction-icon", "\u26a0\ufe0f "),
           "Allow tool: ", htmltools::tags$code(p$tool_name %||% "?")),
         if (nzchar(desc))
           htmltools::tags$div(class = "ca-interaction-command", substr(desc, 1L, 80L))),
       htmltools::tagList(
-        shiny::actionButton("ca_tool_deny", "✖ Deny",
+        shiny::actionButton("ca_tool_deny", "\u2716 Deny",
                             class = "btn-danger btn-sm ca-interaction-reject"),
-        shiny::actionButton("ca_tool_allow_always", "✔ Always allow",
+        shiny::actionButton("ca_tool_allow_always", "\u2714 Always allow",
                             class = "btn-outline-success btn-sm ca-interaction-secondary",
                             title = "Allow this tool for the rest of this session without asking again"),
-        shiny::actionButton("ca_tool_allow", "✔ Allow",
+        shiny::actionButton("ca_tool_allow", "\u2714 Allow",
                             class = "btn-success btn-sm ca-interaction-primary")))
   } else if (identical(pending$type, "question")) {
     p       <- pending$payload
@@ -260,7 +260,7 @@ NULL
     .interaction_shell("question", "Waiting for your answer",
       htmltools::tagList(
         htmltools::tags$div(class = "ca-interaction-title",
-          htmltools::tags$span(class = "ca-interaction-icon", "❓ "), p$question %||% ""),
+          htmltools::tags$span(class = "ca-interaction-icon", "\u2753 "), p$question %||% ""),
         if (length(choices) > 0L)
           shiny::radioButtons("ca_q_choice", NULL, choices = choices, inline = FALSE)
         else
@@ -293,7 +293,7 @@ NULL
         htmltools::tags$div(class = "ca-interaction-title",
           "Data Shield blocked a tool result: ", htmltools::tags$code(p$tool_name %||% "?")),
         htmltools::tags$div(class = "ca-interaction-detail",
-          paste0(p$strategy %||% "policy", " — ", p$reason %||% "policy match",
+          paste0(p$strategy %||% "policy", " \u2014 ", p$reason %||% "policy match",
                  " (matches: ", as.integer(p$match_count %||% 0L), ")"))),
       htmltools::tagList(
         if (isTRUE(p$allow_raw_approval))
