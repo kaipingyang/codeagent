@@ -30,6 +30,7 @@ codeagent_server(
   modes = NULL,
   on_restore = NULL,
   on_tool_open = NULL,
+  on_user_prompt = NULL,
   sessions = FALSE
 )
 ```
@@ -108,6 +109,16 @@ codeagent_server(
   [`ellmer::ContentToolResult`](https://ellmer.tidyverse.org/reference/Content.html),
   e.g. to show the result in the host's own panel. Only results with an
   HTML display (`extra$display$html`) are reported.
+
+- on_user_prompt:
+
+  Optional `function(text)` called with what the user typed before each
+  turn reaches the model – the host side of Claude Code's
+  `UserPromptSubmit` hook. Return `NULL` to proceed unchanged, a
+  character string to add it as context to this turn (the user's text is
+  never changed), or `list(action = "block", message = )` to stop the
+  turn. Typical use: facts the host knows that save the model a tool
+  call (e.g. what a project contains), sent once with the first turn.
 
 - sessions:
 

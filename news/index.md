@@ -2,6 +2,13 @@
 
 ## codeagent (development version)
 
+- `codeagent_server(on_user_prompt =)`: a host `function(text)` called
+  before each turn reaches the model – the host side of the
+  `UserPromptSubmit` hook. It returns `NULL`, context to add to the turn
+  (the user’s text is never changed), or
+  `list(action = "block", message =)`. E.g. facts the host already
+  knows, sent with the first turn, that save the model a lookup.
+
 - Fixed: Data Shield replaced every omitted optional attribute of an
   array of objects in tool arguments (NA after ellmer’s conversion) with
   “tool arg redacted: scan failed (fail-closed)” – e.g. AskUserQuestion

@@ -111,6 +111,7 @@ client the host built for this Shiny session. Pair it with
 <span>  modes <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  on_restore <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  on_tool_open <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  on_user_prompt <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sessions <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -180,6 +181,16 @@ own panels.</p></dd>
 with that card's <code><a href="https://ellmer.tidyverse.org/reference/Content.html" class="external-link">ellmer::ContentToolResult</a></code>, e.g. to show the result in
 the host's own panel. Only results with an HTML display
 (<code>extra$display$html</code>) are reported.</p></dd>
+
+
+<dt id="arg-on-user-prompt">on_user_prompt<a class="anchor" aria-label="anchor" href="#arg-on-user-prompt"></a></dt>
+<dd><p>Optional <code>function(text)</code> called with what the user
+typed before each turn reaches the model – the host side of Claude Code's
+<code>UserPromptSubmit</code> hook. Return <code>NULL</code> to proceed unchanged, a character
+string to add it as context to this turn (the user's text is never
+changed), or <code>list(action = "block", message = )</code> to stop the turn.
+Typical use: facts the host knows that save the model a tool call (e.g.
+what a project contains), sent once with the first turn.</p></dd>
 
 
 <dt id="arg-sessions">sessions<a class="anchor" aria-label="anchor" href="#arg-sessions"></a></dt>

@@ -1,7 +1,7 @@
 # Exposes codeagent's tool set as an MCP server via `mcptools::mcp_server()`. Session tools are disabled by default because they expose a separate R-session control surface that does not pass through codeagent's Chat permission gate or Data Shield.
 
 Exposes codeagent's tool set as an MCP server via
-[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html).
+[`mcptools::mcp_server()`](https://rdrr.io/pkg/mcptools/man/server.html).
 Session tools are disabled by default because they expose a separate
 R-session control surface that does not pass through codeagent's Chat
 permission gate or Data Shield.

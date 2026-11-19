@@ -676,7 +676,7 @@ foreground subagent tools. Shielded foreground subagents inherit the
 same live `DataShield`, gate the reply before hooks/callbacks/parent
 results, and do not persist raw sidechains; shielded background agents
 fail closed. `codeagent_mcp_server(..., session_tools=FALSE)` calls
-[`mcptools::mcp_server()`](https://posit-dev.github.io/mcptools/reference/server.html)
+[`mcptools::mcp_server()`](https://rdrr.io/pkg/mcptools/man/server.html)
 directly, requires mcptools \>= 1.0.2.9000, and rejects session tools on
 non-loopback HTTP because those controls bypass the Chat permission
 gate/Data Shield.
