@@ -1,5 +1,5 @@
 test_that("theme resolvers return a bs_theme for every supported input", {
-  for (nm in list("default", "ios", "aurora", "flatly", "darkly", "glass",
+  for (nm in list("default", "ios", "aurora", "dsh", "flatly", "darkly", "glass",
                   "light", "dark", "glassmorphism", "GLASS",
                   "unknown-theme", NULL, NA)) {
     expect_s3_class(.resolve_app_theme(nm), "bs_theme")
@@ -17,6 +17,7 @@ test_that("theme vocabularies map to the expected preset", {
   expect_null(bsw("light"))
   expect_null(bsw("ios"))
   expect_null(bsw("aurora"))
+  expect_null(bsw("dsh"))
   expect_null(bsw("glass"))
 })
 
@@ -74,7 +75,7 @@ test_that("glass asks for shinyglass 0.5.0 or later", {
 
 test_that("custom codeagent themes carry additional rules", {
   default <- .resolve_app_theme("default")
-  for (style in c("glass", "ios", "aurora")) {
+  for (style in c("glass", "ios", "aurora", "dsh")) {
     themed <- .resolve_app_theme(style)
     expect_false(identical(
       utils::capture.output(str(themed)),

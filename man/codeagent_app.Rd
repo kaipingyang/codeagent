@@ -37,7 +37,8 @@ most flexible multi-user mode.}
 
 \item{theme}{UI theme name or a bslib \code{bs_theme} object. Built-in names are
 \code{"default"}, \code{"ios"} (iOS grouped canvas with white cards), \code{"aurora"}
-(ambient blue-indigo-purple light with selective frosted controls),
+(ambient blue-indigo-purple light with selective frosted controls), \code{"dsh"}
+(flat layered surfaces after the DeepSeek Harness Web UI design system),
 \code{"flatly"}, \code{"darkly"} (dark), and \code{"glass"} (Liquid Glass from the
 optional \code{shinyglass} package, 0.5.0 or later, which also styles shinychat). A
 theme from \code{\link[=codeagent_theme]{codeagent_theme()}} or \code{shinychat::page_chat_theme()} is accepted

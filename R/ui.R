@@ -15,6 +15,7 @@ NULL
     light  = , default = "default",
     ios    = "ios",
     aurora = "aurora",
+    dsh    = "dsh",
     dark   = , darkly  = "darkly",
     flatly = "flatly",
     glass  = , glassmorphism = "glass",
@@ -116,6 +117,14 @@ NULL
   ), collapse = "\n")
 }
 
+# Rules for the "dsh" theme (DeepSeek Harness Web UI design system; see the
+# header of inst/themes/dsh.scss). Shipped only with this theme.
+.dsh_theme_rules <- function() {
+  path <- system.file("themes", "dsh.scss", package = "codeagent")
+  if (!nzchar(path)) path <- file.path("inst", "themes", "dsh.scss")
+  sass::sass_file(path)
+}
+
 .aurora_theme_rules <- function() {
   paste(c(
     ":root {",
@@ -214,7 +223,7 @@ NULL
 #' package (0.5.0 or later), which also styles shinychat itself. The returned
 #' object can be passed to [codeagent_app()] or further customized with bslib.
 #'
-#' @param style One of `"default"`, `"ios"`, `"aurora"`, `"flatly"`,
+#' @param style One of `"default"`, `"ios"`, `"aurora"`, `"dsh"`, `"flatly"`,
 #'   `"darkly"`, or `"glass"`. CLI aliases `"light"`, `"dark"`, and
 #'   `"glassmorphism"` are also accepted. Unknown values fail soft to
 #'   `"default"`. `"glass"` requires the optional `shinyglass` package.
@@ -230,7 +239,7 @@ codeagent_theme <- function(style = "default", ...) {
   if (identical(key, "glass"))
     return(.codeagent_shinyglass_theme(...))
 
-  preset <- if (key %in% c("default", "ios", "aurora")) "shiny" else key
+  preset <- if (key %in% c("default", "ios", "aurora", "dsh")) "shiny" else key
   defaults <- switch(key,
     ios = list(
       bg = "#ffffff", fg = "#1c1c1e",
@@ -262,6 +271,20 @@ codeagent_theme <- function(style = "default", ...) {
       `shiny-chat-page-drawer-box-shadow` = "0 12px 36px rgba(56,45,110,0.11), 0 2px 8px rgba(0,0,0,0.05)",
       `shiny-chat-suggestion-card-border-radius` = "0.875rem",
       `shiny-chat-user-message-border-radius` = "1.125rem"),
+    dsh = list(
+      bg = "#ffffff", fg = "#0f1115",
+      primary = "#2563eb", secondary = "#61666b",
+      `font-size-base` = "0.875rem",
+      `border-radius` = "0.75rem",
+      `border-radius-sm` = "0.5rem",
+      `border-radius-lg` = "1rem",
+      `card-border-radius` = "1.25rem",
+      `shiny-chat-page-sidebar-bg` = "#f9fafb",
+      `shiny-chat-page-canvas-bg` = "#ffffff",
+      `shiny-chat-page-drawer-header-bg` = "#ffffff",
+      `shiny-chat-suggestion-card-border-radius` = "1.25rem",
+      `shiny-chat-user-message-border-radius` = "1.25rem",
+      `shiny-chat-user-message-padding` = "10px 16px"),
     list())
   args <- .merge_theme_args(defaults, list(...))
   page_theme <- .shinychat_export("page_chat_theme")
@@ -274,6 +297,8 @@ codeagent_theme <- function(style = "default", ...) {
     theme <- bslib::bs_add_rules(theme, .ios_theme_rules())
   if (identical(key, "aurora"))
     theme <- bslib::bs_add_rules(theme, .aurora_theme_rules())
+  if (identical(key, "dsh"))
+    theme <- bslib::bs_add_rules(theme, .dsh_theme_rules())
   theme
 }
 
@@ -418,7 +443,8 @@ codeagent_theme <- function(style = "default", ...) {
 #'   the official resizable drawer on the right.
 #' @param theme UI theme name or a bslib `bs_theme` object. Built-in names are
 #'   `"default"`, `"ios"` (iOS grouped canvas with white cards), `"aurora"`
-#'   (ambient blue-indigo-purple light with selective frosted controls),
+#'   (ambient blue-indigo-purple light with selective frosted controls), `"dsh"`
+#'   (flat layered surfaces after the DeepSeek Harness Web UI design system),
 #'   `"flatly"`, `"darkly"` (dark), and `"glass"` (Liquid Glass from the
 #'   optional `shinyglass` package, 0.5.0 or later, which also styles shinychat). A
 #'   theme from [codeagent_theme()] or `shinychat::page_chat_theme()` is accepted
