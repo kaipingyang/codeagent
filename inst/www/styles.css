@@ -499,3 +499,64 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
   padding: 6px 10px; border-radius: 8px; font-size: 0.8125rem; color: var(--bs-body-color, #222); }
 .ca-ws-menu-item:hover:not([disabled]) { background: var(--bs-tertiary-bg, #f1f3f5); }
 .ca-ws-menu-item[disabled] { opacity: .45; }
+
+/* --- Question card (AskUserQuestion; themes restyle it) -------------------------- */
+.ca-q-card { display: flex; flex-direction: column; max-height: min(60vh, 520px); overflow: hidden;
+  border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 16px; background: var(--bs-body-bg, #fff);
+  text-align: left; }
+.ca-q-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  padding: 16px 16px 0 20px; }
+.ca-q-eyebrow { color: var(--bs-secondary-color, #666); font-size: 11px; line-height: 16px; }
+.ca-q-eyebrow:empty { display: none; }
+.ca-q-mini-title { display: none; font-weight: 500; }
+.ca-q-header-actions { display: flex; gap: 4px; margin-left: auto; }
+.ca-q-icon { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0;
+  border-radius: 8px; background: transparent; color: var(--bs-secondary-color, #666); font-size: 12px; }
+.ca-q-icon:disabled { opacity: .35; cursor: default; }
+.ca-q-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.ca-q-page[hidden] { display: none; }
+.ca-q-title { margin: 4px 20px 0; font-size: 16px; line-height: 22px; font-weight: 500; }
+.ca-q-options { display: flex; flex-direction: column; gap: 1px; margin-top: 8px; padding: 4px 12px; }
+.ca-q-option, .ca-q-custom { display: flex; align-items: flex-start; gap: 8px; width: 100%; min-height: 40px;
+  margin: 0; padding: 8px 12px 8px 8px; border: 0.5px solid transparent; border-radius: 12px;
+  background: transparent; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.ca-q-option.is-selected { background: var(--bs-tertiary-bg, #f1f3f5); }
+.ca-q-num { display: grid; place-items: center; flex: 0 0 20px; width: 20px; height: 20px; margin-top: 2px;
+  border-radius: 4px; background: var(--bs-tertiary-bg, #f1f3f5); font-size: 12px; line-height: 18px; font-weight: 500; }
+.ca-q-num--pen { font-size: 10px; }
+.ca-q-check { position: relative; flex: 0 0 20px; width: 20px; height: 24px; }
+.ca-q-check::before { content: ""; position: absolute; left: 3px; top: 5px; width: 14px; height: 14px;
+  border: 0.5px solid var(--bs-border-color, #adb5bd); border-radius: 4px; }
+.ca-q-option.is-selected .ca-q-check::before, .ca-q-check.is-checked::before {
+  background: var(--bs-body-color, #222); border-color: var(--bs-body-color, #222); }
+.ca-q-option.is-selected .ca-q-check::after, .ca-q-check.is-checked::after {
+  content: ""; position: absolute; left: 8px; top: 7px; width: 4px; height: 8px;
+  border: solid var(--bs-body-bg, #fff); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.ca-q-copy { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 6px; min-width: 0; }
+.ca-q-line { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 6px; }
+.ca-q-label { font-size: 14px; line-height: 24px; font-weight: 500; }
+.ca-q-badge { padding: 0 4px; border-radius: 4px; font-size: 11px; line-height: 18px; font-weight: 600;
+  background: var(--bs-primary-bg-subtle, #cfe2ff); color: var(--bs-primary-text-emphasis, #052c65); }
+.ca-q-desc { color: var(--bs-secondary-color, #666); font-size: 13px; line-height: 20px; white-space: pre-wrap; }
+.ca-q-text { flex: 1 1 auto; min-width: 0; resize: none; border: 0; outline: 0; padding: 0; background: transparent;
+  color: inherit; font: inherit; font-size: 14px; line-height: 24px; max-height: 144px; }
+.ca-q-block { margin: 8px 12px 0; padding: 8px 12px; min-height: 64px; border-radius: 16px;
+  border: 0.5px solid var(--bs-border-color, #adb5bd); }
+.ca-q-block .ca-q-text { width: 100%; }
+.ca-q-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-top: 12px; padding: 0 20px 12px 16px; }
+.ca-q-pager { display: flex; align-items: center; gap: 6px; }
+.ca-q-progress { padding: 0 4px; font-size: 14px; line-height: 24px; font-weight: 500; word-spacing: -2px;
+  color: var(--bs-secondary-color, #666); }
+.ca-q-feedback { flex: 1 1 auto; min-height: 16px; text-align: right; font-size: 11px; line-height: 16px;
+  color: var(--bs-danger, #dc3545); }
+.ca-q-footer-actions { display: flex; gap: 12px; }
+.ca-q-card.is-minimised .ca-q-body, .ca-q-card.is-minimised .ca-q-footer { display: none; }
+.ca-q-card.is-minimised .ca-q-mini-title { display: block; }
+.ca-q-card.is-minimised .ca-q-minimise { transform: rotate(180deg); }
+.ca-q-card.is-busy, [data-ca-keys="approval"].is-busy .ca-interaction-actions { opacity: .6; }
+/* Focus: the card takes focus so its keys work; no heavy ring on it. Keyboard
+   focus on a row or button shows a thin outline instead. */
+.ca-interaction-body:focus, .ca-q-option:focus, .ca-q-text:focus { outline: none; }
+.ca-q-option:focus-visible, .ca-q-icon:focus-visible, .ca-q-footer-actions .btn:focus-visible {
+  outline: 0; box-shadow: inset 0 0 0 1px var(--bs-border-color, #adb5bd); }

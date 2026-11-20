@@ -1,5 +1,14 @@
 # codeagent (development version)
 
+* The approval and AskUserQuestion cards follow the DSH design. Approval: amber
+  "Waiting for approval" strip, the full command in the code font, Reject /
+  Always allow / Allow once; Enter allows once and a click locks the card. Questions:
+  one question per page with numbered option rows (checkbox rows for
+  `multiSelect`), a "Recommended" badge for labels ending in "(Recommended)", a
+  free-text row, a pager and Skip / Next|Submit, minimise and dismiss; answers are
+  kept in the page and sent together. The "Tool allowed." / "Tool denied." chat
+  messages are gone: the tool row shows the outcome.
+
 * New workspace tabs for the right panel: `codeagent_workspace_ui()`,
   `workspace_options()`, `codeagent_workspace_kind()` and
   `codeagent_server(workspace =)`, which returns a `ws` object (`open`, `close`,

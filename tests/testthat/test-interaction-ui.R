@@ -16,37 +16,45 @@ test_that(".interaction_bar_ui builds an Allow/Deny bar for approvals", {
   expect_true(grepl("rm -rf", html))   # command shown in the description
 })
 
-test_that(".interaction_bar_ui truncates long approval descriptions", {
+
+test_that("approval card: full command, DSH labels, Reject / Always allow / Allow once", {
   long <- paste(rep("x", 200), collapse = "")
-  ui   <- codeagent:::.interaction_bar_ui(list(
-    type = "approval",
-    payload = list(tool_name = "Bash", tool_input = list(command = long))
-  ))
-  html <- as.character(ui)
-  # substr(desc, 1, 80) -> at most 80 x's shown, not 200.
-  expect_false(grepl(paste(rep("x", 100), collapse = ""), html))
+  html <- as.character(codeagent:::.interaction_bar_ui(list(
+    type = "approval", payload = list(tool_name = "Bash", tool_input = list(command = long)))))
+  expect_true(grepl(long, html, fixed = TRUE))                      # shown in full
+  expect_match(html, "Waiting for approval", fixed = TRUE)
+  expect_match(html, 'data-ca-keys="approval"', fixed = TRUE)
+  pos <- vapply(c("ca_tool_deny", "ca_tool_allow_always", '"ca_tool_allow"'),
+                function(s) regexpr(s, html, fixed = TRUE)[[1]], 1)
+  expect_true(all(diff(pos) > 0))
+  expect_match(html, ">Reject<", fixed = TRUE)
+  expect_match(html, ">Allow once<", fixed = TRUE)
+  huge <- paste(rep("y", 5000), collapse = "")
+  html2 <- as.character(codeagent:::.interaction_bar_ui(list(
+    type = "approval", payload = list(tool_name = "Bash", tool_input = list(command = huge)))))
+  expect_false(grepl(huge, html2, fixed = TRUE))                    # capped
 })
 
-test_that(".interaction_bar_ui builds radio choices for a question with options", {
-  ui <- codeagent:::.interaction_bar_ui(list(
-    type = "question",
-    payload = list(question = "Pick one", choices = c("a", "b", "c"))
-  ))
-  html <- as.character(ui)
-  expect_true(grepl("ca_q_choice", html))
-  expect_true(grepl("ca_q_submit", html))
-  expect_true(grepl("Pick one", html))
+test_that("a single question becomes a one-page question card", {
+  html <- as.character(codeagent:::.interaction_bar_ui(list(
+    type = "question", payload = list(question = "Pick one", choices = c("a", "b (Recommended)")))))
+  expect_match(html, "ca-q-card", fixed = TRUE)
+  expect_match(html, "Pick one", fixed = TRUE)
+  expect_match(html, 'data-label="b (Recommended)"', fixed = TRUE)
+  expect_match(html, 'class="ca-q-badge">Recommended<', fixed = TRUE)
+  expect_match(html, "1 / 1", fixed = TRUE)
+  expect_match(html, ">Submit<", fixed = TRUE)
+  expect_match(html, ">Skip<", fixed = TRUE)
+  expect_false(grepl("is-selected", html))   # the recommended one is not the first
 })
 
-test_that(".interaction_bar_ui builds a free-text input for a choiceless question", {
-  ui <- codeagent:::.interaction_bar_ui(list(
-    type = "question",
-    payload = list(question = "Your name?", choices = character(0))
-  ))
-  html <- as.character(ui)
-  expect_true(grepl("ca_q_text", html))
-  expect_false(grepl("ca_q_choice", html))
+test_that("a choiceless question gets a block text field", {
+  html <- as.character(codeagent:::.interaction_bar_ui(list(
+    type = "question", payload = list(question = "Your name?", choices = character(0)))))
+  expect_match(html, "ca-q-block", fixed = TRUE)
+  expect_false(grepl("ca-q-option", html, fixed = TRUE))
 })
+
 
 test_that(".interaction_cancel_value uses safe defaults", {
   expect_false(codeagent:::.interaction_cancel_value(list(type = "approval")))

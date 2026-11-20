@@ -118,26 +118,122 @@ NULL
   )
 }
 
-# One question of AskUserQuestion(questions =): header chip, question, the
-# options (radio, or checkboxes for multiSelect) with their descriptions,
-# and "Other" with a text box. Single choice starts on the first option
-# (the recommended one by convention). PURE.
-.question_input <- function(q, i) {
-  labels <- vapply(q$options, `[[`, "", "label")
-  names_html <- c(lapply(q$options, function(o) htmltools::tags$span(o$label,
-    if (nzchar(o$description)) htmltools::tags$small(class = "text-muted", paste0(" \u2014 ", o$description)))),
-    list(htmltools::tags$span("Other")))
-  id <- paste0("ca_qs_", i)
-  htmltools::tags$div(class = "ca-question mb-2",
-    htmltools::tags$p(class = "ca-question-title",
-      if (nzchar(q$header)) htmltools::tags$span(class = "badge text-bg-secondary me-2", q$header),
-      q$question),
-    if (isTRUE(q$multiSelect))
-      shiny::checkboxGroupInput(id, NULL, choiceNames = names_html, choiceValues = c(labels, "__other__"))
-    else
-      shiny::radioButtons(id, NULL, choiceNames = names_html, choiceValues = c(labels, "__other__"),
-                          selected = labels[1]),
-    shiny::textInput(paste0("ca_qs_other_", i), NULL, placeholder = "Other: type your answer", width = "100%"))
+# ---- Question card (DSH QuestionComposer look) -----------------------------
+# One card for AskUserQuestion: one question per page, options as numbered
+# rows (checkbox rows for multiSelect), a "Recommended" badge, a free-text
+# row, a pager and Skip / Next|Submit. inst/www/interaction.js keeps the
+# answers in the page while the card is open and sends them all at once as
+# input$ca_q_answers. PURE.
+
+# A label ending in "(Recommended)" is shown without the suffix and gets a
+# badge; the full label is what is submitted.
+.question_recommended <- function(label) {
+  grepl("\\s*[(\uff08]\\s*(recommended|\u63a8\u8350)\\s*[)\uff09]\\s*$", label,
+        ignore.case = TRUE, perl = TRUE)
+}
+.question_display_label <- function(label) {
+  trimws(sub("\\s*[(\uff08]\\s*(recommended|\u63a8\u8350)\\s*[)\uff09]\\s*$", "", label,
+             ignore.case = TRUE, perl = TRUE))
+}
+
+# The legacy single question (question + choices) in the questions shape.
+.question_as_questions <- function(p) {
+  list(list(question = p$question %||% "", header = "",
+            options = lapply(as.character(p$choices %||% character()), function(ch)
+              list(label = ch, description = "")),
+            multiSelect = FALSE))
+}
+
+.question_page_ui <- function(q, i, n) {
+  multi <- isTRUE(q$multiSelect)
+  opts <- q$options %||% list()
+  labels <- vapply(opts, function(o) as.character(o$label %||% ""), "")
+  rec <- vapply(labels, .question_recommended, NA)
+  preselect <- if (multi) rec else (seq_along(labels) == 1L & rec)
+  marker <- function(k) if (multi)
+    htmltools::tags$span(class = "ca-q-check", `aria-hidden` = "true")
+  else htmltools::tags$span(class = "ca-q-num", `aria-hidden` = "true", k)
+  htmltools::tags$div(
+    class = "ca-q-page", `data-i` = i, `data-multi` = if (multi) "true" else "false",
+    hidden = if (i > 1L) NA,
+    htmltools::tags$h2(class = "ca-q-title", id = paste0("ca_q_title_", i), q$question %||% ""),
+    if (length(opts)) htmltools::tags$div(
+      class = "ca-q-options", role = if (multi) "group" else "radiogroup",
+      `aria-labelledby` = paste0("ca_q_title_", i),
+      lapply(seq_along(opts), function(k) {
+        o <- opts[[k]]
+        desc <- as.character(o$description %||% "")
+        htmltools::tags$button(
+          type = "button", class = paste("ca-q-option", if (preselect[[k]]) "is-selected"),
+          role = if (multi) "checkbox" else "radio",
+          `aria-checked` = if (preselect[[k]]) "true" else "false",
+          `data-label` = labels[[k]],
+          marker(k),
+          htmltools::tags$span(class = "ca-q-copy",
+            htmltools::tags$span(class = "ca-q-line",
+              htmltools::tags$span(class = "ca-q-label", .question_display_label(labels[[k]])),
+              if (rec[[k]]) htmltools::tags$span(class = "ca-q-badge", "Recommended")),
+            if (nzchar(desc)) htmltools::tags$span(class = "ca-q-desc", desc)))
+      }),
+      htmltools::tags$label(class = "ca-q-custom",
+        if (multi) htmltools::tags$span(class = "ca-q-check", `aria-hidden` = "true")
+        else htmltools::tags$span(class = "ca-q-num ca-q-num--pen", `aria-hidden` = "true",
+                                  shiny::icon("pen")),
+        htmltools::tags$textarea(class = "ca-q-text", rows = "1",
+                                 placeholder = "Type your answer",
+                                 `aria-label` = "Type your answer")))
+    else htmltools::tags$div(class = "ca-q-block",
+      htmltools::tags$textarea(class = "ca-q-text", rows = "2",
+                               placeholder = "Type your answer",
+                               `aria-label` = "Type your answer")))
+}
+
+.question_card_ui <- function(qs) {
+  n <- length(qs)
+  header <- as.character(qs[[1]]$header %||% "")
+  htmltools::tags$section(
+    class = "ca-interaction ca-interaction--questions ca-q-card", `data-n` = n,
+    `aria-label` = "Questions",
+    htmltools::tags$header(class = "ca-q-header",
+      htmltools::tags$div(class = "ca-q-heading",
+        htmltools::tags$div(class = "ca-q-eyebrow", header),
+        htmltools::tags$div(class = "ca-q-mini-title", qs[[1]]$question %||% "")),
+      htmltools::tags$div(class = "ca-q-header-actions",
+        htmltools::tags$button(type = "button", class = "ca-q-icon ca-q-minimise",
+                               `aria-label` = "Minimize", title = "Minimize",
+                               shiny::icon("chevron-down")),
+        htmltools::tags$button(type = "button", class = "ca-q-icon ca-q-dismiss",
+                               `aria-label` = "Dismiss all questions",
+                               title = "Dismiss all questions", shiny::icon("xmark")))),
+    htmltools::tags$div(class = "ca-q-body",
+      lapply(seq_len(n), function(i) .question_page_ui(qs[[i]], i, n))),
+    htmltools::tags$footer(class = "ca-q-footer",
+      htmltools::tags$div(class = "ca-q-pager",
+        htmltools::tags$button(type = "button", class = "ca-q-icon ca-q-prev",
+                               `aria-label` = "Previous question", shiny::icon("chevron-left")),
+        htmltools::tags$span(class = "ca-q-progress", sprintf("1 / %d", n)),
+        htmltools::tags$button(type = "button", class = "ca-q-icon ca-q-next-page",
+                               `aria-label` = "Next question", shiny::icon("chevron-right"))),
+      htmltools::tags$div(class = "ca-q-feedback", role = "status"),
+      htmltools::tags$div(class = "ca-q-footer-actions",
+        htmltools::tags$button(type = "button", class = "btn ca-q-skip", "Skip"),
+        htmltools::tags$button(type = "button", class = "btn ca-q-submit",
+                               if (n > 1L) "Next" else "Submit"))))
+}
+
+# The browser's answers (input$ca_q_answers$answers) -> one answer per
+# question: a skipped question is empty, typed text replaces a single choice
+# and is added to multiple ones.
+.question_answers <- function(qs, raw) {
+  lapply(seq_along(qs), function(i) {
+    a <- if (i <= length(raw)) raw[[i]] else list()
+    if (isTRUE(a$skipped)) return(character())
+    picked <- as.character(unlist(a$selected %||% list()))
+    picked <- picked[nzchar(picked)]
+    custom <- trimws(as.character(a$custom %||% ""))[1]
+    if (is.na(custom) || !nzchar(custom)) return(picked)
+    if (isTRUE(qs[[i]]$multiSelect)) c(picked, custom) else custom
+  })
 }
 
 # Build the promise-returning Data Shield egress approval callback. Payload is
@@ -238,40 +334,30 @@ NULL
   if (identical(pending$type, "approval")) {
     p    <- pending$payload
     tin  <- p$tool_input %||% list()
-    desc <- as.character(tin$command %||% tin$file_path %||% "")
-    .interaction_shell("approval", "Waiting for approval",
+    desc <- as.character(tin$command %||% tin$file_path %||% "")[1]
+    if (is.na(desc)) desc <- ""
+    # The command is shown in full (DSH wraps it, the body scrolls); a cap
+    # keeps a pathological argument from flooding the page.
+    if (nchar(desc) > 4000L) desc <- paste0(substr(desc, 1L, 4000L), "\u2026")
+    card <- .interaction_shell("approval", "Waiting for approval",
       htmltools::tagList(
         htmltools::tags$div(class = "ca-interaction-title",
-          htmltools::tags$span(class = "ca-interaction-icon", "\u26a0\ufe0f "),
-          "Allow tool: ", htmltools::tags$code(p$tool_name %||% "?")),
+          "Allow ", htmltools::tags$code(p$tool_name %||% "?")),
         if (nzchar(desc))
-          htmltools::tags$div(class = "ca-interaction-command", substr(desc, 1L, 80L))),
+          htmltools::tags$div(class = "ca-interaction-command", desc)),
       htmltools::tagList(
-        shiny::actionButton("ca_tool_deny", "\u2716 Deny",
-                            class = "btn-danger btn-sm ca-interaction-reject"),
-        shiny::actionButton("ca_tool_allow_always", "\u2714 Always allow",
-                            class = "btn-outline-success btn-sm ca-interaction-secondary",
+        shiny::actionButton("ca_tool_deny", "Reject",
+                            class = "btn-outline-secondary btn-sm ca-interaction-reject"),
+        shiny::actionButton("ca_tool_allow_always", "Always allow",
+                            class = "btn-outline-secondary btn-sm ca-interaction-secondary",
                             title = "Allow this tool for the rest of this session without asking again"),
-        shiny::actionButton("ca_tool_allow", "\u2714 Allow",
-                            class = "btn-success btn-sm ca-interaction-primary")))
+        shiny::actionButton("ca_tool_allow", "Allow once",
+                            class = "btn-primary btn-sm ca-interaction-primary")))
+    htmltools::tagAppendAttributes(card, `data-ca-keys` = "approval")
   } else if (identical(pending$type, "question")) {
-    p       <- pending$payload
-    choices <- p$choices
-    .interaction_shell("question", "Waiting for your answer",
-      htmltools::tagList(
-        htmltools::tags$div(class = "ca-interaction-title",
-          htmltools::tags$span(class = "ca-interaction-icon", "\u2753 "), p$question %||% ""),
-        if (length(choices) > 0L)
-          shiny::radioButtons("ca_q_choice", NULL, choices = choices, inline = FALSE)
-        else
-          shiny::textInput("ca_q_text", NULL, placeholder = "Type your answer...")),
-      shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm ca-interaction-primary"))
+    .question_card_ui(.question_as_questions(pending$payload))
   } else if (identical(pending$type, "questions")) {
-    qs <- pending$payload$questions
-    .interaction_shell("questions", "Waiting for your answer",
-      htmltools::tagList(lapply(seq_along(qs), function(i) .question_input(qs[[i]], i))),
-      shiny::actionButton("ca_q_submit", "Submit", class = "btn-primary btn-sm ca-interaction-primary"),
-      scroll = TRUE)
+    .question_card_ui(pending$payload$questions)
   } else if (identical(pending$type, "form")) {
     p <- pending$payload
     .interaction_shell("form", "Waiting for your input",
@@ -341,11 +427,9 @@ server_interaction <- function(input, output, session, state) {
   })
 
   # ---- Allow / Deny (permission approval) ----
+  # The tool row shows the outcome (as in DSH); no extra chat message.
   shiny::observeEvent(input$ca_tool_allow, ignoreInit = TRUE, {
-    if (.resolve_pending(state, TRUE))
-      shinychat::chat_append_message(
-        "chat", list(role = "assistant", content = "\u2705 Tool allowed."),
-        session = session)
+    .resolve_pending(state, TRUE)
   })
   # Allow, and stop asking for this tool in this session: approvals of the
   # same tool already waiting in the queue are allowed too.
@@ -367,10 +451,7 @@ server_interaction <- function(input, output, session, state) {
         "` allowed for the rest of this session.")), session = session)
   })
   shiny::observeEvent(input$ca_tool_deny, ignoreInit = TRUE, {
-    if (.resolve_pending(state, FALSE))
-      shinychat::chat_append_message(
-        "chat", list(role = "assistant", content = "\u274c Tool denied."),
-        session = session)
+    .resolve_pending(state, FALSE)
   })
 
   # ---- Data Shield egress approval (result already executed, not yet in LLM) ----
@@ -410,6 +491,26 @@ server_interaction <- function(input, output, session, state) {
     if (is.null(pending) || !identical(pending$type, "question")) return()
     answer <- input$ca_q_choice %||% input$ca_q_text %||% ""
     .resolve_pending(state, answer)
+  })
+
+  # ---- Question card (interaction.js): all answers at once, or dismissed ----
+  shiny::observeEvent(input$ca_q_answers, ignoreInit = TRUE, {
+    pending <- shiny::isolate(state$pending_interaction)
+    if (is.null(pending) || !pending$type %in% c("question", "questions")) return()
+    ev <- input$ca_q_answers
+    if (isTRUE(ev$dismissed)) {
+      .resolve_pending(state, .interaction_cancel_value(pending))
+      return()
+    }
+    qs <- if (identical(pending$type, "questions")) pending$payload$questions
+          else .question_as_questions(pending$payload)
+    answers <- .question_answers(qs, ev$answers %||% list())
+    value <- if (identical(pending$type, "questions")) answers
+             else paste(answers[[1]], collapse = ", ")
+    # The answers show in the AskUserQuestion tool row (its result). A chat
+    # message appended here would land inside the reply that is streaming and
+    # replace it, so there is no separate bubble.
+    .resolve_pending(state, value)
   })
 
   # ---- Form submit / cancel (AskUserForm) ----
