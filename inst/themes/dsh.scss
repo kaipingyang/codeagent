@@ -797,6 +797,60 @@ body #main_tab.nav-tabs .nav-link.active {
     background: var(--ca-dsh-bg-hover);
   }
 }
+/* Workspace tabs (codeagent_workspace_ui): the same chips; close on the chip. */
+body #ca_page_chat_workspace {
+  padding: 8px 12px;
+}
+body .ca-ws-strip {
+  gap: 4px;
+  padding: 0 0 8px;
+}
+body .ca-ws-tab {
+  border-radius: var(--ca-dsh-radius-sm);
+  padding: 4px 6px 4px 12px;
+  font-size: 13px;
+  color: var(--ca-dsh-label-secondary);
+  background: transparent;
+}
+body .ca-ws-tab.is-pinned {
+  padding-right: 12px;
+}
+body .ca-ws-tab.is-active {
+  background: var(--ca-dsh-bg-module);
+  color: var(--ca-dsh-label-primary);
+}
+body .ca-ws-tab-close {
+  color: var(--ca-dsh-label-tertiary);
+  border-radius: var(--ca-dsh-radius-xs);
+}
+body .ca-ws-empty,
+body .ca-ws-note {
+  color: var(--ca-dsh-label-tertiary);
+  font-size: 13px;
+}
+body .ca-ws-menu {
+  border-radius: var(--ca-dsh-radius-lg);
+  border: 0;
+  background: var(--ca-dsh-bg-layer-2);
+  box-shadow: var(--ca-dsh-elevation-panel);
+}
+body .ca-ws-menu-item {
+  border-radius: var(--ca-dsh-radius-md);
+  font-size: 13px;
+  color: var(--ca-dsh-label-primary);
+}
+@media (hover: hover) {
+  body .ca-ws-tab:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+  body .ca-ws-tab-close:hover {
+    background: var(--ca-dsh-bg-hover);
+    color: var(--ca-dsh-label-primary);
+  }
+  body .ca-ws-menu-item:hover:not([disabled]) {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
 /* Tool output cards in the workspace: R16 module surface, 0.5px hairline. */
 body .toolcard {
   border: 0.5px solid var(--ca-dsh-border-l2);

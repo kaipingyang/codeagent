@@ -80,3 +80,12 @@ test_that("codeagent_history_options() reads the session log, per user, no evict
   expect_identical(scope(list(user = NULL)), unname(Sys.info()[["user"]]))
   expect_identical(codeagent_history_options(cwd, user = "team")$scope(list(user = "x")), "team")
 })
+
+test_that("the dsh layout's drawer holds the workspace tabs, not the fixed navset", {
+  skip_if_not(.shinychat_page_chat_available())
+  html <- dsh_page_html()
+  expect_identical(count_id(html, "ca_ws"), 1L)
+  expect_match(html, 'data-ca-ws="ca_ws"', fixed = TRUE)
+  expect_identical(count_id(html, "main_tab"), 0L)
+  expect_match(html, "codeagent-www/workspace.js", fixed = TRUE)
+})

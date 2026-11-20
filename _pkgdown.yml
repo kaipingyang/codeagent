@@ -37,6 +37,9 @@ reference:
       - codeagent_history_options
       - codeagent_chat_ui
       - codeagent_canvas_ui
+      - codeagent_workspace_ui
+      - workspace_options
+      - codeagent_workspace_kind
       - codeagent_sessions_ui
       - codeagent_mode_ui
       - codeagent_head_assets

@@ -70,6 +70,13 @@ server_chat <- function(input, output, session, chat, settings,
   # (extra$codeagent$artifact) on demand -- no stored right_output (plan 35 B1).
   # Returns the (possibly adapted) result so callers can store it.
   .push_output <- function(result, immediate = TRUE) {
+    # A workspace (ui_layout = "dsh") decides itself what a finished tool call
+    # shows; the fixed Output panel is not on the page.
+    handler <- shiny::isolate(state$tool_output_handler)
+    if (is.function(handler)) {
+      tryCatch(handler(result), error = function(e) NULL)
+      return(invisible(result))
+    }
     # Canvas changes already happened in the Canvas tab; show that tab rather
     # than replacing the Output panel with a summary card.
     if (.is_genui_result(result)) {
@@ -311,10 +318,12 @@ server_chat <- function(input, output, session, chat, settings,
       presentation_text <- NULL
       if (!is.null(finalized)) presentation_text <- finalized$text
       .genui_end_turn(settings, chat)
+      .close_dangling_tool_requests(chat)
       tryCatch(save_session(
         chat, cwd, sid,
         assistant_text_override = presentation_text,
-        genui_state = .genui_snapshot(settings, chat)),
+        genui_state = .genui_snapshot(settings, chat),
+        workspace_state = shiny::isolate(state$ws_layout)),
         error = function(e) NULL)
       if (!is.null(finalized) && !is.null(hooks)) tryCatch(
         hooks$run_stop(finalized$finish$stop_reason,

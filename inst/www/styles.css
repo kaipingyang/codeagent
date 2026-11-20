@@ -472,3 +472,30 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .ca-dialog-body { display: flex; flex-direction: column; gap: .75rem; padding: .5rem 1.25rem 1.25rem; }
 .ca-dialog-section-title { font-size: .9rem; font-weight: 600; margin: 0 0 .5rem; }
 .ca-dsh-sidebar-footer { margin-top: auto; }
+
+/* --- Workspace tabs (codeagent_workspace_ui; themes restyle it) ------------------ */
+.ca-ws { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.ca-ws-strip-out { flex: 0 0 auto; }
+.ca-ws-strip { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; padding: 4px 0 8px; }
+.ca-ws-strip::-webkit-scrollbar { display: none; }
+.ca-ws-tab { display: inline-flex; align-items: center; gap: 4px; flex: 0 0 auto; min-width: 80px;
+  max-width: 220px; padding: 4px 6px 4px 10px; border-radius: 8px; cursor: pointer;
+  font-size: 0.8125rem; color: var(--bs-secondary-color, #666); user-select: none; }
+.ca-ws-tab.is-active { background: var(--bs-tertiary-bg, #f1f3f5); color: var(--bs-body-color, #222); }
+.ca-ws-tab:focus-visible { outline: 2px solid var(--bs-primary, #0d6efd); outline-offset: -2px; }
+.ca-ws-tab-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1 1 auto; }
+.ca-ws-tab.is-pinned { padding-right: 10px; }
+.ca-ws-tab-close { border: 0; background: none; color: inherit; line-height: 1; padding: 0 4px;
+  border-radius: 4px; opacity: .6; }
+.ca-ws-tab-close:hover { opacity: 1; background: var(--bs-secondary-bg, #e9ecef); }
+.ca-ws-body { position: relative; flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.ca-ws-pane { display: none !important; flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ca-ws-pane.is-active { display: flex !important; flex-direction: column; }
+.ca-ws.has-tabs .ca-ws-empty { display: none; }
+.ca-ws-empty, .ca-ws-note { color: var(--bs-secondary-color, #666); padding: 24px; text-align: center; }
+.ca-ws-menu { position: fixed; z-index: 1080; min-width: 160px; padding: 4px; border-radius: 12px;
+  background: var(--bs-body-bg, #fff); box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.12); }
+.ca-ws-menu-item { display: block; width: 100%; text-align: left; border: 0; background: none;
+  padding: 6px 10px; border-radius: 8px; font-size: 0.8125rem; color: var(--bs-body-color, #222); }
+.ca-ws-menu-item:hover:not([disabled]) { background: var(--bs-tertiary-bg, #f1f3f5); }
+.ca-ws-menu-item[disabled] { opacity: .45; }
