@@ -109,6 +109,8 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_stream_async.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_task.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_theme.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_workspace_kind.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/codeagent_workspace_ui.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/compaction.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/constants.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/context_collapse.html</loc></url>
@@ -341,6 +343,9 @@
 <url><loc>https://kaipingyang.github.io/codeagent/reference/wear_report_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/web_fetch_tool.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/web_search_tool.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/workspace.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/workspace_layout.html</loc></url>
+<url><loc>https://kaipingyang.github.io/codeagent/reference/workspace_options.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/write_memory.html</loc></url>
 <url><loc>https://kaipingyang.github.io/codeagent/reference/write_tool.html</loc></url>
 </urlset>

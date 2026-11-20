@@ -756,6 +756,35 @@ still shows every earlier turn, with a note where the context was
 compacted. Version 1 files are read as before and migrated on their next
 save.
 
+Workspace tabs: put
+[`codeagent_workspace_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_workspace_ui.md)
+where results should show and pass
+`workspace = workspace_options(kinds = ...)` to
+[`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md).
+Each opened thing gets its own tab, keyed by `(kind, content_id)` –
+opening it again only focuses it. Built-in kinds are `result` (opening a
+tool card in the chat opens it) and `file`; declare your own with
+`codeagent_workspace_kind(kind, render, title, pinned)`. Tabs can be
+closed (also with a middle click), closed except one, or pinned from the
+right-click menu; past `max_tabs` the least recently viewed tab closes.
+A tab’s content renders once and stays mounted while hidden, so an
+iframe does not reload. The layout is saved with the conversation (a
+`workspace-state` entry in the session log) and comes back when it is
+opened.
+
+``` r
+
+tfl <- codeagent_workspace_kind("tfl",
+  render = function(id, session) htmltools::tags$iframe(src = paste0("out/", id, ".html")),
+  title  = function(id) id)
+srv <- codeagent_server(input, output, session, client,
+  workspace = workspace_options(kinds = list(tfl), max_tabs = 12))
+srv$ws$open("tfl", "t_dm")    # from the host's own code
+```
+
+`codeagent_app(ui_layout = "dsh")` uses the same workspace in its
+drawer.
+
 Permission mode switch:
 `codeagent_mode_ui(c("Ask before changes" = "default", "Run without asking" = "bypass"))`
 in the page and the same `modes =` in
@@ -997,6 +1026,12 @@ Interactive chat interface.
   : Chat UI for a host app that embeds codeagent
 - [`codeagent_canvas_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_canvas_ui.md)
   : Generative UI canvas for a host app
+- [`codeagent_workspace_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_workspace_ui.md)
+  : Workspace tabs UI
+- [`workspace_options()`](https://kaipingyang.github.io/codeagent/reference/workspace_options.md)
+  : Workspace options for a codeagent server
+- [`codeagent_workspace_kind()`](https://kaipingyang.github.io/codeagent/reference/codeagent_workspace_kind.md)
+  : Declare a kind of workspace tab
 - [`codeagent_sessions_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_sessions_ui.md)
   : Saved conversations for a host app that embeds codeagent
 - [`codeagent_mode_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_mode_ui.md)

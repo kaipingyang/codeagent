@@ -120,7 +120,8 @@ its first save.</p>
 <span>  title <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  assistant_text_override <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  genui_state <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  context_event <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  context_event <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  workspace_state <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -158,6 +159,12 @@ with the conversation; appended when it differs from the last saved one.</p></dd
 <dt id="arg-context-event">context_event<a class="anchor" aria-label="anchor" href="#arg-context-event"></a></dt>
 <dd><p>Character or NULL. What changed the context when it is
 not a continuation (<code>"compact"</code>, <code>"rewind"</code>, <code>"clear"</code>); inferred when NULL.</p></dd>
+
+
+<dt id="arg-workspace-state">workspace_state<a class="anchor" aria-label="anchor" href="#arg-workspace-state"></a></dt>
+<dd><p>List or NULL. The workspace tab layout
+(<code><a href="codeagent_workspace_ui.html">codeagent_workspace_ui()</a></code>) to persist with the conversation; appended
+when it differs from the last saved one.</p></dd>
 
 </dl></div>
     <div class="section level2">

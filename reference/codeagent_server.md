@@ -31,6 +31,7 @@ codeagent_server(
   on_restore = NULL,
   on_tool_open = NULL,
   on_user_prompt = NULL,
+  workspace = NULL,
   sessions = FALSE
 )
 ```
@@ -120,6 +121,16 @@ codeagent_server(
   turn. Typical use: facts the host knows that save the model a tool
   call (e.g. what a project contains), sent once with the first turn.
 
+- workspace:
+
+  `NULL` (no workspace tabs) or
+  [`workspace_options()`](https://kaipingyang.github.io/codeagent/reference/workspace_options.md):
+  place
+  [`codeagent_workspace_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_workspace_ui.md)
+  in the page. Each opened tool result, file or host content gets its
+  own tab; open tabs with the returned `ws`. Without an `on_tool_open`,
+  opening a tool card in the chat opens its result tab.
+
 - sessions:
 
   Deprecated: `TRUE` is `history = "codeagent"`.
@@ -127,7 +138,11 @@ codeagent_server(
 ## Value
 
 Invisibly, a list with `state` (the session `reactiveValues`),
-`stream_task` (the `ExtendedTask`), `chat` and `settings`.
+`stream_task` (the `ExtendedTask`), `chat`, `settings` and, with
+`workspace`, `ws`:
+`ws$open(kind, content_id, title = NULL, reveal = TRUE)`,
+`ws$close(tab)`, `ws$focus(tab)`, `ws$pin(tab, pinned = TRUE)`, and the
+reactive reads `ws$active()` and `ws$tabs()`.
 
 ## Details
 

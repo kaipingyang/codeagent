@@ -112,6 +112,7 @@ client the host built for this Shiny session. Pair it with
 <span>  on_restore <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  on_tool_open <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  on_user_prompt <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sessions <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -193,6 +194,13 @@ Typical use: facts the host knows that save the model a tool call (e.g.
 what a project contains), sent once with the first turn.</p></dd>
 
 
+<dt id="arg-workspace">workspace<a class="anchor" aria-label="anchor" href="#arg-workspace"></a></dt>
+<dd><p><code>NULL</code> (no workspace tabs) or <code><a href="workspace_options.html">workspace_options()</a></code>: place
+<code><a href="codeagent_workspace_ui.html">codeagent_workspace_ui()</a></code> in the page. Each opened tool result, file or
+host content gets its own tab; open tabs with the returned <code>ws</code>. Without an
+<code>on_tool_open</code>, opening a tool card in the chat opens its result tab.</p></dd>
+
+
 <dt id="arg-sessions">sessions<a class="anchor" aria-label="anchor" href="#arg-sessions"></a></dt>
 <dd><p>Deprecated: <code>TRUE</code> is <code>history = "codeagent"</code>.</p></dd>
 
@@ -200,7 +208,10 @@ what a project contains), sent once with the first turn.</p></dd>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>Invisibly, a list with <code>state</code> (the session <code>reactiveValues</code>),
-<code>stream_task</code> (the <code>ExtendedTask</code>), <code>chat</code> and <code>settings</code>.</p>
+<code>stream_task</code> (the <code>ExtendedTask</code>), <code>chat</code>, <code>settings</code> and, with
+<code>workspace</code>, <code>ws</code>: <code>ws$open(kind, content_id, title = NULL, reveal = TRUE)</code>,
+<code>ws$close(tab)</code>, <code>ws$focus(tab)</code>, <code>ws$pin(tab, pinned = TRUE)</code>, and the
+reactive reads <code>ws$active()</code> and <code>ws$tabs()</code>.</p>
     </div>
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>

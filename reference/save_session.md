@@ -25,7 +25,8 @@ save_session(
   title = NULL,
   assistant_text_override = NULL,
   genui_state = NULL,
-  context_event = NULL
+  context_event = NULL,
+  workspace_state = NULL
 )
 ```
 
@@ -62,6 +63,13 @@ save_session(
 
   Character or NULL. What changed the context when it is not a
   continuation (`"compact"`, `"rewind"`, `"clear"`); inferred when NULL.
+
+- workspace_state:
+
+  List or NULL. The workspace tab layout
+  ([`codeagent_workspace_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_workspace_ui.md))
+  to persist with the conversation; appended when it differs from the
+  last saved one.
 
 ## Value
 
