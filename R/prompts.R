@@ -346,6 +346,19 @@ NULL
   trimws(out)
 }
 
+# A reminder followed by UserPromptSubmit additional_context. The context is
+# model context like the reminder (Claude Code adds a hook's additionalContext
+# for the model, not as the user's words), so it goes in its own
+# <system-reminder> block: stripped from the visible transcript and from
+# titles with the rest, instead of being glued to the user's text there.
+.append_prompt_context <- function(reminder, context) {
+  context <- paste(as.character(context %||% character()), collapse = "\n")
+  if (!nzchar(context)) return(reminder %||% "")
+  if (!grepl("^\\s*<system-reminder>", context))
+    context <- paste0("<system-reminder>\n", context, "\n</system-reminder>")
+  if (nzchar(reminder %||% "")) paste0(reminder, "\n\n", context) else context
+}
+
 #' Build a system-reminder block for dynamic per-turn context injection
 #'
 #' Mirrors Claude Code's `<system-reminder>` pattern: ephemeral context

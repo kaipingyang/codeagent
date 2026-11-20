@@ -607,8 +607,7 @@ agent_loop <- function(user_input,
   #     injected at message time so it doesn't invalidate the prompt cache. Any
   #     UserPromptSubmit additional_context is appended here too (append-only).
   reminder <- .build_system_reminder(settings, iteration, cwd, query = user_input)
-  if (!is.null(ups_context) && nzchar(ups_context))
-    reminder <- if (nzchar(reminder)) paste0(reminder, "\n\n", ups_context) else ups_context
+  reminder <- .append_prompt_context(reminder, ups_context)
   actual_input <- if (nzchar(reminder))
     paste0(user_input, "\n\n", reminder)
   else

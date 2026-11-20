@@ -85,9 +85,7 @@ NULL
   reminder <- tryCatch(
     .build_system_reminder(settings, as.integer(iteration), cwd, query = text_part),
     error = function(e) "")
-  if (length(additional_context) && nzchar(additional_context))
-    reminder <- if (nzchar(reminder)) paste0(reminder, "\n\n", additional_context)
-                else additional_context
+  reminder <- .append_prompt_context(reminder, additional_context)
 
   .inject_reminder_to_input(input, reminder)
 }

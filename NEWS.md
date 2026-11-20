@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+* Context a UserPromptSubmit hook adds (`additional_context`, and
+  `codeagent_server(on_user_prompt =)`) goes to the model in its own
+  `<system-reminder>` block. Before, it followed the reminder outside the
+  tags, so stripping the reminder left it glued to the user's text in the
+  visible transcript, the history record and conversation titles
+  ("Generate t_dmStudy keys ...").
 * New workspace tabs for the right panel: `codeagent_workspace_ui()`,
   `workspace_options()`, `codeagent_workspace_kind()` and
   `codeagent_server(workspace =)`, which returns a `ws` object (`open`, `close`,

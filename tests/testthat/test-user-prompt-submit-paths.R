@@ -54,17 +54,19 @@ test_that("a failing hook registry never blocks the turn", {
   expect_identical(out$action, "allow")
 })
 
-test_that(".turn_setup appends hook context after the system-reminder", {
+test_that(".turn_setup appends hook context in its own system-reminder block", {
   client <- structure(list(chat = NULL, settings = list()), class = "CodeagentClient")
   out <- .turn_setup(client, "question", iteration = 2L, cwd = tempdir(),
                      additional_context = "SCOPE: s1-1")
   expect_match(out, "^question\n\n<system-reminder>")
-  expect_match(out, "</system-reminder>\n\nSCOPE: s1-1$")
+  expect_match(out, "</system-reminder>\n\n<system-reminder>\nSCOPE: s1-1\n</system-reminder>$")
+  # stripped with the reminder: the visible text / title is the user's own
+  expect_identical(.strip_system_reminder(out), "question")
   # list input (text + attachments): context goes to the text part
   att <- ellmer::ContentText("a")
   out_l <- .turn_setup(client, list("q", att), iteration = 2L, cwd = tempdir(),
                        additional_context = "CTX")
-  expect_match(out_l[[1]], "CTX$")
+  expect_match(out_l[[1]], "CTX\n</system-reminder>$")
   expect_identical(out_l[[2]], att)
   # no context: unchanged behaviour
   expect_false(grepl("CTX", .turn_setup(client, "q", iteration = 2L, cwd = tempdir())))
@@ -85,7 +87,7 @@ test_that("codeagent_stream_async sends hook context to the model", {
                                            cwd = tempdir()))
   expect_identical(res$text, "ok")
   expect_match(sent, "^plot it\n\n")
-  expect_match(sent, "SCOPE: s2-2$")
+  expect_match(sent, "SCOPE: s2-2\n</system-reminder>$")
 })
 
 test_that("codeagent_stream_async ends the turn when a hook blocks", {
