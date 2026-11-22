@@ -535,6 +535,7 @@ codeagent_app <- function(
     chat_args$placeholder <- "Message or run a task, / commands"
     # Voice sits in the composer row (left of send), not under it.
     chat_args$footer <- htmltools::tagList(
+      .tool_progress_ui(),
       shiny::uiOutput("ca_interaction_ui"),
       .skill_picker_footer(skill_meta, voice = FALSE))
     # DSH content axis: messages and composer share clamp(680px, 64%, 880px).

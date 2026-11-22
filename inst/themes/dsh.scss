@@ -940,6 +940,27 @@ body .ca-q-mini-title {
   }
 }
 
+/* Running tools' progress (codeagent_progress()): DSH process row look. */
+body .ca-tool-progress {
+  color: var(--ca-dsh-label-tertiary);
+  font-size: 13px;
+}
+body .ca-tool-progress__row {
+  gap: 8px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: var(--ca-dsh-radius-md);
+  background: var(--ca-dsh-bg-input);
+  box-shadow: var(--ca-dsh-elevation-panel);
+}
+body .ca-tool-progress__label {
+  color: var(--ca-dsh-label-primary);
+  font-weight: 500;
+}
+body .ca-tool-progress .spinner-border {
+  color: var(--ca-dsh-label-tertiary);
+}
+
 /* == 11. Workspace (drawer contents, classic output column) ===================== */
 /* DSH right panel: no inner frame; a tab strip of chips directly under the seam. */
 body #ca_page_chat_workspace > .card,

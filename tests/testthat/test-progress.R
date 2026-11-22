@@ -32,3 +32,17 @@ test_that("the chat footer has the progress line and the turn end clears it", {
   js <- paste(readLines(system.file("www", "agent.js", package = "codeagent")), collapse = "\n")
   expect_match(js, "ca_tool_progress", fixed = TRUE)
 })
+
+test_that("every codeagent_app layout has the progress box next to the card", {
+  for (layout in c("classic", "page_chat", "dsh")) {
+    app <- codeagent_app(ui_layout = layout, launch.browser = FALSE)
+    req <- as.environment(list(PATH_INFO = "/", REQUEST_METHOD = "GET", HTTP_HOST = "localhost",
+      QUERY_STRING = "", rook.input = list(read = function(...) raw(0))))
+    html <- app$httpHandler(req)$content
+    expect_identical(lengths(regmatches(html, gregexpr('id="ca_tool_progress"', html, fixed = TRUE))), 1L,
+                     info = layout)
+    expect_lt(regexpr('id="ca_tool_progress"', html)[[1]], regexpr('id="ca_interaction_ui"', html)[[1]])
+  }
+  js <- paste(readLines(system.file("www", "interaction.js", package = "codeagent")), collapse = "\n")
+  expect_match(js, "placeProgress", fixed = TRUE)
+})
