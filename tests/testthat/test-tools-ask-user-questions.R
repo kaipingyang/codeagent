@@ -147,3 +147,17 @@ test_that("Shiny: Submit resolves with one answer per question, Other text repla
   })
   expect_identical(.interaction_cancel_value(list(type = "questions")), list())
 })
+
+test_that("question tabs: one per question for a set, none for a single question", {
+  html <- as.character(.question_card_ui(.normalize_questions(qs_example)))
+  expect_identical(lengths(regmatches(html, gregexpr('class="ca-q-nav-item', html, fixed = TRUE))), 2L)
+  expect_match(html, ">Population<", fixed = TRUE)
+  expect_match(html, ">Stats<", fixed = TRUE)
+  expect_match(html, 'class="ca-q-nav-item is-current" role="tab" data-i="1" aria-selected="true"', fixed = TRUE)
+  expect_match(html, 'data-header="Stats"', fixed = TRUE)
+  one <- as.character(.question_card_ui(.normalize_questions(qs_example[1])))
+  expect_false(grepl("ca-q-nav", one, fixed = TRUE))
+  noh <- list(list(question = "A?", header = "", options = list(), multiSelect = FALSE),
+              list(question = "B?", header = "", options = list(), multiSelect = FALSE))
+  expect_match(as.character(.question_card_ui(noh)), ">Question 2<", fixed = TRUE)
+})

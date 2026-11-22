@@ -32,6 +32,16 @@
     submit.disabled = !answered(page);
     var mini = card.querySelector(".ca-q-mini-title");
     if (mini) mini.textContent = (page.querySelector(".ca-q-title") || {}).textContent || "";
+    var eyebrow = card.querySelector(".ca-q-eyebrow");
+    if (eyebrow) eyebrow.textContent = page.getAttribute("data-header") || "";
+    card.querySelectorAll(".ca-q-nav-item").forEach(function (b) {
+      var k = parseInt(b.getAttribute("data-i"), 10), p = pageOf(card, k), cur = k === i;
+      b.classList.toggle("is-current", cur);
+      b.setAttribute("aria-selected", cur ? "true" : "false");
+      var skipped = p.getAttribute("data-skipped") === "true";
+      b.classList.toggle("is-skipped", skipped);
+      b.classList.toggle("is-answered", !skipped && answered(p));
+    });
     var custom = page.querySelector(".ca-q-custom");
     if (custom) {
       custom.classList.toggle("has-text", text(page).length > 0);
@@ -108,6 +118,8 @@
       sync(card);
       return;
     }
+    var navItem = e.target.closest(".ca-q-nav-item");
+    if (navItem) { go(card, parseInt(navItem.getAttribute("data-i"), 10)); return; }
     if (e.target.closest(".ca-q-prev")) { go(card, current(card) - 1); return; }
     if (e.target.closest(".ca-q-next-page")) { go(card, current(card) + 1); return; }
     if (e.target.closest(".ca-q-skip")) {
@@ -140,6 +152,14 @@
   document.addEventListener("keydown", function (e) {
     if (e.isComposing || e.repeat) return;
     var card = e.target.closest && e.target.closest(".ca-q-card");
+    if (card && e.target.classList.contains("ca-q-nav-item") && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
+      e.preventDefault();
+      var n = pages(card).length, k = current(card) + (e.key === "ArrowRight" ? 1 : -1);
+      go(card, ((k - 1 + n) % n) + 1);
+      var next = card.querySelector('.ca-q-nav-item[data-i="' + current(card) + '"]');
+      if (next) next.focus();
+      return;
+    }
     if (card && e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) {
       if (e.target.classList.contains("ca-q-option") || e.target.classList.contains("ca-q-text")) {
         e.preventDefault();

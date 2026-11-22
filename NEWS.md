@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+* AskUserQuestion with several questions shows a tab per question at the top of
+  the card (its header, else "Question i"): the current one marked, answered ones
+  ticked, skipped ones dashed; a click or the arrow keys go to that question. The
+  small header above the title now follows the question shown. A single question
+  has no tabs.
+
 * Interaction cards (approval, questions, form, Data Shield) float right above the
   composer, same width, at most half the chat's height and scrolling inside, and
   follow it when the sidebar or window is resized; the "N more requests waiting"

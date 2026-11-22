@@ -786,6 +786,30 @@ body .ca-q-icon {
   border-radius: var(--ca-dsh-radius-sm);
   color: var(--ca-dsh-label-tertiary);
 }
+body .ca-q-nav {
+  gap: 4px;
+  padding: 10px 20px 0 24px;
+}
+body .ca-q-nav-item {
+  border: 0.5px solid var(--ca-dsh-border-l3);
+  border-radius: var(--ca-dsh-radius-sm);
+  color: var(--ca-dsh-label-secondary);
+  font-size: 12px;
+}
+body .ca-q-nav-item.is-current {
+  border-color: transparent;
+  background: var(--ca-dsh-bg-module);
+  color: var(--ca-dsh-label-primary);
+}
+body .ca-q-nav-item.is-answered .ca-q-nav-mark::before {
+  color: var(--ca-dsh-accent);
+}
+@media (hover: hover) {
+  body .ca-q-nav-item:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+
 body .ca-q-title {
   margin: 5px 24px 0;
   font-size: 16px;
