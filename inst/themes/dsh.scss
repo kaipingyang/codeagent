@@ -102,6 +102,8 @@
 
   --ca-dsh-accent: var(--ca-dsh-blue-600);
   --ca-dsh-link: var(--ca-dsh-blue-600);
+  --ca-dsh-info-bg: var(--ca-dsh-blue-50);
+  --ca-dsh-info-fg: var(--ca-dsh-blue-600);
   --ca-dsh-warn-primary: var(--ca-dsh-amber-500);
   --ca-dsh-warn-secondary: var(--ca-dsh-amber-400);
   --ca-dsh-warn-tertiary: var(--ca-dsh-amber-100);
@@ -139,6 +141,8 @@
 
   --ca-dsh-accent: var(--ca-dsh-blue-500);
   --ca-dsh-link: var(--ca-dsh-blue-400);
+  --ca-dsh-info-bg: var(--ca-dsh-bg-module);
+  --ca-dsh-info-fg: var(--ca-dsh-blue-400);
   --ca-dsh-warn-tertiary: var(--ca-dsh-amber-900);
   --ca-dsh-error-primary: var(--ca-dsh-red-400);
 
@@ -761,6 +765,179 @@ body .ca-interaction .shiny-options-group .radio,
 body .ca-interaction .shiny-options-group .checkbox {
   display: block;
   width: 100%;
+}
+
+/* Question card (DSH QuestionComposer): one question per page, numbered option
+   rows, a free-text row, pager + Skip / Next|Submit. */
+body .ca-q-card {
+  max-height: #{"min(60vh, 520px)"};
+  padding: 0 0 10px;
+}
+body .ca-q-header {
+  padding: 20px 20px 0 24px;
+}
+body .ca-q-eyebrow {
+  margin-bottom: 5px;
+  color: var(--ca-dsh-label-tertiary);
+  font-size: 11px;
+  line-height: 16px;
+}
+body .ca-q-icon {
+  border-radius: var(--ca-dsh-radius-sm);
+  color: var(--ca-dsh-label-tertiary);
+}
+body .ca-q-title {
+  margin: 5px 24px 0;
+  font-size: 16px;
+  line-height: 22px;
+  font-weight: 500;
+}
+body .ca-q-options {
+  margin-top: 8px;
+  padding: 4px 12px;
+}
+body .ca-q-option,
+body .ca-q-custom {
+  border-radius: var(--ca-dsh-radius-md);
+  transition: background-color 120ms, border-color 120ms;
+}
+body .ca-q-page[data-multi="false"] .ca-q-option.is-selected {
+  background: var(--ca-dsh-bg-hover);
+  border-color: var(--ca-dsh-border-l2);
+}
+body .ca-q-page[data-multi="true"] .ca-q-option.is-selected {
+  background: transparent;
+}
+body .ca-q-custom:not(.is-yielded):focus-within,
+body .ca-q-custom.has-text {
+  background: var(--ca-dsh-bg-hover);
+  border-color: var(--ca-dsh-border-l2);
+}
+body .ca-q-num {
+  border-radius: var(--ca-dsh-radius-xs);
+  background: var(--ca-dsh-bg-module);
+  color: var(--ca-dsh-label-secondary);
+}
+body .ca-q-check::before {
+  border-color: var(--ca-dsh-border-l4);
+  border-radius: var(--ca-dsh-radius-xs);
+}
+body .ca-q-option.is-selected .ca-q-check::before,
+body .ca-q-check.is-checked::before {
+  background: var(--ca-dsh-label-primary);
+  border-color: var(--ca-dsh-label-primary);
+}
+body .ca-q-option.is-selected .ca-q-check::after,
+body .ca-q-check.is-checked::after {
+  border-color: var(--ca-dsh-bg-base);
+}
+body .ca-q-label {
+  color: var(--ca-dsh-label-primary);
+}
+body .ca-q-badge {
+  border-radius: var(--ca-dsh-radius-xs);
+  background: var(--ca-dsh-info-bg);
+  color: var(--ca-dsh-info-fg);
+}
+body .ca-q-desc {
+  color: var(--ca-dsh-label-tertiary);
+}
+body .ca-q-option:focus-visible,
+body .ca-q-icon:focus-visible,
+body .ca-q-footer-actions .btn:focus-visible {
+  box-shadow: inset 0 0 0 0.5px var(--ca-dsh-border-l4);
+}
+body .ca-q-text {
+  color: var(--ca-dsh-label-primary);
+  caret-color: var(--ca-dsh-accent);
+}
+body .ca-q-text::placeholder {
+  color: var(--ca-dsh-label-caption);
+}
+body .ca-q-block {
+  margin: 0 12px;
+  border: 0.5px solid var(--ca-dsh-border-l4);
+  border-radius: var(--ca-dsh-radius-lg);
+  background: var(--ca-dsh-bg-module);
+}
+body .ca-q-block:focus-within {
+  border-color: var(--ca-dsh-accent);
+}
+body .ca-q-footer {
+  margin-top: 12px;
+  padding: 0 24px 0 19px;
+}
+body .ca-q-progress {
+  color: var(--ca-dsh-label-secondary);
+}
+body .ca-q-feedback {
+  color: var(--ca-dsh-error-primary);
+}
+body .ca-q-footer-actions .btn {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--ca-dsh-radius-md);
+  font-size: 14px;
+  line-height: 22px;
+  font-weight: 400;
+}
+body .ca-q-skip {
+  border: 0.5px solid var(--ca-dsh-border-l3);
+  background: transparent;
+  color: var(--ca-dsh-label-primary);
+}
+body .ca-q-submit {
+  border: 0;
+  background: var(--ca-dsh-label-primary);
+  color: var(--ca-dsh-bg-base);
+}
+body .ca-q-footer-actions .btn:disabled {
+  opacity: 0.4;
+}
+body .ca-q-card.is-minimised .ca-q-header {
+  padding-bottom: 14px;
+}
+body .ca-q-mini-title {
+  font-size: 16px;
+  line-height: 22px;
+}
+@media (hover: hover) {
+  body .ca-q-option:hover,
+  body .ca-q-custom:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+  body .ca-q-icon:hover {
+    background: var(--ca-dsh-bg-hover);
+    color: var(--ca-dsh-label-primary);
+  }
+  body .ca-q-skip:hover {
+    background: var(--ca-dsh-bg-hover);
+  }
+}
+@media (max-width: 720px) {
+  body .ca-q-header {
+    padding: 10px 12px 0 18px;
+  }
+  body .ca-q-options {
+    padding: 4px 8px;
+  }
+  body .ca-q-title {
+    font-size: 15px;
+    line-height: 21px;
+  }
+  body .ca-q-option,
+  body .ca-q-custom {
+    padding: 8px 6px;
+  }
+  body .ca-q-footer {
+    padding: 0 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body .ca-q-option,
+  body .ca-q-custom {
+    transition: none;
+  }
 }
 
 /* == 11. Workspace (drawer contents, classic output column) ===================== */
