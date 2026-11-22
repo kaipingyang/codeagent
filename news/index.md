@@ -2,6 +2,11 @@
 
 ## codeagent (development version)
 
+- `ui_layout = "dsh"` / `theme = "dsh"`: messages, the composer and the
+  interaction cards use the whole width of the chat column instead of
+  DSH’s `clamp(680px, 64%, 880px)` cap; user bubbles are at most 70% of
+  it.
+
 - New `codeagent_progress(label, step, typical, delay)`: a host tool
   reports what it is doing while it runs. The chat shows one line per
   running tool above the input (label, step, seconds elapsed, “usually
