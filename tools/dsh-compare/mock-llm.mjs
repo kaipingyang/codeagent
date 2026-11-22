@@ -65,6 +65,15 @@ function plan(tools, userText) {
       sandbox_permissions: 'danger-full-access', justification: 'Write the summary to /tmp, outside the workspace.' }];
     if (has('Bash')) return ['Bash', { command, description: 'Run the summary in R', _intent: 'Run the summary in R' }];
   }
+  if (/fill a form/i.test(userText) && has('AskUserForm')) return ['AskUserForm', { title: 'Table settings', _intent: 'Confirm the table settings',
+    fields: [
+      { name: 'title', label: 'Title', type: 'text', default: 'Summary of AE', required: true },
+      { name: 'population', label: 'Population', type: 'select', choices: ['Safety (Recommended)', 'Efficacy'], default: 'Safety (Recommended)' },
+      { name: 'stats', label: 'Statistics', type: 'multiselect', choices: ['n', 'Mean', 'Median'], default: 'n,Mean' },
+      { name: 'decimals', label: 'Decimals', type: 'number', default: '1' },
+      { name: 'total', label: 'Include total', type: 'checkbox', default: 'true' },
+      { name: 'cutoff', label: 'Data cut-off', type: 'date', default: '2026-06-30' },
+      { name: 'note', label: 'Footnote', type: 'textarea' } ] }];
   if (/slow job/i.test(userText) && has('SlowJob')) return ['SlowJob', { n: 3, _intent: 'Run the slow job' }];
   if (has('read')) return ['read', { file_path: 'R/demo.R' }];
   if (has('Read')) return ['Read', { file_path: 'R/demo.R', _intent: 'Read R/demo.R' }];

@@ -576,10 +576,21 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .shiny-chat-layout { position: relative; }
 #ca_interaction_ui.ca-ia-overlay { position: absolute; z-index: 20; left: var(--ca-ia-left, 0);
   width: var(--ca-ia-width, 100%); bottom: var(--ca-ia-bottom, 0); max-height: var(--ca-ia-max-height, 50%);
-  display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+  display: flex; flex-direction: column; gap: 4px; overflow: hidden;
+  padding-bottom: var(--ca-ia-gap, 8px); background: transparent; }
+/* The gap to the composer is opaque: the conversation must not show through it. */
+#ca_interaction_ui.ca-ia-overlay::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0;
+  height: var(--ca-ia-gap, 8px); background: var(--bs-body-bg, #fff); z-index: -1; }
 #ca_interaction_ui.ca-ia-overlay > .ca-interaction-queue { flex: 0 0 auto; }
 #ca_interaction_ui.ca-ia-overlay > .ca-interaction { flex: 1 1 auto; min-height: 0; max-height: 100%; margin: 0;
-  overflow: auto; box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.10); }
+  overflow: auto; }
+/* Every kind the same opaque card as the question card. :where() keeps this a
+   default: a theme's own .ca-interaction rules (e.g. "dsh") still win. */
+:where(#ca_interaction_ui.ca-ia-overlay) > .ca-interaction {
+  background: var(--bs-body-bg, #fff); border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 12px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.10); }
+#ca_interaction_ui.ca-ia-overlay > .ca-interaction-queue { background: var(--bs-body-bg, #fff);
+  border-radius: 8px; padding: 2px 12px; align-self: flex-start; }
 #ca_interaction_ui.ca-ia-overlay > .ca-q-card { overflow: hidden; }
 
 /* Slash-command palette (shinychat, portalled to <body>): the composer's width
