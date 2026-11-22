@@ -8,6 +8,23 @@
   ~N s”), from `delay` seconds (default 3) until `done()` or the end of
   the turn.
 
+- Interaction cards (approval, questions, form, Data Shield) float right
+  above the composer, same width, at most half the chat’s height and
+  scrolling inside, and follow it when the sidebar or window is resized;
+  the “N more requests waiting” line sits above the card. With
+  `theme = "dsh"` the card still takes the composer’s seat. Forms submit
+  with Enter (Ctrl/Cmd+Enter in multi-line fields). Answers leave a
+  short record in the reply (“Answered: … -\> …” / “Submitted: …”), next
+  to “Tool allowed.” / “Tool denied.”.
+
+- Tool rows no longer show their title twice (“Read a.R: Read a.R”): the
+  display label is left to shinychat, which falls back to the call’s
+  title or arguments, unless a tool sets one.
+
+- The slash-command palette takes the composer’s width and left edge and
+  sits just above it (shinychat floats it at the caret, at most 400px
+  wide).
+
 - Context a UserPromptSubmit hook adds (`additional_context`, and
   `codeagent_server(on_user_prompt =)`) goes to the model in its own
   `<system-reminder>` block. Before, it followed the reminder outside
