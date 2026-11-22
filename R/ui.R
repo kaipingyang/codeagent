@@ -538,8 +538,9 @@ codeagent_app <- function(
       .tool_progress_ui(),
       shiny::uiOutput("ca_interaction_ui"),
       .skill_picker_footer(skill_meta, voice = FALSE))
-    # DSH content axis: messages and composer share clamp(680px, 64%, 880px).
-    chat_args$width <- "min(clamp(680px, 64%, 880px), 100%)"
+    # Messages and composer use the full width of the chat column (DSH caps it
+    # at clamp(680px, 64%, 880px); codeagent follows the layout instead).
+    chat_args$width <- "100%"
     ui <- .codeagent_page_chat_ui(
       theme = ca_bs_theme,
       sidebar = .dsh_sidebar_ui(),
