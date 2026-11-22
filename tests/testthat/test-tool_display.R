@@ -99,7 +99,8 @@ test_that("tool displays use shinychat official constructor with useful previews
     "first line\nsecond line", kind = "text", title = "Read file.R",
     payload = list(text = "first line\nsecond line"))
   expect_s3_class(r@extra$display, "shinychat_tool_result_display")
-  expect_identical(r@extra$display$label, "Read file.R")
+  expect_null(r@extra$display$label)          # shinychat falls back; no repeated title
+  expect_identical(codeagent:::.tool_result2("x", title = "T", label = "a.R")@extra$display$label, "a.R")
   expect_identical(r@extra$display$value_preview, "first line second line")
 })
 

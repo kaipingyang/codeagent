@@ -1042,6 +1042,23 @@ body .toolcard pre:has(> code.hljs) {
   border-radius: var(--ca-dsh-radius-md);
 }
 
+/* Slash-command palette: a DSH menu -- R16, 4px inset, R12 rows, elevation. */
+body .shiny-chat-slash-palette {
+  padding: 4px;
+  border: 0;
+  border-radius: var(--ca-dsh-radius-lg);
+  background: var(--ca-dsh-bg-layer-2);
+  box-shadow: var(--ca-dsh-elevation-panel);
+}
+body .shiny-chat-slash-palette-item {
+  border-radius: var(--ca-dsh-radius-md);
+}
+body .shiny-chat-slash-palette-name {
+  color: var(--ca-dsh-label-primary);
+  font-size: 14px;
+  font-weight: 500;
+}
+
 /* == 12. Overlays and form controls ============================================== */
 body .modal-content {
   border: 0;

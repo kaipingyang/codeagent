@@ -104,3 +104,31 @@ test_that("egress raw-once button requires explicit opt-in", {
   expect_true(grepl("ca_egress_raw",html))
   expect_true(grepl("ALLOW RAW ONCE",html))
 })
+
+test_that("answer records are short, escaped, and say what was answered", {
+  qs <- list(list(question = "Format?", options = list()), list(question = "Note?", options = list()))
+  expect_identical(.answer_record_text(qs, list("Table", character())),
+                   "\U0001f4dd Answered: Format? → Table; Note? → Skipped")
+  expect_match(.answer_record_text(qs, list("<b>x</b>", "a\nb")), "&lt;b&gt;x&lt;/b&gt;", fixed = TRUE)
+  expect_false(grepl("\n", .answer_record_text(qs, list("<b>x</b>", "a\nb")), fixed = TRUE))
+  expect_match(.answer_record_text(qs, list()), "dismissed", fixed = TRUE)
+  expect_identical(.form_record_text("Grouping", TRUE), "\U0001f4dd Submitted: Grouping.")
+  expect_match(.form_record_text(NULL, FALSE), "cancelled", fixed = TRUE)
+})
+
+test_that("the waiting count sits above the card", {
+  shiny::testServer(function(input, output, session) {
+    state <- shiny::reactiveValues(pending_interaction = NULL, interaction_queue = NULL)
+    server_interaction(input, output, session, state)
+    session$userData$state <- state
+  }, {
+    st <- session$userData$state
+    item <- list(type = "approval", payload = list(tool_name = "Bash", tool_input = list()),
+                 resolve = function(v) NULL)
+    st$pending_interaction <- item
+    st$interaction_queue <- list(item)
+    session$flushReact()
+    html <- as.character(output$ca_interaction_ui$html)
+    expect_lt(regexpr("more request", html)[[1]], regexpr("ca-interaction--approval", html)[[1]])
+  })
+})

@@ -501,7 +501,7 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .ca-ws-menu-item[disabled] { opacity: .45; }
 
 /* --- Question card (AskUserQuestion; themes restyle it) -------------------------- */
-.ca-q-card { display: flex; flex-direction: column; max-height: min(60vh, 520px); overflow: hidden;
+.ca-q-card { display: flex; flex-direction: column; align-items: stretch; max-height: min(60vh, 520px); overflow: hidden;
   border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 16px; background: var(--bs-body-bg, #fff);
   text-align: left; }
 .ca-q-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
@@ -545,7 +545,8 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .ca-q-block .ca-q-text { width: 100%; }
 .ca-q-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px;
   margin-top: 12px; padding: 0 20px 12px 16px; }
-.ca-q-pager { display: flex; align-items: center; gap: 6px; }
+.ca-q-pager { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ca-q-footer-actions .btn { display: inline-flex; align-items: center; white-space: nowrap; }
 .ca-q-progress { padding: 0 4px; font-size: 14px; line-height: 24px; font-weight: 500; word-spacing: -2px;
   color: var(--bs-secondary-color, #666); }
 .ca-q-feedback { flex: 1 1 auto; min-height: 16px; text-align: right; font-size: 11px; line-height: 16px;
@@ -570,3 +571,23 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .ca-tool-progress__step { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ca-tool-progress__time { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
+
+/* --- Interaction card seat: above the composer (inst/www/interaction.js) -------- */
+.shiny-chat-layout { position: relative; }
+#ca_interaction_ui.ca-ia-overlay { position: absolute; z-index: 20; left: var(--ca-ia-left, 0);
+  width: var(--ca-ia-width, 100%); bottom: var(--ca-ia-bottom, 0); max-height: var(--ca-ia-max-height, 50%);
+  display: flex; flex-direction: column; gap: 4px; overflow: hidden; }
+#ca_interaction_ui.ca-ia-overlay > .ca-interaction-queue { flex: 0 0 auto; }
+#ca_interaction_ui.ca-ia-overlay > .ca-interaction { flex: 1 1 auto; min-height: 0; max-height: 100%; margin: 0;
+  overflow: auto; box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.10); }
+#ca_interaction_ui.ca-ia-overlay > .ca-q-card { overflow: hidden; }
+
+/* Slash-command palette (shinychat, portalled to <body>): the composer's width
+   and left edge, just above it (vars set by inst/www/interaction.js). */
+:root[data-ca-composer] body > div:has(> ul.shiny-chat-slash-palette) {
+  left: var(--ca-composer-left) !important;
+  width: var(--ca-composer-width) !important;
+  max-width: none !important;
+  bottom: var(--ca-composer-above) !important;
+  top: auto !important;
+}

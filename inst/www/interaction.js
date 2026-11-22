@@ -183,8 +183,63 @@
       if (body) { body.setAttribute("tabindex", "0"); body.focus({ preventScroll: true }); }
     });
   }
+  // ---- Seat: the card floats right above the composer -------------------------
+  // The card is rendered in the chat footer (below the composer). While one is
+  // shown and the composer is visible, the output is positioned over the chat,
+  // bottom edge just above the composer, same width, at most half the chat's
+  // height. A hidden composer (theme "dsh" gives the card its seat) or a page
+  // without one leaves the card where it is.
+  var GAP = 8, observed = new WeakSet(), ro = window.ResizeObserver ? new ResizeObserver(placeAll) : null;
+  function place(out) {
+    var layout = out.closest(".shiny-chat-layout");
+    var composer = layout && layout.querySelector(".shiny-chat-composer");
+    var show = !!(composer && out.querySelector(".ca-interaction") && composer.offsetParent &&
+                  composer.getBoundingClientRect().height > 0);
+    out.classList.toggle("ca-ia-overlay", show);
+    if (!show) { out.style.removeProperty("--ca-ia-left"); return; }
+    if (ro && !observed.has(layout)) { ro.observe(layout); ro.observe(composer); observed.add(layout); }
+    var l = layout.getBoundingClientRect(), c = composer.getBoundingClientRect();
+    out.style.setProperty("--ca-ia-left", (c.left - l.left) + "px");
+    out.style.setProperty("--ca-ia-width", c.width + "px");
+    out.style.setProperty("--ca-ia-bottom", (l.bottom - c.top + GAP) + "px");
+    out.style.setProperty("--ca-ia-max-height", Math.max(160, Math.min(l.height * 0.5, c.top - l.top - GAP)) + "px");
+  }
+  // The slash-command palette (shinychat) floats at the caret, at most 400px
+  // wide. Publish the composer's box so styles.css can give it the
+  // composer's left edge and width, just above it.
+  function composerVars() {
+    var comp = Array.prototype.find.call(document.querySelectorAll(".shiny-chat-composer"),
+      function (c) { return c.offsetParent && c.getBoundingClientRect().height > 0; });
+    if (!comp) return;
+    if (ro && !observed.has(comp)) { ro.observe(comp); observed.add(comp); }
+    var c = comp.getBoundingClientRect(), root = document.documentElement.style;
+    root.setProperty("--ca-composer-left", c.left + "px");
+    root.setProperty("--ca-composer-width", c.width + "px");
+    root.setProperty("--ca-composer-above", (window.innerHeight - c.top + GAP) + "px");
+    document.documentElement.setAttribute("data-ca-composer", "");
+  }
+  function placeAll() { document.querySelectorAll("#ca_interaction_ui").forEach(place); composerVars(); }
+  window.addEventListener("resize", placeAll);
+  document.addEventListener("focusin", function (e) {
+    if (e.target.closest && e.target.closest(".shiny-chat-composer")) composerVars();
+  });
+  document.addEventListener("DOMContentLoaded", function () { setTimeout(composerVars, 500); });
+
+  // Form: Enter in a one-line field, Ctrl/Cmd+Enter anywhere, submits.
+  document.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter" || e.isComposing || e.repeat) return;
+    var form = e.target.closest && e.target.closest(".ca-interaction--form");
+    if (!form) return;
+    var multi = e.target.tagName === "TEXTAREA" || e.target.isContentEditable;
+    if (e.target.closest("button, a") && !(e.ctrlKey || e.metaKey)) return;
+    if (multi ? (e.ctrlKey || e.metaKey) : !e.shiftKey) {
+      var submit = form.querySelector("#ca_form_submit");
+      if (submit && !submit.disabled) { e.preventDefault(); submit.click(); }
+    }
+  });
+
   if (window.jQuery) jQuery(document).on("shiny:value", function (e) {
-    if (e.name === "ca_interaction_ui") setTimeout(function () { init(document); }, 0);
+    if (e.name === "ca_interaction_ui") setTimeout(function () { init(document); placeAll(); }, 0);
   });
   document.addEventListener("DOMContentLoaded", function () { init(document); });
 })();

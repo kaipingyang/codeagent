@@ -82,7 +82,7 @@ test_that("recommended options are pre-selected the DSH way", {
   expect_false(grepl(">A (Recommended)<", html, fixed = TRUE))   # suffix not shown
 })
 
-test_that("Shiny: the card's answers resolve the request without touching the chat", {
+test_that("Shiny: the card's answers resolve the request and leave a record in the reply", {
   posted <- new.env(); posted$msg <- NULL
   testthat::local_mocked_bindings(chat_append_message = function(id, msg, ...) posted$msg <- msg, .package = "shinychat")
   captured <- new.env()
@@ -100,7 +100,8 @@ test_that("Shiny: the card's answers resolve the request without touching the ch
       list(selected = list("Safety Analysis Set"), custom = "", skipped = FALSE),
       list(selected = list("n", "Median"), custom = "Min", skipped = FALSE))))
     expect_identical(captured$ans, list("Safety Analysis Set", c("n", "Median", "Min")))
-    expect_null(posted$msg)                                     # the reply stream is left alone
+    expect_match(posted$msg$content, "Answered: Which population?", fixed = TRUE)
+    expect_match(posted$msg$content, "n, Median, Min", fixed = TRUE)
 
     st$pending_interaction <- list(type = "questions",
       payload = list(questions = .normalize_questions(qs_example)),
