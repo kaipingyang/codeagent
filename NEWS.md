@@ -1,5 +1,10 @@
 # codeagent (development version)
 
+* New `codeagent_progress(label, step, typical, delay)`: a host tool reports
+  what it is doing while it runs. The chat shows one line per running tool
+  above the input (label, step, seconds elapsed, "usually ~N s"), from
+  `delay` seconds (default 3) until `done()` or the end of the turn.
+
 * Context a UserPromptSubmit hook adds (`additional_context`, and
   `codeagent_server(on_user_prompt =)`) goes to the model in its own
   `<system-reminder>` block. Before, it followed the reminder outside the

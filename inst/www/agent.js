@@ -310,6 +310,43 @@
   }
 
   // ---------------------------------------------------------------------------
+  // Running tools' progress (server: codeagent_progress()). One line per tool
+  // above the chat input: label, step, seconds elapsed (counted here) and the
+  // usual duration. A line shows after its delay; "clear" ends the turn.
+  // ---------------------------------------------------------------------------
+  if (typeof Shiny !== "undefined" && Shiny.addCustomMessageHandler) {
+    var caProgress = {};
+    var caProgressTimer = null;
+    function caProgressRender() {
+      var box = document.getElementById("ca_tool_progress");
+      if (!box) return;
+      var now = Date.now(), html = "", any = false;
+      Object.keys(caProgress).forEach(function (id) {
+        var p = caProgress[id], secs = Math.floor((now - p.started) / 1000);
+        if (secs < p.delay) return;
+        any = true;
+        var esc = function (x) { var d = document.createElement("div"); d.textContent = x || ""; return d.innerHTML; };
+        html += '<div class="ca-tool-progress__row"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span>' +
+          '<span class="ca-tool-progress__label">' + esc(p.label) + '</span>' +
+          (p.step ? '<span class="ca-tool-progress__step">' + esc(p.step) + '</span>' : '') +
+          '<span class="ca-tool-progress__time">' + secs + ' s' + (p.typical ? ' · usually ~' + p.typical + ' s' : '') + '</span></div>';
+      });
+      box.innerHTML = html;
+      box.classList.toggle("ca-tool-progress--on", any);
+      if (!Object.keys(caProgress).length && caProgressTimer) { clearInterval(caProgressTimer); caProgressTimer = null; }
+    }
+    Shiny.addCustomMessageHandler("ca_tool_progress", function (m) {
+      if (!m) return;
+      if (m.action === "clear") caProgress = {};
+      else if (m.action === "start") caProgress[m.id] = { label: m.label, step: m.step, typical: m.typical, delay: m.delay || 0, started: Date.now() };
+      else if (m.action === "update" && caProgress[m.id]) { caProgress[m.id].step = m.step; if (m.typical) caProgress[m.id].typical = m.typical; }
+      else if (m.action === "done") delete caProgress[m.id];
+      if (Object.keys(caProgress).length && !caProgressTimer) caProgressTimer = setInterval(caProgressRender, 1000);
+      caProgressRender();
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Generative UI canvas: mark components whose data frame changed since they
   // were drawn (server-driven via `ca_genui_stale`, a list of instance ids).
   // ---------------------------------------------------------------------------

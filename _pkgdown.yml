@@ -34,6 +34,7 @@ reference:
     contents:
       - codeagent_app
       - codeagent_server
+      - codeagent_progress
       - codeagent_history_options
       - codeagent_chat_ui
       - codeagent_canvas_ui

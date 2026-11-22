@@ -388,6 +388,8 @@ server_chat <- function(input, output, session, chat, settings,
     busy <- identical(tryCatch(stream_task$status(), error = function(e) ""),
                       "running") || isTRUE(state$busy) || isTRUE(state$initializing)
     session$sendCustomMessage("ca_input_busy", list(busy = busy))
+    # the turn is over: no tool is running any more (see codeagent_progress())
+    if (!busy) .progress_clear(session)
   })
 
   shiny::observeEvent(input$esc, {

@@ -40,7 +40,9 @@ codeagent_chat_ui <- function(..., greeting = NULL, footer = NULL, history = FAL
     tool_grouping = "tool",
     width         = "100%",
     `aside-favicon` = "false",
-    footer = htmltools::tagList(shiny::uiOutput("ca_interaction_ui"), footer)
+    footer = htmltools::tagList(htmltools::div(id = "ca_tool_progress", class = "ca-tool-progress",
+                                               `aria-live` = "polite"),
+                                shiny::uiOutput("ca_interaction_ui"), footer)
   )
   if (!is.null(greeting)) {
     args$greeting <- if (is.character(greeting))
