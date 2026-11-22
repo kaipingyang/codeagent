@@ -36,6 +36,8 @@ Interactive chat interface.
   : Launch the codeagent Shiny application
 - [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md)
   : Run codeagent's chat engine inside a host Shiny app
+- [`codeagent_progress()`](https://kaipingyang.github.io/codeagent/reference/codeagent_progress.md)
+  : Report a running tool's progress in the chat
 - [`codeagent_history_options()`](https://kaipingyang.github.io/codeagent/reference/codeagent_history_options.md)
   : shinychat history over codeagent's session log
 - [`codeagent_chat_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.md)
