@@ -150,7 +150,9 @@ NULL
     open = display$open %||% FALSE,
     full_screen = display$full_screen %||% !is.null(safe_html),
     footer = display$footer,
-    label = display$label %||% .tool_display_preview(title %||% "Tool", 60L),
+    # No label by default: shinychat falls back to the call's own title or
+    # its arguments. Filling it with the title showed the title twice.
+    label = display$label,
     value_preview = display$value_preview %||% .tool_display_preview(text, 160L),
     open_style = display$open_style %||%
       if (!is.null(safe_html)) "framed" else "minimal")
@@ -342,8 +344,7 @@ tool_result_value <- function(result, default = "") {
     open = identical(artifact$status, "error"),
     full_screen = !is.null(rendered),
     footer = footer,
-    label = label %||% .tool_display_preview(
-      display_title %||% tools::toTitleCase(artifact$kind), 60L),
+    label = label,
     value_preview = value_preview %||% .tool_display_preview(value, 160L),
     open_style = if (!is.null(rendered)) "framed" else "minimal"
   )
