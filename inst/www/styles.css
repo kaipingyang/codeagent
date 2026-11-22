@@ -571,3 +571,13 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 #ca_interaction_ui.ca-ia-overlay > .ca-interaction { flex: 1 1 auto; min-height: 0; max-height: 100%; margin: 0;
   overflow: auto; box-shadow: 0 0 0 .5px rgba(0,0,0,.12), 0 6px 20px rgba(0,0,0,.10); }
 #ca_interaction_ui.ca-ia-overlay > .ca-q-card { overflow: hidden; }
+
+/* Slash-command palette (shinychat, portalled to <body>): the composer's width
+   and left edge, just above it (vars set by inst/www/interaction.js). */
+:root[data-ca-composer] body > div:has(> ul.shiny-chat-slash-palette) {
+  left: var(--ca-composer-left) !important;
+  width: var(--ca-composer-width) !important;
+  max-width: none !important;
+  bottom: var(--ca-composer-above) !important;
+  top: auto !important;
+}

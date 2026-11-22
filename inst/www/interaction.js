@@ -204,8 +204,26 @@
     out.style.setProperty("--ca-ia-bottom", (l.bottom - c.top + GAP) + "px");
     out.style.setProperty("--ca-ia-max-height", Math.max(160, Math.min(l.height * 0.5, c.top - l.top - GAP)) + "px");
   }
-  function placeAll() { document.querySelectorAll("#ca_interaction_ui").forEach(place); }
+  // The slash-command palette (shinychat) floats at the caret, at most 400px
+  // wide. Publish the composer's box so styles.css can give it the
+  // composer's left edge and width, just above it.
+  function composerVars() {
+    var comp = Array.prototype.find.call(document.querySelectorAll(".shiny-chat-composer"),
+      function (c) { return c.offsetParent && c.getBoundingClientRect().height > 0; });
+    if (!comp) return;
+    if (ro && !observed.has(comp)) { ro.observe(comp); observed.add(comp); }
+    var c = comp.getBoundingClientRect(), root = document.documentElement.style;
+    root.setProperty("--ca-composer-left", c.left + "px");
+    root.setProperty("--ca-composer-width", c.width + "px");
+    root.setProperty("--ca-composer-above", (window.innerHeight - c.top + GAP) + "px");
+    document.documentElement.setAttribute("data-ca-composer", "");
+  }
+  function placeAll() { document.querySelectorAll("#ca_interaction_ui").forEach(place); composerVars(); }
   window.addEventListener("resize", placeAll);
+  document.addEventListener("focusin", function (e) {
+    if (e.target.closest && e.target.closest(".shiny-chat-composer")) composerVars();
+  });
+  document.addEventListener("DOMContentLoaded", function () { setTimeout(composerVars, 500); });
 
   // Form: Enter in a one-line field, Ctrl/Cmd+Enter anywhere, submits.
   document.addEventListener("keydown", function (e) {

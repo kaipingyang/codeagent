@@ -7,6 +7,8 @@
   composer's seat. Forms submit with Enter (Ctrl/Cmd+Enter in multi-line fields).
   Answers leave a short record in the reply ("Answered: ... -> ..." /
   "Submitted: ..."), next to "Tool allowed." / "Tool denied.".
+* The slash-command palette takes the composer's width and left edge and sits just
+  above it (shinychat floats it at the caret, at most 400px wide).
 
 * Context a UserPromptSubmit hook adds (`additional_context`, and
   `codeagent_server(on_user_prompt =)`) goes to the model in its own
