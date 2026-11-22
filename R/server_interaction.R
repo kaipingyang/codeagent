@@ -216,8 +216,8 @@ NULL
                                `aria-label` = "Next question", shiny::icon("chevron-right"))),
       htmltools::tags$div(class = "ca-q-feedback", role = "status"),
       htmltools::tags$div(class = "ca-q-footer-actions",
-        htmltools::tags$button(type = "button", class = "btn ca-q-skip", "Skip"),
-        htmltools::tags$button(type = "button", class = "btn ca-q-submit",
+        htmltools::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary ca-q-skip", "Skip"),
+        htmltools::tags$button(type = "button", class = "btn btn-sm btn-primary ca-q-submit",
                                if (n > 1L) "Next" else "Submit"))))
 }
 
@@ -394,6 +394,30 @@ NULL
   }
 }
 
+
+# A short record of an answer, appended to the running reply like "Tool
+# allowed." (a separate message would end the streaming reply). Escaped:
+# the text is the user's. PURE.
+.answer_record_text <- function(qs, answers) {
+  esc <- function(x) htmltools::htmlEscape(gsub("[\r\n]+", " ", x))
+  if (!length(answers)) return("\u2716 Questions dismissed.")
+  parts <- vapply(seq_along(qs), function(i) {
+    a <- as.character(unlist(answers[i])); a <- a[!is.na(a) & nzchar(a)]
+    sprintf("%s \u2192 %s", esc(qs[[i]]$question %||% ""),
+            if (length(a)) esc(paste(a, collapse = ", ")) else "Skipped")
+  }, "")
+  paste0("\U0001f4dd Answered: ", paste(parts, collapse = "; "))
+}
+.form_record_text <- function(title, submitted) {
+  if (!isTRUE(submitted)) return("\u2716 Form cancelled.")
+  t <- htmltools::htmlEscape(gsub("[\r\n]+", " ", as.character(title %||% "")))
+  paste0("\U0001f4dd Submitted", if (nzchar(t)) paste0(": ", t) else "", ".")
+}
+.append_record <- function(session, text)
+  tryCatch(shinychat::chat_append_message(
+    "chat", list(role = "assistant", content = text), session = session),
+    error = function(e) NULL)
+
 # Value to resolve a pending interaction with when the user hits ESC: deny
 # (FALSE) an approval, or an empty answer ("") a question. PURE.
 .interaction_cancel_value <- function(pending) {
@@ -421,9 +445,9 @@ server_interaction <- function(input, output, session, state) {
     bar <- .interaction_bar_ui(state$pending_interaction)
     waiting <- length(state$interaction_queue)
     if (is.null(bar) || !waiting) return(bar)
-    htmltools::tagList(bar, htmltools::tags$div(
+    htmltools::tagList(htmltools::tags$div(
       class = "ca-interaction-queue small text-muted", style = "padding:2px 16px; text-align:left;",
-      sprintf("%d more request%s waiting", waiting, if (waiting == 1L) "" else "s")))
+      sprintf("%d more request%s waiting", waiting, if (waiting == 1L) "" else "s")), bar)
   })
 
   # ---- Allow / Deny (permission approval) ----
@@ -504,7 +528,8 @@ server_interaction <- function(input, output, session, state) {
     if (is.null(pending) || !pending$type %in% c("question", "questions")) return()
     ev <- input$ca_q_answers
     if (isTRUE(ev$dismissed)) {
-      .resolve_pending(state, .interaction_cancel_value(pending))
+      if (.resolve_pending(state, .interaction_cancel_value(pending)))
+        .append_record(session, .answer_record_text(list(), list()))
       return()
     }
     qs <- if (identical(pending$type, "questions")) pending$payload$questions
@@ -512,10 +537,8 @@ server_interaction <- function(input, output, session, state) {
     answers <- .question_answers(qs, ev$answers %||% list())
     value <- if (identical(pending$type, "questions")) answers
              else paste(answers[[1]], collapse = ", ")
-    # The answers show in the AskUserQuestion tool row (its result). A chat
-    # message appended here would land inside the reply that is streaming and
-    # replace it, so there is no separate bubble.
-    .resolve_pending(state, value)
+    if (.resolve_pending(state, value))
+      .append_record(session, .answer_record_text(qs, answers))
   })
 
   # ---- Form submit / cancel (AskUserForm) ----
@@ -540,12 +563,14 @@ server_interaction <- function(input, output, session, state) {
                 "warning")
       return()
     }
-    .resolve_pending(state, list(submitted = TRUE, values = collected$values))
+    if (.resolve_pending(state, list(submitted = TRUE, values = collected$values)))
+      .append_record(session, .form_record_text(pending$payload$title, TRUE))
   })
   shiny::observeEvent(input$ca_form_cancel, ignoreInit = TRUE, {
     pending <- shiny::isolate(state$pending_interaction)
     if (is.null(pending) || !identical(pending$type, "form")) return()
-    .resolve_pending(state, list(submitted = FALSE))
+    if (.resolve_pending(state, list(submitted = FALSE)))
+      .append_record(session, .form_record_text(NULL, FALSE))
   })
 
   # ---- ESC: cancel a pending interaction without deadlocking the loop ----

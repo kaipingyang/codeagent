@@ -1,5 +1,13 @@
 # codeagent (development version)
 
+* Interaction cards (approval, questions, form, Data Shield) float right above the
+  composer, same width, at most half the chat's height and scrolling inside, and
+  follow it when the sidebar or window is resized; the "N more requests waiting"
+  line sits above the card. With `theme = "dsh"` the card still takes the
+  composer's seat. Forms submit with Enter (Ctrl/Cmd+Enter in multi-line fields).
+  Answers leave a short record in the reply ("Answered: ... -> ..." /
+  "Submitted: ..."), next to "Tool allowed." / "Tool denied.".
+
 * Context a UserPromptSubmit hook adds (`additional_context`, and
   `codeagent_server(on_user_prompt =)`) goes to the model in its own
   `<system-reminder>` block. Before, it followed the reminder outside the
