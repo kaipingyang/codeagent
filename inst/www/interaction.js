@@ -221,8 +221,11 @@
     var l = layout.getBoundingClientRect(), c = composer.getBoundingClientRect();
     out.style.setProperty("--ca-ia-left", (c.left - l.left) + "px");
     out.style.setProperty("--ca-ia-width", c.width + "px");
-    out.style.setProperty("--ca-ia-bottom", (l.bottom - c.top + GAP) + "px");
-    out.style.setProperty("--ca-ia-max-height", Math.max(160, Math.min(l.height * 0.5, c.top - l.top - GAP)) + "px");
+    // The seat reaches down to the composer; its padding is the gap, painted
+    // with the page background so nothing underneath shows between the two.
+    out.style.setProperty("--ca-ia-bottom", (l.bottom - c.top) + "px");
+    out.style.setProperty("--ca-ia-gap", GAP + "px");
+    out.style.setProperty("--ca-ia-max-height", Math.max(160, Math.min(l.height * 0.5, c.top - l.top)) + "px");
   }
   // The slash-command palette (shinychat) floats at the caret, at most 400px
   // wide. Publish the composer's box so styles.css can give it the
@@ -250,12 +253,21 @@
     if (!show) return;
     var l = layout.getBoundingClientRect(), c = composer.getBoundingClientRect();
     var card = layout.querySelector("#ca_interaction_ui.ca-ia-overlay");
-    var above = card ? card.getBoundingClientRect().height + GAP : 0;
     box.style.setProperty("--ca-ia-left", (c.left - l.left) + "px");
     box.style.setProperty("--ca-ia-width", c.width + "px");
-    box.style.setProperty("--ca-ia-bottom", (l.bottom - c.top + GAP + above) + "px");
+    box.style.setProperty("--ca-ia-bottom", (l.bottom - c.top + GAP + (card ? card.getBoundingClientRect().height : 0)) + "px");
+  }
+  // A card whose UI brings new dependencies (a date picker, another widget
+  // package) is inserted after they load, later than shiny:value: watch the
+  // output itself and place it when its content changes.
+  var watched = new WeakSet();
+  function watch(out) {
+    if (watched.has(out) || !window.MutationObserver) return;
+    watched.add(out);
+    new MutationObserver(function () { init(document); placeAll(); }).observe(out, { childList: true });
   }
   function placeAll() {
+    document.querySelectorAll("#ca_interaction_ui").forEach(watch);
     document.querySelectorAll("#ca_interaction_ui").forEach(place);
     document.querySelectorAll("#ca_tool_progress").forEach(placeProgress);
     composerVars();
