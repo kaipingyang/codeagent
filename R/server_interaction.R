@@ -155,6 +155,7 @@ NULL
   else htmltools::tags$span(class = "ca-q-num", `aria-hidden` = "true", k)
   htmltools::tags$div(
     class = "ca-q-page", `data-i` = i, `data-multi` = if (multi) "true" else "false",
+    `data-header` = as.character(q$header %||% ""),
     hidden = if (i > 1L) NA,
     htmltools::tags$h2(class = "ca-q-title", id = paste0("ca_q_title_", i), q$question %||% ""),
     if (length(opts)) htmltools::tags$div(
@@ -188,6 +189,22 @@ NULL
                                `aria-label` = "Type your answer")))
 }
 
+# Question tabs for a set of more than one: each question's header (else
+# "Question i"), the current one marked, answered ones ticked; a click goes to
+# that question (inst/www/interaction.js). PURE.
+.question_nav_ui <- function(qs) {
+  htmltools::tags$nav(class = "ca-q-nav", role = "tablist", `aria-label` = "Questions",
+    lapply(seq_along(qs), function(i) {
+      h <- trimws(as.character(qs[[i]]$header %||% ""))
+      htmltools::tags$button(
+        type = "button", class = paste("ca-q-nav-item", if (i == 1L) "is-current"),
+        role = "tab", `data-i` = i, `aria-selected` = if (i == 1L) "true" else "false",
+        title = qs[[i]]$question %||% "",
+        htmltools::tags$span(class = "ca-q-nav-mark", `aria-hidden` = "true"),
+        htmltools::tags$span(class = "ca-q-nav-label", if (nzchar(h)) h else paste("Question", i)))
+    }))
+}
+
 .question_card_ui <- function(qs) {
   n <- length(qs)
   header <- as.character(qs[[1]]$header %||% "")
@@ -205,6 +222,7 @@ NULL
         htmltools::tags$button(type = "button", class = "ca-q-icon ca-q-dismiss",
                                `aria-label` = "Dismiss all questions",
                                title = "Dismiss all questions", shiny::icon("xmark")))),
+    if (n > 1L) .question_nav_ui(qs),
     htmltools::tags$div(class = "ca-q-body",
       lapply(seq_len(n), function(i) .question_page_ui(qs[[i]], i, n))),
     htmltools::tags$footer(class = "ca-q-footer",
