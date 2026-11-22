@@ -7,7 +7,7 @@
   `multiSelect`), a "Recommended" badge for labels ending in "(Recommended)", a
   free-text row, a pager and Skip / Next|Submit, minimise and dismiss; answers are
   kept in the page and sent together. The "Tool allowed." / "Tool denied." chat
-  messages are gone: the tool row shows the outcome.
+  messages stay.
 
 * New workspace tabs for the right panel: `codeagent_workspace_ui()`,
   `workspace_options()`, `codeagent_workspace_kind()` and

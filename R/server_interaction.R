@@ -427,9 +427,11 @@ server_interaction <- function(input, output, session, state) {
   })
 
   # ---- Allow / Deny (permission approval) ----
-  # The tool row shows the outcome (as in DSH); no extra chat message.
   shiny::observeEvent(input$ca_tool_allow, ignoreInit = TRUE, {
-    .resolve_pending(state, TRUE)
+    if (.resolve_pending(state, TRUE))
+      shinychat::chat_append_message(
+        "chat", list(role = "assistant", content = "\u2705 Tool allowed."),
+        session = session)
   })
   # Allow, and stop asking for this tool in this session: approvals of the
   # same tool already waiting in the queue are allowed too.
@@ -451,7 +453,10 @@ server_interaction <- function(input, output, session, state) {
         "` allowed for the rest of this session.")), session = session)
   })
   shiny::observeEvent(input$ca_tool_deny, ignoreInit = TRUE, {
-    .resolve_pending(state, FALSE)
+    if (.resolve_pending(state, FALSE))
+      shinychat::chat_append_message(
+        "chat", list(role = "assistant", content = "\u274c Tool denied."),
+        session = session)
   })
 
   # ---- Data Shield egress approval (result already executed, not yet in LLM) ----
