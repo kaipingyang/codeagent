@@ -65,6 +65,7 @@ function plan(tools, userText) {
       sandbox_permissions: 'danger-full-access', justification: 'Write the summary to /tmp, outside the workspace.' }];
     if (has('Bash')) return ['Bash', { command, description: 'Run the summary in R', _intent: 'Run the summary in R' }];
   }
+  if (/slow job/i.test(userText) && has('SlowJob')) return ['SlowJob', { n: 3, _intent: 'Run the slow job' }];
   if (has('read')) return ['read', { file_path: 'R/demo.R' }];
   if (has('Read')) return ['Read', { file_path: 'R/demo.R', _intent: 'Read R/demo.R' }];
   return null;

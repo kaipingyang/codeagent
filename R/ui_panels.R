@@ -251,6 +251,7 @@ left_sidebar_ui_default <- left_sidebar_ui
     `aside-favicon` = "false",
     greeting = .codeagent_chat_greeting(),
     footer = htmltools::tagList(
+      .tool_progress_ui(),
       shiny::uiOutput("ca_interaction_ui"),
       .skill_picker_footer(skill_meta)
     )

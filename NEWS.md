@@ -4,6 +4,9 @@
   what it is doing while it runs. The chat shows one line per running tool
   above the input (label, step, seconds elapsed, "usually ~N s"), from
   `delay` seconds (default 3) until `done()` or the end of the turn.
+  It is in every chat (codeagent_app() layouts too) and sits in the same seat as
+  the interaction cards, floating just above the composer (above a card when one
+  is shown).
 
 * AskUserQuestion with several questions shows a tab per question at the top of
   the card (its header, else "Question i"): the current one marked, answered ones

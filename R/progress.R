@@ -49,6 +49,12 @@ codeagent_progress <- function(label, step = "", typical = NULL, delay = 3,
   ), class = "codeagent_progress")
 }
 
+# The box the progress lines render into (inst/www/agent.js); in every chat
+# footer, next to the interaction card. inst/www/interaction.js floats both
+# above the composer.
+.tool_progress_ui <- function()
+  htmltools::div(id = "ca_tool_progress", class = "ca-tool-progress", `aria-live` = "polite")
+
 # Clear every progress line of the session (end of a turn).
 .progress_clear <- function(session) {
   if (is.null(session)) return(invisible(FALSE))

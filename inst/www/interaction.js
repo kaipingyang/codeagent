@@ -238,12 +238,33 @@
     root.setProperty("--ca-composer-above", (window.innerHeight - c.top + GAP) + "px");
     document.documentElement.setAttribute("data-ca-composer", "");
   }
-  function placeAll() { document.querySelectorAll("#ca_interaction_ui").forEach(place); composerVars(); }
+  // Running tools' progress (codeagent_progress(), agent.js renders it): the
+  // same seat, stacked above a card when one is shown.
+  function placeProgress(box) {
+    if (ro && !observed.has(box)) { ro.observe(box); observed.add(box); }
+    var layout = box.closest(".shiny-chat-layout");
+    var composer = layout && layout.querySelector(".shiny-chat-composer");
+    var show = !!(composer && box.classList.contains("ca-tool-progress--on") && composer.offsetParent &&
+                  composer.getBoundingClientRect().height > 0);
+    box.classList.toggle("ca-progress-overlay", show);
+    if (!show) return;
+    var l = layout.getBoundingClientRect(), c = composer.getBoundingClientRect();
+    var card = layout.querySelector("#ca_interaction_ui.ca-ia-overlay");
+    var above = card ? card.getBoundingClientRect().height + GAP : 0;
+    box.style.setProperty("--ca-ia-left", (c.left - l.left) + "px");
+    box.style.setProperty("--ca-ia-width", c.width + "px");
+    box.style.setProperty("--ca-ia-bottom", (l.bottom - c.top + GAP + above) + "px");
+  }
+  function placeAll() {
+    document.querySelectorAll("#ca_interaction_ui").forEach(place);
+    document.querySelectorAll("#ca_tool_progress").forEach(placeProgress);
+    composerVars();
+  }
   window.addEventListener("resize", placeAll);
   document.addEventListener("focusin", function (e) {
     if (e.target.closest && e.target.closest(".shiny-chat-composer")) composerVars();
   });
-  document.addEventListener("DOMContentLoaded", function () { setTimeout(composerVars, 500); });
+  document.addEventListener("DOMContentLoaded", function () { setTimeout(placeAll, 500); });
 
   // Form: Enter in a one-line field, Ctrl/Cmd+Enter anywhere, submits.
   document.addEventListener("keydown", function (e) {
