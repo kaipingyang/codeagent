@@ -2,6 +2,13 @@
 
 ## codeagent (development version)
 
+- Fixed: a floating interaction card could be see-through. A form whose
+  controls bring new dependencies (the date picker) was inserted after
+  the card was placed, so it stayed in the footer below the composer; it
+  is now placed when its content lands. Every kind is the same opaque
+  card with a border as the question card, and the gap to the composer
+  is painted so the conversation does not show through.
+
 - `ui_layout = "dsh"` / `theme = "dsh"`: messages, the composer and the
   interaction cards use the whole width of the chat column instead of
   DSH’s `clamp(680px, 64%, 880px)` cap; user bubbles are at most 70% of
