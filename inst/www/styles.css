@@ -643,3 +643,13 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .ca-interaction--scroll > .ca-interaction-body.ca-has-more {
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }
+/* Refused submit: the message sits beside the buttons, the fields are marked. */
+.ca-form-feedback { flex: 1 1 auto; min-width: 0; margin-right: auto; color: var(--bs-danger, #dc3545);
+  font-size: .8125rem; text-align: left; }
+.ca-form-feedback:empty { display: none; }
+.ca-form-cell.is-invalid > .form-group > .control-label, .ca-form-cell.is-invalid .form-label,
+.ca-form-cell.is-invalid .ca-form-el-label { color: var(--bs-danger, #dc3545); }
+.ca-form-cell.is-invalid .form-control, .ca-form-cell.is-invalid .selectize-input,
+.ca-form-cell.is-invalid .el-input__wrapper, .ca-form-cell.is-invalid .el-select__wrapper,
+.ca-form-cell.is-invalid .bootstrap-select > .btn { box-shadow: 0 0 0 1px var(--bs-danger, #dc3545) inset !important;
+  border-color: var(--bs-danger, #dc3545) !important; }

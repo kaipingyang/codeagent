@@ -220,7 +220,11 @@ NULL
         f <- fields[[i]]
         wide <- identical(f$width, "full") || f$type %in% .FORM_WIDE_TYPES
         htmltools::tags$div(class = paste("ca-form-cell", if (wide) "ca-form-cell--wide"),
-                            `data-type` = f$type, .form_field_input(f, i, widgets))
+                            `data-type` = f$type, `data-i` = i, .form_field_input(f, i, widgets))
       })))
   }))
 }
+
+# A refused submit, shown in the form by inst/www/interaction.js.
+.send_form_feedback <- function(session, msg)
+  tryCatch(session$sendCustomMessage("ca_form_feedback", msg), error = function(e) NULL)

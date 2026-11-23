@@ -1,5 +1,15 @@
 # codeagent (development version)
 
+* `form_widgets =` on `codeagent_app()` and `codeagent_server()`: how AskUserForm
+  fields are drawn -- Shiny's controls by default, presets `"shiny.element"`
+  and `"shinyWidgets"` in priority order, host presets and per-type widgets,
+  mixed. New field attributes `placeholder`, `min`/`max`/`step`, `allow_other`,
+  `pattern` + `pattern_hint` and `section`; the form lays itself out to the
+  available width (`width = "full"` keeps a field on its own row). Long forms
+  scroll their fields while Cancel / Submit stay in view (they were cut off), and
+  a refused submit says why next to the buttons, marks the fields and focuses
+  the first instead of a toast over the buttons.
+
 * Fixed: a floating interaction card could be see-through. A form whose controls
   bring new dependencies (the date picker) was inserted after the card was
   placed, so it stayed in the footer below the composer; it is now placed when its

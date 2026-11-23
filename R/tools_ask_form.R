@@ -328,16 +328,19 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
   values <- list()
   missing <- character(0)
   invalid <- character(0)
-  for (f in spec) {
+  bad_idx <- integer(0)
+  for (i in seq_along(spec)) {
+    f <- spec[[i]]
     v <- .form_coerce(f, raw[[f$name]])
-    if (isTRUE(f$required) && .form_is_empty(f, v)) missing <- c(missing, f$label)
-    else if (!.form_is_empty(f, v)) {
+    if (isTRUE(f$required) && .form_is_empty(f, v)) {
+      missing <- c(missing, f$label); bad_idx <- c(bad_idx, i)
+    } else if (!.form_is_empty(f, v)) {
       bad <- .form_value_problem(f, v)
-      if (!is.null(bad)) invalid <- c(invalid, bad)
+      if (!is.null(bad)) { invalid <- c(invalid, bad); bad_idx <- c(bad_idx, i) }
     }
     values[f$name] <- list(v)
   }
-  list(values = values, missing = missing, invalid = invalid)
+  list(values = values, missing = missing, invalid = invalid, fields = bad_idx)
 }
 
 # ---------------------------------------------------------------------------

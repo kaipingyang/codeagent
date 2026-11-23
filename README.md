@@ -711,7 +711,25 @@ opens in the chat's interaction area, and the tool returns
 `{"submitted": true|false, "values": {...}}`. A `grouping` field puts each of
 its `choices` (e.g. treatment arms) into a group the user names; its value is
 `{group: [choices]}` and its `default` presets groups as
-`"Group A: x, y; Group B: z"`.
+`"Group A: x, y; Group B: z"`. Fields may also carry `placeholder`,
+`min`/`max`/`step`, `allow_other` (type a value not in `choices`), `pattern` +
+`pattern_hint`, and `section` (a group heading). The form lays itself out to the
+available width -- short fields side by side, long text and lists across --
+and a refused submit says why next to the buttons and marks the fields.
+
+How the fields are drawn is the host's choice, `form_widgets =` on
+`codeagent_app()` / `codeagent_server()`: Shiny's own controls by default,
+built-in presets `"shiny.element"` and `"shinyWidgets"` in priority order, your
+own presets (a named list of type -> `function(id, label, value, choices,
+field)`), or one type at a time:
+
+```r
+codeagent_app(client, form_widgets = "shiny.element")
+codeagent_app(client, form_widgets = list("shiny.element", date = shinyWidgets::airDatepickerInput))
+```
+
+A widget returns its value as `input[[id]]` in the shape of Shiny's control for
+that type, so validation and the tool result do not depend on it.
 
 ### Generative UI canvas
 

@@ -105,3 +105,33 @@ test_that("collection reports values outside the limits", {
   expect_length(good$invalid, 0L)
   expect_identical(good$values$own, "mine")
 })
+
+test_that("a refused submit says why in the form and marks the fields", {
+  sent <- list()
+  testthat::local_mocked_bindings(.send_form_feedback = function(session, msg)
+    sent[[length(sent) + 1L]] <<- list(type = "ca_form_feedback", msg = msg))
+  shiny::testServer(function(input, output, session) {
+    state <- shiny::reactiveValues(pending_interaction = NULL, interaction_queue = NULL)
+    server_interaction(input, output, session, state)
+    session$userData$state <- state
+  }, {
+    spec <- .form_validate_fields(list(
+      list(name = "t", label = "Title", type = "text", required = TRUE),
+      list(name = "n", label = "Decimals", type = "number", max = 4)))
+    resolved <- NULL
+    session$userData$state$pending_interaction <- list(type = "form",
+      payload = list(title = "T", fields = spec), resolve = function(v) resolved <<- v)
+    session$flushReact()
+    session$setInputs(ca_form_1 = "", ca_form_2 = 9, ca_form_submit = 1)
+    fb <- Filter(function(s) identical(s$type, "ca_form_feedback"), sent)
+    expect_length(fb, 1L)
+    expect_match(fb[[1]]$msg$message, "Please fill in: Title", fixed = TRUE)
+    expect_match(fb[[1]]$msg$message, "Decimals: at most 4", fixed = TRUE)
+    expect_identical(unlist(fb[[1]]$msg$fields), c(1L, 2L))
+    expect_null(resolved)
+  })
+  html <- as.character(.interaction_bar_ui(list(type = "form",
+    payload = list(title = "T", fields = .form_validate_fields(list(list(name = "a", type = "text")))))))
+  expect_match(html, 'class="ca-form-feedback"', fixed = TRUE)
+  expect_match(html, 'data-i="1"', fixed = TRUE)
+})

@@ -348,6 +348,7 @@ NULL
         htmltools::tags$div(class = "ca-form-fields",
           .form_fields_ui(p$fields, widgets %||% .form_preset_native()))),
       htmltools::tagList(
+        htmltools::tags$div(class = "ca-form-feedback", role = "alert", `aria-live` = "assertive"),
         shiny::actionButton("ca_form_cancel", "Cancel",
                             class = "btn-outline-secondary btn-sm ca-interaction-reject"),
         shiny::actionButton("ca_form_submit", p$submit_label %||% "Submit",
@@ -541,10 +542,14 @@ server_interaction <- function(input, output, session, state, form_widgets = NUL
     raw <- lapply(raw, function(v) if (inherits(v, "Date")) format(v) else v)
     collected <- .form_collect(spec, raw)
     if (length(collected$missing) || length(collected$invalid)) {
-      .ui_toast(paste(c(
-        if (length(collected$missing))
-          paste0("Please fill in: ", paste(collected$missing, collapse = ", ")),
-        collected$invalid), collapse = ". "), "warning")
+      # Said in the form itself, next to its buttons, with the fields marked
+      # (a toast here sat on top of the buttons and read as "nothing happened").
+      .send_form_feedback(session, list(
+        message = paste(c(
+          if (length(collected$missing))
+            paste0("Please fill in: ", paste(collected$missing, collapse = ", ")),
+          collected$invalid), collapse = ". "),
+        fields = as.list(as.integer(collected$fields))))
       return()
     }
     if (.resolve_pending(state, list(submitted = TRUE, values = collected$values)))
