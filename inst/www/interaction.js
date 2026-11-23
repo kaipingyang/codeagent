@@ -191,6 +191,7 @@
 
   // A newly shown card: set up its pages and take focus, so the keys work.
   function init(root) {
+    grpInit(root);
     (root.querySelectorAll ? root : document).querySelectorAll(".ca-q-card:not([data-page])").forEach(function (card) {
       card.setAttribute("data-page", "1");
       sync(card);
@@ -203,6 +204,64 @@
       if (body) { body.setAttribute("tabindex", "0"); body.focus({ preventScroll: true }); }
     });
   }
+  // ---- Grouping field (AskUserForm type "grouping") ---------------------------
+  // Rows of [group name | drop-down checklist of the choices]; "+ Add group"
+  // adds a row. A choice checked in one row is shown as taken (and disabled)
+  // in the others. The rows go to input <data-input> as JSON [{name, items}].
+  function grpRows(g) { return Array.prototype.slice.call(g.querySelectorAll(".ca-grp-rows > .ca-grp-row")); }
+  function grpSync(g) {
+    var rows = grpRows(g), owner = {};
+    rows.forEach(function (r) {
+      var name = r.querySelector(".ca-grp-name").value.trim() || "(unnamed)";
+      r.querySelectorAll(".ca-grp-opt input:checked").forEach(function (c) { if (!(c.value in owner)) owner[c.value] = { row: r, name: name }; });
+    });
+    var value = rows.map(function (r) {
+      var items = [];
+      r.querySelectorAll(".ca-grp-opt input").forEach(function (c) {
+        var o = owner[c.value], other = o && o.row !== r;
+        if (other && c.checked) c.checked = false;
+        c.disabled = !!other;
+        c.closest(".ca-grp-opt").classList.toggle("is-taken", !!other);
+        c.closest(".ca-grp-opt").querySelector(".ca-grp-taken").textContent = other ? "in " + o.name : "";
+        if (c.checked) items.push(c.value);
+      });
+      var sum = r.querySelector(".ca-grp-summary");
+      sum.textContent = items.length ? items.join(", ") : "Choose items";
+      sum.classList.toggle("is-empty", !items.length);
+      return { name: r.querySelector(".ca-grp-name").value.trim(), items: items };
+    });
+    var all = g.querySelectorAll(".ca-grp-rows .ca-grp-opt input").length / Math.max(rows.length, 1);
+    var left = all - Object.keys(owner).length, note = g.querySelector(".ca-grp-left");
+    if (note) note.textContent = left > 0 ? left + " item(s) not in a group stay on their own." : "";
+    if (window.Shiny && Shiny.setInputValue) Shiny.setInputValue(g.getAttribute("data-input"), JSON.stringify(value), { priority: "event" });
+  }
+  function grpInit(root) {
+    (root.querySelectorAll ? root : document).querySelectorAll(".ca-grouping:not([data-ready])").forEach(function (g) {
+      g.setAttribute("data-ready", "true");
+      grpSync(g);
+    });
+  }
+  document.addEventListener("change", function (e) { var g = e.target.closest && e.target.closest(".ca-grouping"); if (g) grpSync(g); });
+  document.addEventListener("input", function (e) { var g = e.target.closest && e.target.closest(".ca-grouping"); if (g && e.target.classList.contains("ca-grp-name")) grpSync(g); });
+  document.addEventListener("click", function (e) {
+    var g = e.target.closest && e.target.closest(".ca-grouping"); if (!g) return;
+    if (e.target.closest(".ca-grp-add")) {
+      var t = g.querySelector(".ca-grp-template"), rows = g.querySelector(".ca-grp-rows");
+      var row = t.content.firstElementChild.cloneNode(true);
+      var used = grpRows(g).map(function (r) { return r.querySelector(".ca-grp-name").value.trim(); });
+      var n = grpRows(g).length + 1; while (used.indexOf("Group " + n) >= 0) n++;
+      row.querySelector(".ca-grp-name").value = "Group " + n;
+      rows.appendChild(row); grpSync(g); row.querySelector(".ca-grp-name").select();
+    } else if (e.target.closest(".ca-grp-remove")) {
+      if (grpRows(g).length > 1) e.target.closest(".ca-grp-row").remove();
+      grpSync(g);
+    }
+  });
+  // one drop-down open at a time; a click outside closes it
+  document.addEventListener("click", function (e) {
+    document.querySelectorAll(".ca-grp-pick[open]").forEach(function (d) { if (!d.contains(e.target)) d.removeAttribute("open"); });
+  });
+
   // ---- Seat: the card floats right above the composer -------------------------
   // The card is rendered in the chat footer (below the composer). While one is
   // shown and the composer is visible, the output is positioned over the chat,

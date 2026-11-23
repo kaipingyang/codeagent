@@ -622,3 +622,21 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
   left: var(--ca-ia-left, 0); width: var(--ca-ia-width, 100%); bottom: var(--ca-ia-bottom, 0); }
 #ca_tool_progress.ca-progress-overlay .ca-tool-progress__row { background: var(--bs-body-bg, #fff);
   box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+
+/* AskUserForm grouping: rows of group name + drop-down checklist */
+.ca-grp-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
+.ca-grp-name { flex: 0 0 34%; min-width: 0; }
+.ca-grp-pick { flex: 1 1 auto; min-width: 0; position: relative; }
+.ca-grp-summary { cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ca-grp-summary::-webkit-details-marker { display: none; }
+.ca-grp-summary.is-empty { color: var(--bs-secondary-color, #6c757d); }
+.ca-grp-menu { position: absolute; z-index: 30; left: 0; right: 0; margin-top: 2px; max-height: 240px; overflow-y: auto;
+  background: var(--bs-body-bg, #fff); border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, .12); padding: 4px 0; }
+.ca-grp-opt { display: flex; align-items: center; gap: 8px; padding: 4px 10px; margin: 0; cursor: pointer; font-size: .875rem; }
+.ca-grp-opt:hover { background: var(--bs-tertiary-bg, #f8f9fa); }
+.ca-grp-opt.is-taken { color: var(--bs-secondary-color, #6c757d); cursor: default; }
+.ca-grp-opt-label { flex: 1 1 auto; }
+.ca-grp-taken { font-size: .75rem; font-style: italic; }
+.ca-grp-remove { flex: 0 0 auto; padding: 2px 6px; text-decoration: none; font-size: 1.1rem; line-height: 1; }
+

@@ -184,7 +184,7 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
       if (length(v) && !is.na(v[1])) v[1] else NULL
     },
     checkbox = isTRUE(as.logical(raw %||% FALSE)),
-    grouping = .grouping_value(raw, field$choices),
+    grouping = if (is.list(raw) && !is.null(names(raw))) raw else .grouping_value(raw, field$choices),
     multiselect = {
       v <- as.character(unlist(raw %||% character(0)))
       if (length(v) == 1L && grepl(",", v)) v <- trimws(strsplit(v, ",", fixed = TRUE)[[1]])
@@ -228,6 +228,45 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
   g <- trimws(g); g[is.na(g) | !nzchar(g)] <- choices[is.na(g) | !nzchar(g)]
   groups <- unique(g)
   stats::setNames(lapply(groups, function(x) choices[g == x]), groups)
+}
+
+# The preset rows of a grouping field from its text default "G1: a, b; G2: c":
+# list(list(name, items)), choices in their order; no default => one empty
+# "Group 1" row. A choice named twice stays in its first group. PURE.
+.grouping_rows_preset <- function(text, choices) {
+  text <- as.character(text %||% "")
+  rows <- list(); taken <- character()
+  if (nzchar(text)) for (part in strsplit(text, ";", fixed = TRUE)[[1]]) {
+    kv <- regmatches(part, regexpr(":", part), invert = TRUE)[[1]]
+    if (length(kv) != 2L || !nzchar(trimws(kv[1]))) next
+    items <- trimws(strsplit(kv[2], ",", fixed = TRUE)[[1]])
+    items <- setdiff(choices[choices %in% items], taken)
+    taken <- c(taken, items)
+    rows[[length(rows) + 1L]] <- list(name = trimws(kv[1]), items = items)
+  }
+  if (!length(rows)) rows <- list(list(name = "Group 1", items = character()))
+  rows
+}
+
+# The submitted rows (JSON: [{name, items}]) as the grouping value
+# list(group = choices): first row wins a choice taken twice, rows without a
+# name or items are dropped, choices in no group stay on their own (their own
+# name). Not JSON (CLI / tests: the text form) goes through .grouping_value().
+.grouping_rows_value <- function(raw, choices, default = "") {
+  raw <- as.character(unlist(raw %||% ""))
+  rows <- if (length(raw) == 1L && grepl("^\\s*\\[", raw))
+    tryCatch(jsonlite::fromJSON(raw, simplifyVector = FALSE), error = function(e) NULL)
+  if (is.null(rows)) return(raw)
+  out <- list(); taken <- character()
+  for (r in rows) {
+    name <- trimws(as.character(r$name %||% "")[1])
+    items <- intersect(choices, setdiff(as.character(unlist(r$items)), taken))
+    if (is.na(name) || !nzchar(name) || !length(items)) next
+    taken <- c(taken, items)
+    out[[name]] <- unique(c(out[[name]], items))
+  }
+  for (ch in setdiff(choices, taken)) out[[ch]] <- ch
+  out
 }
 
 .form_is_empty <- function(field, value) {

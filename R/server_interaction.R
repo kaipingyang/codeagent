@@ -98,16 +98,7 @@ NULL
       id, label, choices = field$choices, multiple = TRUE, width = "100%",
       selected = if (nzchar(def)) trimws(strsplit(def, ",", fixed = TRUE)[[1]]) else NULL),
     checkbox = shiny::checkboxInput(id, label, value = isTRUE(as.logical(def))),
-    grouping = {
-      preset <- .grouping_preset(def, field$choices)
-      htmltools::tags$div(class = "ca-grouping mb-2",
-        htmltools::tags$label(class = "form-label", label),
-        htmltools::tags$table(class = "table table-sm align-middle mb-0",
-          htmltools::tags$thead(htmltools::tags$tr(htmltools::tags$th("Item"), htmltools::tags$th("Group"))),
-          htmltools::tags$tbody(lapply(seq_along(field$choices), function(j) htmltools::tags$tr(
-            htmltools::tags$td(field$choices[j]),
-            htmltools::tags$td(shiny::textInput(paste0(id, "_g", j), NULL, value = preset[j], width = "100%")))))))
-    },
+    grouping = .grouping_ui(id, label, field$choices, def),
     date     = shiny::dateInput(id, label, value = if (nzchar(def)) def else NULL,
                                 width = "100%")
   )
@@ -116,6 +107,35 @@ NULL
     if (nzchar(field$help))
       htmltools::tags$small(class = "form-text text-muted d-block mb-2", field$help)
   )
+}
+
+# ---- Grouping field ----------------------------------------------------------
+# One row per group: an editable group name and a drop-down checklist of the
+# choices (e.g. treatment arms); "Add group" adds a row. A choice belongs to
+# one group: once a row takes it, the others show it as taken and cannot pick
+# it (interaction.js), and .grouping_rows_value() keeps the first row's claim.
+# The rows go to the server as JSON in input `id`.
+.grouping_ui <- function(id, label, choices, def) {
+  rows <- .grouping_rows_preset(def, choices)
+  pick <- function(items) htmltools::tags$details(class = "ca-grp-pick",
+    htmltools::tags$summary(class = "form-select form-select-sm ca-grp-summary"),
+    htmltools::tags$div(class = "ca-grp-menu", lapply(choices, function(ch)
+      htmltools::tags$label(class = "ca-grp-opt",
+        htmltools::tags$input(type = "checkbox", value = ch, checked = if (ch %in% items) NA),
+        htmltools::tags$span(class = "ca-grp-opt-label", ch),
+        htmltools::tags$span(class = "ca-grp-taken")))))
+  row <- function(name, items) htmltools::tags$div(class = "ca-grp-row",
+    htmltools::tags$input(type = "text", class = "form-control form-control-sm ca-grp-name", value = name,
+                          `aria-label` = "Group name"),
+    pick(items),
+    htmltools::tags$button(type = "button", class = "btn btn-sm btn-link ca-grp-remove",
+                           `aria-label` = "Remove group", htmltools::HTML("&times;")))
+  htmltools::tags$div(class = "ca-grouping mb-2", `data-input` = id,
+    htmltools::tags$label(class = "form-label", label),
+    htmltools::tags$div(class = "ca-grp-rows", lapply(rows, function(r) row(r$name, r$items))),
+    htmltools::tags$template(class = "ca-grp-template", row("", character())),
+    htmltools::tags$button(type = "button", class = "btn btn-sm btn-outline-secondary ca-grp-add", "+ Add group"),
+    htmltools::tags$small(class = "form-text text-muted d-block ca-grp-left"))
 }
 
 # ---- Question card (DSH QuestionComposer look) -----------------------------
@@ -568,9 +588,8 @@ server_interaction <- function(input, output, session, state) {
     spec <- pending$payload$fields
     raw <- stats::setNames(lapply(seq_along(spec), function(i) {
       id <- .form_input_id(i)
-      if (identical(spec[[i]]$type, "grouping"))   # one group box per choice
-        return(vapply(seq_along(spec[[i]]$choices), function(j)
-          as.character(input[[paste0(id, "_g", j)]] %||% "")[1], character(1L)))
+      if (identical(spec[[i]]$type, "grouping"))   # the rows as JSON (interaction.js)
+        return(.grouping_rows_value(input[[id]] %||% "", spec[[i]]$choices, spec[[i]]$default))
       input[[id]]
     }), vapply(spec, `[[`, character(1L), "name"))
     # dateInput gives a Date; keep the ISO text the model was told about.

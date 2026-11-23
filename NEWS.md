@@ -1,5 +1,12 @@
 # codeagent (development version)
 
+* AskUserForm `grouping` fields are rows of an editable group name and a
+  drop-down checklist of the choices, with "+ Add group" and remove buttons
+  (was: a group-name box per choice). A choice checked in one row shows as
+  taken in the others and cannot be picked there; on submit the first row
+  keeps a choice named twice and choices in no group stay on their own. The
+  value is unchanged: `list(group = choices)`.
+
 * Fixed: a floating interaction card could be see-through. A form whose controls
   bring new dependencies (the date picker) was inserted after the card was
   placed, so it stayed in the footer below the composer; it is now placed when its
