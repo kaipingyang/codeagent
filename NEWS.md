@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+* Workspace tabs can float: drag a tab down off the strip, double-click it, or
+  use "Pop out" in its menu. The tab becomes a window over the page (drag its
+  bar, resize its corner) while the chat stays usable; several can be open to
+  compare results. "Dock" (or double-click the tab again) puts it back; its
+  content is not reloaded either way. Floating is per page, not saved.
+
 * AskUserForm `grouping` fields are rows of an editable group name and a
   drop-down checklist of the choices, with "+ Add group" and remove buttons
   (was: a group-name box per choice). A choice checked in one row shows as

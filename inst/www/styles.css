@@ -640,3 +640,18 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .ca-grp-taken { font-size: .75rem; font-style: italic; }
 .ca-grp-remove { flex: 0 0 auto; padding: 2px 6px; text-decoration: none; font-size: 1.1rem; line-height: 1; }
 
+/* Floating workspace tabs (workspace.js): a pane pulled off the strip */
+.ca-ws-pane.is-floating { display: flex !important; flex-direction: column; position: fixed; z-index: 1060;
+  min-width: 280px; min-height: 160px; max-width: calc(100vw - 16px); max-height: calc(100vh - 16px);
+  resize: both; overflow: hidden; background: var(--bs-body-bg, #fff);
+  border: 1px solid var(--bs-border-color, #dee2e6); border-radius: 10px; box-shadow: 0 12px 36px rgba(0, 0, 0, .22); }
+.ca-ws-pane.is-floating > .ca-ws-pane-out { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.ca-ws-float-bar { flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 4px 6px 4px 12px;
+  cursor: move; user-select: none; background: var(--bs-tertiary-bg, #f1f3f5);
+  border-bottom: 1px solid var(--bs-border-color, #dee2e6); font-size: .85rem; }
+.ca-ws-float-title { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.ca-ws-float-bar button { border: 0; background: none; color: inherit; padding: 2px 8px; border-radius: 6px; cursor: pointer; }
+.ca-ws-float-bar button:hover { background: var(--bs-secondary-bg, #e9ecef); }
+.ca-ws-float-close { font-size: 1.1rem; line-height: 1; }
+.ca-ws-tab.is-floating .ca-ws-tab-title::after { content: " \2197"; opacity: .6; }
+
