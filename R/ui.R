@@ -359,6 +359,9 @@ codeagent_theme <- function(style = "default", ...) {
 #' @param web_allow_private Logical. Reserved opt-in for local development.
 #'   Private-network fetching remains disabled in this release; `TRUE` fails
 #'   closed rather than weakening SSRF protection.
+#' @param form_widgets How AskUserForm fields are drawn; see
+#'   [codeagent_server()]. E.g. `"shiny.element"` or
+#'   `c("shiny.element", "shinyWidgets")`.
 #' @param canvas Generative UI canvas options from [canvas_options()]:
 #'   which components the model may draw (shinygenui's own and your own), the
 #'   page's Content Security Policy and model-text checking. `NULL` (default)
@@ -388,10 +391,12 @@ codeagent_app <- function(
   web_citations   = c("off", "shiny_aside"),
   web_allow_private = FALSE,
   ui_layout       = c("classic", "page_chat", "dsh"),
-  canvas          = NULL
+  canvas          = NULL,
+  form_widgets    = NULL
 ) {
 
   ui_layout <- match.arg(ui_layout)
+  .form_widgets_resolve(form_widgets)   # fail early on a bad spec
   if (is.logical(web_citations)) {
     if (length(web_citations) != 1L || is.na(web_citations))
       stop("`web_citations` must be TRUE/FALSE, 'off', or 'shiny_aside'.", call. = FALSE)
@@ -607,7 +612,8 @@ codeagent_app <- function(
       per_session     = genui_per_session,
       tools_ready     = tools_ready,
       drawer_id       = if (.uses_page_chat(ui_layout)) "chat" else NULL,
-      settings_overrides = list(web_citations = web_citations, ui_layout = ui_layout))
+      settings_overrides = list(web_citations = web_citations, ui_layout = ui_layout,
+                                form_widgets = form_widgets))
     settings    <- core$settings
     state       <- core$state
     stream_task <- core$stream_task

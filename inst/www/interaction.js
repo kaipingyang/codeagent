@@ -325,7 +325,16 @@
     watched.add(out);
     new MutationObserver(function () { init(document); placeAll(); }).observe(out, { childList: true });
   }
+  // A scrolling card body that has more below fades out at its bottom edge.
+  function updateMore(body) {
+    body.classList.toggle("ca-has-more", body.scrollTop + body.clientHeight < body.scrollHeight - 4);
+  }
+  document.addEventListener("scroll", function (e) {
+    var t = e.target;
+    if (t && t.matches && t.matches(".ca-interaction--scroll > .ca-interaction-body")) updateMore(t);
+  }, true);
   function placeAll() {
+    document.querySelectorAll(".ca-interaction--scroll > .ca-interaction-body").forEach(updateMore);
     document.querySelectorAll("#ca_interaction_ui").forEach(watch);
     document.querySelectorAll("#ca_interaction_ui").forEach(place);
     document.querySelectorAll("#ca_tool_progress").forEach(placeProgress);
@@ -349,6 +358,41 @@
       if (submit && !submit.disabled) { e.preventDefault(); submit.click(); }
     }
   });
+
+  // Form submit refused (missing / invalid fields): say it in the form, mark
+  // the fields, bring the first into view. Editing a field clears its mark.
+  function formFeedback(m) {
+    var card = document.querySelector(".ca-interaction--form");
+    if (!card) return;
+    var box = card.querySelector(".ca-form-feedback");
+    if (box) box.textContent = m.message || "";
+    card.querySelectorAll(".ca-form-cell.is-invalid").forEach(function (c) { c.classList.remove("is-invalid"); });
+    var first = null;
+    (m.fields || []).forEach(function (i) {
+      var c = card.querySelector('.ca-form-cell[data-i="' + i + '"]');
+      if (c) { c.classList.add("is-invalid"); first = first || c; }
+    });
+    if (first) {
+      first.scrollIntoView({ block: "nearest" });
+      var f = Array.prototype.find.call(
+        first.querySelectorAll("input:not([type=hidden]), textarea, select, [contenteditable=true], [tabindex]:not([tabindex=\"-1\"])"),
+        function (el) { return el.offsetParent !== null && !el.disabled && getComputedStyle(el).visibility !== "hidden"; });
+      if (f) f.focus({ preventScroll: true });
+    }
+  }
+  document.addEventListener("input", function (e) {
+    var c = e.target.closest && e.target.closest(".ca-form-cell.is-invalid");
+    if (c) c.classList.remove("is-invalid");
+  }, true);
+  var feedbackRegistered = false;
+  function registerFeedback() {
+    if (feedbackRegistered || !window.Shiny || !Shiny.addCustomMessageHandler) return;
+    feedbackRegistered = true;
+    Shiny.addCustomMessageHandler("ca_form_feedback", formFeedback);
+  }
+  registerFeedback();
+  document.addEventListener("DOMContentLoaded", registerFeedback);
+  if (window.jQuery) jQuery(document).on("shiny:connected", registerFeedback);
 
   if (window.jQuery) jQuery(document).on("shiny:value", function (e) {
     if (e.name === "ca_interaction_ui") setTimeout(function () { init(document); placeAll(); }, 0);

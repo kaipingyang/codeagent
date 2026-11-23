@@ -65,6 +65,8 @@ ask_user_form_tool <- function(ask_form_fn = NULL, async = FALSE) {
       "Use it to collect or confirm several related values at once before ",
       "acting (e.g. the parameters of an analysis, a set of options to apply). ",
       "Pre-fill `default` with your best guess so the user mostly confirms. ",
+      "The form lays itself out to the available width; group related fields with ",
+      "`section` (a heading per group) rather than worrying about columns. ",
       "For a single question use AskUserQuestion instead. Do NOT use it for ",
       "permission requests -- those are handled automatically. The result is ",
       "JSON: {\"submitted\": true|false, \"values\": {name: value}}; if ",
@@ -95,7 +97,31 @@ ask_user_form_tool <- function(ask_form_fn = NULL, async = FALSE) {
             required = FALSE),
           required = ellmer::type_boolean(
             "Whether the user must fill it in.", required = FALSE),
-          help     = ellmer::type_string("Short hint under the field.", required = FALSE)
+          help     = ellmer::type_string("Short hint under the field.", required = FALSE),
+          placeholder = ellmer::type_string(
+            "Grey hint inside an empty text, textarea or number field.", required = FALSE),
+          min  = ellmer::type_number("number: smallest allowed value.", required = FALSE),
+          max  = ellmer::type_number("number: largest allowed value.", required = FALSE),
+          step = ellmer::type_number("number: step of the up/down control.", required = FALSE),
+          allow_other = ellmer::type_boolean(
+            "select / multiselect: the user may also type a value not in `choices`.",
+            required = FALSE),
+          pattern = ellmer::type_string(
+            paste("text: a simple regular expression the whole value must match",
+                  "(e.g. ^[A-Z]{3}-[0-9]{3}$). Keep it short; no backreferences."),
+            required = FALSE),
+          pattern_hint = ellmer::type_string(
+            "What `pattern` expects, shown when the value does not match.", required = FALSE),
+          section = ellmer::type_string(
+            paste("Optional group heading: consecutive fields with the same section are",
+                  "shown together under it. Use it to group related fields."),
+            required = FALSE),
+          width = ellmer::type_enum(
+            values = c("auto", "full"),
+            description = paste("The form lays fields out to the available width by itself",
+                                "(short fields side by side, long text and lists across).",
+                                "\"full\": keep this field on a row of its own. Default auto."),
+            required = FALSE)
         ),
         required = TRUE),
       submit_label = ellmer::type_string(
@@ -159,6 +185,24 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
     default <- unlist(f$default, use.names = FALSE)
     default <- default[!is.na(default)]
     default <- if (!length(default)) "" else paste(as.character(default), collapse = ",")
+    num <- function(x) {
+      v <- suppressWarnings(as.numeric(.form_scalar(x, NA)))
+      if (length(v) && is.finite(v)) v else NULL
+    }
+    mn <- num(f$min); mx <- num(f$max); st <- num(f$step)
+    if (!is.null(mn) && !is.null(mx) && mn > mx)
+      return(sprintf("Field `%s`: `min` (%s) is larger than `max` (%s).", name, mn, mx))
+    if (!is.null(st) && st <= 0)
+      return(sprintf("Field `%s`: `step` must be positive.", name))
+    width <- as.character(.form_scalar(f$width, "auto"))
+    if (identical(width, "half")) width <- "auto"     # an earlier hint: the layout does it now
+    if (!width %in% c("auto", "full"))
+      return(sprintf("Field `%s`: `width` must be \"auto\" or \"full\".", name))
+    pattern <- as.character(.form_scalar(f$pattern, ""))
+    if (nzchar(pattern)) {
+      bad <- .form_pattern_problem(pattern)
+      if (!is.null(bad)) return(sprintf("Field `%s`: `pattern` %s", name, bad))
+    }
     out[[i]] <- list(
       name     = name,
       label    = as.character(.form_scalar(f$label, name)),
@@ -166,7 +210,15 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
       choices  = choices,
       default  = default,
       required = isTRUE(as.logical(.form_scalar(f$required, FALSE))),
-      help     = as.character(.form_scalar(f$help, ""))
+      help     = as.character(.form_scalar(f$help, "")),
+      placeholder = as.character(.form_scalar(f$placeholder, "")),
+      min = mn, max = mx, step = st,
+      allow_other = isTRUE(as.logical(.form_scalar(f$allow_other, FALSE))) &&
+        type %in% c("select", "multiselect"),
+      pattern = if (type %in% c("text", "textarea")) pattern else "",
+      pattern_hint = as.character(.form_scalar(f$pattern_hint, "")),
+      section = trimws(as.character(.form_scalar(f$section, ""))),
+      width = width
     )
   }
   names_ <- vapply(out, `[[`, character(1L), "name")
@@ -174,6 +226,40 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
     return(sprintf("Field names must be unique (repeated: %s).",
                    paste(unique(names_[duplicated(names_)]), collapse = ", ")))
   out
+}
+
+# A model-written `pattern` is run against the user's text: keep it to plain,
+# bounded expressions. NULL when acceptable, else what is wrong. PURE.
+.form_pattern_problem <- function(pattern) {
+  if (nchar(pattern) > 200L) return("is too long (at most 200 characters).")
+  if (grepl("\\\\[1-9]|\\\\k<", pattern, perl = TRUE)) return("must not use backreferences.")
+  # a quantified group that itself ends in a quantifier: (a+)+, (x*){2,}
+  if (grepl("[+*}]\\)[+*{]", pattern, perl = TRUE))
+    return("must not nest quantifiers, e.g. (a+)+.")
+  ok <- tryCatch({ grepl(pattern, "", perl = TRUE); TRUE }, error = function(e) FALSE,
+                 warning = function(w) FALSE)
+  if (!ok) return("is not a valid regular expression.")
+  NULL
+}
+
+# Why a filled value breaks the field's limits, or NULL. PURE.
+.form_value_problem <- function(field, value) {
+  if (is.null(value) || !length(value)) return(NULL)
+  if (identical(field$type, "number")) {
+    if (!is.null(field$min) && value < field$min)
+      return(sprintf("%s: at least %s", field$label, format(field$min)))
+    if (!is.null(field$max) && value > field$max)
+      return(sprintf("%s: at most %s", field$label, format(field$max)))
+  }
+  if (field$type %in% c("text", "textarea") && nzchar(field$pattern %||% "") &&
+      nzchar(value[1]) && !isTRUE(grepl(field$pattern, value[1], perl = TRUE)))
+    return(sprintf("%s: %s", field$label,
+                   if (nzchar(field$pattern_hint %||% "")) field$pattern_hint
+                   else "does not have the expected format"))
+  if (field$type %in% c("select", "multiselect") && !isTRUE(field$allow_other) &&
+      length(field$choices) && any(!value %in% field$choices))
+    return(sprintf("%s: choose from the list", field$label))
+  NULL
 }
 
 # Coerce one raw submitted value to the field's type. PURE.
@@ -280,12 +366,20 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
 .form_collect <- function(spec, raw) {
   values <- list()
   missing <- character(0)
-  for (f in spec) {
+  invalid <- character(0)
+  bad_idx <- integer(0)
+  for (i in seq_along(spec)) {
+    f <- spec[[i]]
     v <- .form_coerce(f, raw[[f$name]])
-    if (isTRUE(f$required) && .form_is_empty(f, v)) missing <- c(missing, f$label)
+    if (isTRUE(f$required) && .form_is_empty(f, v)) {
+      missing <- c(missing, f$label); bad_idx <- c(bad_idx, i)
+    } else if (!.form_is_empty(f, v)) {
+      bad <- .form_value_problem(f, v)
+      if (!is.null(bad)) { invalid <- c(invalid, bad); bad_idx <- c(bad_idx, i) }
+    }
     values[f$name] <- list(v)
   }
-  list(values = values, missing = missing)
+  list(values = values, missing = missing, invalid = invalid, fields = bad_idx)
 }
 
 # ---------------------------------------------------------------------------

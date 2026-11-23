@@ -19,6 +19,7 @@ codeagent_server(
   on_tool_open = NULL,
   on_user_prompt = NULL,
   workspace = NULL,
+  form_widgets = NULL,
   sessions = FALSE
 )
 }
@@ -78,6 +79,17 @@ what a project contains), sent once with the first turn.}
 \code{\link[=codeagent_workspace_ui]{codeagent_workspace_ui()}} in the page. Each opened tool result, file or
 host content gets its own tab; open tabs with the returned \code{ws}. Without an
 \code{on_tool_open}, opening a tool card in the chat opens its result tab.}
+
+\item{form_widgets}{How AskUserForm fields are drawn: \code{NULL} (Shiny's own
+controls), preset names in priority order (\code{"shiny.element"},
+\code{"shinyWidgets"}), or a list mixing presets, your own presets (a named list
+of field type -> \verb{function(id, label, value, choices, field)}) and named
+per-type widgets, e.g. \code{list("shiny.element", date = my_date)}. For each
+field type: a named entry, then the presets in order, then Shiny's control.
+A widget's value must come back as \code{input[[id]]} in the shape of Shiny's
+control for that type. A preset whose package is not installed is skipped
+with a warning. Types: text, textarea, number, select, multiselect,
+checkbox, date (grouping is always drawn by codeagent).}
 
 \item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
 }

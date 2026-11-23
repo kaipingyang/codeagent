@@ -134,9 +134,9 @@ test_that("the waiting count sits above the card", {
 })
 
 test_that("a floating card is opaque and placed once its content is in the page", {
-  css <- paste(readLines(test_path("../../inst/www/styles.css")), collapse = "\n")
+  css <- paste(readLines(system.file("www", "styles.css", package = "codeagent")), collapse = "\n")
   expect_match(css, ":where(#ca_interaction_ui.ca-ia-overlay) > .ca-interaction {", fixed = TRUE)
   expect_match(css, "#ca_interaction_ui.ca-ia-overlay::after", fixed = TRUE)
-  js <- paste(readLines(test_path("../../inst/www/interaction.js")), collapse = "\n")
+  js <- paste(readLines(system.file("www", "interaction.js", package = "codeagent")), collapse = "\n")
   expect_match(js, "MutationObserver(function () { init(document); placeAll(); })", fixed = TRUE)
 })
