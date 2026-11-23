@@ -81,43 +81,6 @@ NULL
 # the model named the field. Only one form is pending at a time.
 .form_input_id <- function(i) paste0("ca_form_", i)
 
-# One Shiny input for a validated form field (see .form_validate_fields). PURE.
-.form_field_input <- function(field, i) {
-  id <- .form_input_id(i)
-  label <- if (isTRUE(field$required)) paste0(field$label, " *") else field$label
-  def <- field$default
-  input <- switch(field$type,
-    text     = shiny::textInput(id, label, value = def, width = "100%"),
-    textarea = shiny::textAreaInput(id, label, value = def, width = "100%", rows = 3),
-    number   = shiny::numericInput(id, label,
-                                   value = suppressWarnings(as.numeric(def)), width = "100%"),
-    select   = shiny::selectInput(id, label, choices = field$choices,
-                                  selected = if (nzchar(def)) def else field$choices[1],
-                                  width = "100%"),
-    multiselect = shiny::selectInput(
-      id, label, choices = field$choices, multiple = TRUE, width = "100%",
-      selected = if (nzchar(def)) trimws(strsplit(def, ",", fixed = TRUE)[[1]]) else NULL),
-    checkbox = shiny::checkboxInput(id, label, value = isTRUE(as.logical(def))),
-    grouping = {
-      preset <- .grouping_preset(def, field$choices)
-      htmltools::tags$div(class = "ca-grouping mb-2",
-        htmltools::tags$label(class = "form-label", label),
-        htmltools::tags$table(class = "table table-sm align-middle mb-0",
-          htmltools::tags$thead(htmltools::tags$tr(htmltools::tags$th("Item"), htmltools::tags$th("Group"))),
-          htmltools::tags$tbody(lapply(seq_along(field$choices), function(j) htmltools::tags$tr(
-            htmltools::tags$td(field$choices[j]),
-            htmltools::tags$td(shiny::textInput(paste0(id, "_g", j), NULL, value = preset[j], width = "100%")))))))
-    },
-    date     = shiny::dateInput(id, label, value = if (nzchar(def)) def else NULL,
-                                width = "100%")
-  )
-  htmltools::tagList(
-    input,
-    if (nzchar(field$help))
-      htmltools::tags$small(class = "form-text text-muted d-block mb-2", field$help)
-  )
-}
-
 # ---- Question card (DSH QuestionComposer look) -----------------------------
 # One card for AskUserQuestion: one question per page, options as numbered
 # rows (checkbox rows for multiSelect), a "Recommended" badge, a free-text
@@ -346,7 +309,7 @@ NULL
     htmltools::tags$div(class = "ca-interaction-actions", actions))
 }
 
-.interaction_bar_ui <- function(pending) {
+.interaction_bar_ui <- function(pending, widgets = NULL) {
   if (is.null(pending)) return(NULL)
 
   if (identical(pending$type, "approval")) {
@@ -382,8 +345,8 @@ NULL
       htmltools::tagList(
         htmltools::tags$div(class = "ca-interaction-title",
           htmltools::tags$span(class = "ca-interaction-icon", "\U0001f4dd "), p$title %||% ""),
-        htmltools::tagList(lapply(seq_along(p$fields), function(i)
-          .form_field_input(p$fields[[i]], i)))),
+        htmltools::tags$div(class = "ca-form-fields",
+          .form_fields_ui(p$fields, widgets %||% .form_preset_native()))),
       htmltools::tagList(
         shiny::actionButton("ca_form_cancel", "Cancel",
                             class = "btn-outline-secondary btn-sm ca-interaction-reject"),
@@ -454,13 +417,14 @@ NULL
 #' @return A list with `ask_fn`, `ask_question_fn`, `ask_form_fn` and
 #'   `egress_ask_fn` (promise-returning).
 #' @keywords internal
-server_interaction <- function(input, output, session, state) {
+server_interaction <- function(input, output, session, state, form_widgets = NULL) {
+  widgets <- .form_widgets_resolve(form_widgets)
 
   # ---- Interaction bar (approval OR question) ----
   # The bar's layout is built by the pure .interaction_bar_ui(); this observer
   # just re-renders it whenever the pending slot changes.
   output$ca_interaction_ui <- shiny::renderUI({
-    bar <- .interaction_bar_ui(state$pending_interaction)
+    bar <- .interaction_bar_ui(state$pending_interaction, widgets)
     waiting <- length(state$interaction_queue)
     if (is.null(bar) || !waiting) return(bar)
     htmltools::tagList(htmltools::tags$div(
@@ -576,9 +540,11 @@ server_interaction <- function(input, output, session, state) {
     # dateInput gives a Date; keep the ISO text the model was told about.
     raw <- lapply(raw, function(v) if (inherits(v, "Date")) format(v) else v)
     collected <- .form_collect(spec, raw)
-    if (length(collected$missing)) {
-      .ui_toast(paste0("Please fill in: ", paste(collected$missing, collapse = ", ")),
-                "warning")
+    if (length(collected$missing) || length(collected$invalid)) {
+      .ui_toast(paste(c(
+        if (length(collected$missing))
+          paste0("Please fill in: ", paste(collected$missing, collapse = ", ")),
+        collected$invalid), collapse = ". "), "warning")
       return()
     }
     if (.resolve_pending(state, list(submitted = TRUE, values = collected$values)))

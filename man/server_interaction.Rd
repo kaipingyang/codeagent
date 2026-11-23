@@ -4,7 +4,7 @@
 \alias{server_interaction}
 \title{Shiny interaction pause mechanism (Phase 3)}
 \usage{
-server_interaction(input, output, session, state)
+server_interaction(input, output, session, state, form_widgets = NULL)
 }
 \arguments{
 \item{input, output, session}{Standard Shiny server args.}

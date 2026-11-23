@@ -23,7 +23,8 @@ codeagent_app(
   web_citations = c("off", "shiny_aside"),
   web_allow_private = FALSE,
   ui_layout = c("classic", "page_chat", "dsh"),
-  canvas = NULL
+  canvas = NULL,
+  form_widgets = NULL
 )
 }
 \arguments{
@@ -108,6 +109,10 @@ uses \code{canvas_options()}; the canvas is then on for per-session apps when
 shinygenui is installed. Passing options also enables the canvas for a
 shared pre-built client. \code{disallowed_tools = "genui"} on the client turns
 it off.}
+
+\item{form_widgets}{How AskUserForm fields are drawn; see
+\code{\link[=codeagent_server]{codeagent_server()}}. E.g. \code{"shiny.element"} or
+\code{c("shiny.element", "shinyWidgets")}.}
 }
 \value{
 A \code{shiny.appobj}.

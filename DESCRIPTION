@@ -39,6 +39,7 @@ Imports:
     watcher,
     processx
 Suggests:
+    shiny.element (>= 0.3.1),
     codetools,
     clipr,
     otel,

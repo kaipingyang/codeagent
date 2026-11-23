@@ -450,7 +450,17 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .ca-interaction--questions { border-top-color: var(--bs-info, #0dcaf0); display: block; }
 .ca-interaction--form { border-top-color: var(--bs-primary, #0d6efd); display: block; }
 .ca-interaction--egress { border-top-color: var(--bs-danger, #dc3545); gap: 10px; }
-.ca-interaction--scroll { max-height: 60vh; overflow-y: auto; }
+/* Long cards (forms, question sets): the fields scroll, the buttons stay in view. */
+.ca-interaction--scroll { max-height: 60vh; display: flex; flex-direction: column; overflow: hidden; }
+.ca-interaction--scroll > .ca-interaction-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.ca-interaction--scroll > .ca-interaction-body > * { flex-shrink: 0; }
+.ca-interaction--scroll > .ca-interaction-actions { flex: 0 0 auto; justify-content: flex-end; padding-top: 8px; }
+#ca_interaction_ui.ca-ia-overlay > .ca-interaction--scroll { overflow: hidden; }
+/* Form fields: section headings, Element Plus labels like Bootstrap ones. */
+.ca-form-section { margin: 10px 0 4px; font-size: .8rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: .03em; color: var(--bs-secondary-color, #666); }
+.ca-form-el-label { display: block; margin-bottom: 4px; }
+.ca-form-el .el-input-number { width: 100%; }
 .ca-interaction-strip { display: none; }
 .ca-interaction-body { flex: 1; min-width: 0; font-size: 0.9em; }
 .ca-interaction-title { font-weight: 600; }

@@ -234,6 +234,16 @@ codeagent_mode_ui <- function(modes = c("Ask before changes" = "default",
 #'   [codeagent_workspace_ui()] in the page. Each opened tool result, file or
 #'   host content gets its own tab; open tabs with the returned `ws`. Without an
 #'   `on_tool_open`, opening a tool card in the chat opens its result tab.
+#' @param form_widgets How AskUserForm fields are drawn: `NULL` (Shiny's own
+#'   controls), preset names in priority order (`"shiny.element"`,
+#'   `"shinyWidgets"`), or a list mixing presets, your own presets (a named list
+#'   of field type -> `function(id, label, value, choices, field)`) and named
+#'   per-type widgets, e.g. `list("shiny.element", date = my_date)`. For each
+#'   field type: a named entry, then the presets in order, then Shiny's control.
+#'   A widget's value must come back as `input[[id]]` in the shape of Shiny's
+#'   control for that type. A preset whose package is not installed is skipped
+#'   with a warning. Types: text, textarea, number, select, multiselect,
+#'   checkbox, date (grouping is always drawn by codeagent).
 #' @param sessions Deprecated: `TRUE` is `history = "codeagent"`.
 #' @return Invisibly, a list with `state` (the session `reactiveValues`),
 #'   `stream_task` (the `ExtendedTask`), `chat`, `settings` and, with
@@ -248,7 +258,9 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                              history = NULL, greeting = NULL,
                              modes = NULL, on_restore = NULL,
                              on_tool_open = NULL, on_user_prompt = NULL, workspace = NULL,
-                             sessions = FALSE) {
+                             form_widgets = NULL, sessions = FALSE) {
+  .form_widgets_resolve(form_widgets)   # fail early on a bad spec
+
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
@@ -290,7 +302,8 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   core <- .codeagent_session_server(
     input, output, session, client,
     canvas = canvas, canvas_explicit = !is.null(canvas), per_session = TRUE,
-    tools_ready = FALSE, host_tools = tools, tool_meta = tool_meta)
+    tools_ready = FALSE, host_tools = tools, tool_meta = tool_meta,
+    settings_overrides = list(form_widgets = form_widgets))
   # shinychat slash-command typeahead for skills and local commands ("/").
   server_slash(input, session, cwd = core$settings$cwd %||% getwd(),
                stream_task = core$stream_task, chat = client$chat,
@@ -443,7 +456,8 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   # Interaction bar + promise-returning ask callbacks, stashed in settings
   # BEFORE ready() registers tools, so the interactive tools (Write/Edit/Bash/
   # RunR + AskUserQuestion) are built in their async, UI-gated form.
-  interaction <- server_interaction(input, output, session, state)
+  interaction <- server_interaction(input, output, session, state,
+                                    form_widgets = settings$form_widgets)
   settings$shiny_ask_fn          <- interaction$ask_fn
   settings$shiny_ask_question_fn <- interaction$ask_question_fn
   settings$shiny_ask_form_fn     <- interaction$ask_form_fn
