@@ -266,7 +266,16 @@
     watched.add(out);
     new MutationObserver(function () { init(document); placeAll(); }).observe(out, { childList: true });
   }
+  // A scrolling card body that has more below fades out at its bottom edge.
+  function updateMore(body) {
+    body.classList.toggle("ca-has-more", body.scrollTop + body.clientHeight < body.scrollHeight - 4);
+  }
+  document.addEventListener("scroll", function (e) {
+    var t = e.target;
+    if (t && t.matches && t.matches(".ca-interaction--scroll > .ca-interaction-body")) updateMore(t);
+  }, true);
   function placeAll() {
+    document.querySelectorAll(".ca-interaction--scroll > .ca-interaction-body").forEach(updateMore);
     document.querySelectorAll("#ca_interaction_ui").forEach(watch);
     document.querySelectorAll("#ca_interaction_ui").forEach(place);
     document.querySelectorAll("#ca_tool_progress").forEach(placeProgress);

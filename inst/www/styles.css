@@ -632,3 +632,14 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
   left: var(--ca-ia-left, 0); width: var(--ca-ia-width, 100%); bottom: var(--ca-ia-bottom, 0); }
 #ca_tool_progress.ca-progress-overlay .ca-tool-progress__row { background: var(--bs-body-bg, #fff);
   box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+/* Form layout (R/form_widgets.R .form_fields_ui): short fields share rows,
+   as many columns as fit at >= 240px each; wide fields take the whole row. */
+.ca-form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); column-gap: 16px; }
+.ca-form-cell { min-width: 0; }
+.ca-form-cell--wide { grid-column: 1 / -1; }
+.ca-form-cell .form-group, .ca-form-cell .shiny-input-container { width: 100% !important; max-width: none; }
+.ca-form-cell[data-type="checkbox"] { align-self: end; }
+/* More fields below: a fade at the bottom of the scrolling area until the end. */
+.ca-interaction--scroll > .ca-interaction-body.ca-has-more {
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); }

@@ -65,6 +65,8 @@ ask_user_form_tool <- function(ask_form_fn = NULL, async = FALSE) {
       "Use it to collect or confirm several related values at once before ",
       "acting (e.g. the parameters of an analysis, a set of options to apply). ",
       "Pre-fill `default` with your best guess so the user mostly confirms. ",
+      "The form lays itself out to the available width; group related fields with ",
+      "`section` (a heading per group) rather than worrying about columns. ",
       "For a single question use AskUserQuestion instead. Do NOT use it for ",
       "permission requests -- those are handled automatically. The result is ",
       "JSON: {\"submitted\": true|false, \"values\": {name: value}}; if ",
@@ -111,12 +113,14 @@ ask_user_form_tool <- function(ask_form_fn = NULL, async = FALSE) {
           pattern_hint = ellmer::type_string(
             "What `pattern` expects, shown when the value does not match.", required = FALSE),
           section = ellmer::type_string(
-            "Optional heading: fields with the same section are shown together under it.",
+            paste("Optional group heading: consecutive fields with the same section are",
+                  "shown together under it. Use it to group related fields."),
             required = FALSE),
           width = ellmer::type_enum(
-            values = c("full", "half"),
-            description = paste("\"half\": share a row with the next half-width field",
-                                "(good for short numbers, dates, checkboxes). Default full."),
+            values = c("auto", "full"),
+            description = paste("The form lays fields out to the available width by itself",
+                                "(short fields side by side, long text and lists across).",
+                                "\"full\": keep this field on a row of its own. Default auto."),
             required = FALSE)
         ),
         required = TRUE),
@@ -190,9 +194,10 @@ register_ask_user_form_tool <- function(chat, ask_form_fn = NULL, async = FALSE)
       return(sprintf("Field `%s`: `min` (%s) is larger than `max` (%s).", name, mn, mx))
     if (!is.null(st) && st <= 0)
       return(sprintf("Field `%s`: `step` must be positive.", name))
-    width <- as.character(.form_scalar(f$width, "full"))
-    if (!width %in% c("full", "half"))
-      return(sprintf("Field `%s`: `width` must be \"full\" or \"half\".", name))
+    width <- as.character(.form_scalar(f$width, "auto"))
+    if (identical(width, "half")) width <- "auto"     # an earlier hint: the layout does it now
+    if (!width %in% c("auto", "full"))
+      return(sprintf("Field `%s`: `width` must be \"auto\" or \"full\".", name))
     pattern <- as.character(.form_scalar(f$pattern, ""))
     if (nzchar(pattern)) {
       bad <- .form_pattern_problem(pattern)

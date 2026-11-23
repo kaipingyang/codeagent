@@ -64,14 +64,20 @@ test_that("every built-in preset builds every type it offers", {
   }
 })
 
-test_that("sections are headings; half-width fields share a row", {
+test_that("sections are headings over auto-fitting grids; long fields span the row", {
   spec <- .form_validate_fields(list(
-    list(name = "a", type = "number", width = "half", section = "Display"),
-    list(name = "b", type = "date", width = "half", section = "Display"),
-    list(name = "c", type = "text", section = "Notes")))
+    list(name = "a", type = "number", section = "Display"),
+    list(name = "b", type = "date", width = "half", section = "Display"),   # old hint: auto
+    list(name = "c", type = "textarea", section = "Notes"),
+    list(name = "d", type = "text", width = "full", section = "Notes"),
+    list(name = "e", type = "text")))
+  expect_identical(spec[[2]]$width, "auto")
   html <- as.character(.form_fields_ui(spec))
-  expect_identical(lengths(regmatches(html, gregexpr("ca-form-section", html, fixed = TRUE))), 2L)
-  expect_identical(lengths(regmatches(html, gregexpr('class="col-sm-6"', html, fixed = TRUE))), 2L)
+  count <- function(p) lengths(regmatches(html, gregexpr(p, html, fixed = TRUE)))
+  expect_identical(count("ca-form-section"), 2L)
+  expect_identical(count('class="ca-form-grid"'), 3L)
+  expect_identical(count("ca-form-cell ca-form-cell--wide"), 2L)          # textarea + full
+  expect_match(.form_validate_fields(list(list(name = "f", type = "text", width = "third"))), "auto")
 })
 
 test_that("field attributes are validated with messages the model can act on", {

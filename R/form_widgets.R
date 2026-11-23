@@ -202,31 +202,25 @@ NULL
       htmltools::tags$small(class = "form-text text-muted d-block mb-2", field$help))
 }
 
-# All fields: sections as headings, consecutive half-width fields side by side.
+# Wide types always take a whole row; short ones share rows with as many
+# columns as the card's width allows (a CSS grid, inst/www/styles.css).
+.FORM_WIDE_TYPES <- c("textarea", "multiselect", "grouping")
+
+# All fields: each section is a heading plus an auto-fitting grid of its
+# fields. The width is the page's business, the grouping the model's.
 .form_fields_ui <- function(fields, widgets = .form_preset_native()) {
-  out <- list(); section <- ""; row <- list()
-  flush <- function() {
-    if (length(row)) out[[length(out) + 1L]] <<- htmltools::tags$div(class = "row g-2 ca-form-row",
-      lapply(row, function(x) htmltools::tags$div(class = "col-sm-6", x)))
-    row <<- list()
-  }
-  for (i in seq_along(fields)) {
-    f <- fields[[i]]
-    s <- f$section %||% ""
-    if (nzchar(s) && !identical(s, section)) {
-      flush()
-      out[[length(out) + 1L]] <- htmltools::tags$div(class = "ca-form-section", s)
-    }
-    section <- s
-    ui <- .form_field_input(f, i, widgets)
-    if (identical(f$width, "half") && !identical(f$type, "grouping")) {
-      row[[length(row) + 1L]] <- ui
-      if (length(row) == 2L) flush()
-    } else {
-      flush()
-      out[[length(out) + 1L]] <- ui
-    }
-  }
-  flush()
-  htmltools::tagList(out)
+  if (!length(fields)) return(NULL)
+  sec <- vapply(fields, function(f) f$section %||% "", "")
+  runs <- cumsum(c(TRUE, sec[-1] != sec[-length(sec)]))
+  htmltools::tagList(lapply(unique(runs), function(r) {
+    idx <- which(runs == r)
+    htmltools::tagList(
+      if (nzchar(sec[idx[1]])) htmltools::tags$div(class = "ca-form-section", sec[idx[1]]),
+      htmltools::tags$div(class = "ca-form-grid", lapply(idx, function(i) {
+        f <- fields[[i]]
+        wide <- identical(f$width, "full") || f$type %in% .FORM_WIDE_TYPES
+        htmltools::tags$div(class = paste("ca-form-cell", if (wide) "ca-form-cell--wide"),
+                            `data-type` = f$type, .form_field_input(f, i, widgets))
+      })))
+  }))
 }
