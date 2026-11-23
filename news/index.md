@@ -2,6 +2,10 @@
 
 ## codeagent (development version)
 
+- AskUserForm `grouping` fields: the open drop-down list spans the whole
+  row (the name column included) instead of only the drop-down’s width,
+  so long arm names are readable in a narrow chat column.
+
 - New `codeagent_ask_form(title, fields, submit_label)`: a host tool
   asks the user a form itself – the AskUserForm card, with the same
   field types (including `grouping`), queue and “Answered” record – and
