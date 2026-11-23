@@ -624,9 +624,10 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
   box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 
 /* AskUserForm grouping: rows of group name + drop-down checklist */
-.ca-grp-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
+.ca-grp-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; position: relative; }
 .ca-grp-name { flex: 0 0 34%; min-width: 0; }
-.ca-grp-pick { flex: 1 1 auto; min-width: 0; position: relative; }
+/* the open list spans the whole row (name column included): long arm names stay on one or two lines */
+.ca-grp-pick { flex: 1 1 auto; min-width: 0; position: static; }
 .ca-grp-summary { cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ca-grp-summary::-webkit-details-marker { display: none; }
 .ca-grp-summary.is-empty { color: var(--bs-secondary-color, #6c757d); }
