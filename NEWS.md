@@ -1,5 +1,12 @@
 # codeagent (development version)
 
+* New `codeagent_ask_form(title, fields, submit_label)`: a host tool asks the
+  user a form itself -- the AskUserForm card, with the same field types
+  (including `grouping`), queue and "Answered" record -- and gets a promise of
+  `list(submitted, values)`. Use it when the host knows what to ask (e.g. the
+  arms to combine, taken from the data) so the user always gets the right
+  controls, whatever field types the model would have chosen.
+
 * Workspace tabs can float: drag a tab down off the strip, double-click it, or
   use "Pop out" in its menu. The tab becomes a window over the page (drag its
   bar, resize its corner) while the chat stays usable; several can be open to

@@ -447,6 +447,8 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   settings$shiny_ask_fn          <- interaction$ask_fn
   settings$shiny_ask_question_fn <- interaction$ask_question_fn
   settings$shiny_ask_form_fn     <- interaction$ask_form_fn
+  # host tools ask forms through codeagent_ask_form() (R/host_ask_form.R)
+  session$userData$codeagent_ask_form_fn <- interaction$ask_form_fn
   if (inherits(client$data_shield, "DataShield"))
     client$data_shield$set_egress_ask(interaction$egress_ask_fn)
 
