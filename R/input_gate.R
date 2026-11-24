@@ -385,6 +385,14 @@ data_shield_ocr_scanner <- function(shield, on_fail = c("block", "pass"),
   ig
 }
 
+# Show a gate note in the chat before the reply streams (a complete message:
+# shinychat shows records appended mid-turn only once the turn ends).
+.gate_note <- function(session, note) {
+  if (is.null(note) || is.null(session)) return(invisible(NULL))
+  tryCatch(shinychat::chat_append("chat", note, session = session), error = function(e) NULL)
+  invisible(NULL)
+}
+
 # What the chat shows the user when the gate changed or stopped their message.
 .input_gate_user_note <- function(ig) {
   if (identical(ig$action, "redact") && length(ig$sources))

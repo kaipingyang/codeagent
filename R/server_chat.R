@@ -349,16 +349,16 @@ server_chat <- function(input, output, session, chat, settings,
         ask_q(ig$question, choices = c(send, "Don't send")),
         function(answer) {
           if (!identical(answer, send)) {
-            .append_record(session, "Not sent: you chose not to send the table to the model.")
+            # an assistant message ends the chat's waiting state (as a block does)
+            tryCatch(shinychat::chat_append("chat", "Not sent: you chose not to send the table to the model.",
+                                            session = session), error = function(e) NULL)
             return("blocked")
           }
-          note <- .input_gate_user_note(list(action = "redact", sources = ig$sources))
-          if (!is.null(note)) .append_record(session, note)
+          .gate_note(session, .input_gate_user_note(list(action = "redact", sources = ig$sources)))
           continue_turn(ig$input %||% actual_input)
         }))
     }
-    note <- .input_gate_user_note(ig)
-    if (!is.null(note)) .append_record(session, note)
+    .gate_note(session, .input_gate_user_note(ig))
     continue_turn(ig$input %||% actual_input)   # may be redacted; rest preserved
   })
 
