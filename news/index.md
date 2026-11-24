@@ -2,6 +2,14 @@
 
 ## codeagent (development version)
 
+- Data Shield notices pair each dataset with a column it really has: a
+  value in several datasets keeps all of them; the notice names the
+  dataset the tool was asked about (a registered dataset name in its
+  arguments, e.g. `dataset = "ADSL"`) when the value is in it, else
+  every dataset that has it, per column (“SUBJID (identifier) in ADAE,
+  ADSL, ADCM and 4 more datasets”). Was: the first dataset registered,
+  so an ADSL query was reported as ADAE.
+
 - Data Shield notices say why output was withheld or denied: the dataset
   columns the protected values come from and their class, e.g. “contains
   2 protected data value(s). Source: ADSL.COUNTRY (quasi).” or “an
