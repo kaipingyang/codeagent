@@ -152,3 +152,23 @@ test_that("shield_prompt() sets the gate's policy; a client setting still wins",
   expect_identical(DataShield$new(strategies = list(shield_egress()))$prompt_on_fail(), "redact")
   expect_error(shield_prompt("maybe"))
 })
+
+test_that("the gate's final decision is in the audit log (labels only)", {
+  sh <- shield_with()
+  gate("why is S0007 missing?", sh)
+  a <- sh$audit()
+  last <- a[nrow(a), ]
+  expect_identical(c(last$strategy, last$action), c("prompt_gate", "block"))
+  expect_match(last$reason, "subject identifiers in the message: ADSL.SUBJID (identifier)", fixed = TRUE)
+  expect_false(any(grepl("S0007", a$reason, fixed = TRUE)))
+  tab <- paste(c("A\t1\t2", "B\t3\t4", "C\t5\t6", "D\t7\t8", "E\t9\t1"), collapse = "\n")
+  r <- gate(tab, sh)
+  expect_identical(r$table, "5 lines with numbers")
+  a <- sh$audit()
+  expect_identical(a$action[nrow(a)], "ask")
+  sh$record_gate("dont_send", "pasted table: 5 lines with numbers")
+  expect_identical(sh$audit()$action[nrow(sh$audit())], "dont_send")
+  src <- paste(deparse(body(server_chat)), collapse = "\n")
+  expect_match(src, "shield$record_gate(", fixed = TRUE)
+  expect_match(src, "\"dont_send\"", fixed = TRUE)
+})

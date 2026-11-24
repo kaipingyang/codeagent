@@ -1629,6 +1629,22 @@ DataShield <- R6::R6Class(
 
     #' @description Return a copy of non-sensitive decision events.
     #' @param limit Optional number of most recent events.
+    #' @description Record the input gate's final decision on a user's message
+    #'   (it can differ from the scan's own event: a scan that redacted may
+    #'   end in a block, and a pasted table in the user's choice).
+    #' @param action `"block"`, `"ask"`, `"send"` or `"dont_send"`.
+    #' @param reason Labels only (source columns, table size) -- never a value.
+    #' @param match_count Number of matches.
+    #' @return Invisibly `NULL`.
+    record_gate = function(action, reason = "", match_count = 0L) {
+      private$assert_open()
+      private$record_event(edge = "prompt", tool_name = NA_character_, tool_call_id = NULL,
+                           strategy = "prompt_gate", action = as.character(action)[1],
+                           reason = as.character(reason)[1], match_count = as.integer(match_count)[1],
+                           score = if (action %in% c("block", "dont_send")) 1 else 0.5)
+      invisible(NULL)
+    },
+
     audit = function(limit = NULL) {
       events <- private$audit_log
       if (!is.null(limit)) events <- utils::tail(events, max(0L, as.integer(limit)))

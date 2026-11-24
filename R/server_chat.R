@@ -348,6 +348,9 @@ server_chat <- function(input, output, session, chat, settings,
       return(promises::then(
         ask_q(ig$question, choices = c(send, "Don't send")),
         function(answer) {
+          shield <- .input_gate_shield(settings, chat)
+          tryCatch(shield$record_gate(if (identical(answer, send)) "send" else "dont_send",
+                                      paste0("pasted table: ", ig$table %||% "")), error = function(e) NULL)
           if (!identical(answer, send)) {
             # an assistant message ends the chat's waiting state (as a block does)
             tryCatch(shinychat::chat_append("chat", "Not sent: you chose not to send the table to the model.",

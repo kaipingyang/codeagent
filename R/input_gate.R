@@ -70,17 +70,23 @@ NULL
   if (identical(on_fail, "ask")) {
     r <- tryCatch(shield$scan_prompt(text, on_fail = "redact", on_progress = on_progress,
                                      scanners = scanners), error = fail_closed)
-    if (isTRUE(r$identifier))
+    if (isTRUE(r$identifier)) {
+      tryCatch(shield$record_gate("block", paste0("subject identifiers in the message: ",
+                                                   paste(r$sources, collapse = ", ")), r$matches %||% 0L),
+               error = function(e) NULL)
       return(list(action = "block", sources = r$sources, text = paste0(
         "[data_shield] Your message was not sent: it contains subject identifiers.",
         .data_shield_reason(r$sources),
         " The model must not receive them; look at them in the tool card or preview instead of pasting them into the chat.")))
+    }
     tab <- .input_gate_table(text)
-    if (!is.null(tab))
+    if (!is.null(tab)) {
+      tryCatch(shield$record_gate("ask", paste0("pasted table: ", tab)), error = function(e) NULL)
       return(list(action = "ask", text = r$text %||% text, sources = r$sources, table = tab,
                   question = sprintf(paste(
                     "Your message looks like a table of results (%s).",
                     "The model is not meant to see result numbers. Send it to the model as it is?"), tab)))
+    }
     return(list(action = r$action %||% "pass", text = r$text %||% text, sources = r$sources))
   }
   res <- tryCatch(
@@ -194,14 +200,14 @@ NULL
     if (identical(r$action, "block"))
       return(list(action = "block", input = input, text = r$text, sources = r$sources))
     return(list(action = r$action, input = r$text %||% input, sources = r$sources,
-                question = r$question))
+                question = r$question, table = r$table))
   }
 
   # --- contents list (Shiny: text + Content attachments) -----------------
   if (is.list(input)) {
     out <- input
     agg <- "pass"
-    sources <- character(0); question <- NULL
+    sources <- character(0); question <- NULL; table <- NULL
     for (i in seq_along(input)) {
       el <- input[[i]]
       is_image <- tryCatch(S7::S7_inherits(el, ellmer::ContentImage),
@@ -213,7 +219,7 @@ NULL
           return(list(action = "block", input = input, text = r$text, sources = r$sources))
         if (!identical(r$action, "pass")) {
           out[[i]] <- r$text
-          if (identical(r$action, "ask")) { agg <- "ask"; question <- r$question }
+          if (identical(r$action, "ask")) { agg <- "ask"; question <- r$question; table <- r$table }
           else if (!identical(agg, "ask")) agg <- "redact"
           sources <- c(sources, r$sources)
         }
@@ -269,7 +275,7 @@ NULL
         }
       }
     }
-    return(list(action = agg, input = out, sources = unique(sources), question = question))
+    return(list(action = agg, input = out, sources = unique(sources), question = question, table = table))
   }
 
   list(action = "pass", input = input)

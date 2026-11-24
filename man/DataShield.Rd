@@ -54,6 +54,7 @@ shield$coverage()
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
     \item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
     \item \href{#method-DataShield-bind_reviewer_factory}{\code{DataShield$bind_reviewer_factory()}}
+    \item \href{#method-DataShield-record_gate}{\code{DataShield$record_gate()}}
     \item \href{#method-DataShield-audit}{\code{DataShield$audit()}}
     \item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
@@ -636,20 +637,42 @@ is responsible for deciding what to read; the reviewer gets no tools).}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-DataShield-audit"></a>}}
-\if{latex}{\out{\hypertarget{method-DataShield-audit}{}}}
-\subsection{\code{DataShield$audit()}}{
+\if{html}{\out{<a id="method-DataShield-record_gate"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-record_gate}{}}}
+\subsection{\code{DataShield$record_gate()}}{
   Return a copy of non-sensitive decision events.
+
+
+  Record the input gate's final decision on a user's message
+(it can differ from the scan's own event: a scan that redacted may
+end in a block, and a pasted table in the user's choice).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$audit(limit = NULL)}
+    \preformatted{DataShield$record_gate(action, reason = "", match_count = 0L)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
+      \item{\code{action}}{\code{"block"}, \code{"ask"}, \code{"send"} or \code{"dont_send"}.}
+      \item{\code{reason}}{Labels only (source columns, table size) -- never a value.}
+      \item{\code{match_count}}{Number of matches.}
       \item{\code{limit}}{Optional number of most recent events.}
     }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly \code{NULL}.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-audit"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-audit}{}}}
+\subsection{\code{DataShield$audit()}}{
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$audit(limit = NULL)}
     \if{html}{\out{</div>}}
   }
 }
