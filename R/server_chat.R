@@ -180,14 +180,18 @@ server_chat <- function(input, output, session, chat, settings,
     # standalone codeagent_stream_async() guards its own copy). No-op when no
     # shield is active; image attachments use settings$data_shield_image_scanner
     # (default NULL = blind spot). A block ends the turn with a chat message.
-    ig <- .input_gate_guarded(actual_input, settings, chat)
+    ask_q <- settings$shiny_ask_question_fn
+    ig <- .input_gate_guarded(actual_input, settings, chat, can_ask = is.function(ask_q))
     if (identical(ig$action, "block")) {
       msg <- ig$text %||% "[Blocked by Data Shield input gate]"
       tryCatch(shinychat::chat_append("chat", msg, session = session),
                error = function(e) NULL)
       return(promises::promise_resolve("blocked"))
     }
-    actual_input <- ig$input %||% actual_input   # may be redacted; rest preserved
+
+    # The rest of the turn once the input passed the gate (directly, or after
+    # the user confirmed a pasted table below).
+    continue_turn <- function(actual_input) {
 
     # Compaction + resource management + system-reminder injection.
     # .turn_setup handles char/list input uniformly (list = text + attachments).
@@ -336,6 +340,26 @@ server_chat <- function(input, output, session, chat, settings,
 
       "done"
     })()
+    }
+
+    # A pasted table of numbers: the user confirms in the question card first.
+    if (identical(ig$action, "ask")) {
+      send <- "Send it to the model"
+      return(promises::then(
+        ask_q(ig$question, choices = c(send, "Don't send")),
+        function(answer) {
+          if (!identical(answer, send)) {
+            .append_record(session, "Not sent: you chose not to send the table to the model.")
+            return("blocked")
+          }
+          note <- .input_gate_user_note(list(action = "redact", sources = ig$sources))
+          if (!is.null(note)) .append_record(session, note)
+          continue_turn(ig$input %||% actual_input)
+        }))
+    }
+    note <- .input_gate_user_note(ig)
+    if (!is.null(note)) .append_record(session, note)
+    continue_turn(ig$input %||% actual_input)   # may be redacted; rest preserved
   })
 
   shiny::observeEvent(input$chat_user_input, {

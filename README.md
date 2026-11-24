@@ -341,7 +341,13 @@ not auto-refresh — the shield stays decoupled from the Chat.
 detected; scalar/status/model-summary output still passes. A withheld or denied
 notice names the source columns and their class ("Source: ADSL.COUNTRY (quasi)"),
 never a value, so the model can tell the user what it could not see
-(`explain = FALSE` for the bare notice). `shield_regex()`
+(`explain = FALSE` for the bare notice). The notice also says whether the user still sees
+the result in the tool card: `register_data(display = "show")` (or per column,
+`column_access = list(COL = list(display = "show"))`) keeps the card while the
+model gets the notice; `"hide"` drops it too (the default for `egress = "none"`).
+With `data_shield_prompt_on_fail = "ask"` the prompt gate blocks pasted subject
+identifiers, asks before sending a pasted table of numbers, and tells the user
+which columns it redacted. `shield_regex()`
 handles unregistered PII/secrets; `shield_ingress()` scans every tool's arguments
 in the central permission gate and can block or request approval before execution
 (built-in rules are host-extensible: a `patterns=` name matching a built-in

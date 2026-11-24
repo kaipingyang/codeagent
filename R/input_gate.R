@@ -63,6 +63,26 @@ NULL
     # redact-mode fallback: drop the unverifiable text entirely.
     list(action = "redact", text = "[data_shield] input redacted: scan failed (fail-closed).")
   }
+  # "ask" is tiered: subject identifiers block; a pasted table of numbers
+  # asks the user to confirm (the model is not meant to see result numbers);
+  # other protected values are redacted and the user is told. Every outcome
+  # carries `sources` (dataset.column and class, never a value).
+  if (identical(on_fail, "ask")) {
+    r <- tryCatch(shield$scan_prompt(text, on_fail = "redact", on_progress = on_progress,
+                                     scanners = scanners), error = fail_closed)
+    if (isTRUE(r$identifier))
+      return(list(action = "block", sources = r$sources, text = paste0(
+        "[data_shield] Your message was not sent: it contains subject identifiers.",
+        .data_shield_reason(r$sources),
+        " The model must not receive them; look at them in the tool card or preview instead of pasting them into the chat.")))
+    n <- .input_gate_number_lines(text)
+    if (n >= .INPUT_GATE_TABLE_LINES)
+      return(list(action = "ask", text = r$text %||% text, sources = r$sources, lines = n,
+                  question = sprintf(paste(
+                    "Your message looks like a table of results (%d lines with numbers).",
+                    "The model is not meant to see result numbers. Send it to the model as it is?"), n)))
+    return(list(action = r$action %||% "pass", text = r$text %||% text, sources = r$sources))
+  }
   res <- tryCatch(
     shield$scan_prompt(text, on_fail = on_fail, on_progress = on_progress,
                        scanners = scanners),
@@ -74,7 +94,18 @@ NULL
       error = fail_closed)
     return(list(action = "redact", text = redacted$text %||% text))
   }
-  list(action = res$action %||% "pass", text = res$text %||% text)
+  list(action = res$action %||% "pass", text = res$text %||% text, sources = res$sources)
+}
+
+# A pasted table of numbers: lines with at least two columns (tabs, runs of
+# spaces, |, commas) and a digit. Prose with a number or two is not one.
+.INPUT_GATE_TABLE_LINES <- 5L
+.input_gate_number_lines <- function(text) {
+  lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
+  lines <- lines[nzchar(trimws(lines))]
+  if (!length(lines)) return(0L)
+  cols <- vapply(lines, function(l) length(strsplit(trimws(l), "\t|\\s{2,}|\\|")[[1L]]), integer(1))
+  as.integer(sum(cols >= 2L & grepl("[0-9]", lines)))
 }
 
 # Best-effort text extraction from an ellmer Content object. Returns "" when
@@ -145,14 +176,16 @@ NULL
     if (!nzchar(input)) return(list(action = "pass", input = input))
     r <- .input_gate_scan_text(shield, input, on_fail, on_progress, scanners)
     if (identical(r$action, "block"))
-      return(list(action = "block", input = input, text = r$text))
-    return(list(action = r$action, input = r$text %||% input))
+      return(list(action = "block", input = input, text = r$text, sources = r$sources))
+    return(list(action = r$action, input = r$text %||% input, sources = r$sources,
+                question = r$question))
   }
 
   # --- contents list (Shiny: text + Content attachments) -----------------
   if (is.list(input)) {
     out <- input
     agg <- "pass"
+    sources <- character(0); question <- NULL
     for (i in seq_along(input)) {
       el <- input[[i]]
       is_image <- tryCatch(S7::S7_inherits(el, ellmer::ContentImage),
@@ -161,8 +194,13 @@ NULL
         # Typed text element: full scan, may redact in place.
         r <- .input_gate_scan_text(shield, el, on_fail, on_progress, scanners)
         if (identical(r$action, "block"))
-          return(list(action = "block", input = input, text = r$text))
-        if (!identical(r$action, "pass")) { out[[i]] <- r$text; agg <- "redact" }
+          return(list(action = "block", input = input, text = r$text, sources = r$sources))
+        if (!identical(r$action, "pass")) {
+          out[[i]] <- r$text
+          if (identical(r$action, "ask")) { agg <- "ask"; question <- r$question }
+          else if (!identical(agg, "ask")) agg <- "redact"
+          sources <- c(sources, r$sources)
+        }
       } else if (isTRUE(is_image)) {
         # Image attachment: optional host scanner (OCR/VLM). Default NULL = skip
         # (an explicitly-accepted blind spot). But once a scanner IS configured,
@@ -215,7 +253,7 @@ NULL
         }
       }
     }
-    return(list(action = agg, input = out))
+    return(list(action = agg, input = out, sources = unique(sources), question = question))
   }
 
   list(action = "pass", input = input)
@@ -317,13 +355,25 @@ data_shield_ocr_scanner <- function(shield, on_fail = c("block", "pass"),
 # ONLY when a shield is active, so projects with no Data Shield are unaffected.
 #' @keywords internal
 .input_gate_guarded <- function(input, settings = list(), chat = NULL,
-                                on_progress = NULL, image_scanner = NULL) {
+                                on_progress = NULL, image_scanner = NULL, can_ask = FALSE) {
   if (is.null(.input_gate_shield(settings, chat)))
     return(list(action = "pass", input = input))          # no shield -> no-op
-  tryCatch(
+  ig <- tryCatch(
     .input_gate_scan(input, settings, chat, on_progress, image_scanner),
     error = function(e)
       list(action = "block", input = input,
            text = "[data_shield] input blocked: gate failed (fail-closed)."))
+  # No way to ask (CLI, scripts): the (already redacted) input goes on, as before.
+  if (identical(ig$action, "ask") && !isTRUE(can_ask))
+    ig$action <- if (length(ig$sources)) "redact" else "pass"
+  ig
+}
+
+# What the chat shows the user when the gate changed or stopped their message.
+.input_gate_user_note <- function(ig) {
+  if (identical(ig$action, "redact") && length(ig$sources))
+    return(paste0("Data protection removed protected values from your message before it was sent to the model.",
+                  .data_shield_reason(ig$sources)))
+  NULL
 }
 

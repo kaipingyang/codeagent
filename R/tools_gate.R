@@ -387,7 +387,8 @@ register_tool_meta <- function(name,
 
     continue_after_shield <- function(shield_decision) {
       if (identical(shield_decision$action, "block"))
-        return(deny(name, input, shield_decision$reason %||% "Data Shield ingress blocked"))
+        return(deny(name, input, paste0(shield_decision$reason %||% "Data Shield ingress blocked",
+                                        ". The tool did not run, so the user saw no result either")))
       shield_ask <- identical(shield_decision$action, "ask")
 
       # Evaluate the full permission decision -- per-tool override, capability
@@ -421,7 +422,7 @@ register_tool_meta <- function(name,
     if (inherits(shield_decision, "promise"))
       return(promises::then(
         shield_decision, continue_after_shield,
-        function(e) deny(name,input,"Data Shield reviewer failed safely")))
+        function(e) deny(name,input,"Data Shield reviewer failed safely. The tool did not run, so the user saw no result either")))
     continue_after_shield(shield_decision)
   }
 }

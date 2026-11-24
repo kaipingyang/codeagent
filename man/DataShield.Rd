@@ -124,7 +124,8 @@ egress execution order.}
   min_card = 8L,
   max_index_values = 500000L,
   column_access = NULL,
-  id_variants = TRUE
+  id_variants = TRUE,
+  display = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -158,6 +159,14 @@ leading zeros dropped: \verb{BGB 001 0007}, \code{BGB0010007}, \code{BGB-1-7} fo
 dominant character shape with a literal letter prefix contributes a
 pattern (e.g. \verb{BGB-[0-9]\{3\}-[0-9]\{4\}}) that catches identifiers of that
 form even when they were never registered.}
+      \item{\code{display}}{Whether the user may see this dataset's protected values
+in a tool's own card when they are kept from the model: \code{"show"} or
+\code{"hide"} for every column, or \code{NULL} (default) for \code{"show"} except
+columns with \code{egress = "none"}, which are \code{"hide"}. A column's
+\code{column_access} entry may set its own \code{display}. With \code{"show"} only the
+model-facing value is replaced and the card keeps the full result; with
+\code{"hide"} the whole result is replaced. The model is never sent these
+values either way.}
     }
     \if{html}{\out{</div>}}
   }
