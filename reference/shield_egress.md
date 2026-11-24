@@ -20,7 +20,8 @@ shield_egress(
   max_rows = 0L,
   on_fail = c("redact", "block", "ask"),
   allow_raw_approval = FALSE,
-  approval_timeout = 60
+  approval_timeout = 60,
+  explain = TRUE
 )
 ```
 
@@ -52,6 +53,16 @@ shield_egress(
 - approval_timeout:
 
   Seconds before an async approval defaults to redact.
+
+- explain:
+
+  If `TRUE` (default), a withheld or denied notice says why: the dataset
+  columns the protected values come from and their sensitivity class
+  (e.g. `ADSL.COUNTRY (quasi)`), or "an identifier written in another
+  format". Never a value, its position or its context: column names are
+  schema the model already sees through `DescribeData`. The model can
+  then tell the user what it could not see; the audit log records the
+  same.
 
 ## Value
 

@@ -109,7 +109,8 @@ trigger the bulk row cap).</p>
 <span>  max_rows <span class="op">=</span> <span class="fl">0L</span>,</span>
 <span>  on_fail <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"redact"</span>, <span class="st">"block"</span>, <span class="st">"ask"</span><span class="op">)</span>,</span>
 <span>  allow_raw_approval <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  approval_timeout <span class="op">=</span> <span class="fl">60</span></span>
+<span>  approval_timeout <span class="op">=</span> <span class="fl">60</span>,</span>
+<span>  explain <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -142,6 +143,15 @@ result reaches the LLM and uses the configured egress approval callback.</p></dd
 
 <dt id="arg-approval-timeout">approval_timeout<a class="anchor" aria-label="anchor" href="#arg-approval-timeout"></a></dt>
 <dd><p>Seconds before an async approval defaults to redact.</p></dd>
+
+
+<dt id="arg-explain">explain<a class="anchor" aria-label="anchor" href="#arg-explain"></a></dt>
+<dd><p>If <code>TRUE</code> (default), a withheld or denied notice says why:
+the dataset columns the protected values come from and their sensitivity
+class (e.g. <code>ADSL.COUNTRY (quasi)</code>), or "an identifier written in another
+format". Never a value, its position or its context: column names are
+schema the model already sees through <code>DescribeData</code>. The model can then
+tell the user what it could not see; the audit log records the same.</p></dd>
 
 </dl></div>
     <div class="section level2">

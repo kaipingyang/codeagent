@@ -374,7 +374,10 @@ the system prompt (preserves history, one-time cache miss).
 from the Chat.
 
 `shield_egress(max_rows = 0)` retains **no raw tabular line** when bulk
-output is detected; scalar/status/model-summary output still passes.
+output is detected; scalar/status/model-summary output still passes. A
+withheld or denied notice names the source columns and their class
+(“Source: ADSL.COUNTRY (quasi)”), never a value, so the model can tell
+the user what it could not see (`explain = FALSE` for the bare notice).
 [`shield_regex()`](https://kaipingyang.github.io/codeagent/reference/shield_regex.md)
 handles unregistered PII/secrets;
 [`shield_ingress()`](https://kaipingyang.github.io/codeagent/reference/shield_ingress.md)

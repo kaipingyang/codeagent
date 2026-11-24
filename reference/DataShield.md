@@ -798,6 +798,9 @@ shield$coverage()
 #> $config$egress_enabled
 #> [1] TRUE
 #> 
+#> $config$explain
+#> [1] TRUE
+#> 
 #> 
 #> $datasets
 #> [1] "iris"
