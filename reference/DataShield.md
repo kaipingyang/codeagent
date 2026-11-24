@@ -44,6 +44,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$scan_tool_args()`](#method-DataShield-scan_tool_args)
 
+- [`DataShield$prompt_on_fail()`](#method-DataShield-prompt_on_fail)
+
 - [`DataShield$scan_prompt()`](#method-DataShield-scan_prompt)
 
 - [`DataShield$scan_response()`](#method-DataShield-scan_response)
@@ -499,6 +501,22 @@ gate. Non-string arguments are left untouched.
 #### Returns
 
 List: `action` (`"pass"`/`"redact"`), `args` (possibly-redacted).
+
+------------------------------------------------------------------------
+
+### `DataShield$prompt_on_fail()`
+
+The input gate's policy for a user's message
+([`shield_prompt()`](https://kaipingyang.github.io/codeagent/reference/shield_prompt.md));
+`"redact"` when none was set.
+
+#### Usage
+
+    DataShield$prompt_on_fail()
+
+#### Returns
+
+`"ask"`, `"redact"` or `"block"`.
 
 ------------------------------------------------------------------------
 
