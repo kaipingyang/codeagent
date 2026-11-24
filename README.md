@@ -338,7 +338,10 @@ system prompt (preserves history, one-time cache miss). `register_data()` does
 not auto-refresh — the shield stays decoupled from the Chat.
 
 `shield_egress(max_rows = 0)` retains **no raw tabular line** when bulk output is
-detected; scalar/status/model-summary output still passes. `shield_regex()`
+detected; scalar/status/model-summary output still passes. A withheld or denied
+notice names the source columns and their class ("Source: ADSL.COUNTRY (quasi)"),
+never a value, so the model can tell the user what it could not see
+(`explain = FALSE` for the bare notice). `shield_regex()`
 handles unregistered PII/secrets; `shield_ingress()` scans every tool's arguments
 in the central permission gate and can block or request approval before execution
 (built-in rules are host-extensible: a `patterns=` name matching a built-in

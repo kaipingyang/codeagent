@@ -1,5 +1,13 @@
 # codeagent (development version)
 
+* Data Shield notices say why output was withheld or denied: the dataset
+  columns the protected values come from and their class, e.g. "contains 2
+  protected data value(s). Source: ADSL.COUNTRY (quasi)." or "an identifier
+  written in another format" -- never a value, its position or context
+  (column names are the schema `DescribeData` already shows). The audit log
+  records the same, so false positives can be collected. `shield_egress(explain
+  = FALSE)` keeps the bare notice.
+
 * AskUserForm `grouping` fields: the open drop-down list spans the whole row
   (the name column included) instead of only the drop-down's width, so long
   arm names are readable in a narrow chat column.
