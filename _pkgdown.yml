@@ -196,6 +196,7 @@ reference:
       # --- Data Shield: strategies (compose via codeagent_client(data_shield=)) ---
       - shield_describe
       - shield_egress
+      - shield_prompt
       - shield_regex
       - shield_ingress
       - shield_tool_policy

@@ -10,6 +10,9 @@
   they are kept from the model. Default unchanged: `"show"`, except
   `egress = "none"` columns, which are `"hide"`. With `"show"` only the
   model-facing value is replaced; with `"hide"` the card is dropped too.
+* New `shield_prompt(on_fail)` strategy: the input gate's policy set on the
+  shield itself (a client's `settings$data_shield_prompt_on_fail` still wins);
+  `DataShield$prompt_on_fail()` reads it.
 * Prompt gate `data_shield_prompt_on_fail = "ask"` is now tiered: subject
   identifiers block the message (with the source columns, never the values);
   a pasted table of numbers (5+ lines) asks the user in the question card

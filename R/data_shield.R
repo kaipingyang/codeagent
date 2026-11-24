@@ -165,6 +165,27 @@ shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L
     explain = isTRUE(explain))
 }
 
+#' Data Shield policy for what the user types
+#'
+#' How the input gate treats protected content in a user's message before it
+#' reaches the model. `"ask"`: subject identifiers block the message (the chat
+#' says which columns, never the values); a pasted table of numbers (at least
+#' five lines with two or more columns and a digit) asks the user in the
+#' question card before it is sent; other protected values are redacted and
+#' the chat says which columns. `"redact"` (the default without this strategy)
+#' replaces protected values and goes on; `"block"` stops the message. A
+#' client's `settings$data_shield_prompt_on_fail` still wins when set.
+#'
+#' @param on_fail `"ask"`, `"redact"` or `"block"`.
+#' @return A Data Shield strategy specification.
+#' @examples
+#' shield <- DataShield$new(strategies = list(shield_egress(), shield_prompt("ask")))
+#' @seealso [shield_egress()]
+#' @export
+shield_prompt <- function(on_fail = c("ask", "redact", "block")) {
+  .new_shield_strategy("prompt", prompt_on_fail = match.arg(on_fail))
+}
+
 .data_shield_sanitize_reviewer_text <- function(text, index) {
   regex <- .data_shield_regex_scanner(
     .data_shield_default_regex_patterns(),replacement="[REDACTED]",
@@ -1401,6 +1422,11 @@ DataShield <- R6::R6Class(
       list(action = if (changed) "redact" else "pass", args = out)
     },
 
+    #' @description The input gate's policy for a user's message
+    #'   ([shield_prompt()]); `"redact"` when none was set.
+    #' @return `"ask"`, `"redact"` or `"block"`.
+    prompt_on_fail = function() private$config$prompt_on_fail %||% "redact",
+
     #' @description Scan a user prompt BEFORE it reaches the model (edge 1).
     #'   This is the Data Shield half of the prompt gate: it detects protected
     #'   data the user may have pasted into their message. Unlike egress (which
@@ -1874,6 +1900,8 @@ DataShield <- R6::R6Class(
       if (identical(type, "describe")) {
         private$config$describe_enabled <- TRUE
         private$config[names(cfg)] <- cfg
+      } else if (identical(type, "prompt")) {
+        private$config$prompt_on_fail <- cfg$prompt_on_fail
       } else if (identical(type, "egress")) {
         private$config$egress_enabled <- TRUE
         private$config[names(cfg)] <- cfg
@@ -1900,6 +1928,7 @@ DataShield <- R6::R6Class(
         stop("Unknown Data Shield strategy: ", type, call. = FALSE)
       }
     },
+    # (public accessor below)
     # TRUE when every matched value's column may be shown to the user
     # (register_data(display =)); labels as in the value index.
     labels_displayable = function(labels) {

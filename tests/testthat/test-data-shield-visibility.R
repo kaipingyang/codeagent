@@ -133,3 +133,13 @@ test_that("a tool card is neither in the request to the model nor in a compactio
   expect_true(grepl("output withheld", body, fixed = TRUE))
   expect_false(grepl(secret, body, fixed = TRUE))
 })
+
+test_that("shield_prompt() sets the gate's policy; a client setting still wins", {
+  sh <- DataShield$new(strategies = list(shield_egress(), shield_prompt("ask")))
+  sh$register_data(data.frame(SUBJID = subj), name = "ADSL", sensitivity = list(SUBJID = "identifier"))
+  expect_identical(sh$prompt_on_fail(), "ask")
+  expect_identical(.input_gate_guarded("S0007?", list(data_shield_engine = sh), can_ask = TRUE)$action, "block")
+  expect_identical(.input_gate_guarded("S0007?", list(data_shield_engine = sh, data_shield_prompt_on_fail = "redact"))$action, "redact")
+  expect_identical(DataShield$new(strategies = list(shield_egress()))$prompt_on_fail(), "redact")
+  expect_error(shield_prompt("maybe"))
+})

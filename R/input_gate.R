@@ -164,7 +164,8 @@ NULL
                              on_progress = NULL, image_scanner = NULL) {
   shield <- .input_gate_shield(settings, chat)
   if (is.null(shield)) return(list(action = "pass", input = input))
-  on_fail       <- settings$data_shield_prompt_on_fail %||% "redact"
+  on_fail       <- settings$data_shield_prompt_on_fail %||%
+    tryCatch(shield$prompt_on_fail(), error = function(e) NULL) %||% "redact"
   image_scanner <- image_scanner %||% settings$data_shield_image_scanner
   scanners      <- settings$data_shield_input_scanners %||% c("value_match", "regex")
   # Reject an unknown scanner name up front (typo in settings would otherwise

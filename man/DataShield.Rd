@@ -47,6 +47,7 @@ shield$coverage()
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-scan_tool_args}{\code{DataShield$scan_tool_args()}}
+    \item \href{#method-DataShield-prompt_on_fail}{\code{DataShield$prompt_on_fail()}}
     \item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
     \item \href{#method-DataShield-scan_response}{\code{DataShield$scan_response()}}
     \item \href{#method-DataShield-review_code_public}{\code{DataShield$review_code_public()}}
@@ -436,6 +437,22 @@ permission gate. Non-string arguments are left untouched.
   }
   \subsection{Returns}{
     List: \code{action} (\code{"pass"}/\code{"redact"}), \code{args} (possibly-redacted).
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-prompt_on_fail"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-prompt_on_fail}{}}}
+\subsection{\code{DataShield$prompt_on_fail()}}{
+  The input gate's policy for a user's message
+(\code{\link[=shield_prompt]{shield_prompt()}}); \code{"redact"} when none was set.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$prompt_on_fail()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    \code{"ask"}, \code{"redact"} or \code{"block"}.
   }
 }
 
