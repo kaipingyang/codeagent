@@ -2,6 +2,29 @@
 
 ## codeagent (development version)
 
+- Data Shield says what the user still sees. Every notice the model gets
+  ends with one of “The user sees the full result in the tool card; only
+  you cannot see it.”, “The result was not shown to the user either.” or
+  “The tool did not run, so the user saw no result either.” (tool
+  errors, rejected arguments, sandbox / policy denials included), so the
+  model can tell the user.
+
+- `register_data(display =)` and `column_access(display =)`: whether the
+  user may see a dataset’s / column’s protected values in the tool’s own
+  card when they are kept from the model. Default unchanged: `"show"`,
+  except `egress = "none"` columns, which are `"hide"`. With `"show"`
+  only the model-facing value is replaced; with `"hide"` the card is
+  dropped too.
+
+- Prompt gate `data_shield_prompt_on_fail = "ask"` is now tiered:
+  subject identifiers block the message (with the source columns, never
+  the values); a pasted table of numbers (5+ lines) asks the user in the
+  question card before it is sent; other protected values are redacted
+  and the chat says which columns. Before, “ask” silently redacted.
+  Without a way to ask (CLI) the input goes on redacted, as before.
+  Prompt / tool-argument / reply audit reasons name the source columns
+  too.
+
 - Data Shield notices pair each dataset with a column it really has: a
   value in several datasets keeps all of them; the notice names the
   dataset the tool was asked about (a registered dataset name in its

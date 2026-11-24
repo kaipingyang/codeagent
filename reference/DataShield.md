@@ -160,7 +160,8 @@ Register one protected data.frame.
       min_card = 8L,
       max_index_values = 500000L,
       column_access = NULL,
-      id_variants = TRUE
+      id_variants = TRUE,
+      display = NULL
     )
 
 #### Arguments
@@ -215,6 +216,17 @@ Register one protected data.frame.
   shape with a literal letter prefix contributes a pattern (e.g.
   `BGB-[0-9]{3}-[0-9]{4}`) that catches identifiers of that form even
   when they were never registered.
+
+- `display`:
+
+  Whether the user may see this dataset's protected values in a tool's
+  own card when they are kept from the model: `"show"` or `"hide"` for
+  every column, or `NULL` (default) for `"show"` except columns with
+  `egress = "none"`, which are `"hide"`. A column's `column_access`
+  entry may set its own `display`. With `"show"` only the model-facing
+  value is replaced and the card keeps the full result; with `"hide"`
+  the whole result is replaced. The model is never sent these values
+  either way.
 
 ------------------------------------------------------------------------
 
