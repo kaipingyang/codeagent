@@ -58,6 +58,8 @@ create a new object for an independent user/thread boundary.
 
 - [`DataShield$bind_reviewer_factory()`](#method-DataShield-bind_reviewer_factory)
 
+- [`DataShield$record_gate()`](#method-DataShield-record_gate)
+
 - [`DataShield$audit()`](#method-DataShield-audit)
 
 - [`DataShield$clear_audit()`](#method-DataShield-clear_audit)
@@ -713,19 +715,47 @@ Bind codeagent's parent-provider reviewer Chat factory.
 
 ------------------------------------------------------------------------
 
-### `DataShield$audit()`
+### `DataShield$record_gate()`
 
 Return a copy of non-sensitive decision events.
 
+Record the input gate's final decision on a user's message (it can
+differ from the scan's own event: a scan that redacted may end in a
+block, and a pasted table in the user's choice).
+
 #### Usage
 
-    DataShield$audit(limit = NULL)
+    DataShield$record_gate(action, reason = "", match_count = 0L)
 
 #### Arguments
+
+- `action`:
+
+  `"block"`, `"ask"`, `"send"` or `"dont_send"`.
+
+- `reason`:
+
+  Labels only (source columns, table size) – never a value.
+
+- `match_count`:
+
+  Number of matches.
 
 - `limit`:
 
   Optional number of most recent events.
+
+#### Returns
+
+Invisibly `NULL`.
+
+------------------------------------------------------------------------
+
+### `DataShield$audit()`
+
+#### Usage
+
+    DataShield$audit(limit = NULL)
 
 ------------------------------------------------------------------------
 
