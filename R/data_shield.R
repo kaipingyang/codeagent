@@ -910,7 +910,7 @@ DataShield <- R6::R6Class(
       # each indexed value remembers where it came from ("ADSL.COUNTRY
       # (quasi)") so a withheld notice can say why -- never the value itself
       col_label <- function(cols) stats::setNames(
-        paste0(name, ".", cols, " (", sensitivity[cols] %||% "protected", ")"), cols)
+        .data_shield_label(name, cols, sensitivity[cols] %||% "protected"), cols)
       idx <- .data_shield_build_value_index(
         df, cols = index_cols, min_len = min_len, min_card = min_card,
         max_values = max_index_values, labels = col_label(index_cols))
@@ -926,7 +926,7 @@ DataShield <- R6::R6Class(
         .data_shield_build_value_index(
           df, cols = none_egress_cols, min_len = min_len, min_card = min_card,
           max_values = max_index_values, deny_all = TRUE,
-          labels = stats::setNames(paste0(name, ".", none_egress_cols, " (egress=none)"), none_egress_cols))
+          labels = stats::setNames(.data_shield_label(name, none_egress_cols, "egress=none"), none_egress_cols))
         else NULL
       # Identifier variants and shapes (R/data_shield_ids.R): format variants of
       # the indexed values, and id-shaped patterns inferred from identifier
@@ -1198,6 +1198,8 @@ DataShield <- R6::R6Class(
       # value from a column whose egress tier is "none", deny the whole result --
       # these values must never reach the model. Runs before the redact pipeline;
       # a match blocks rather than redacts. No-op when no none-tier column exists.
+      # the datasets the tool was asked about: a notice names their columns
+      prefer <- .data_shield_named_datasets(context$args, names(private$datasets))
       if (!is.null(private$deny_index) &&
           length(private$deny_index) > 0L) {
         deny_ser_failed <- FALSE
@@ -1224,9 +1226,10 @@ DataShield <- R6::R6Class(
           audit_fn("column_egress", "deny",
                    if (isTRUE(dv$failed)) "deny-index scan failed (fail-closed)"
                    else paste0("egress=none column value in tool output",
-                               if (length(dv$sources)) paste0(": ", paste(dv$sources, collapse = ", "))),
+                               if (length(dv$labels)) paste0(": ", paste(.data_shield_sources(dv$labels, prefer = prefer), collapse = ", "))),
                    dv$n %||% 0L, 1)
-          why <- if (isTRUE(private$config$explain) && !isTRUE(dv$failed)) .data_shield_reason(dv$sources) else ""
+          why <- if (isTRUE(private$config$explain) && !isTRUE(dv$failed))
+            .data_shield_reason(.data_shield_sources(dv$labels, prefer = prefer)) else ""
           return(paste0("[data_shield] tool output denied: contains a value from a column marked egress=none.", why))
         }
       }
@@ -1239,7 +1242,7 @@ DataShield <- R6::R6Class(
           output <- .data_shield_filter_result(
             output, max_rows = cfg$max_rows, index = private$index,
             detectors = cfg$detectors, on_fail = cfg$on_fail,
-            audit_fn = audit_fn, explain = isTRUE(cfg$explain))
+            audit_fn = audit_fn, explain = isTRUE(cfg$explain), prefer = prefer)
           if (identical(cfg$on_fail,"ask") && length(private$audit_log)>audit_before) {
             event <- private$audit_log[[length(private$audit_log)]]
             if (identical(event$action,"ask"))
@@ -1873,14 +1876,12 @@ DataShield <- R6::R6Class(
       deny_raw <- character()   # merge fixed-string deny values across datasets
       for (dataset in private$datasets) {
         keys <- ls(dataset$index, all.names = TRUE)
-        for (key in keys) if (!exists(key, envir = private$index, inherits = FALSE))
-          assign(key, get(key, envir = dataset$index, inherits = FALSE), envir = private$index)
+        for (key in keys) .data_shield_add_label(private$index, key, get(key, envir = dataset$index, inherits = FALSE))
         if (!is.null(dataset$id_tables))
           .ds_merge_id_tables(private$index, dataset$id_tables)
         if (!is.null(dataset$deny_index)) {
           dkeys <- ls(dataset$deny_index, all.names = TRUE)
-          for (key in dkeys) if (!exists(key, envir = private$deny_index, inherits = FALSE))
-            assign(key, get(key, envir = dataset$deny_index, inherits = FALSE), envir = private$deny_index)
+          for (key in dkeys) .data_shield_add_label(private$deny_index, key, get(key, envir = dataset$deny_index, inherits = FALSE))
           rv <- tryCatch(attr(dataset$deny_index, "raw_values"), error = function(e) NULL)
           if (is.character(rv)) deny_raw <- c(deny_raw, rv)
         }
@@ -1888,7 +1889,7 @@ DataShield <- R6::R6Class(
       # carry the merged fixed-string deny values onto the live deny_index
       # (kiro round-4 #4: .data_shield_deny_scan reads this attr).
       deny_raw <- deny_raw[nzchar(deny_raw)]
-      attr(private$deny_index, "raw_values") <- deny_raw[!duplicated(deny_raw)]
+      attr(private$deny_index, "raw_values") <- deny_raw[!duplicated(paste(deny_raw, names(deny_raw), sep = "\r"))]
       invisible(length(ls(private$index, all.names = TRUE)))
     }
   )
@@ -2252,7 +2253,8 @@ refresh_data_shield_context <- function(client) {
 #' @keywords internal
 .data_shield_process_text <- function(text, max_rows = 0L, index = NULL,
                                       detectors = c("row_cap", "value_match"),
-                                      on_fail = "redact", audit_fn = NULL, explain = FALSE) {
+                                      on_fail = "redact", audit_fn = NULL, explain = FALSE,
+                                      prefer = character(0)) {
   if (!is.character(text) || length(text) != 1L)
     return(list(text = text, changed = FALSE))
   if ("row_cap" %in% detectors) {
@@ -2270,12 +2272,13 @@ refresh_data_shield_context <- function(client) {
                         error = function(e) list(hit = TRUE, n = 0L, failed = TRUE))
     if (isTRUE(matched$hit)) {
       verb <- if (identical(on_fail, "block")) "blocked" else "withheld"
-      why <- if (isTRUE(explain) && !isTRUE(matched$failed)) .data_shield_reason(matched$sources) else ""
+      sources <- if (!isTRUE(matched$failed)) .data_shield_sources(matched$labels, matched$spans, prefer) else character(0)
+      why <- if (isTRUE(explain)) .data_shield_reason(sources) else ""
       if (is.function(audit_fn))
         audit_fn("value_match", on_fail,
                  if (isTRUE(matched$failed)) "value_match scan failed (fail-closed)"
-                 else paste0("protected value match", if (length(matched$sources))
-                   paste0(": ", paste(matched$sources, collapse = ", "))),
+                 else paste0("protected value match", if (length(sources))
+                   paste0(": ", paste(sources, collapse = ", "))),
                  matched$n %||% 0L, min(1, (matched$n %||% 0L) / 5))
       return(list(
         text = if (isTRUE(matched$failed))
@@ -2290,10 +2293,11 @@ refresh_data_shield_context <- function(client) {
 
 .data_shield_filter_result <- function(result, max_rows = 0L, index = NULL,
                                        detectors = c("row_cap", "value_match"),
-                                       on_fail = "redact", audit_fn = NULL, explain = FALSE) {
+                                       on_fail = "redact", audit_fn = NULL, explain = FALSE,
+                                       prefer = character(0)) {
   process <- function(text) .data_shield_process_text(
     text, max_rows = max_rows, index = index,
-    detectors = detectors, on_fail = on_fail, audit_fn = audit_fn, explain = explain)
+    detectors = detectors, on_fail = on_fail, audit_fn = audit_fn, explain = explain, prefer = prefer)
   if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
                       error = function(e) FALSE))) {
     value <- tryCatch(as.character(result@value), error = function(e) NULL)
@@ -2392,11 +2396,11 @@ refresh_data_shield_context <- function(client) {
     if (promises::is.promise(result)) {
       return(promises::then(
         result,
-        onFulfilled = function(v) shield$scan_egress(v, context = list(tool_name = tool_name)),
+        onFulfilled = function(v) shield$scan_egress(v, context = list(tool_name = tool_name, args = args)),
         onRejected  = function(e) ellmer::tool_reject(
           "[data_shield] tool failed; result withheld (fail-closed).")))
     }
-    shield$scan_egress(result, context = list(tool_name = tool_name))
+    shield$scan_egress(result, context = list(tool_name = tool_name, args = args))
   }
   attr(wrapped, "data_shield_wrapped") <- TRUE
   attr(wrapped, "data_shield_original") <- original
@@ -2471,12 +2475,12 @@ refresh_data_shield_context <- function(client) {
     # no cardinality/length/int thresholds -- a "none" column with just two
     # values (ALPHA/BETA) must still deny, so no value may be filtered out.
     ch <- ch[nzchar(ch)]
-    # the value maps to its column label (where it came from, for the notice);
-    # a value of several columns keeps the first
+    # the value maps to every column label it comes from (dataset, column,
+    # class -- for the notice); never used for matching
     lab <- if (!is.null(labels) && !is.na(labels[cn])) unname(labels[cn]) else cn
     for (x in .data_shield_normalize(ch)) {
       if (n >= max_values) { truncated <- TRUE; break }
-      if (!exists(x, envir = set, inherits = FALSE)) assign(x, lab, envir = set)
+      .data_shield_add_label(set, x, lab)
       n <- n + 1L
     }
     if (isTRUE(deny_all))
@@ -2488,7 +2492,7 @@ refresh_data_shield_context <- function(client) {
   # so .data_shield_deny_scan can do fixed-string substring matching that the
   # tokenizing value-match scanner would miss (kiro round-4 #4).
   if (isTRUE(deny_all)) {
-    keep <- nzchar(raw_values) & !duplicated(raw_values)
+    keep <- nzchar(raw_values) & !duplicated(paste(raw_values, names(raw_values), sep = "\r"))
     attr(set, "raw_values") <- raw_values[keep]   # names: the column label of each value
   }
   set
@@ -2508,8 +2512,8 @@ refresh_data_shield_context <- function(client) {
   hay <- tolower(text)
   hits <- vals[vapply(vals, function(v) grepl(v, hay, fixed = TRUE), logical(1))]
   # names are the column labels (register_data); the values never leave here
-  src <- unique(names(hits)); src <- src[!is.na(src) & nzchar(src)]
-  list(hit = length(hits) > 0L, n = length(hits), sources = src)
+  labels <- if (length(hits) && !is.null(names(hits))) unname(split(names(hits), hits)) else list()
+  list(hit = length(hits) > 0L, n = length(unique(hits)), labels = labels)
 }
 
 # Scan text for indexed protected values (token-hash, v0).
@@ -2565,17 +2569,67 @@ refresh_data_shield_context <- function(client) {
   # One protected value found both exactly and as a span counts once.
   n <- length(unique(c(hit, .data_shield_normalize(spans))))
   list(hit = n > 0L, n = n, values = unique(hit), spans = spans,
-       sources = .data_shield_sources(unique(hit), index, spans))
+       labels = .data_shield_hit_labels(unique(hit), index))
 }
 
-# Where the matched values came from: their column labels ("ADSL.COUNTRY
-# (quasi)"), plus "an identifier written in another format" for variant /
-# shape spans. Labels only -- never a value. PURE.
-.data_shield_sources <- function(hits, index, spans = character(0)) {
-  labs <- if (length(hits) && is.environment(index))
-    unlist(mget(hits, envir = index, ifnotfound = list(NULL)), use.names = FALSE) else NULL
-  labs <- unique(as.character(labs[!vapply(labs, isTRUE, logical(1))]))
-  c(labs, if (length(spans)) "an identifier written in another format")
+# Column labels of the index: dataset, column and class of a protected value,
+# kept with the value (for the notice; matching only tests existence).
+.data_shield_label <- function(dataset, column, class)
+  paste(dataset, column, class, sep = "\x1f")
+
+.data_shield_add_label <- function(env, key, labels) {
+  labels <- as.character(labels[!vapply(as.list(labels), isTRUE, logical(1))])
+  old <- if (exists(key, envir = env, inherits = FALSE)) get(key, envir = env, inherits = FALSE) else character(0)
+  old <- as.character(old[!vapply(as.list(old), isTRUE, logical(1))])
+  assign(key, unique(c(old, labels)), envir = env)
+}
+
+# The labels of each matched value (a list: one character vector per value).
+.data_shield_hit_labels <- function(hits, index) {
+  if (!length(hits) || !is.environment(index)) return(list())
+  lapply(mget(hits, envir = index, ifnotfound = list(character(0))), function(l)
+    as.character(l[!vapply(as.list(l), isTRUE, logical(1))]))
+}
+
+# Where the matched values came from, as the notice says it. Each value
+# counts with the datasets the tool was asked about (`prefer`, the registered
+# dataset names its arguments name) when it is in one of them, else with every
+# dataset it is in; then per column and class: "ADSL.SUBJID (identifier)" for
+# one dataset, "SUBJID (identifier) in ADAE, ADSL, ADCM and 4 more datasets"
+# for several -- a dataset is never paired with a column it does not have.
+# Spans (identifier variants / shapes) add "an identifier written in another
+# format". Labels only -- never a value. PURE.
+.data_shield_sources <- function(labels, spans = character(0), prefer = character(0), max_ds = 3L) {
+  pick <- lapply(labels, function(l) {
+    l <- l[grepl("\x1f", l, fixed = TRUE)]
+    ds <- sub("\x1f.*$", "", l)
+    if (length(prefer) && any(toupper(ds) %in% toupper(prefer))) l[toupper(ds) %in% toupper(prefer)] else l
+  })
+  l <- unique(unlist(pick, use.names = FALSE))
+  out <- character(0)
+  if (length(l)) {
+    parts <- do.call(rbind, strsplit(l, "\x1f", fixed = TRUE))
+    key <- paste(parts[, 2], parts[, 3], sep = "\x1f")
+    for (k in unique(key)) {
+      ds <- sort(unique(parts[key == k, 1]))
+      col <- parts[key == k, 2][1]; cls <- parts[key == k, 3][1]
+      out <- c(out, if (length(ds) == 1L) sprintf("%s.%s (%s)", ds, col, cls) else
+        sprintf("%s (%s) in %s%s", col, cls, paste(utils::head(ds, max_ds), collapse = ", "),
+                if (length(ds) > max_ds) sprintf(" and %d more datasets", length(ds) - max_ds) else ""))
+    }
+  }
+  c(out, if (length(spans)) "an identifier written in another format")
+}
+
+# Registered dataset names that a tool's (already scanned) arguments name:
+# whole words, any case ("ADSL", dataset = "adsl", "ADSL.SUBJID").
+.data_shield_named_datasets <- function(args, datasets) {
+  if (!length(args) || !length(datasets)) return(character(0))
+  txt <- tryCatch(paste(unlist(args, use.names = FALSE), collapse = " "), error = function(e) "")
+  if (!is.character(txt) || !nzchar(txt)) return(character(0))
+  datasets[vapply(datasets, function(d)
+    grepl(paste0("(?<![[:alnum:]_])", .data_shield_escape_regex(d), "(?![[:alnum:]_])"), txt, perl = TRUE, ignore.case = TRUE),
+    logical(1))]
 }
 
 # The reason part of a withheld / denied notice: at most `max` sources.

@@ -46,12 +46,56 @@ test_that("several sources are listed once each, at most five", {
   expect_match(.data_shield_reason(paste0("D.C", 1:7, " (quasi)")), "and 2 more.", fixed = TRUE)
 })
 
-test_that("a value of two datasets keeps one label; matching is unchanged", {
-  sh <- mk()
-  sh$register_data(data.frame(USUBJID = sprintf("BGB-X-%04d", 1:40),
-                              COUNTRY = rep(c("CHN", "NZL", "KOR", "USA", "FRA", "BRA", "JPN", "ITA"), 5)),
-                   name = "ADAE", sensitivity = list(USUBJID = "identifier"))
-  out <- sh$scan_egress("CHN", list(tool_name = "t"))
-  expect_match(out, "withheld")
-  expect_match(out, "\\.COUNTRY \\(quasi\\)")
+# A value present in several datasets: the notice pairs each dataset with a
+# column it really has -- the dataset the tool was asked about when it is one
+# of them, else every dataset that has the value (UAT LiveTFLAI 2026-11-24:
+# an ADSL query was reported as ADAE.SUBJID, the first dataset registered).
+mk2 <- function() {
+  ids <- sprintf("S%04d", 1:40)
+  sh <- DataShield$new(strategies = list(shield_egress()))
+  sh$register_data(data.frame(SUBJID = ids, AETERM = "x"), name = "ADAE", sensitivity = list(SUBJID = "identifier"))
+  sh$register_data(data.frame(SUBJID = ids), name = "ADSL", sensitivity = list(SUBJID = "identifier"))
+  sh$register_data(data.frame(PATID = ids), name = "ADCM", sensitivity = list(PATID = "identifier"))
+  sh
+}
+
+test_that("the dataset the tool was asked about is the one named", {
+  sh <- mk2()
+  out <- sh$scan_egress("S0007", list(tool_name = "explore_adam", args = list(dataset = "ADSL", operation = "unique")))
+  expect_match(out, "Source: ADSL.SUBJID (identifier).", fixed = TRUE)
+  expect_false(grepl("ADAE|ADCM", out))
+  out <- sh$scan_egress("S0007", list(tool_name = "t", args = list(code = "count(adcm, PATID)")))
+  expect_match(out, "Source: ADCM.PATID (identifier).", fixed = TRUE)
+})
+
+test_that("without a dataset in the arguments every dataset with the value is listed, per column", {
+  sh <- mk2()
+  out <- sh$scan_egress("S0007", list(tool_name = "t"))
+  expect_match(out, "SUBJID (identifier) in ADAE, ADSL", fixed = TRUE)
+  expect_match(out, "ADCM.PATID (identifier)", fixed = TRUE)
+  expect_false(grepl("ADSL.PATID|ADCM.SUBJID|ADAE.PATID", out))       # never a wrong pair
+  # a named dataset that does not have the value does not take it over
+  out <- sh$scan_egress("S0007", list(tool_name = "t", args = list(dataset = "ADTTE")))
+  expect_match(out, "SUBJID (identifier) in ADAE, ADSL", fixed = TRUE)
+  expect_false(grepl("ADTTE", out))
+})
+
+test_that("many datasets are summarised; word boundaries decide a named dataset", {
+  labs <- list(paste("D", LETTERS[1:6], sep = "")) |> lapply(function(d) .data_shield_label(d, "SUBJID", "identifier"))
+  expect_identical(.data_shield_sources(labs), "SUBJID (identifier) in DA, DB, DC and 3 more datasets")
+  expect_identical(.data_shield_named_datasets(list(x = "ADSLX and adsl"), c("ADSL", "ADSLX", "ADAE")), c("ADSL", "ADSLX"))
+  expect_identical(.data_shield_named_datasets(list(x = "ADSLX"), c("ADSL", "ADAE")), character(0))
+  expect_identical(.data_shield_named_datasets(list(), c("ADSL")), character(0))
+})
+
+test_that("egress=none values pair dataset and column too", {
+  ids <- sprintf("BGB-X-%04d", 1:40)
+  sh <- DataShield$new(strategies = list(shield_egress()))
+  for (d in c("ADAE", "ADSL"))
+    sh$register_data(data.frame(USUBJID = ids), name = d, sensitivity = list(USUBJID = "identifier"),
+                     column_access = list(USUBJID = list(prompt = "schema", egress = "none")))
+  expect_match(sh$scan_egress("BGB-X-0003", list(tool_name = "t", args = list(dataset = "ADSL"))),
+               "Source: ADSL.USUBJID (egress=none).", fixed = TRUE)
+  expect_match(sh$scan_egress("BGB-X-0003", list(tool_name = "t")),
+               "USUBJID (egress=none) in ADAE, ADSL", fixed = TRUE)
 })
