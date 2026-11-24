@@ -75,12 +75,12 @@ NULL
         "[data_shield] Your message was not sent: it contains subject identifiers.",
         .data_shield_reason(r$sources),
         " The model must not receive them; look at them in the tool card or preview instead of pasting them into the chat.")))
-    n <- .input_gate_number_lines(text)
-    if (n >= .INPUT_GATE_TABLE_LINES)
-      return(list(action = "ask", text = r$text %||% text, sources = r$sources, lines = n,
+    tab <- .input_gate_table(text)
+    if (!is.null(tab))
+      return(list(action = "ask", text = r$text %||% text, sources = r$sources, table = tab,
                   question = sprintf(paste(
-                    "Your message looks like a table of results (%d lines with numbers).",
-                    "The model is not meant to see result numbers. Send it to the model as it is?"), n)))
+                    "Your message looks like a table of results (%s).",
+                    "The model is not meant to see result numbers. Send it to the model as it is?"), tab)))
     return(list(action = r$action %||% "pass", text = r$text %||% text, sources = r$sources))
   }
   res <- tryCatch(
@@ -97,15 +97,30 @@ NULL
   list(action = res$action %||% "pass", text = res$text %||% text, sources = res$sources)
 }
 
-# A pasted table of numbers: lines with at least two columns (tabs, runs of
-# spaces, |, commas) and a digit. Prose with a number or two is not one.
+# A pasted table of numbers, described for the question; NULL when the text
+# does not look like one. A chat composer may drop the line breaks of a paste
+# (shinychat keeps the tabs but joins the lines), so besides lines this counts
+# tab- / |-separated cells with a digit and "n (%)" results. Prose with a
+# number or two is not a table.
 .INPUT_GATE_TABLE_LINES <- 5L
+.INPUT_GATE_TABLE_CELLS <- 8L
+.INPUT_GATE_TABLE_PCT <- 3L
 .input_gate_number_lines <- function(text) {
   lines <- strsplit(text, "\n", fixed = TRUE)[[1L]]
   lines <- lines[nzchar(trimws(lines))]
   if (!length(lines)) return(0L)
   cols <- vapply(lines, function(l) length(strsplit(trimws(l), "\t|\\s{2,}|\\|")[[1L]]), integer(1))
   as.integer(sum(cols >= 2L & grepl("[0-9]", lines)))
+}
+.input_gate_table <- function(text) {
+  n <- .input_gate_number_lines(text)
+  if (n >= .INPUT_GATE_TABLE_LINES) return(sprintf("%d lines with numbers", n))
+  cells <- strsplit(text, "\t|\\|")[[1L]]
+  k <- if (length(cells) > 1L) sum(grepl("[0-9]", cells)) else 0L
+  if (k >= .INPUT_GATE_TABLE_CELLS) return(sprintf("%d table cells with numbers", k))
+  pct <- lengths(regmatches(text, gregexpr("[0-9]+\\s*\\(\\s*[0-9]+(\\.[0-9]+)?\\s*%?\\s*\\)", text, perl = TRUE)))
+  if (pct >= .INPUT_GATE_TABLE_PCT) return(sprintf("%d results written as n (%%)", pct))
+  NULL
 }
 
 # Best-effort text extraction from an ellmer Content object. Returns "" when

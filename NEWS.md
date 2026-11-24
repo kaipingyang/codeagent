@@ -15,7 +15,9 @@
   `DataShield$prompt_on_fail()` reads it.
 * Prompt gate `data_shield_prompt_on_fail = "ask"` is now tiered: subject
   identifiers block the message (with the source columns, never the values);
-  a pasted table of numbers (5+ lines) asks the user in the question card
+  a pasted table of numbers (5+ lines with numbers, or 8+ tab / |-separated
+  cells with digits -- shinychat joins the lines of a paste -- or 3+ "n (%)"
+  results) asks the user in the question card
   before it is sent; other protected values are redacted and the chat says
   which columns. Before, "ask" silently redacted. Without a way to ask (CLI)
   the input goes on redacted, as before. Prompt / tool-argument / reply audit

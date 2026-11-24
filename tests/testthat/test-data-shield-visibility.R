@@ -84,6 +84,14 @@ test_that("a pasted table of numbers asks; prose with numbers does not", {
   expect_identical(r$action, "ask")
   expect_match(r$question, "table of results (5 lines with numbers)", fixed = TRUE)
   expect_identical(gate("what does 12 (40.0%) in arm A mean?")$action, "pass")
+  # the same table pasted into a composer that joins the lines (tabs kept)
+  flat <- gsub("\n", "", tab, fixed = TRUE)
+  r2 <- gate(flat)
+  expect_identical(r2$action, "ask")
+  expect_match(r2$question, "table cells with numbers", fixed = TRUE)
+  # results written as n (%), no tabs
+  expect_identical(gate("Male 12 (40.0) Female 18 (60.0) Total 30 (100)")$action, "ask")
+  expect_identical(gate("compare 12 (40%) with 18 (60%)")$action, "pass")
   # no way to ask (CLI): the input goes on as before
   expect_identical(gate(tab, can_ask = FALSE)$action, "pass")
 })
