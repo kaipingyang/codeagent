@@ -19,7 +19,9 @@ codeagent_server(
   on_tool_open = NULL,
   on_user_prompt = NULL,
   workspace = NULL,
-  sessions = FALSE
+  sessions = FALSE,
+  themes = NULL,
+  on_theme = NULL
 )
 }
 \arguments{
@@ -80,6 +82,16 @@ host content gets its own tab; open tabs with the returned \code{ws}. Without an
 \code{on_tool_open}, opening a tool card in the chat opens its result tab.}
 
 \item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
+
+\item{themes}{\code{NULL} (the page keeps its theme) or a named list, theme
+name -> a bslib theme or a \code{\link[=codeagent_theme]{codeagent_theme()}} style name (e.g.
+\code{list(default = bslib::bs_theme(version = 5), dsh = "dsh")}); place
+\code{\link[=codeagent_theme_ui]{codeagent_theme_ui()}} with the same names in the page. The user switches
+the page's theme while the session runs; the page structure, chat and tabs
+stay. The page must be built with a bslib theme.}
+
+\item{on_theme}{Optional \verb{function(name)} called after the user switched
+the theme, e.g. to remember the choice for their next visit.}
 }
 \value{
 Invisibly, a list with \code{state} (the session \code{reactiveValues}),

@@ -235,6 +235,14 @@ codeagent_mode_ui <- function(modes = c("Ask before changes" = "default",
 #'   host content gets its own tab; open tabs with the returned `ws`. Without an
 #'   `on_tool_open`, opening a tool card in the chat opens its result tab.
 #' @param sessions Deprecated: `TRUE` is `history = "codeagent"`.
+#' @param themes `NULL` (the page keeps its theme) or a named list, theme
+#'   name -> a bslib theme or a [codeagent_theme()] style name (e.g.
+#'   `list(default = bslib::bs_theme(version = 5), dsh = "dsh")`); place
+#'   [codeagent_theme_ui()] with the same names in the page. The user switches
+#'   the page's theme while the session runs; the page structure, chat and tabs
+#'   stay. The page must be built with a bslib theme.
+#' @param on_theme Optional `function(name)` called after the user switched
+#'   the theme, e.g. to remember the choice for their next visit.
 #' @return Invisibly, a list with `state` (the session `reactiveValues`),
 #'   `stream_task` (the `ExtendedTask`), `chat`, `settings` and, with
 #'   `workspace`, `ws`: `ws$open(kind, content_id, title = NULL, reveal = TRUE)`,
@@ -248,7 +256,7 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                              history = NULL, greeting = NULL,
                              modes = NULL, on_restore = NULL,
                              on_tool_open = NULL, on_user_prompt = NULL, workspace = NULL,
-                             sessions = FALSE) {
+                             sessions = FALSE, themes = NULL, on_theme = NULL) {
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
@@ -256,6 +264,9 @@ codeagent_server <- function(input, output, session, client, tools = list(),
   if (!is.logical(sessions) || length(sessions) != 1L || is.na(sessions))
     stop("`sessions` must be TRUE or FALSE.", call. = FALSE)
   if (!is.null(modes)) .check_host_modes(modes)
+  if (!is.null(themes)) .check_host_themes(themes)
+  if (!is.null(on_theme) && !is.function(on_theme))
+    stop("`on_theme` must be NULL or a function(name).", call. = FALSE)
   if (!is.null(on_restore) && !is.function(on_restore))
     stop("`on_restore` must be NULL or a function(chat).", call. = FALSE)
   if (!is.null(on_tool_open) && !is.function(on_tool_open))
@@ -305,6 +316,7 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                               greeting = greeting, on_restore = on_restore)
   if (!is.null(modes))
     .serve_host_modes(input, client$chat, core, modes)
+  if (!is.null(themes)) .serve_host_themes(input, session, themes, on_theme)
   ws <- NULL
   if (!is.null(workspace))
     ws <- .workspace_server(input, output, session, core$state, workspace,

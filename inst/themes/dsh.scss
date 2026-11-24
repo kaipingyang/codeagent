@@ -496,6 +496,15 @@ shiny-chat-container {
 .shiny-chat-input .tiptap .is-empty::before {
   color: var(--ca-dsh-label-tertiary);
 }
+/* The placeholder stays on one line (as in the default look): wrapped, it
+   overflowed the empty composer and showed a scrollbar. */
+.shiny-chat-input .tiptap.is-empty::before,
+.shiny-chat-input .tiptap .is-empty::before {
+  white-space: nowrap;
+}
+.shiny-chat-input .tiptap.is-empty {
+  overflow: hidden;
+}
 .shiny-chat-btn-attach {
   position: static;
   width: 28px;
