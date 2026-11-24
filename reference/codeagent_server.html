@@ -113,7 +113,9 @@ client the host built for this Shiny session. Pair it with
 <span>  on_tool_open <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  on_user_prompt <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  sessions <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  sessions <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  themes <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  on_theme <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -203,6 +205,20 @@ host content gets its own tab; open tabs with the returned <code>ws</code>. With
 
 <dt id="arg-sessions">sessions<a class="anchor" aria-label="anchor" href="#arg-sessions"></a></dt>
 <dd><p>Deprecated: <code>TRUE</code> is <code>history = "codeagent"</code>.</p></dd>
+
+
+<dt id="arg-themes">themes<a class="anchor" aria-label="anchor" href="#arg-themes"></a></dt>
+<dd><p><code>NULL</code> (the page keeps its theme) or a named list, theme
+name -&gt; a bslib theme or a <code><a href="codeagent_theme.html">codeagent_theme()</a></code> style name (e.g.
+<code>list(default = bslib::bs_theme(version = 5), dsh = "dsh")</code>); place
+<code><a href="codeagent_theme_ui.html">codeagent_theme_ui()</a></code> with the same names in the page. The user switches
+the page's theme while the session runs; the page structure, chat and tabs
+stay. The page must be built with a bslib theme.</p></dd>
+
+
+<dt id="arg-on-theme">on_theme<a class="anchor" aria-label="anchor" href="#arg-on-theme"></a></dt>
+<dd><p>Optional <code>function(name)</code> called after the user switched
+the theme, e.g. to remember the choice for their next visit.</p></dd>
 
 </dl></div>
     <div class="section level2">

@@ -40,6 +40,8 @@ Interactive chat interface.
   : Report a running tool's progress in the chat
 - [`codeagent_ask_form()`](https://kaipingyang.github.io/codeagent/reference/codeagent_ask_form.md)
   : Ask the user to fill in a form from a host tool
+- [`codeagent_theme_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme_ui.md)
+  : Skin switch for a host app
 - [`codeagent_history_options()`](https://kaipingyang.github.io/codeagent/reference/codeagent_history_options.md)
   : shinychat history over codeagent's session log
 - [`codeagent_chat_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_chat_ui.md)

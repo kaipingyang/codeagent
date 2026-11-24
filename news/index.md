@@ -2,6 +2,23 @@
 
 ## codeagent (development version)
 
+- New
+  [`codeagent_theme_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme_ui.md) +
+  `codeagent_server(themes =, on_theme =)`: the user switches the page’s
+  theme (e.g. the default look and `codeagent_theme("dsh")`) while the
+  session runs; the page structure, chat and tabs stay. `on_theme` lets
+  the host remember the choice.
+
+- Fixed: after a runtime theme swap (`session$setCurrentTheme()`), the
+  theme’s stylesheets were re-added at the end of `<head>` and overrode
+  the component and host CSS (the chat composer got Bootstrap’s input
+  box and its send button wrapped). Stylesheets that followed the theme
+  move back behind it; the sheets Shiny re-adds stay where it put them,
+  so each is replaced, not duplicated.
+
+- `theme = "dsh"`: the empty composer’s placeholder stays on one line
+  (it wrapped and showed a scrollbar).
+
 - Data Shield says what the user still sees. Every notice the model gets
   ends with one of “The user sees the full result in the tool card; only
   you cannot see it.”, “The result was not shown to the user either.” or

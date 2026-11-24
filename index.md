@@ -802,19 +802,25 @@ in the page and the same `modes =` in
 The approval bar also offers “Always allow” (this tool) (for the rest of
 the session). `on_tool_open = function(result)` is called when the user
 opens a tool card in the chat (live or restored), with that card’s
-result, so the host can show it in its own panel. A host tool that knows
-what to ask can show the AskUserForm card itself with
-`codeagent_ask_form(title, fields)` (same field types, e.g. a `grouping`
-field with the arms from the data) and continue from the promised
-`list(submitted, values)`. A long-running host tool can report its
-progress with `codeagent_progress(label)`: call it when the tool starts
-and use the handle’s `update(step, typical =)` and `done()`; the chat
-shows one line per running tool above the input (step, seconds elapsed,
-usual duration), after 3 seconds and until the turn ends.
-`on_restore = function(chat)` lets the host refresh its own panels when
-a saved conversation is opened. `on_user_prompt = function(text)` runs
-before each turn reaches the model and may add context to it or block it
-(the host side of the `UserPromptSubmit` hook).
+result, so the host can show it in its own panel. Pass
+`themes = list(default = bslib::bs_theme(version = 5), dsh = "dsh")`
+with
+[`codeagent_theme_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme_ui.md)
+in the page to let the user switch the page’s look while the session
+runs (structure, chat and tabs stay); `on_theme = function(name)` lets
+the host remember it. A host tool that knows what to ask can show the
+AskUserForm card itself with `codeagent_ask_form(title, fields)` (same
+field types, e.g. a `grouping` field with the arms from the data) and
+continue from the promised `list(submitted, values)`. A long-running
+host tool can report its progress with `codeagent_progress(label)`: call
+it when the tool starts and use the handle’s `update(step, typical =)`
+and `done()`; the chat shows one line per running tool above the input
+(step, seconds elapsed, usual duration), after 3 seconds and until the
+turn ends. `on_restore = function(chat)` lets the host refresh its own
+panels when a saved conversation is opened.
+`on_user_prompt = function(text)` runs before each turn reaches the
+model and may add context to it or block it (the host side of the
+`UserPromptSubmit` hook).
 
 `AskUserQuestion` asks one question (`question`, optional `choices`) or,
 like Claude Code’s public tool, 1-4 questions at once (`questions`: each

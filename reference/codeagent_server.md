@@ -32,7 +32,9 @@ codeagent_server(
   on_tool_open = NULL,
   on_user_prompt = NULL,
   workspace = NULL,
-  sessions = FALSE
+  sessions = FALSE,
+  themes = NULL,
+  on_theme = NULL
 )
 ```
 
@@ -134,6 +136,23 @@ codeagent_server(
 - sessions:
 
   Deprecated: `TRUE` is `history = "codeagent"`.
+
+- themes:
+
+  `NULL` (the page keeps its theme) or a named list, theme name -\> a
+  bslib theme or a
+  [`codeagent_theme()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme.md)
+  style name (e.g.
+  `list(default = bslib::bs_theme(version = 5), dsh = "dsh")`); place
+  [`codeagent_theme_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme_ui.md)
+  with the same names in the page. The user switches the page's theme
+  while the session runs; the page structure, chat and tabs stay. The
+  page must be built with a bslib theme.
+
+- on_theme:
+
+  Optional `function(name)` called after the user switched the theme,
+  e.g. to remember the choice for their next visit.
 
 ## Value
 
