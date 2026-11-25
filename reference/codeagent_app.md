@@ -24,7 +24,8 @@ codeagent_app(
   web_citations = c("off", "shiny_aside"),
   web_allow_private = FALSE,
   ui_layout = c("classic", "page_chat", "dsh"),
-  canvas = NULL
+  canvas = NULL,
+  form_widgets = NULL
 )
 ```
 
@@ -160,6 +161,12 @@ codeagent_app(
   installed. Passing options also enables the canvas for a shared
   pre-built client. `disallowed_tools = "genui"` on the client turns it
   off.
+
+- form_widgets:
+
+  How AskUserForm fields are drawn; see
+  [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md).
+  E.g. `"shiny.element"` or `c("shiny.element", "shinyWidgets")`.
 
 ## Value
 

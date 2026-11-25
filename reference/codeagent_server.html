@@ -115,7 +115,8 @@ client the host built for this Shiny session. Pair it with
 <span>  workspace <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sessions <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  themes <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  on_theme <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  on_theme <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  form_widgets <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -219,6 +220,19 @@ stay. The page must be built with a bslib theme.</p></dd>
 <dt id="arg-on-theme">on_theme<a class="anchor" aria-label="anchor" href="#arg-on-theme"></a></dt>
 <dd><p>Optional <code>function(name)</code> called after the user switched
 the theme, e.g. to remember the choice for their next visit.</p></dd>
+
+
+<dt id="arg-form-widgets">form_widgets<a class="anchor" aria-label="anchor" href="#arg-form-widgets"></a></dt>
+<dd><p>How AskUserForm fields are drawn: <code>NULL</code> (Shiny's own
+controls), preset names in priority order (<code>"shiny.element"</code>,
+<code>"shinyWidgets"</code>), or a list mixing presets, your own presets (a named list
+of field type -&gt; <code>function(id, label, value, choices, field)</code>) and named
+per-type widgets, e.g. <code>list("shiny.element", date = my_date)</code>. For each
+field type: a named entry, then the presets in order, then Shiny's control.
+A widget's value must come back as <code>input[[id]]</code> in the shape of Shiny's
+control for that type. A preset whose package is not installed is skipped
+with a warning. Types: text, textarea, number, select, multiselect,
+checkbox, date (grouping is always drawn by codeagent).</p></dd>
 
 </dl></div>
     <div class="section level2">

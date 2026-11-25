@@ -2,6 +2,14 @@
 
 ## codeagent (development version)
 
+- Fixed (review of the Data Shield display work): with
+  `display = "hide"` a tool card stayed when the shield matched an
+  identifier variant or an unregistered identifier shape (no column to
+  ask) – it is hidden now. Hit labels are no longer named by the matched
+  value. A pasted-table question that goes away unanswered is recorded
+  in the audit log as not sent. `audit()` has its own documentation
+  again.
+
 - Interaction cards (questions, forms, approvals) have a handle on the
   top edge: drag it up – as far as the top of the chat – or down, like a
   phone’s bottom sheet; double-click or Enter toggles full height /
@@ -104,6 +112,21 @@
   row shows as taken in the others and cannot be picked there; on submit
   the first row keeps a choice named twice and choices in no group stay
   on their own. The value is unchanged: `list(group = choices)`.
+
+- `form_widgets =` on
+  [`codeagent_app()`](https://kaipingyang.github.io/codeagent/reference/codeagent_app.md)
+  and
+  [`codeagent_server()`](https://kaipingyang.github.io/codeagent/reference/codeagent_server.md):
+  how AskUserForm fields are drawn – Shiny’s controls by default,
+  presets `"shiny.element"` and `"shinyWidgets"` in priority order, host
+  presets and per-type widgets, mixed. New field attributes
+  `placeholder`, `min`/`max`/`step`, `allow_other`, `pattern` +
+  `pattern_hint` and `section`; the form lays itself out to the
+  available width (`width = "full"` keeps a field on its own row). Long
+  forms scroll their fields while Cancel / Submit stay in view (they
+  were cut off), and a refused submit says why next to the buttons,
+  marks the fields and focuses the first instead of a toast over the
+  buttons.
 
 - Fixed: a floating interaction card could be see-through. A form whose
   controls bring new dependencies (the date picker) was inserted after

@@ -717,8 +717,6 @@ Bind codeagent's parent-provider reviewer Chat factory.
 
 ### `DataShield$record_gate()`
 
-Return a copy of non-sensitive decision events.
-
 Record the input gate's final decision on a user's message (it can
 differ from the scan's own event: a scan that redacted may end in a
 block, and a pasted table in the user's choice).
@@ -741,10 +739,6 @@ block, and a pasted table in the user's choice).
 
   Number of matches.
 
-- `limit`:
-
-  Optional number of most recent events.
-
 #### Returns
 
 Invisibly `NULL`.
@@ -753,9 +747,17 @@ Invisibly `NULL`.
 
 ### `DataShield$audit()`
 
+Return a copy of non-sensitive decision events.
+
 #### Usage
 
     DataShield$audit(limit = NULL)
+
+#### Arguments
+
+- `limit`:
+
+  Optional number of most recent events.
 
 ------------------------------------------------------------------------
 

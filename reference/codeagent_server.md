@@ -34,7 +34,8 @@ codeagent_server(
   workspace = NULL,
   sessions = FALSE,
   themes = NULL,
-  on_theme = NULL
+  on_theme = NULL,
+  form_widgets = NULL
 )
 ```
 
@@ -153,6 +154,19 @@ codeagent_server(
 
   Optional `function(name)` called after the user switched the theme,
   e.g. to remember the choice for their next visit.
+
+- form_widgets:
+
+  How AskUserForm fields are drawn: `NULL` (Shiny's own controls),
+  preset names in priority order (`"shiny.element"`, `"shinyWidgets"`),
+  or a list mixing presets, your own presets (a named list of field type
+  -\> `function(id, label, value, choices, field)`) and named per-type
+  widgets, e.g. `list("shiny.element", date = my_date)`. For each field
+  type: a named entry, then the presets in order, then Shiny's control.
+  A widget's value must come back as `input[[id]]` in the shape of
+  Shiny's control for that type. A preset whose package is not installed
+  is skipped with a warning. Types: text, textarea, number, select,
+  multiselect, checkbox, date (grouping is always drawn by codeagent).
 
 ## Value
 

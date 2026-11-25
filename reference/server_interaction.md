@@ -26,7 +26,7 @@ Hard-won constraints (see `inst/examples/test_shiny_ask_fn.R`):
 ## Usage
 
 ``` r
-server_interaction(input, output, session, state)
+server_interaction(input, output, session, state, form_widgets = NULL)
 ```
 
 ## Arguments

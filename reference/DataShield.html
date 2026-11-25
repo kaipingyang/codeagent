@@ -721,8 +721,6 @@ is responsible for deciding what to read; the reviewer gets no tools).</p></dd>
 
 <p></p><hr><a id="method-DataShield-record_gate"></a><div class="section">
 <h3 id="datashield-record-gate-"><code>DataShield$record_gate()</code><a class="anchor" aria-label="anchor" href="#datashield-record-gate-"></a></h3>
-<p>Return a copy of non-sensitive decision events.</p>
-
 <p>Record the input gate's final decision on a user's message
 (it can differ from the scan's own event: a scan that redacted may
 end in a block, and a pasted table in the user's choice).</p><div class="section">
@@ -739,9 +737,6 @@ end in a block, and a pasted table in the user's choice).</p><div class="section
       <dt><code>match_count</code></dt>
 <dd><p>Number of matches.</p></dd>
 
-      <dt><code>limit</code></dt>
-<dd><p>Optional number of most recent events.</p></dd>
-
 
 </dl><p></p></div>
 </div><p></p><div class="section">
@@ -753,9 +748,16 @@ end in a block, and a pasted table in the user's choice).</p><div class="section
 
 <p></p><hr><a id="method-DataShield-audit"></a><div class="section">
 <h3 id="datashield-audit-"><code>DataShield$audit()</code><a class="anchor" aria-label="anchor" href="#datashield-audit-"></a></h3>
-<p></p><div class="section">
+<p>Return a copy of non-sensitive decision events.</p><div class="section">
 <h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">audit</span><span class="op">(</span>limit <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><div class="section">
+<h4 id="arguments-20">Arguments<a class="anchor" aria-label="anchor" href="#arguments-20"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>limit</code></dt>
+<dd><p>Optional number of most recent events.</p></dd>
+
+
+</dl><p></p></div>
 </div>
 
 </div>
@@ -775,7 +777,7 @@ end in a block, and a pasted table in the user's choice).</p><div class="section
 <h4 id="usage-24">Usage<a class="anchor" aria-label="anchor" href="#usage-24"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">DataShield</span><span class="op">$</span><span class="fu">clear</span><span class="op">(</span>name <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div><p></p><div class="section">
-<h4 id="arguments-20">Arguments<a class="anchor" aria-label="anchor" href="#arguments-20"></a></h4>
+<h4 id="arguments-21">Arguments<a class="anchor" aria-label="anchor" href="#arguments-21"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>name</code></dt>
 <dd><p>Character(1) or NULL. Dataset to remove; NULL removes every dataset.</p></dd>
 
