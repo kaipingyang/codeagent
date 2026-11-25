@@ -1,5 +1,12 @@
 # codeagent (development version)
 
+* The full-compaction system prompt has been rewritten in codeagent's own
+  words. It keeps the same contract -- text only, an `<analysis>` pass that is
+  discarded, then a `<summary>` with the same nine numbered sections -- so
+  summaries and the code that reads them are unchanged in shape. Comments and
+  documentation around context and compaction now describe behaviour instead
+  of referring to implementation files.
+
 * `coro` is now pinned to its GitHub development version (r-lib/coro#72).
   CRAN coro 1.1.0 made R byte-compile every generator again on each call,
   which added about 0.9 s to every model request -- once per tool round, in

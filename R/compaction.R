@@ -950,116 +950,53 @@ session_memory_compact <- function(chat,
 # L3: Full Compaction (fork agent, 9-section summary)
 # ---------------------------------------------------------------------------
 
-# Verbatim Claude Code compaction prompt (src/services/compact/prompt.ts:22
-# NO_TOOLS_PREAMBLE + prompt.ts:61 BASE_COMPACT_PROMPT, with prompt.ts:39
-# DETAILED_ANALYSIS_INSTRUCTION_BASE embedded). Transcribed ASCII-only (em-dash
-# -> "--"). Kept as a raw string so the text stays byte-for-byte aligned.
-# PINNED to Claude Code prompt structure with the 9 summary sections below
-# (Primary Request/Intent ... Optional Next Step). test-compaction-cc.R guards
-# against accidental drift of these section headers. Re-verify when tracking a
-# newer Claude Code release (CC is closed-source and this prompt can evolve).
-.COMPACT_SYSTEM_PROMPT <- r"---(CRITICAL: Respond with TEXT ONLY. Do NOT call any tools.
+# System prompt for a full compaction. Written for codeagent; the 9 numbered
+# section headings form the summary contract that later turns rely on and that
+# test-compaction-cc.R pins. The model writes a private <analysis> pass first,
+# which .extract_compact_summary() drops, then the <summary> that replaces the
+# compacted history. Keep the text ASCII-only (R CMD check).
+.COMPACT_SYSTEM_PROMPT <- r"---(Respond with TEXT ONLY. Do not call any tools -- no Read, Bash, Grep, Glob, Edit, Write or any other tool. Everything you need is in the conversation above, and a tool call here would be rejected and use up your only turn.
 
-- Do NOT use Read, Bash, Grep, Glob, Edit, Write, or ANY other tool.
-- You already have all the context you need in the conversation above.
-- Tool calls will be REJECTED and will waste your only turn -- you will fail the task.
-- Your entire response must be plain text: an <analysis> block followed by a <summary> block.
+The conversation above is about to be replaced by your summary. Whoever continues the work will see only what you write, so it has to carry every detail needed to pick up exactly where things stand: what the user wants, what has been done, and what is still open.
 
-Your task is to create a detailed summary of the conversation so far, paying close attention to the user's explicit requests and your previous actions.
-This summary should be thorough in capturing technical details, code patterns, and architectural decisions that would be essential for continuing development work without losing context.
+Reply with two blocks and nothing else:
 
-Before providing your final summary, wrap your analysis in <analysis> tags to organize your thoughts and ensure you've covered all necessary points. In your analysis process:
-
-1. Chronologically analyze each message and section of the conversation. For each section thoroughly identify:
-   - The user's explicit requests and intents
-   - Your approach to addressing the user's requests
-   - Key decisions, technical concepts and code patterns
-   - Specific details like:
-     - file names
-     - full code snippets
-     - function signatures
-     - file edits
-   - Errors that you ran into and how you fixed them
-   - Pay special attention to specific user feedback that you received, especially if the user told you to do something differently.
-2. Double-check for technical accuracy and completeness, addressing each required element thoroughly.
-
-Your summary should include the following sections:
-
-1. Primary Request and Intent: Capture all of the user's explicit requests and intents in detail
-2. Key Technical Concepts: List all important technical concepts, technologies, and frameworks discussed.
-3. Files and Code Sections: Enumerate specific files and code sections examined, modified, or created. Pay special attention to the most recent messages and include full code snippets where applicable and include a summary of why this file read or edit is important.
-4. Errors and fixes: List all errors that you ran into, and how you fixed them. Pay special attention to specific user feedback that you received, especially if the user told you to do something differently.
-5. Problem Solving: Document problems solved and any ongoing troubleshooting efforts.
-6. All user messages: List ALL user messages that are not tool results. These are critical for understanding the users' feedback and changing intent.
-7. Pending Tasks: Outline any pending tasks that you have explicitly been asked to work on.
-8. Current Work: Describe in detail precisely what was being worked on immediately before this summary request, paying special attention to the most recent messages from both user and assistant. Include file names and code snippets where applicable.
-9. Optional Next Step: List the next step that you will take that is related to the most recent work you were doing. IMPORTANT: ensure that this step is DIRECTLY in line with the user's most recent explicit requests, and the task you were working on immediately before this summary request. If your last task was concluded, then only list next steps if they are explicitly in line with the users request. Do not start on tangential requests or really old requests that were already completed without confirming with the user first.
-                       If there is a next step, include direct quotes from the most recent conversation showing exactly what task you were working on and where you left off. This should be verbatim to ensure there's no drift in task interpretation.
-
-Here's an example of how your output should be structured:
-
-<example>
 <analysis>
-[Your thought process, ensuring all points are covered thoroughly and accurately]
+Your working notes. Go through the conversation in order and note, for each part: what the user asked for and why, what was done about it, decisions taken and the reasons given, files, functions and commands involved, errors hit and how they were resolved, and any point where the user corrected or redirected the work. Then check the notes against the conversation for anything missing or wrong. These notes are discarded; only the summary is kept.
 </analysis>
 
 <summary>
 1. Primary Request and Intent:
-   [Detailed description]
+   Every request the user made, in enough detail that it could be acted on without the original messages, including goals that were only implied.
 
 2. Key Technical Concepts:
-   - [Concept 1]
-   - [Concept 2]
-   - [...]
+   The technologies, libraries, APIs, patterns and constraints the work depends on.
 
 3. Files and Code Sections:
-   - [File Name 1]
-      - [Summary of why this file is important]
-      - [Summary of the changes made to this file, if any]
-      - [Important Code Snippet]
-   - [File Name 2]
-      - [Important Code Snippet]
-   - [...]
+   Each file read, created or changed: its path, why it matters, what changed, and the code that matters most to continuing (full snippets for recent edits).
 
 4. Errors and fixes:
-    - [Detailed description of error 1]:
-      - [How you fixed the error]
-      - [User feedback on the error if any]
-    - [...]
+   Each problem encountered, its cause, how it was fixed, and any user feedback about it.
 
 5. Problem Solving:
-   [Description of solved problems and ongoing troubleshooting]
+   What has been worked out, and any investigation still in progress.
 
 6. All user messages:
-    - [Detailed non tool use user message]
-    - [...]
+   Every message the user wrote (not tool results), in order and close to their original wording, so that changes of direction and explicit constraints are preserved.
 
 7. Pending Tasks:
-   - [Task 1]
-   - [Task 2]
-   - [...]
+   Work the user asked for that is not finished yet.
 
 8. Current Work:
-   [Precise description of current work]
+   Exactly what was being done right before this summary: the files, code and state involved.
 
 9. Optional Next Step:
-   [Optional Next step to take]
-
+   The next action, only if it follows directly from the user's latest request and the work in progress. Quote the relevant part of the latest messages so the task is not reinterpreted. If the last task was finished, leave this empty unless the user asked for more; do not revive old or side requests without asking.
 </summary>
-</example>
 
-Please provide your summary based on the conversation so far, following this structure and ensuring precision and thoroughness in your response.
+Use the numbered headings exactly as shown. Be specific and complete rather than brief: names, paths, values and quotes are more useful than general descriptions.
 
-There may be additional summarization instructions provided in the included context. If so, remember to follow these instructions when creating the above summary. Examples of instructions include:
-<example>
-## Compact Instructions
-When summarizing the conversation focus on typescript code changes and also remember the mistakes you made and how you fixed them.
-</example>
-
-<example>
-# Summary instructions
-When you are using compact - please focus on test output and code changes. Include file reads verbatim.
-</example>
+The conversation may also contain the user's own instructions for how to summarize (for example, what to emphasise or keep verbatim). Follow them as well.
 )---"
 
 # Legacy alias kept so any external reference still resolves; prefer
@@ -1524,7 +1461,7 @@ CompactionController <- R6::R6Class(
         }
       )
       if (!identical(decision$reason, "callback_error")) {
-        # Increment failure counter only for genuine failures — NOT when
+        # Increment failure counter only for genuine failures -- NOT when
         # post_compact_still_large (the pipeline ran but couldn't compact
         # enough below threshold) or over_threshold_full_disabled.
         if (!isTRUE(decision$success) && decision$summary_calls > 0L &&
