@@ -1,4 +1,4 @@
-# Context-budget warning state (= calculateTokenWarningState, autoCompact.ts)
+# Context-budget warning state
 
 Computes how much context is left and which thresholds have been
 crossed, for the "X% context left" indicator in the REPL banner and

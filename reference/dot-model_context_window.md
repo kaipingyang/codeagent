@@ -1,7 +1,6 @@
-# Resolve a model's raw context window (= getContextWindowForModel, context.ts:51)
+# Resolve a model's raw context window
 
-Resolve a model's raw context window (= getContextWindowForModel,
-context.ts:51)
+Resolve a model's raw context window
 
 ## Usage
 

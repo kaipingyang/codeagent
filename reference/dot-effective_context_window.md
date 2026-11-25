@@ -1,7 +1,6 @@
-# Effective window after reserving output tokens (= getEffectiveContextWindowSize)
+# Effective window after reserving output tokens
 
-Effective window after reserving output tokens (=
-getEffectiveContextWindowSize)
+Effective window after reserving output tokens
 
 ## Usage
 

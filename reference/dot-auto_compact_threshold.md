@@ -1,6 +1,6 @@
-# Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)
+# Auto-compaction threshold
 
-Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)
+Auto-compaction threshold
 
 ## Usage
 
