@@ -1,5 +1,17 @@
 # codeagent (development version)
 
+* `coro` is now pinned to its GitHub development version (r-lib/coro#72).
+  CRAN coro 1.1.0 made R byte-compile every generator again on each call,
+  which added about 0.9 s to every model request -- once per tool round, in
+  the chat app as well as in `codeagent()`. A local A/B test against plain
+  shinychat + ellmer went from 1.4 s to 0.5 s to first token.
+
+* Fixed: a streamed turn released its async-turn ownership before an
+  asynchronous iterator `close` had finished. `promises::finally()` does not
+  wait for a promise returned by its callback; the slow coroutine start-up of
+  CRAN coro happened to hide the gap. The close is now chained explicitly and
+  the turn settles with its original result or error once it completes.
+
 * Fixed (review of the Data Shield display work): with `display = "hide"` a
   tool card stayed when the shield matched an identifier variant or an
   unregistered identifier shape (no column to ask) -- it is hidden now. Hit

@@ -46,9 +46,26 @@ NULL
     }
     advance()
   })
-  promises::finally(completion, function() {
-    if ("close" %in% names(formals(iterator))) iterator(close = TRUE)
-  })
+  # promises::finally() ignores a promise returned by its callback, so an
+  # asynchronous close would finish after the turn is released. Chain the
+  # close explicitly and settle with the original outcome once it is done.
+  close_iterator <- function() {
+    if (!"close" %in% names(formals(iterator))) return(promises::promise_resolve(NULL))
+    tryCatch({
+      closed <- iterator(close = TRUE)
+      if (promises::is.promise(closed)) closed else promises::promise_resolve(NULL)
+    }, error = function(e) promises::promise_reject(e))
+  }
+  promises::then(
+    completion,
+    onFulfilled = function(value) {
+      promises::then(close_iterator(), function(...) value)
+    },
+    onRejected = function(error) {
+      after <- function(...) stop(error)
+      promises::then(close_iterator(), after, after)
+    }
+  )
 }
 
 .run_codeagent_stream <- coro::async(function(start, consume, complete, fail) {
