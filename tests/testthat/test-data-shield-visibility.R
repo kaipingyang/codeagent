@@ -60,7 +60,7 @@ test_that("notices for calls that did not run say the user saw nothing", {
   expect_match(.DATA_SHIELD_SEEN[["not_run"]], "did not run")
   src <- paste(deparse(.data_shield_wrap_tool), collapse = "\n")
   expect_match(src, "The error was not shown to the user either", fixed = TRUE)
-  gate <- paste(readLines(test_path("..", "..", "R", "tools_gate.R")), collapse = "\n")
+  gate <- paste(deparse(.tool_gate_fn), collapse = "\n")    # the installed code, not the source tree
   expect_match(gate, "The tool did not run, so the user saw no result either", fixed = TRUE)
 })
 
