@@ -2,7 +2,7 @@
 % Please edit documentation in R/context.R
 \name{.model_context_window}
 \alias{.model_context_window}
-\title{Resolve a model's raw context window (= getContextWindowForModel, context.ts:51)}
+\title{Resolve a model's raw context window}
 \usage{
 .model_context_window(model, chat = NULL)
 }
@@ -15,6 +15,6 @@
 Integer token count.
 }
 \description{
-Resolve a model's raw context window (= getContextWindowForModel, context.ts:51)
+Resolve a model's raw context window
 }
 \keyword{internal}

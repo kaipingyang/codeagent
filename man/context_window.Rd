@@ -5,15 +5,14 @@
 \title{Dynamic context-window resolution}
 \description{
 Resolves a model's context window and the auto-compaction
-threshold dynamically, instead of hard-coding 200K. Mirrors Claude Code:
-\code{src/utils/context.ts} (\code{getContextWindowForModel},
-\code{getEffectiveContextWindowSize}) and \code{src/services/compact/autoCompact.ts}
-(\code{getAutoCompactThreshold}).
+threshold dynamically, instead of hard-coding 200K. Aligned with Claude
+Code's public auto-compaction behaviour (compaction triggers a fixed buffer
+below the model's effective context window).
 
 Resolution order for the raw window (highest priority first):
 \enumerate{
-\item \code{CODEAGENT_MAX_CONTEXT_TOKENS} env override (= CLAUDE_CODE_MAX_CONTEXT_TOKENS)
-\item \verb{[1m]} suffix in the model name -> 1,000,000 (= has1mContext)
+\item \code{CODEAGENT_MAX_CONTEXT_TOKENS} env override
+\item \verb{[1m]} suffix in the model name -> 1,000,000
 \item Known-model capability table / provider-reported value (>= 100K trusted)
 \item \code{.MODEL_CONTEXT_WINDOW_DEFAULT} (200K)
 }

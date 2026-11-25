@@ -2,7 +2,7 @@
 % Please edit documentation in R/context.R
 \name{.auto_compact_threshold}
 \alias{.auto_compact_threshold}
-\title{Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)}
+\title{Auto-compaction threshold}
 \usage{
 .auto_compact_threshold(model, chat = NULL, context_window = NULL)
 }
@@ -18,6 +18,6 @@ is reduced by the same model output reserve and autocompact buffer.}
 Integer token count at/above which auto-compaction should trigger.
 }
 \description{
-Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)
+Auto-compaction threshold
 }
 \keyword{internal}

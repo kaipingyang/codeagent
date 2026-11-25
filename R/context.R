@@ -1,13 +1,12 @@
 #' @title Dynamic context-window resolution
 #' @description Resolves a model's context window and the auto-compaction
-#'   threshold dynamically, instead of hard-coding 200K. Mirrors Claude Code:
-#'   `src/utils/context.ts` (`getContextWindowForModel`,
-#'   `getEffectiveContextWindowSize`) and `src/services/compact/autoCompact.ts`
-#'   (`getAutoCompactThreshold`).
+#'   threshold dynamically, instead of hard-coding 200K. Aligned with Claude
+#'   Code's public auto-compaction behaviour (compaction triggers a fixed buffer
+#'   below the model's effective context window).
 #'
 #'   Resolution order for the raw window (highest priority first):
-#'   1. `CODEAGENT_MAX_CONTEXT_TOKENS` env override (= CLAUDE_CODE_MAX_CONTEXT_TOKENS)
-#'   2. `[1m]` suffix in the model name -> 1,000,000 (= has1mContext)
+#'   1. `CODEAGENT_MAX_CONTEXT_TOKENS` env override
+#'   2. `[1m]` suffix in the model name -> 1,000,000
 #'   3. Known-model capability table / provider-reported value (>= 100K trusted)
 #'   4. `.MODEL_CONTEXT_WINDOW_DEFAULT` (200K)
 #' @name context_window
@@ -15,8 +14,7 @@
 NULL
 
 # Known context windows (max INPUT tokens), matched by substring, longest key
-# wins. Mirrors getModelCapability.max_input_tokens (modelCapabilities.ts:75) --
-# Claude Code likewise maintains a table plus provider detection.
+# wins. A provider-reported window takes precedence when available.
 .MODEL_CONTEXT_WINDOW_TABLE <- c(
   "claude-3-5-haiku"  = 200000L,
   "claude-3-5-sonnet" = 200000L,
@@ -47,7 +45,7 @@ NULL
 )
 
 # Max OUTPUT tokens by model (used to size the reserve). Mirrors Claude Code
-# getMaxOutputTokensForModel (claude.ts). Substring match, longest key wins.
+# Substring match, longest key wins.
 .MODEL_MAX_OUTPUT_TABLE <- c(
   "claude-3-5-haiku"  = 8192L,
   "claude-3-5-sonnet" = 8192L,
@@ -87,33 +85,32 @@ NULL
   }, error = function(e) NA_integer_)
 }
 
-# = getModelCapability.max_input_tokens (modelCapabilities.ts:75): provider
-# value if exposed, else the built-in table.
+# Provider-reported value if exposed, else the built-in table.
 .model_capability_tokens <- function(model, chat = NULL) {
   pv <- .provider_reported_window(chat)
   if (!is.na(pv)) return(pv)
   .table_lookup_prefix(model, .MODEL_CONTEXT_WINDOW_TABLE)
 }
 
-# = getMaxOutputTokensForModel (claude.ts): reserve for the model's output.
+# Tokens reserved for the model's output.
 .max_output_tokens_for_model <- function(model) {
   v <- .table_lookup_prefix(model, .MODEL_MAX_OUTPUT_TABLE)
   if (is.na(v)) .MAX_OUTPUT_TOKENS_FOR_SUMMARY else v
 }
 
-#' Resolve a model's raw context window (= getContextWindowForModel, context.ts:51)
+#' Resolve a model's raw context window
 #' @param model Character. Model id/name.
 #' @param chat An `ellmer::Chat` or NULL (used to read provider-reported window).
 #' @return Integer token count.
 #' @keywords internal
 .model_context_window <- function(model, chat = NULL) {
-  # 1. Env override (= CLAUDE_CODE_MAX_CONTEXT_TOKENS)
+  # 1. Env override
   env <- Sys.getenv("CODEAGENT_MAX_CONTEXT_TOKENS", "")
   if (nzchar(env)) {
     v <- suppressWarnings(as.integer(env))
     if (!is.na(v) && v > 0L) return(v)
   }
-  # 2. [1m] suffix (= has1mContext, context.ts:35). Match only at end of model name.
+  # 2. [1m] suffix. Match only at end of model name.
   if (!is.null(model) && grepl("\\[1m\\]$", model, ignore.case = TRUE)) return(1000000L)
   # 3. Capability (provider value or table); only trust >= 100K (= CC guard)
   cap <- .model_capability_tokens(model, chat)
@@ -122,14 +119,14 @@ NULL
   .MODEL_CONTEXT_WINDOW_DEFAULT
 }
 
-#' Effective window after reserving output tokens (= getEffectiveContextWindowSize)
+#' Effective window after reserving output tokens
 #' @inheritParams .model_context_window
 #' @return Integer token count (window minus output reserve).
 #' @keywords internal
 .effective_context_window <- function(model, chat = NULL) {
   reserve <- min(.max_output_tokens_for_model(model), .MAX_OUTPUT_TOKENS_FOR_SUMMARY)
   cw      <- .model_context_window(model, chat)
-  acw     <- Sys.getenv("CODEAGENT_AUTO_COMPACT_WINDOW", "")   # = CLAUDE_CODE_AUTO_COMPACT_WINDOW
+  acw     <- Sys.getenv("CODEAGENT_AUTO_COMPACT_WINDOW", "")
   if (nzchar(acw)) {
     v <- suppressWarnings(as.integer(acw))
     if (!is.na(v) && v > 0L) cw <- min(cw, v)
@@ -137,7 +134,7 @@ NULL
   cw - reserve
 }
 
-#' Auto-compaction threshold (= getAutoCompactThreshold, autoCompact.ts:72)
+#' Auto-compaction threshold
 #' @inheritParams .model_context_window
 #' @param context_window Optional explicit raw context window. When supplied it
 #'   is reduced by the same model output reserve and autocompact buffer.
@@ -166,12 +163,12 @@ NULL
   .effective_context_window(model, chat) - .AUTOCOMPACT_BUFFER_TOKENS
 }
 
-# Auto-compaction on unless explicitly disabled (= CLAUDE_CODE_DISABLE_COMPACT).
+# Auto-compaction on unless explicitly disabled.
 auto_compact_enabled <- function() {
   Sys.getenv("CODEAGENT_DISABLE_COMPACT", "") == ""
 }
 
-#' Context-budget warning state (= calculateTokenWarningState, autoCompact.ts)
+#' Context-budget warning state
 #'
 #' Computes how much context is left and which thresholds have been crossed,
 #' for the "X% context left" indicator in the REPL banner and Shiny status bar.

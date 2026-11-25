@@ -38,31 +38,28 @@ NULL
 .COMPACT_FULL_TRUNCATE_CHARS <- 400000L
 
 # ---------------------------------------------------------------------------
-# Claude Code-aligned context/compaction constants
-# (src/services/compact/autoCompact.ts + src/utils/context.ts)
+# Context/compaction constants, aligned with Claude Code's public
+# auto-compaction behaviour
 # ---------------------------------------------------------------------------
 
-# Default context window when a model is unknown (context.ts:9
-# MODEL_CONTEXT_WINDOW_DEFAULT).
+# Default context window when a model is unknown.
 .MODEL_CONTEXT_WINDOW_DEFAULT <- 200000L
 
-# Output tokens reserved for the summary response (autoCompact.ts
-# MAX_OUTPUT_TOKENS_FOR_SUMMARY).
+# Output tokens reserved for the summary response.
 .MAX_OUTPUT_TOKENS_FOR_SUMMARY <- 20000L
 
-# Extra buffer below the effective window that triggers auto-compaction
-# (autoCompact.ts:62 AUTOCOMPACT_BUFFER_TOKENS). 20000 + 13000 == 33000, i.e.
+# Extra buffer below the effective window that triggers auto-compaction.
+# 20000 + 13000 == 33000, i.e.
 # the historical .COMPACT_TRIGGER_MARGIN for a 200K model.
 .AUTOCOMPACT_BUFFER_TOKENS <- 13000L
 
-# Warning / error / manual-compact buffers for the %-left indicator
-# (autoCompact.ts WARNING/ERROR/MANUAL_COMPACT_BUFFER_TOKENS).
+# Warning / error / manual-compact buffers for the %-left indicator.
 .WARNING_THRESHOLD_BUFFER <- 20000L
 .ERROR_THRESHOLD_BUFFER   <- 20000L
 .MANUAL_COMPACT_BUFFER    <- 3000L
 
-# Circuit breaker: stop auto-compacting after this many consecutive failures
-# (autoCompact.ts MAX_CONSECUTIVE_AUTOCOMPACT_FAILURES). Mirrors the existing
+# Circuit breaker: stop auto-compacting after this many consecutive failures.
+# Mirrors the existing
 # .COMPACT_CIRCUIT_BREAKER_LIMIT.
 .MAX_CONSECUTIVE_COMPACT_FAILS <- 3L
 

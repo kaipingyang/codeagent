@@ -1,7 +1,7 @@
-# Tests for compaction phases 5 (verbatim prompt + summary extraction) and
+# Tests for compaction phases 5 (compaction prompt + summary extraction) and
 # 6 (real token counting via get_tokens).
 
-test_that(".COMPACT_SYSTEM_PROMPT is the verbatim 9-section Claude Code prompt", {
+test_that(".COMPACT_SYSTEM_PROMPT is a text-only 9-section summary prompt", {
   p <- .COMPACT_SYSTEM_PROMPT
   expect_true(grepl("Respond with TEXT ONLY", p, fixed = TRUE))
   expect_true(grepl("1. Primary Request and Intent", p, fixed = TRUE))
@@ -151,7 +151,7 @@ test_that(".repl_dispatch captures /compact focus instructions", {
   expect_identical(d$arg, "keep debug details")
 })
 
-test_that("compaction prompt keeps all 9 Claude Code summary sections", {
+test_that("compaction prompt keeps all 9 summary sections", {
   sections <- c(
     "1. Primary Request and Intent", "2. Key Technical Concepts",
     "3. Files and Code Sections", "4. Errors and fixes", "5. Problem Solving",

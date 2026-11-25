@@ -4,7 +4,7 @@
 \alias{DenialTracker}
 \title{Track permission denials and emit warnings at thresholds}
 \description{
-Mirrors Claude Code's \code{denialTracking.ts} behaviour:
+Aligned with Claude Code's public permission-denial behaviour:
 \itemize{
 \item 3 consecutive denials -> warning to reconsider permission mode
 \item 20 total denials     -> warning to review permission configuration
