@@ -10,14 +10,14 @@ metadata:
 ## 安装当前已验收GitHub HEAD
 
 先重新查询各仓库HEAD；确认后用完整SHA安装，且只更新`Depends`、`Imports`、
-`LinkingTo`运行时依赖，不批量升级无关CRAN包。2026-10-21 manifest：
+`LinkingTo`运行时依赖，不批量升级无关CRAN包。2026-11-25 manifest：
 
 ```r
 refs <- c(
-  "tidyverse/ellmer@3ebd68f749d77d66587ad6e779e90c53a9372b5c",
+  "tidyverse/ellmer@602867c456e85f7ab59ad69859f6562679e52f34",
   "posit-dev/btw@df0f3d345829664d1a483063279896c0777e9f96",
   "posit-dev/shinychat/pkg-r@2a1d456cb640692d58a51c8f58d87df8aa043d39",
-  "rstudio/shiny@1f85217932665592b9715be794eee87c53f6bb3f",
+  "rstudio/shiny@4f2217e332c9c346295b860997612dafb5e7f319",
   "rstudio/bslib@20b165f78ca479ffdcf5314a959dcf6f5e64ab10",
   "posit-dev/mcptools@714803bdfce903707a27d9c4740591d87f601aae",
   "r-lib/Rapp@489655f24945042791ddb083d0d5518c4a905d9f",
@@ -63,10 +63,10 @@ pak::pak(c(
 当前个人默认开发环境使用以下完整manifest；0.2.0 shared library保持上方历史
 基线，不得被普通开发安装覆盖：
 
-- `ellmer` 0.5.2.9000 @ `3ebd68f749d77d66587ad6e779e90c53a9372b5c`
+- `ellmer` 0.5.2.9000 @ `602867c456e85f7ab59ad69859f6562679e52f34`
 - `btw` 1.5.0.9000 @ `df0f3d345829664d1a483063279896c0777e9f96`
 - `shinychat` 0.5.0.9000 @ `2a1d456cb640692d58a51c8f58d87df8aa043d39`（monorepo：`posit-dev/shinychat/pkg-r`）
-- `shiny` 1.14.0.9000 @ `1f85217932665592b9715be794eee87c53f6bb3f`
+- `shiny` 1.15.0.9000 @ `4f2217e332c9c346295b860997612dafb5e7f319`
 - `bslib` 0.12.0.9000 @ `20b165f78ca479ffdcf5314a959dcf6f5e64ab10`
 - `mcptools` 1.0.3.9000 @ `714803bdfce903707a27d9c4740591d87f601aae`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`

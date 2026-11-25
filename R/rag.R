@@ -33,6 +33,19 @@ NULL
 .RAG_DEFAULT_GLOBS <- c("R/*.R", "*.R", "*.md", "*.Rmd", "*.qmd",
                         "tests/testthat/*.R", "inst/**/*.R")
 
+# Plain-text sources are read directly. ragnar::read_as_markdown() converts
+# through Python MarkItDown (installed on first use via reticulate), which is
+# only worth it for formats such as PDF, DOCX or HTML.
+.RAG_TEXT_EXTENSIONS <- c("r", "md", "rmd", "qmd", "txt", "markdown")
+
+.rag_read_document <- function(path) {
+  if (tolower(tools::file_ext(path)) %in% .RAG_TEXT_EXTENSIONS) {
+    text <- paste(readLines(path, warn = FALSE, encoding = "UTF-8"), collapse = "\n")
+    return(ragnar::MarkdownDocument(text, origin = path))
+  }
+  ragnar::read_as_markdown(path)
+}
+
 #' Build (or rebuild) a codebase vector store
 #'
 #' Reads matching project files, chunks them, embeds, and writes a ragnar store
@@ -74,8 +87,8 @@ build_codebase_store <- function(cwd = getwd(),
   # Read -> chunk -> insert each file. Errors on a single file are skipped.
   for (f in files) {
     tryCatch({
-      doc    <- ragnar::ragnar_read(f)
-      chunks <- ragnar::ragnar_chunk(doc, max_size = 1600L)
+      doc    <- .rag_read_document(f)
+      chunks <- ragnar::markdown_chunk(doc, target_size = 1600L)
       ragnar::ragnar_store_insert(store, chunks)
     }, error = function(e) NULL)
   }

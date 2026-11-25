@@ -74,8 +74,11 @@ NULL
 }
 
 # Try to read the context window the provider itself reports (e.g. OpenRouter
-# `context_length`, Ollama model info). ellmer does not expose a stable API for
-# this yet, so this is a best-effort hook that returns NA when unavailable.
+# `context_length`, Ollama model info) from metadata already on the Chat. This
+# is a best-effort hook that returns NA when unavailable. ellmer's
+# Chat$get_max_context_length() is deliberately not called here: its first call
+# requests the provider's model listing, and token accounting must not make
+# implicit network requests.
 .provider_reported_window <- function(chat) {
   if (is.null(chat)) return(NA_integer_)
   tryCatch({

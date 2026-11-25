@@ -1,5 +1,19 @@
 # codeagent (development version)
 
+* Upstream packages updated: ellmer (with S7 1.0.0) and shiny 1.15.0.9000 are
+  pinned to their current GitHub HEADs; btw, shinychat, bslib, shinyglass,
+  shinygenui, mcptools, Rapp and coro were already current. httr2 stays at its
+  pinned commit because its current HEAD needs an unreleased curl change.
+  ellmer's new `Chat$get_max_context_length()` is not used for compaction: its
+  first call requests the provider's model listing, and token accounting makes
+  no implicit network requests.
+
+* `build_codebase_store()` no longer uses `ragnar_read()` / `ragnar_chunk()`,
+  which ragnar 0.4.0 deprecates. R, Markdown, R Markdown and Quarto files are
+  read directly instead of going through Python MarkItDown, so indexing a
+  codebase no longer installs Python packages on first use. Other formats still
+  use `ragnar::read_as_markdown()`. Requires ragnar >= 0.2.0.
+
 * The full-compaction system prompt has been rewritten in codeagent's own
   words. It keeps the same contract -- text only, an `<analysis>` pass that is
   discarded, then a `<summary>` with the same nine numbered sections -- so

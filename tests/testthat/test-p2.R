@@ -683,3 +683,26 @@ test_that("network MCP server cannot expose session tools", {
                          host = "0.0.0.0", session_tools = TRUE),
     "loopback")
 })
+
+test_that("build_codebase_store reads text sources directly and indexes every file", {
+  skip_if_not_installed("ragnar")
+  skip_if_not_installed("duckdb")
+  d <- withr::local_tempdir()
+  dir.create(file.path(d, "R"))
+  writeLines(c("# Add two numbers", "add <- function(a, b) a + b"), file.path(d, "R", "add.R"))
+  writeLines(c("# Notes", "", "The add() helper sums two numbers."), file.path(d, "notes.md"))
+  fake_embed <- function(x) {
+    m <- matrix(0, length(x), 8L)
+    m[, 1L] <- nchar(x)
+    m
+  }
+  local_mocked_bindings(.rag_embed_fn = function() fake_embed)
+  # Text files must not go through Python MarkItDown.
+  local_mocked_bindings(read_as_markdown = function(...) stop("read_as_markdown called"),
+                        .package = "ragnar")
+  store <- expect_no_warning(
+    build_codebase_store(cwd = d, location = file.path(d, "store.duckdb")))
+  expect_s3_class(store, "ragnar::DuckDBRagnarStore")
+  origins <- DBI::dbGetQuery(store@con, "SELECT DISTINCT origin FROM chunks")$origin
+  expect_setequal(basename(origins), c("add.R", "notes.md"))
+})
