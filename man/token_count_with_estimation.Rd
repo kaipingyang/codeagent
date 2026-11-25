@@ -17,9 +17,8 @@ compaction paths never perform implicit token-count HTTP requests.}
 Integer token count.
 }
 \description{
-Mirrors Claude Code \code{tokenCountWithEstimation} (src/utils/tokens.ts): use the
-real token usage from the last API exchange when available, otherwise fall
-back to the char/3.5 estimate. This makes the compaction trigger fire on
+Uses the real token usage from the last API exchange when available,
+otherwise falls back to the char/3.5 estimate. This makes the compaction trigger fire on
 actual model token counts rather than a rough character approximation.
 }
 \keyword{internal}

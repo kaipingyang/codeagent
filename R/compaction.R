@@ -106,9 +106,8 @@ estimate_tokens <- function(chat) {
 
 #' Token count preferring real usage over the char heuristic
 #'
-#' Mirrors Claude Code `tokenCountWithEstimation` (src/utils/tokens.ts): use the
-#' real token usage from the last API exchange when available, otherwise fall
-#' back to the char/3.5 estimate. This makes the compaction trigger fire on
+#' Uses the real token usage from the last API exchange when available,
+#' otherwise falls back to the char/3.5 estimate. This makes the compaction trigger fire on
 #' actual model token counts rather than a rough character approximation.
 #'
 #' @param chat An `ellmer::Chat` object.
@@ -1068,7 +1067,7 @@ When you are using compact - please focus on test output and code changes. Inclu
 .FULL_COMPACT_SYSTEM <- .COMPACT_SYSTEM_PROMPT
 
 # Extract the <summary> block, dropping the <analysis> scratch pad
-# (= formatCompactSummary, prompt.ts:327). Returns "Summary:\n<body>".
+# Returns "Summary:\n<body>".
 .extract_compact_summary <- function(text) {
   text <- as.character(text %||% "")
   if (grepl("<summary>", text, fixed = TRUE)) {

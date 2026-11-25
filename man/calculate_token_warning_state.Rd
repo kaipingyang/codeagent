@@ -2,7 +2,7 @@
 % Please edit documentation in R/context.R
 \name{calculate_token_warning_state}
 \alias{calculate_token_warning_state}
-\title{Context-budget warning state (= calculateTokenWarningState, autoCompact.ts)}
+\title{Context-budget warning state}
 \usage{
 calculate_token_warning_state(token_usage, model, chat = NULL)
 }

@@ -1,6 +1,5 @@
 # Tests for dynamic context-window resolution (R/context.R) — Claude Code
-# alignment (getContextWindowForModel / getEffectiveContextWindowSize /
-# getAutoCompactThreshold).
+# alignment (raw window, effective window, auto-compact threshold).
 
 test_that(".model_context_window resolves known models from the table", {
   expect_identical(.model_context_window("claude-sonnet-4-5"), 200000L)

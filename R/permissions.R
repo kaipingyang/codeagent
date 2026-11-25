@@ -274,7 +274,7 @@ check_permission <- function(tool_name, mode = "default",
 
 #' Track permission denials and emit warnings at thresholds
 #'
-#' Mirrors Claude Code's `denialTracking.ts` behaviour:
+#' Aligned with Claude Code's public permission-denial behaviour:
 #' * 3 consecutive denials -> warning to reconsider permission mode
 #' * 20 total denials     -> warning to review permission configuration
 #'

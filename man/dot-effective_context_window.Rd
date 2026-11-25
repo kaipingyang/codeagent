@@ -2,7 +2,7 @@
 % Please edit documentation in R/context.R
 \name{.effective_context_window}
 \alias{.effective_context_window}
-\title{Effective window after reserving output tokens (= getEffectiveContextWindowSize)}
+\title{Effective window after reserving output tokens}
 \usage{
 .effective_context_window(model, chat = NULL)
 }
@@ -15,6 +15,6 @@
 Integer token count (window minus output reserve).
 }
 \description{
-Effective window after reserving output tokens (= getEffectiveContextWindowSize)
+Effective window after reserving output tokens
 }
 \keyword{internal}
