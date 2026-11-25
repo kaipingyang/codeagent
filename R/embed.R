@@ -267,8 +267,10 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                              modes = NULL, on_restore = NULL,
                              on_tool_open = NULL, on_user_prompt = NULL, workspace = NULL,
                              sessions = FALSE, themes = NULL, on_theme = NULL,
-                             form_widgets = NULL) {
-  .form_widgets_resolve(form_widgets)   # fail early on a bad spec
+                             form_widgets = NULL, intent_router = NULL) {
+  .form_widgets_resolve(form_widgets)
+  if (!is.null(intent_router) && !is.function(intent_router))
+    stop("`intent_router` must be NULL or a function(text, last_reply).", call. = FALSE)   # fail early on a bad spec
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
@@ -314,7 +316,10 @@ codeagent_server <- function(input, output, session, client, tools = list(),
     input, output, session, client,
     canvas = canvas, canvas_explicit = !is.null(canvas), per_session = TRUE,
     tools_ready = FALSE, host_tools = tools, tool_meta = tool_meta,
-    settings_overrides = list(form_widgets = form_widgets))
+    settings_overrides = list(form_widgets = form_widgets, intent_router = intent_router,
+                              intent_state = new.env(parent = emptyenv())))
+  if (is.function(intent_router))   # a forced first tool is cleared once the model asks for a tool
+    client$chat$on_tool_request(function(request) .clear_forced_tool(client$chat, core$settings$intent_state))
   # shinychat slash-command typeahead for skills and local commands ("/").
   server_slash(input, session, cwd = core$settings$cwd %||% getwd(),
                stream_task = core$stream_task, chat = client$chat,

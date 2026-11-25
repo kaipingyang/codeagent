@@ -200,9 +200,19 @@ server_chat <- function(input, output, session, chat, settings,
     ctrl <- shiny::isolate(state$compaction_ctrl)
     rs   <- shiny::isolate(state$resource_state)
     iter <- shiny::isolate(state$iteration %||% 1L)
+    # Intent routing (prototype): the host's router may force this turn's
+    # first tool or add a hint (R/intent_router.R).
+    add_ctx <- ups$additional_context
+    if (is.function(settings$intent_router)) {
+      .clear_forced_tool(chat, settings$intent_state)
+      route <- .route_intent(settings$intent_router, chat, text_part, names(chat$get_tools()))
+      if (length(route$hint) && nzchar(route$hint)) add_ctx <- paste(c(add_ctx, route$hint), collapse = "\n")
+    }
     actual_input <- .turn_setup(chat, actual_input, iter, cwd, ctrl, rs,
                                 session_id = shiny::isolate(state$session_id),
-                                additional_context = ups$additional_context)
+                                additional_context = add_ctx)
+    if (is.function(settings$intent_router))
+      .force_first_tool(chat, settings$intent_state, route$force)
     # Turns before this round (after any compaction above): what the round adds
     # is appended to the history's presentation record (history_shinychat.R).
     round_start <- length(tryCatch(chat$get_turns(), error = function(e) list()))
