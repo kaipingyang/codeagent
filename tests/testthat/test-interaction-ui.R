@@ -140,3 +140,17 @@ test_that("a floating card is opaque and placed once its content is in the page"
   js <- paste(readLines(test_path("../../inst/www/interaction.js")), collapse = "\n")
   expect_match(js, "MutationObserver(function () { init(document); placeAll(); })", fixed = TRUE)
 })
+
+test_that("interaction cards are resizable: handle, 60% default cap, buttons stay in view", {
+  js <- paste(readLines(system.file("www", "interaction.js", package = "codeagent")), collapse = "\n")
+  css <- paste(readLines(system.file("www", "styles.css", package = "codeagent")), collapse = "\n")
+  dsh <- paste(readLines(system.file("themes", "dsh.scss", package = "codeagent")), collapse = "\n")
+  expect_match(js, "l.height * 0.6", fixed = TRUE)
+  expect_match(js, 'h.className = "ca-ia-handle"', fixed = TRUE)
+  expect_match(js, '"codeagent.ia-height"', fixed = TRUE)
+  expect_match(js, "function placeInline(", fixed = TRUE)
+  expect_match(css, "max-height: var(--ca-ia-max-height, 60%)", fixed = TRUE)
+  expect_match(css, "height: var(--ca-ia-height, auto)", fixed = TRUE)
+  expect_match(css, ".ca-interaction--scroll > .ca-interaction-actions {\n  position: sticky;", fixed = TRUE)
+  expect_match(dsh, "body .ca-interaction--scroll > .ca-interaction-body {\n  flex: 1 1 auto;\n  min-height: 0;\n  overflow-y: auto;", fixed = TRUE)
+})

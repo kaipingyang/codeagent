@@ -701,6 +701,19 @@ body .ca-interaction-command {
   line-height: 20px;
   word-break: break-all;
 }
+/* A long card (a form) in the composer's place: the body scrolls, the buttons
+   stay in view (the card clips its overflow, so they were cut off). */
+body .ca-interaction--scroll {
+  overflow: hidden;
+}
+body .ca-interaction--scroll > .ca-interaction-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+body .ca-interaction > .ca-interaction-actions {
+  flex: 0 0 auto;
+}
 body .ca-interaction-actions {
   display: flex;
   justify-content: flex-end;
