@@ -19,8 +19,10 @@ codeagent_server(
   on_tool_open = NULL,
   on_user_prompt = NULL,
   workspace = NULL,
-  form_widgets = NULL,
-  sessions = FALSE
+  sessions = FALSE,
+  themes = NULL,
+  on_theme = NULL,
+  form_widgets = NULL
 )
 }
 \arguments{
@@ -80,6 +82,18 @@ what a project contains), sent once with the first turn.}
 host content gets its own tab; open tabs with the returned \code{ws}. Without an
 \code{on_tool_open}, opening a tool card in the chat opens its result tab.}
 
+\item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
+
+\item{themes}{\code{NULL} (the page keeps its theme) or a named list, theme
+name -> a bslib theme or a \code{\link[=codeagent_theme]{codeagent_theme()}} style name (e.g.
+\code{list(default = bslib::bs_theme(version = 5), dsh = "dsh")}); place
+\code{\link[=codeagent_theme_ui]{codeagent_theme_ui()}} with the same names in the page. The user switches
+the page's theme while the session runs; the page structure, chat and tabs
+stay. The page must be built with a bslib theme.}
+
+\item{on_theme}{Optional \verb{function(name)} called after the user switched
+the theme, e.g. to remember the choice for their next visit.}
+
 \item{form_widgets}{How AskUserForm fields are drawn: \code{NULL} (Shiny's own
 controls), preset names in priority order (\code{"shiny.element"},
 \code{"shinyWidgets"}), or a list mixing presets, your own presets (a named list
@@ -90,8 +104,6 @@ A widget's value must come back as \code{input[[id]]} in the shape of Shiny's
 control for that type. A preset whose package is not installed is skipped
 with a warning. Types: text, textarea, number, select, multiselect,
 checkbox, date (grouping is always drawn by codeagent).}
-
-\item{sessions}{Deprecated: \code{TRUE} is \code{history = "codeagent"}.}
 }
 \value{
 Invisibly, a list with \code{state} (the session \code{reactiveValues}),

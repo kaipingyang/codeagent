@@ -80,13 +80,15 @@ test_that(".input_gate_scan honors block via settings on_fail", {
   expect_identical(res$action, "block")
 })
 
-test_that(".input_gate_scan degrades ask to redact (fail-safe, never sends raw)", {
+test_that(".input_gate_scan with ask blocks subject identifiers and says why (never sends raw)", {
   sh <- make_shield()
   res <- codeagent:::.input_gate_scan(
     "SUBJECT006 here", settings = list(data_shield_engine = sh,
                                        data_shield_prompt_on_fail = "ask"))
-  expect_identical(res$action, "redact")
-  expect_false(grepl("SUBJECT006", res$input, fixed = TRUE))
+  expect_identical(res$action, "block")
+  expect_match(res$text, "not sent: it contains subject identifiers")
+  expect_false(grepl("SUBJECT006", res$text, fixed = TRUE))
+  expect_true(length(res$sources) >= 1L)
 })
 
 test_that(".input_gate_scan redacts the text element of a contents list", {

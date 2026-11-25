@@ -1,5 +1,79 @@
 # codeagent (development version)
 
+* Interaction cards (questions, forms, approvals) have a handle on the top
+  edge: drag it up -- as far as the top of the chat -- or down, like a phone's
+  bottom sheet; double-click or Enter toggles full height / default, arrow keys
+  step it. The default cap is 60% of the chat (was half). The browser keeps the
+  chosen height for later cards (capped by it, they still shrink to their
+  content). In the composer's place (theme `"dsh"`), forms get the same handle.
+* A long form keeps its buttons in view: the fields scroll, Cancel / Submit
+  stay at the bottom (with `theme = "dsh"` they were cut off).
+
+* New `codeagent_theme_ui()` + `codeagent_server(themes =, on_theme =)`: the
+  user switches the page's theme (e.g. the default look and
+  `codeagent_theme("dsh")`) while the session runs; the page structure, chat
+  and tabs stay. `on_theme` lets the host remember the choice.
+* Fixed: after a runtime theme swap (`session$setCurrentTheme()`), the theme's
+  stylesheets were re-added at the end of `<head>` and overrode the component
+  and host CSS (the chat composer got Bootstrap's input box and its send button
+  wrapped). Stylesheets that followed the theme move back behind it; the sheets
+  Shiny re-adds stay where it put them, so each is replaced, not duplicated.
+* `theme = "dsh"`: the empty composer's placeholder stays on one line (it
+  wrapped and showed a scrollbar).
+* `theme = "dsh"`: the shinychat history drawer of a host page
+  (`codeagent_chat_ui(history = TRUE)`) has the DSH sidebar surface; it was
+  transparent, so the chat showed through the list. Only the history column
+  of the DSH page sidebar stays transparent.
+
+* Data Shield says what the user still sees. Every notice the model gets ends
+  with one of "The user sees the full result in the tool card; only you cannot
+  see it.", "The result was not shown to the user either." or "The tool did
+  not run, so the user saw no result either." (tool errors, rejected
+  arguments, sandbox / policy denials included), so the model can tell the user.
+* `register_data(display =)` and `column_access(display =)`: whether the user
+  may see a dataset's / column's protected values in the tool's own card when
+  they are kept from the model. Default unchanged: `"show"`, except
+  `egress = "none"` columns, which are `"hide"`. With `"show"` only the
+  model-facing value is replaced; with `"hide"` the card is dropped too.
+* New `shield_prompt(on_fail)` strategy: the input gate's policy set on the
+  shield itself (a client's `settings$data_shield_prompt_on_fail` still wins);
+  `DataShield$prompt_on_fail()` reads it.
+* Prompt gate `data_shield_prompt_on_fail = "ask"` is now tiered: subject
+  identifiers block the message (with the source columns, never the values);
+  a pasted table of numbers (5+ lines with numbers, or 8+ tab / |-separated
+  cells with digits -- shinychat joins the lines of a paste -- or 3+ "n (%)"
+  results) asks the user in the question card
+  before it is sent; other protected values are redacted and the chat says
+  which columns. Before, "ask" silently redacted. Without a way to ask (CLI)
+  the input goes on redacted, as before. Prompt / tool-argument / reply audit
+  reasons name the source columns too.
+
+* Data Shield notices pair each dataset with a column it really has: a value
+  in several datasets keeps all of them; the notice names the dataset the tool
+  was asked about (a registered dataset name in its arguments, e.g.
+  `dataset = "ADSL"`) when the value is in it, else every dataset that has it,
+  per column ("SUBJID (identifier) in ADAE, ADSL, ADCM and 4 more datasets").
+  Was: the first dataset registered, so an ADSL query was reported as ADAE.
+
+* Data Shield notices say why output was withheld or denied: the dataset
+  columns the protected values come from and their class, e.g. "contains 2
+  protected data value(s). Source: ADSL.COUNTRY (quasi)." or "an identifier
+  written in another format" -- never a value, its position or context
+  (column names are the schema `DescribeData` already shows). The audit log
+  records the same, so false positives can be collected. `shield_egress(explain
+  = FALSE)` keeps the bare notice.
+
+* AskUserForm `grouping` fields: the open drop-down list spans the whole row
+  (the name column included) instead of only the drop-down's width, so long
+  arm names are readable in a narrow chat column.
+
+* New `codeagent_ask_form(title, fields, submit_label)`: a host tool asks the
+  user a form itself -- the AskUserForm card, with the same field types
+  (including `grouping`), queue and "Answered" record -- and gets a promise of
+  `list(submitted, values)`. Use it when the host knows what to ask (e.g. the
+  arms to combine, taken from the data) so the user always gets the right
+  controls, whatever field types the model would have chosen.
+
 * Workspace tabs can float: drag a tab down off the strip, double-click it, or
   use "Pop out" in its menu. The tab becomes a window over the page (drag its
   bar, resize its corner) while the chat stays usable; several can be open to

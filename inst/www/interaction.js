@@ -265,17 +265,40 @@
   // ---- Seat: the card floats right above the composer -------------------------
   // The card is rendered in the chat footer (below the composer). While one is
   // shown and the composer is visible, the output is positioned over the chat,
-  // bottom edge just above the composer, same width, at most half the chat's
-  // height. A hidden composer (theme "dsh" gives the card its seat) or a page
+  // bottom edge just above the composer, same width, at most 60% of the chat's
+  // height (the user can drag it taller or shorter). A hidden composer (theme "dsh" gives the card its seat) or a page
   // without one leaves the card where it is.
   var GAP = 8, observed = new WeakSet(), ro = window.ResizeObserver ? new ResizeObserver(placeAll) : null;
+  function makeHandle() {
+    var h = document.createElement("div");
+    h.className = "ca-ia-handle";
+    h.setAttribute("role", "separator");
+    h.setAttribute("aria-orientation", "horizontal");
+    h.setAttribute("aria-label", "Resize: drag up or down; double-click for full height");
+    h.setAttribute("title", "Drag to resize \u00b7 double-click: full height / default");
+    h.tabIndex = 0;
+    return h;
+  }
+  // The cap: 60% of the chat by default, or the height the user dragged to
+  // (up to `room`, the top of the chat). The card being dragged takes that
+  // height; later cards are capped by it and shrink to their content.
+  function capFor(l, room) {
+    return userFrac != null ? clamp(userFrac * l.height, MIN_H, room)
+                            : Math.max(160, Math.min(l.height * 0.6, room));
+  }
   function place(out) {
     var layout = out.closest(".shiny-chat-layout");
     var composer = layout && layout.querySelector(".shiny-chat-composer");
-    var show = !!(composer && out.querySelector(".ca-interaction") && composer.offsetParent &&
+    var card = out.querySelector(":scope > .ca-interaction");
+    var show = !!(composer && card && composer.offsetParent &&
                   composer.getBoundingClientRect().height > 0);
     out.classList.toggle("ca-ia-overlay", show);
-    if (!show) { out.style.removeProperty("--ca-ia-left"); return; }
+    if (!show) {
+      out.style.removeProperty("--ca-ia-left"); out.style.removeProperty("--ca-ia-height");
+      var old = out.querySelector(":scope > .ca-ia-handle"); if (old) old.remove();
+      placeInline(out, layout, card);
+      return;
+    }
     if (ro && !observed.has(layout)) { ro.observe(layout); ro.observe(composer); observed.add(layout); }
     var l = layout.getBoundingClientRect(), c = composer.getBoundingClientRect();
     out.style.setProperty("--ca-ia-left", (c.left - l.left) + "px");
@@ -284,8 +307,88 @@
     // with the page background so nothing underneath shows between the two.
     out.style.setProperty("--ca-ia-bottom", (l.bottom - c.top) + "px");
     out.style.setProperty("--ca-ia-gap", GAP + "px");
-    out.style.setProperty("--ca-ia-max-height", Math.max(160, Math.min(l.height * 0.5, c.top - l.top)) + "px");
+    var cap = capFor(l, Math.max(MIN_H, c.top - l.top - GAP));
+    out.style.setProperty("--ca-ia-max-height", cap + "px");
+    if (sized && sized === card && userFrac != null) out.style.setProperty("--ca-ia-height", cap + "px");
+    else out.style.removeProperty("--ca-ia-height");
+    if (!out.querySelector(":scope > .ca-ia-handle")) out.insertBefore(makeHandle(), out.firstChild);
   }
+  // A card in the composer's place (theme "dsh" hides the composer while a
+  // card is shown): a long card (a form, .ca-interaction--scroll) gets the same
+  // handle and cap, on the card itself; its body scrolls, its buttons stay.
+  function placeInline(out, layout, card) {
+    if (!layout || !card || !card.classList.contains("ca-interaction--scroll")) return;
+    if (ro && !observed.has(layout)) { ro.observe(layout); observed.add(layout); }
+    // room: the chat's height less what else the footer holds (the card's
+    // margins, a progress line, ...), so the card never pushes past the page
+    var l = layout.getBoundingClientRect(), r = card.getBoundingClientRect();
+    var foot = card.closest(".shiny-chat-footer") || card.parentElement;
+    var other = foot.getBoundingClientRect().height - r.height;
+    var cap = capFor(l, Math.max(MIN_H, l.height - other - GAP));
+    card.style.setProperty("--ca-ia-card-max", cap + "px");
+    if (sized && sized === card && userFrac != null) card.style.setProperty("--ca-ia-card-h", cap + "px");
+    else card.style.removeProperty("--ca-ia-card-h");
+    if (!card.querySelector(":scope > .ca-ia-handle")) card.insertBefore(makeHandle(), card.firstChild);
+  }
+  // ---- Resizing (the handle on the card's top edge) -----------------------------
+  // userFrac: the chosen height as a share of the chat's height (kept in the
+  // browser), null = the default. sized: the card the user resized.
+  var MIN_H = 120, KEY = "codeagent.ia-height", userFrac = null, sized = null;
+  try { var f0 = parseFloat(window.localStorage.getItem(KEY)); if (f0 > 0 && f0 <= 1) userFrac = f0; } catch (e) {}
+  function clamp(x, lo, hi) { return Math.min(Math.max(x, lo), hi); }
+  function remember() {
+    try { if (userFrac == null) window.localStorage.removeItem(KEY); else window.localStorage.setItem(KEY, String(userFrac)); } catch (e) {}
+  }
+  // The box the handle resizes: the floating seat, or the inline card.
+  function boxOf(h) {
+    var out = h.closest("#ca_interaction_ui");
+    return { out: out, box: out && out.classList.contains("ca-ia-overlay") ? out : h.parentNode };
+  }
+  function resizeTo(out, px) {
+    var layout = out.closest(".shiny-chat-layout");
+    if (!layout) return;
+    userFrac = clamp(px / layout.getBoundingClientRect().height, 0.05, 1);
+    sized = out.querySelector(":scope > .ca-interaction");
+    place(out);
+  }
+  function toggleFull(out) {
+    var layout = out.closest(".shiny-chat-layout");
+    if (!layout) return;
+    if (userFrac != null) { userFrac = null; sized = null; place(out); }
+    else resizeTo(out, layout.getBoundingClientRect().height);
+    remember(); placeAll();
+  }
+  document.addEventListener("pointerdown", function (e) {
+    var h = e.target.closest && e.target.closest(".ca-ia-handle");
+    if (!h || e.button !== 0) return;
+    var b = boxOf(h); if (!b.out) return;
+    var out = b.out, y0 = e.clientY, h0 = b.box.getBoundingClientRect().height;
+    e.preventDefault();
+    try { h.setPointerCapture(e.pointerId); } catch (err) {}
+    out.classList.add("ca-ia-dragging");
+    function move(ev) { resizeTo(out, h0 + (y0 - ev.clientY)); placeAll(); }
+    function up() {
+      h.removeEventListener("pointermove", move); h.removeEventListener("pointerup", up);
+      h.removeEventListener("pointercancel", up);
+      out.classList.remove("ca-ia-dragging"); remember();
+    }
+    h.addEventListener("pointermove", move); h.addEventListener("pointerup", up);
+    h.addEventListener("pointercancel", up);
+  });
+  document.addEventListener("dblclick", function (e) {
+    var h = e.target.closest && e.target.closest(".ca-ia-handle");
+    var b = h && boxOf(h);
+    if (b && b.out) toggleFull(b.out);
+  });
+  document.addEventListener("keydown", function (e) {
+    var h = e.target.closest && e.target.closest(".ca-ia-handle");
+    var b = h && boxOf(h);
+    if (!b || !b.out) return;
+    var cur = b.box.getBoundingClientRect().height;
+    if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+      e.preventDefault(); resizeTo(b.out, cur + (e.key === "ArrowUp" ? 48 : -48)); remember(); placeAll();
+    } else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleFull(b.out); }
+  });
   // The slash-command palette (shinychat) floats at the caret, at most 400px
   // wide. Publish the composer's box so styles.css can give it the
   // composer's left edge and width, just above it.

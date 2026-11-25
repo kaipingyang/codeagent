@@ -47,12 +47,14 @@ shield$coverage()
     \item \href{#method-DataShield-scan_egress}{\code{DataShield$scan_egress()}}
     \item \href{#method-DataShield-scan_ingress}{\code{DataShield$scan_ingress()}}
     \item \href{#method-DataShield-scan_tool_args}{\code{DataShield$scan_tool_args()}}
+    \item \href{#method-DataShield-prompt_on_fail}{\code{DataShield$prompt_on_fail()}}
     \item \href{#method-DataShield-scan_prompt}{\code{DataShield$scan_prompt()}}
     \item \href{#method-DataShield-scan_response}{\code{DataShield$scan_response()}}
     \item \href{#method-DataShield-review_code_public}{\code{DataShield$review_code_public()}}
     \item \href{#method-DataShield-add_scanner}{\code{DataShield$add_scanner()}}
     \item \href{#method-DataShield-set_egress_ask}{\code{DataShield$set_egress_ask()}}
     \item \href{#method-DataShield-bind_reviewer_factory}{\code{DataShield$bind_reviewer_factory()}}
+    \item \href{#method-DataShield-record_gate}{\code{DataShield$record_gate()}}
     \item \href{#method-DataShield-audit}{\code{DataShield$audit()}}
     \item \href{#method-DataShield-clear_audit}{\code{DataShield$clear_audit()}}
     \item \href{#method-DataShield-clear}{\code{DataShield$clear()}}
@@ -124,7 +126,8 @@ egress execution order.}
   min_card = 8L,
   max_index_values = 500000L,
   column_access = NULL,
-  id_variants = TRUE
+  id_variants = TRUE,
+  display = NULL
 )}
     \if{html}{\out{</div>}}
   }
@@ -158,6 +161,14 @@ leading zeros dropped: \verb{BGB 001 0007}, \code{BGB0010007}, \code{BGB-1-7} fo
 dominant character shape with a literal letter prefix contributes a
 pattern (e.g. \verb{BGB-[0-9]\{3\}-[0-9]\{4\}}) that catches identifiers of that
 form even when they were never registered.}
+      \item{\code{display}}{Whether the user may see this dataset's protected values
+in a tool's own card when they are kept from the model: \code{"show"} or
+\code{"hide"} for every column, or \code{NULL} (default) for \code{"show"} except
+columns with \code{egress = "none"}, which are \code{"hide"}. A column's
+\code{column_access} entry may set its own \code{display}. With \code{"show"} only the
+model-facing value is replaced and the card keeps the full result; with
+\code{"hide"} the whole result is replaced. The model is never sent these
+values either way.}
     }
     \if{html}{\out{</div>}}
   }
@@ -431,6 +442,22 @@ permission gate. Non-string arguments are left untouched.
 }
 
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-prompt_on_fail"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-prompt_on_fail}{}}}
+\subsection{\code{DataShield$prompt_on_fail()}}{
+  The input gate's policy for a user's message
+(\code{\link[=shield_prompt]{shield_prompt()}}); \code{"redact"} when none was set.
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$prompt_on_fail()}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    \code{"ask"}, \code{"redact"} or \code{"block"}.
+  }
+}
+
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-DataShield-scan_prompt"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-scan_prompt}{}}}
 \subsection{\code{DataShield$scan_prompt()}}{
@@ -610,20 +637,42 @@ is responsible for deciding what to read; the reviewer gets no tools).}
 }
 
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-DataShield-audit"></a>}}
-\if{latex}{\out{\hypertarget{method-DataShield-audit}{}}}
-\subsection{\code{DataShield$audit()}}{
+\if{html}{\out{<a id="method-DataShield-record_gate"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-record_gate}{}}}
+\subsection{\code{DataShield$record_gate()}}{
   Return a copy of non-sensitive decision events.
+
+
+  Record the input gate's final decision on a user's message
+(it can differ from the scan's own event: a scan that redacted may
+end in a block, and a pasted table in the user's choice).
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
-    \preformatted{DataShield$audit(limit = NULL)}
+    \preformatted{DataShield$record_gate(action, reason = "", match_count = 0L)}
     \if{html}{\out{</div>}}
   }
   \subsection{Arguments}{
     \if{html}{\out{<div class="arguments">}}
     \describe{
+      \item{\code{action}}{\code{"block"}, \code{"ask"}, \code{"send"} or \code{"dont_send"}.}
+      \item{\code{reason}}{Labels only (source columns, table size) -- never a value.}
+      \item{\code{match_count}}{Number of matches.}
       \item{\code{limit}}{Optional number of most recent events.}
     }
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Returns}{
+    Invisibly \code{NULL}.
+  }
+}
+
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-DataShield-audit"></a>}}
+\if{latex}{\out{\hypertarget{method-DataShield-audit}{}}}
+\subsection{\code{DataShield$audit()}}{
+  \subsection{Usage}{
+    \if{html}{\out{<div class="r">}}
+    \preformatted{DataShield$audit(limit = NULL)}
     \if{html}{\out{</div>}}
   }
 }

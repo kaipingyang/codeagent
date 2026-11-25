@@ -496,6 +496,15 @@ shiny-chat-container {
 .shiny-chat-input .tiptap .is-empty::before {
   color: var(--ca-dsh-label-tertiary);
 }
+/* The placeholder stays on one line (as in the default look): wrapped, it
+   overflowed the empty composer and showed a scrollbar. */
+.shiny-chat-input .tiptap.is-empty::before,
+.shiny-chat-input .tiptap .is-empty::before {
+  white-space: nowrap;
+}
+.shiny-chat-input .tiptap.is-empty {
+  overflow: hidden;
+}
 .shiny-chat-btn-attach {
   position: static;
   width: 28px;
@@ -691,6 +700,19 @@ body .ca-interaction-command {
   font-size: 13px;
   line-height: 20px;
   word-break: break-all;
+}
+/* A long card (a form) in the composer's place: the body scrolls, the buttons
+   stay in view (the card clips its overflow, so they were cut off). */
+body .ca-interaction--scroll {
+  overflow: hidden;
+}
+body .ca-interaction--scroll > .ca-interaction-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+body .ca-interaction > .ca-interaction-actions {
+  flex: 0 0 auto;
 }
 body .ca-interaction-actions {
   display: flex;
@@ -1271,11 +1293,17 @@ body .ca-dsh-composer-toolbar:not(:has(#model_select)) .ca-dsh-voice-btn { margi
 
 /* Left column: shinychat history as DSH session rows. */
 body .shiny-chat-history {
-  --shiny-chat-history-bg: transparent;
+  /* A drawer over the chat (chat_ui(history = TRUE) in a host page) needs a
+     solid surface; transparent showed the chat through it. Only the history
+     column of the DSH page sidebar is transparent (the sidebar paints it). */
+  --shiny-chat-history-bg: var(--ca-dsh-bg-sidebar);
   --shiny-chat-history-item-hover-bg: var(--ca-dsh-bg-hover);
   --shiny-chat-history-item-active-bg: var(--ca-dsh-bg-hover);
   --shiny-chat-history-accent: var(--ca-dsh-label-primary);
   --shiny-chat-history-border-color: var(--ca-dsh-border-l2);
+}
+body .shiny-chat-page-sidebar .shiny-chat-history {
+  --shiny-chat-history-bg: transparent;
 }
 body .shiny-chat-history-new {
   border: 0.5px solid var(--ca-dsh-border-l4);

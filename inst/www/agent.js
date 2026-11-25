@@ -402,3 +402,43 @@ document.addEventListener('click', function (event) {
   if (event.target.tagName === 'DIALOG' && event.target.classList.contains('ca-dialog'))
     event.target.close();
 });
+
+// ---- Theme swap keeps the stylesheet order ----------------------------------
+// bslib's session$setCurrentTheme() (codeagent_server(themes =)) re-adds the
+// theme's stylesheets (Bootstrap, bslib components; href "...?restyle=") at
+// the END of <head>. They then override the component and host CSS that came
+// after them when the page loaded (shinychat's composer got Bootstrap's
+// .form-control box, the send button wrapped). The theme sheets are left
+// where Shiny put them -- Shiny finds the old ones to remove by their order --
+// and every other stylesheet in front of them moves behind them, so the order
+// is again theme first, components and host CSS after.
+(function () {
+  if (typeof MutationObserver === "undefined" || !document.head) return;
+  // a sheet compiled with the theme (Bootstrap, bslib components, shiny's own
+  // sass) or one Shiny re-added: never moved
+  var isTheme = function (el) {
+    var h = (el.getAttribute && el.getAttribute("href")) || "";
+    return /bootstrap(\.min)?\.css|bslib-component-css|shiny-sass\.css|[?&]restyle=/.test(h);
+  };
+  var isSheet = function (el) {
+    return (el.tagName === "LINK" && /stylesheet/i.test(el.rel)) || el.tagName === "STYLE";
+  };
+  var busy = false;
+  var reorder = function () {
+    if (busy) return;
+    var all = Array.prototype.filter.call(document.head.children, isSheet);
+    var restyled = all.filter(function (el) { return el.tagName === "LINK" && /[?&]restyle=/.test(el.href); });
+    if (!restyled.length) return;
+    var lastTheme = all.indexOf(restyled[restyled.length - 1]);
+    var behind = all.filter(function (el, i) { return i < lastTheme && !isTheme(el); });
+    if (!behind.length) return;
+    busy = true;
+    behind.forEach(function (el) { document.head.appendChild(el); });
+    busy = false;
+  };
+  new MutationObserver(function (muts) {
+    for (var i = 0; i < muts.length; i++) {
+      if (muts[i].addedNodes && muts[i].addedNodes.length) { reorder(); return; }
+    }
+  }).observe(document.head, { childList: true });
+})();

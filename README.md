@@ -338,7 +338,16 @@ system prompt (preserves history, one-time cache miss). `register_data()` does
 not auto-refresh — the shield stays decoupled from the Chat.
 
 `shield_egress(max_rows = 0)` retains **no raw tabular line** when bulk output is
-detected; scalar/status/model-summary output still passes. `shield_regex()`
+detected; scalar/status/model-summary output still passes. A withheld or denied
+notice names the source columns and their class ("Source: ADSL.COUNTRY (quasi)"),
+never a value, so the model can tell the user what it could not see
+(`explain = FALSE` for the bare notice). The notice also says whether the user still sees
+the result in the tool card: `register_data(display = "show")` (or per column,
+`column_access = list(COL = list(display = "show"))`) keeps the card while the
+model gets the notice; `"hide"` drops it too (the default for `egress = "none"`).
+With `data_shield_prompt_on_fail = "ask"` the prompt gate blocks pasted subject
+identifiers, asks before sending a pasted table of numbers, and tells the user
+which columns it redacted. `shield_regex()`
 handles unregistered PII/secrets; `shield_ingress()` scans every tool's arguments
 in the central permission gate and can block or request approval before execution
 (built-in rules are host-extensible: a `patterns=` name matching a built-in
@@ -693,7 +702,7 @@ srv$ws$open("tfl", "t_dm")    # from the host's own code
 Permission mode switch: `codeagent_mode_ui(c("Ask before changes" = "default",
 "Run without asking" = "bypass"))` in the page and the same `modes =` in
 `codeagent_server()`. The approval bar also offers "Always allow" (this tool)
-(for the rest of the session). `on_tool_open = function(result)` is called when the user opens a tool card in the chat (live or restored), with that card's result, so the host can show it in its own panel. A long-running host tool can report its progress with `codeagent_progress(label)`: call it when the tool starts and use the handle's `update(step, typical =)` and `done()`; the chat shows one line per running tool above the input (step, seconds elapsed, usual duration), after 3 seconds and until the turn ends. `on_restore = function(chat)` lets the host
+(for the rest of the session). `on_tool_open = function(result)` is called when the user opens a tool card in the chat (live or restored), with that card's result, so the host can show it in its own panel. Pass `themes = list(default = bslib::bs_theme(version = 5), dsh = "dsh")` with `codeagent_theme_ui()` in the page to let the user switch the page's look while the session runs (structure, chat and tabs stay); `on_theme = function(name)` lets the host remember it. A host tool that knows what to ask can show the AskUserForm card itself with `codeagent_ask_form(title, fields)` (same field types, e.g. a `grouping` field with the arms from the data) and continue from the promised `list(submitted, values)`. A long-running host tool can report its progress with `codeagent_progress(label)`: call it when the tool starts and use the handle's `update(step, typical =)` and `done()`; the chat shows one line per running tool above the input (step, seconds elapsed, usual duration), after 3 seconds and until the turn ends. `on_restore = function(chat)` lets the host
 refresh its own panels when a saved conversation is opened. `on_user_prompt =
 function(text)` runs before each turn reaches the model and may add context to
 it or block it (the host side of the `UserPromptSubmit` hook).

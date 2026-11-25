@@ -141,6 +141,12 @@ shield_describe <- function(distributions = "off", k_anon = 5L,
 #' @param allow_raw_approval When `on_fail="ask"`, expose the dangerous
 #'   `raw_once` choice. Default FALSE leaves only redact/block.
 #' @param approval_timeout Seconds before an async approval defaults to redact.
+#' @param explain If `TRUE` (default), a withheld or denied notice says why:
+#'   the dataset columns the protected values come from and their sensitivity
+#'   class (e.g. `ADSL.COUNTRY (quasi)`), or "an identifier written in another
+#'   format". Never a value, its position or its context: column names are
+#'   schema the model already sees through `DescribeData`. The model can then
+#'   tell the user what it could not see; the audit log records the same.
 #' @return A Data Shield strategy specification.
 #' @examples
 #' strict <- shield_egress(max_rows = 0, on_fail = "redact")
@@ -149,13 +155,35 @@ shield_describe <- function(distributions = "off", k_anon = 5L,
 shield_egress <- function(detectors = c("row_cap", "value_match"), max_rows = 0L,
                           on_fail = c("redact", "block", "ask"),
                           allow_raw_approval = FALSE,
-                          approval_timeout = 60) {
+                          approval_timeout = 60, explain = TRUE) {
   detectors <- match.arg(detectors, c("row_cap", "value_match"), several.ok = TRUE)
   .new_shield_strategy(
     "egress", detectors = detectors, max_rows = as.integer(max_rows),
     on_fail = match.arg(on_fail),
     allow_raw_approval = isTRUE(allow_raw_approval),
-    approval_timeout = as.numeric(approval_timeout))
+    approval_timeout = as.numeric(approval_timeout),
+    explain = isTRUE(explain))
+}
+
+#' Data Shield policy for what the user types
+#'
+#' How the input gate treats protected content in a user's message before it
+#' reaches the model. `"ask"`: subject identifiers block the message (the chat
+#' says which columns, never the values); a pasted table of numbers (at least
+#' five lines with two or more columns and a digit) asks the user in the
+#' question card before it is sent; other protected values are redacted and
+#' the chat says which columns. `"redact"` (the default without this strategy)
+#' replaces protected values and goes on; `"block"` stops the message. A
+#' client's `settings$data_shield_prompt_on_fail` still wins when set.
+#'
+#' @param on_fail `"ask"`, `"redact"` or `"block"`.
+#' @return A Data Shield strategy specification.
+#' @examples
+#' shield <- DataShield$new(strategies = list(shield_egress(), shield_prompt("ask")))
+#' @seealso [shield_egress()]
+#' @export
+shield_prompt <- function(on_fail = c("ask", "redact", "block")) {
+  .new_shield_strategy("prompt", prompt_on_fail = match.arg(on_fail))
 }
 
 .data_shield_sanitize_reviewer_text <- function(text, index) {
@@ -854,10 +882,18 @@ DataShield <- R6::R6Class(
     #'   dominant character shape with a literal letter prefix contributes a
     #'   pattern (e.g. `BGB-[0-9]{3}-[0-9]{4}`) that catches identifiers of that
     #'   form even when they were never registered.
+    #' @param display Whether the user may see this dataset's protected values
+    #'   in a tool's own card when they are kept from the model: `"show"` or
+    #'   `"hide"` for every column, or `NULL` (default) for `"show"` except
+    #'   columns with `egress = "none"`, which are `"hide"`. A column's
+    #'   `column_access` entry may set its own `display`. With `"show"` only the
+    #'   model-facing value is replaced and the card keeps the full result; with
+    #'   `"hide"` the whole result is replaced. The model is never sent these
+    #'   values either way.
     register_data = function(df, name = NULL, sensitivity = NULL, cols = NULL,
                              min_len = 3L, min_card = 8L,
                              max_index_values = 500000L, column_access = NULL,
-                             id_variants = TRUE) {
+                             id_variants = TRUE, display = NULL) {
       private$assert_open()
       if (!is.data.frame(df)) stop("`df` must be a data.frame.", call. = FALSE)
       if (is.null(name)) name <- paste0("dataset_", length(private$datasets) + 1L)
@@ -888,6 +924,14 @@ DataShield <- R6::R6Class(
       }
       sensitivity <- .data_shield_classify_columns(df, sensitivity)
       col_access <- .data_shield_resolve_column_access(df, column_access)
+      if (!is.null(display) && !(is.character(display) && length(display) == 1L && display %in% c("show", "hide")))
+        stop("`display` must be \"show\", \"hide\" or NULL.", call. = FALSE)
+      display_map <- vapply(names(df), function(cn) {
+        own <- col_access[[cn]]$display
+        if (!is.null(own)) own
+        else if (!is.null(display)) display
+        else if (identical(col_access[[cn]]$egress, "none")) "hide" else "show"
+      }, character(1))
       raw_egress_cols <- names(col_access)[vapply(
         col_access, function(a) identical(a$egress, "raw"), logical(1L))]
       # Columns whose egress tier is "none" must NEVER appear in tool output
@@ -900,9 +944,13 @@ DataShield <- R6::R6Class(
       index_cols <- cols %||%
         names(sensitivity)[sensitivity %in% c("identifier", "quasi")]
       index_cols <- setdiff(index_cols, raw_egress_cols)
+      # each indexed value remembers where it came from ("ADSL.COUNTRY
+      # (quasi)") so a withheld notice can say why -- never the value itself
+      col_label <- function(cols) stats::setNames(
+        .data_shield_label(name, cols, sensitivity[cols] %||% "protected"), cols)
       idx <- .data_shield_build_value_index(
         df, cols = index_cols, min_len = min_len, min_card = min_card,
-        max_values = max_index_values)
+        max_values = max_index_values, labels = col_label(index_cols))
       if (isTRUE(attr(idx, "truncated")))
         stop("value-match index hit max_index_values (", max_index_values,
              ") for dataset '", name, "': the tail values would be unindexed ",
@@ -914,7 +962,8 @@ DataShield <- R6::R6Class(
       deny_idx <- if (length(none_egress_cols))
         .data_shield_build_value_index(
           df, cols = none_egress_cols, min_len = min_len, min_card = min_card,
-          max_values = max_index_values, deny_all = TRUE)
+          max_values = max_index_values, deny_all = TRUE,
+          labels = stats::setNames(.data_shield_label(name, none_egress_cols, "egress=none"), none_egress_cols))
         else NULL
       # Identifier variants and shapes (R/data_shield_ids.R): format variants of
       # the indexed values, and id-shaped patterns inferred from identifier
@@ -925,7 +974,7 @@ DataShield <- R6::R6Class(
           min_len = min_len, min_card = min_card, max_values = max_index_values)
       private$datasets[[name]] <- list(
         name = name, data = df, sensitivity = sensitivity,
-        column_access = col_access,
+        column_access = col_access, display = display_map,
         index = idx, index_columns = index_cols,
         deny_index = deny_idx, deny_columns = none_egress_cols,
         id_tables = id_tables)
@@ -1153,7 +1202,7 @@ DataShield <- R6::R6Class(
           edge=context$edge %||% "egress",tool_name=tool_name,
           tool_call_id=context$tool_call_id,strategy="tool_policy",action="deny",
           reason=paste0("tool rule: ",policy$matched_rule),match_count=0L,score=1)
-        return("[data_shield] tool output denied by explicit tool policy.")
+        return(paste0("[data_shield] tool output denied by explicit tool policy.", .DATA_SHIELD_SEEN[["none"]]))
       }
       if (identical(policy$egress, "bypass")) {
         private$record_event(
@@ -1186,6 +1235,8 @@ DataShield <- R6::R6Class(
       # value from a column whose egress tier is "none", deny the whole result --
       # these values must never reach the model. Runs before the redact pipeline;
       # a match blocks rather than redacts. No-op when no none-tier column exists.
+      # the datasets the tool was asked about: a notice names their columns
+      prefer <- .data_shield_named_datasets(context$args, names(private$datasets))
       if (!is.null(private$deny_index) &&
           length(private$deny_index) > 0L) {
         deny_ser_failed <- FALSE
@@ -1211,8 +1262,16 @@ DataShield <- R6::R6Class(
         if (isTRUE(dv$hit)) {
           audit_fn("column_egress", "deny",
                    if (isTRUE(dv$failed)) "deny-index scan failed (fail-closed)"
-                   else "egress=none column value in tool output", dv$n %||% 0L, 1)
-          return("[data_shield] tool output denied: contains a value from a column marked egress=none.")
+                   else paste0("egress=none column value in tool output",
+                               if (length(dv$labels)) paste0(": ", paste(.data_shield_sources(dv$labels, prefer = prefer), collapse = ", "))),
+                   dv$n %||% 0L, 1)
+          why <- if (isTRUE(private$config$explain) && !isTRUE(dv$failed))
+            .data_shield_reason(.data_shield_sources(dv$labels, prefer = prefer)) else ""
+          note <- paste0("[data_shield] tool output denied: contains a value from a column marked egress=none.", why)
+          # the card keeps the full result when every matched column may be shown
+          return(.data_shield_replace(result, note,
+                                      keep_card = !isTRUE(dv$failed) && private$labels_displayable(dv$labels),
+                                      explain = private$config$explain))
         }
       }
       output <- result
@@ -1224,7 +1283,8 @@ DataShield <- R6::R6Class(
           output <- .data_shield_filter_result(
             output, max_rows = cfg$max_rows, index = private$index,
             detectors = cfg$detectors, on_fail = cfg$on_fail,
-            audit_fn = audit_fn)
+            audit_fn = audit_fn, explain = isTRUE(cfg$explain), prefer = prefer,
+            displayable = function(labels) private$labels_displayable(labels))
           if (identical(cfg$on_fail,"ask") && length(private$audit_log)>audit_before) {
             event <- private$audit_log[[length(private$audit_log)]]
             if (identical(event$action,"ask"))
@@ -1362,6 +1422,11 @@ DataShield <- R6::R6Class(
       list(action = if (changed) "redact" else "pass", args = out)
     },
 
+    #' @description The input gate's policy for a user's message
+    #'   ([shield_prompt()]); `"redact"` when none was set.
+    #' @return `"ask"`, `"redact"` or `"block"`.
+    prompt_on_fail = function() private$config$prompt_on_fail %||% "redact",
+
     #' @description Scan a user prompt BEFORE it reaches the model (edge 1).
     #'   This is the Data Shield half of the prompt gate: it detects protected
     #'   data the user may have pasted into their message. Unlike egress (which
@@ -1409,6 +1474,16 @@ DataShield <- R6::R6Class(
       }
       total_matches <- 0L
       current <- text
+      found <- list()        # labels of matched protected values (dataset, column, class)
+      spans <- character(0)  # identifier variants / shapes
+      pii <- 0L
+      out <- function(action, text, score) {
+        src <- c(.data_shield_sources(found, spans),
+                 if (pii > 0L) "personal data pattern (e-mail, phone, ID number ...)")
+        cls <- sub("^.*\x1f", "", unlist(found, use.names = FALSE))
+        list(action = action, text = text, matches = total_matches, score = score,
+             sources = src, identifier = any(cls %in% c("identifier", "egress=none")) || length(spans) > 0L)
+      }
 
       # --- B: regex / PII (cheap, always run) -------------------------------
       if ("regex" %in% scanners) {
@@ -1426,14 +1501,13 @@ DataShield <- R6::R6Class(
       rx_hits <- tryCatch(nrow(rx$spans), error = function(e) 0L) %||% 0L
       if (rx_hits > 0L) {
         total_matches <- total_matches + rx_hits
+        pii <- rx_hits
         if (identical(on_fail, "block")) {
           private$record_event(edge = edge, tool_name = context$tool_name %||% NA_character_,
             tool_call_id = context$tool_call_id, strategy = "regex", action = "block",
             reason = "PII/token shape in prompt", match_count = rx_hits, score = 1)
           emit("regex", "done", rx_hits, t0)
-          return(list(action = "block",
-                      text = "[data_shield] prompt blocked: contains PII/token pattern.",
-                      matches = total_matches, score = 1))
+          return(out("block", "[data_shield] prompt blocked: contains PII/token pattern.", 1))
         }
         current <- rx$sanitized   # redact spans, keep rest
       }
@@ -1450,38 +1524,39 @@ DataShield <- R6::R6Class(
                               conditionMessage(e), call. = FALSE))
         if (isTRUE(vm$hit)) {
           total_matches <- total_matches + vm$n
+          found <- vm$labels
+          spans <- vm$spans
+          srcs <- paste(.data_shield_sources(vm$labels, vm$spans), collapse = ", ")
           if (identical(on_fail, "block")) {
             private$record_event(edge = edge, tool_name = context$tool_name %||% NA_character_,
               tool_call_id = context$tool_call_id, strategy = "value_match", action = "block",
-              reason = "protected value pasted into prompt", match_count = vm$n,
+              reason = paste0("protected value pasted into prompt: ", srcs), match_count = vm$n,
               score = min(1, vm$n / 5))
             emit("value_match", "done", vm$n, t1)
-            return(list(action = "block",
-                        text = sprintf("[data_shield] prompt blocked: contains %d protected data value(s).", vm$n),
-                        matches = total_matches, score = min(1, vm$n / 5)))
+            return(out("block", sprintf("[data_shield] prompt blocked: contains %d protected data value(s).%s",
+                                        vm$n, .data_shield_reason(.data_shield_sources(vm$labels, vm$spans))),
+                       min(1, vm$n / 5)))
           }
           if (identical(on_fail, "ask")) {
             private$record_event(edge = edge, tool_name = context$tool_name %||% NA_character_,
               tool_call_id = context$tool_call_id, strategy = "value_match", action = "ask",
-              reason = "protected value pasted into prompt", match_count = vm$n,
+              reason = paste0("protected value pasted into prompt: ", srcs), match_count = vm$n,
               score = min(1, vm$n / 5))
             emit("value_match", "done", vm$n, t1)
-            return(list(action = "ask", text = current, matches = total_matches,
-                        score = min(1, vm$n / 5)))
+            return(out("ask", current, min(1, vm$n / 5)))
           }
           # redact: replace each matched raw token with [REDACTED], keep rest.
           current <- .data_shield_redact_values(current, vm$values, private$index)
           private$record_event(edge = edge, tool_name = context$tool_name %||% NA_character_,
             tool_call_id = context$tool_call_id, strategy = "value_match", action = "redact",
-            reason = "protected value redacted from prompt", match_count = vm$n,
+            reason = paste0("protected value redacted from ", edge, ": ", srcs), match_count = vm$n,
             score = min(1, vm$n / 5))
         }
         emit("value_match", "done", vm$n %||% 0L, t1)
       }
 
-      list(action = if (total_matches > 0L) "redact" else "pass",
-           text = current, matches = total_matches,
-           score = if (total_matches > 0L) min(1, total_matches / 5) else 0)
+      out(if (total_matches > 0L) "redact" else "pass", current,
+          if (total_matches > 0L) min(1, total_matches / 5) else 0)
     },
 
     #' @description Scan the model's final reply BEFORE it reaches the user
@@ -1554,6 +1629,22 @@ DataShield <- R6::R6Class(
 
     #' @description Return a copy of non-sensitive decision events.
     #' @param limit Optional number of most recent events.
+    #' @description Record the input gate's final decision on a user's message
+    #'   (it can differ from the scan's own event: a scan that redacted may
+    #'   end in a block, and a pasted table in the user's choice).
+    #' @param action `"block"`, `"ask"`, `"send"` or `"dont_send"`.
+    #' @param reason Labels only (source columns, table size) -- never a value.
+    #' @param match_count Number of matches.
+    #' @return Invisibly `NULL`.
+    record_gate = function(action, reason = "", match_count = 0L) {
+      private$assert_open()
+      private$record_event(edge = "prompt", tool_name = NA_character_, tool_call_id = NULL,
+                           strategy = "prompt_gate", action = as.character(action)[1],
+                           reason = as.character(reason)[1], match_count = as.integer(match_count)[1],
+                           score = if (action %in% c("block", "dont_send")) 1 else 0.5)
+      invisible(NULL)
+    },
+
     audit = function(limit = NULL) {
       events <- private$audit_log
       if (!is.null(limit)) events <- utils::tail(events, max(0L, as.integer(limit)))
@@ -1825,6 +1916,8 @@ DataShield <- R6::R6Class(
       if (identical(type, "describe")) {
         private$config$describe_enabled <- TRUE
         private$config[names(cfg)] <- cfg
+      } else if (identical(type, "prompt")) {
+        private$config$prompt_on_fail <- cfg$prompt_on_fail
       } else if (identical(type, "egress")) {
         private$config$egress_enabled <- TRUE
         private$config[names(cfg)] <- cfg
@@ -1851,6 +1944,18 @@ DataShield <- R6::R6Class(
         stop("Unknown Data Shield strategy: ", type, call. = FALSE)
       }
     },
+    # (public accessor below)
+    # TRUE when every matched value's column may be shown to the user
+    # (register_data(display =)); labels as in the value index.
+    labels_displayable = function(labels) {
+      l <- unique(unlist(labels, use.names = FALSE))
+      l <- l[grepl("\x1f", l, fixed = TRUE)]
+      if (!length(l)) return(TRUE)
+      all(vapply(strsplit(l, "\x1f", fixed = TRUE), function(p) {
+        d <- private$datasets[[p[1]]]$display
+        identical(unname(d[p[2]]), "show")
+      }, logical(1)))
+    },
     rebuild_index = function() {
       rm(list = ls(private$index, all.names = TRUE), envir = private$index)
       rm(list = ls(private$deny_index, all.names = TRUE), envir = private$deny_index)
@@ -1858,19 +1963,20 @@ DataShield <- R6::R6Class(
       deny_raw <- character()   # merge fixed-string deny values across datasets
       for (dataset in private$datasets) {
         keys <- ls(dataset$index, all.names = TRUE)
-        for (key in keys) assign(key, TRUE, envir = private$index)
+        for (key in keys) .data_shield_add_label(private$index, key, get(key, envir = dataset$index, inherits = FALSE))
         if (!is.null(dataset$id_tables))
           .ds_merge_id_tables(private$index, dataset$id_tables)
         if (!is.null(dataset$deny_index)) {
           dkeys <- ls(dataset$deny_index, all.names = TRUE)
-          for (key in dkeys) assign(key, TRUE, envir = private$deny_index)
+          for (key in dkeys) .data_shield_add_label(private$deny_index, key, get(key, envir = dataset$deny_index, inherits = FALSE))
           rv <- tryCatch(attr(dataset$deny_index, "raw_values"), error = function(e) NULL)
           if (is.character(rv)) deny_raw <- c(deny_raw, rv)
         }
       }
       # carry the merged fixed-string deny values onto the live deny_index
       # (kiro round-4 #4: .data_shield_deny_scan reads this attr).
-      attr(private$deny_index, "raw_values") <- unique(deny_raw[nzchar(deny_raw)])
+      deny_raw <- deny_raw[nzchar(deny_raw)]
+      attr(private$deny_index, "raw_values") <- deny_raw[!duplicated(paste(deny_raw, names(deny_raw), sep = "\r"))]
       invisible(length(ls(private$index, all.names = TRUE)))
     }
   )
@@ -2234,7 +2340,8 @@ refresh_data_shield_context <- function(client) {
 #' @keywords internal
 .data_shield_process_text <- function(text, max_rows = 0L, index = NULL,
                                       detectors = c("row_cap", "value_match"),
-                                      on_fail = "redact", audit_fn = NULL) {
+                                      on_fail = "redact", audit_fn = NULL, explain = FALSE,
+                                      prefer = character(0)) {
   if (!is.character(text) || length(text) != 1L)
     return(list(text = text, changed = FALSE))
   if ("row_cap" %in% detectors) {
@@ -2252,16 +2359,20 @@ refresh_data_shield_context <- function(client) {
                         error = function(e) list(hit = TRUE, n = 0L, failed = TRUE))
     if (isTRUE(matched$hit)) {
       verb <- if (identical(on_fail, "block")) "blocked" else "withheld"
+      sources <- if (!isTRUE(matched$failed)) .data_shield_sources(matched$labels, matched$spans, prefer) else character(0)
+      why <- if (isTRUE(explain)) .data_shield_reason(sources) else ""
       if (is.function(audit_fn))
         audit_fn("value_match", on_fail,
                  if (isTRUE(matched$failed)) "value_match scan failed (fail-closed)"
-                 else "protected value match", matched$n %||% 0L, min(1, (matched$n %||% 0L) / 5))
+                 else paste0("protected value match", if (length(sources))
+                   paste0(": ", paste(sources, collapse = ", "))),
+                 matched$n %||% 0L, min(1, (matched$n %||% 0L) / 5))
       return(list(
         text = if (isTRUE(matched$failed))
           sprintf("[data_shield] output %s: scan failed (fail-closed).", verb)
-        else sprintf("[data_shield] output %s: contains %d protected data value(s).",
-                     verb, matched$n),
-        changed = TRUE))
+        else sprintf("[data_shield] output %s: contains %d protected data value(s).%s",
+                     verb, matched$n, why),
+        changed = TRUE, labels = matched$labels, failed = isTRUE(matched$failed)))
     }
   }
   list(text = text, changed = FALSE)
@@ -2269,16 +2380,24 @@ refresh_data_shield_context <- function(client) {
 
 .data_shield_filter_result <- function(result, max_rows = 0L, index = NULL,
                                        detectors = c("row_cap", "value_match"),
-                                       on_fail = "redact", audit_fn = NULL) {
+                                       on_fail = "redact", audit_fn = NULL, explain = FALSE,
+                                       prefer = character(0), displayable = function(labels) TRUE) {
   process <- function(text) .data_shield_process_text(
     text, max_rows = max_rows, index = index,
-    detectors = detectors, on_fail = on_fail, audit_fn = audit_fn)
+    detectors = detectors, on_fail = on_fail, audit_fn = audit_fn, explain = explain, prefer = prefer)
+  # what the model gets instead, saying whether the user still sees the result
+  seen <- function(filtered, where) paste0(filtered$text, if (isTRUE(explain)) .DATA_SHIELD_SEEN[[where]])
   if (isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult),
                       error = function(e) FALSE))) {
     value <- tryCatch(as.character(result@value), error = function(e) NULL)
     if (is.character(value) && length(value) == 1L) {
       filtered <- process(value)
-      if (isTRUE(filtered$changed)) result@value <- filtered$text
+      # the card stays when every matched value may be shown (row_cap: no
+      # values matched, the card stays)
+      if (isTRUE(filtered$changed))
+        return(.data_shield_replace(result, filtered$text,
+                                    keep_card = !isTRUE(filtered$failed) && displayable(filtered$labels),
+                                    explain = explain))
     }
     return(result)
   }
@@ -2286,12 +2405,12 @@ refresh_data_shield_context <- function(client) {
     text <- tryCatch(paste(utils::capture.output(print(result)), collapse = "\n"),
                      error = function(e) "")
     filtered <- process(text)
-    if (isTRUE(filtered$changed)) return(filtered$text)
+    if (isTRUE(filtered$changed)) return(seen(filtered, "none"))
     return(result)
   }
   if (is.character(result) && length(result) == 1L) {
     filtered <- process(result)
-    if (isTRUE(filtered$changed)) return(filtered$text)
+    if (isTRUE(filtered$changed)) return(seen(filtered, "none"))
     return(result)
   }
   # Catch-all (kiro round-3): ANY other model-facing shape -- a list
@@ -2309,7 +2428,7 @@ refresh_data_shield_context <- function(client) {
     return("[data_shield] tool output withheld: result could not be serialized for scanning (fail-closed).")
   if (nzchar(serialized)) {
     filtered <- process(serialized)
-    if (isTRUE(filtered$changed)) return(filtered$text)
+    if (isTRUE(filtered$changed)) return(seen(filtered, "none"))
   }
   result
 }
@@ -2345,7 +2464,7 @@ refresh_data_shield_context <- function(client) {
       warning("data_shield: tool '", tool_name,
               "' ingress scrub failed; call rejected (fail-closed).", call. = FALSE)
       return(ellmer::tool_reject(
-        "[data_shield] tool arguments could not be scanned; call rejected (fail-closed)."))
+        paste0("[data_shield] tool arguments could not be scanned; call rejected (fail-closed).", .DATA_SHIELD_SEEN[["not_run"]])))
     }
     if (identical(ing$action, "redact") && is.list(ing$args))
       args <- ing$args
@@ -2360,8 +2479,9 @@ refresh_data_shield_context <- function(client) {
                          warning("data_shield: tool '", tool_name,
                                  "' errored; message withheld from model.",
                                  call. = FALSE)
-                         ellmer::tool_reject(
-                           "[data_shield] tool failed; error withheld (fail-closed).")
+                         ellmer::tool_reject(paste0(
+                           "[data_shield] tool failed; error withheld (fail-closed).",
+                           " The error was not shown to the user either."))
                        })
     # Async tools return a promise; scanning the promise object itself would let
     # the resolved value (e.g. a protected id) reach the caller unfiltered (kiro
@@ -2371,11 +2491,12 @@ refresh_data_shield_context <- function(client) {
     if (promises::is.promise(result)) {
       return(promises::then(
         result,
-        onFulfilled = function(v) shield$scan_egress(v, context = list(tool_name = tool_name)),
-        onRejected  = function(e) ellmer::tool_reject(
-          "[data_shield] tool failed; result withheld (fail-closed).")))
+        onFulfilled = function(v) shield$scan_egress(v, context = list(tool_name = tool_name, args = args)),
+        onRejected  = function(e) ellmer::tool_reject(paste0(
+          "[data_shield] tool failed; result withheld (fail-closed).",
+          " The error was not shown to the user either."))))
     }
-    shield$scan_egress(result, context = list(tool_name = tool_name))
+    shield$scan_egress(result, context = list(tool_name = tool_name, args = args))
   }
   attr(wrapped, "data_shield_wrapped") <- TRUE
   attr(wrapped, "data_shield_original") <- original
@@ -2424,7 +2545,8 @@ refresh_data_shield_context <- function(client) {
 #' @keywords internal
 .data_shield_build_value_index <- function(df, cols = names(df),
                                            min_len = 3L, min_card = 8L,
-                                           max_values = 500000L, deny_all = FALSE) {
+                                           max_values = 500000L, deny_all = FALSE,
+                                           labels = NULL) {
   set <- new.env(parent = emptyenv())
   n <- 0L
   truncated <- FALSE
@@ -2449,19 +2571,26 @@ refresh_data_shield_context <- function(client) {
     # no cardinality/length/int thresholds -- a "none" column with just two
     # values (ALPHA/BETA) must still deny, so no value may be filtered out.
     ch <- ch[nzchar(ch)]
+    # the value maps to every column label it comes from (dataset, column,
+    # class -- for the notice); never used for matching
+    lab <- if (!is.null(labels) && !is.na(labels[cn])) unname(labels[cn]) else cn
     for (x in .data_shield_normalize(ch)) {
       if (n >= max_values) { truncated <- TRUE; break }
-      assign(x, TRUE, envir = set); n <- n + 1L
+      .data_shield_add_label(set, x, lab)
+      n <- n + 1L
     }
     if (isTRUE(deny_all))
-      raw_values <- c(raw_values, trimws(tolower(ch)))
+      raw_values <- c(raw_values, stats::setNames(trimws(tolower(ch)), rep(lab, length(ch))))
   }
   attr(set, "n") <- n
   attr(set, "truncated") <- truncated
   # For deny_all: keep the FULL casefolded values (short, multi-word, punctuated)
   # so .data_shield_deny_scan can do fixed-string substring matching that the
   # tokenizing value-match scanner would miss (kiro round-4 #4).
-  if (isTRUE(deny_all)) attr(set, "raw_values") <- unique(raw_values[nzchar(raw_values)])
+  if (isTRUE(deny_all)) {
+    keep <- nzchar(raw_values) & !duplicated(paste(raw_values, names(raw_values), sep = "\r"))
+    attr(set, "raw_values") <- raw_values[keep]   # names: the column label of each value
+  }
   set
 }
 
@@ -2478,7 +2607,9 @@ refresh_data_shield_context <- function(client) {
     return(list(hit = FALSE, n = 0L))
   hay <- tolower(text)
   hits <- vals[vapply(vals, function(v) grepl(v, hay, fixed = TRUE), logical(1))]
-  list(hit = length(hits) > 0L, n = length(hits))
+  # names are the column labels (register_data); the values never leave here
+  labels <- if (length(hits) && !is.null(names(hits))) unname(split(names(hits), hits)) else list()
+  list(hit = length(hits) > 0L, n = length(unique(hits)), labels = labels)
 }
 
 # Scan text for indexed protected values (token-hash, v0).
@@ -2533,7 +2664,104 @@ refresh_data_shield_context <- function(client) {
   spans <- .ds_id_spans(text, index)
   # One protected value found both exactly and as a span counts once.
   n <- length(unique(c(hit, .data_shield_normalize(spans))))
-  list(hit = n > 0L, n = n, values = unique(hit), spans = spans)
+  list(hit = n > 0L, n = n, values = unique(hit), spans = spans,
+       labels = .data_shield_hit_labels(unique(hit), index))
+}
+
+# Column labels of the index: dataset, column and class of a protected value,
+# kept with the value (for the notice; matching only tests existence).
+.data_shield_label <- function(dataset, column, class)
+  paste(dataset, column, class, sep = "\x1f")
+
+.data_shield_add_label <- function(env, key, labels) {
+  labels <- as.character(labels[!vapply(as.list(labels), isTRUE, logical(1))])
+  old <- if (exists(key, envir = env, inherits = FALSE)) get(key, envir = env, inherits = FALSE) else character(0)
+  old <- as.character(old[!vapply(as.list(old), isTRUE, logical(1))])
+  assign(key, unique(c(old, labels)), envir = env)
+}
+
+# The labels of each matched value (a list: one character vector per value).
+.data_shield_hit_labels <- function(hits, index) {
+  if (!length(hits) || !is.environment(index)) return(list())
+  lapply(mget(hits, envir = index, ifnotfound = list(character(0))), function(l)
+    as.character(l[!vapply(as.list(l), isTRUE, logical(1))]))
+}
+
+# Where the matched values came from, as the notice says it. Each value
+# counts with the datasets the tool was asked about (`prefer`, the registered
+# dataset names its arguments name) when it is in one of them, else with every
+# dataset it is in; then per column and class: "ADSL.SUBJID (identifier)" for
+# one dataset, "SUBJID (identifier) in ADAE, ADSL, ADCM and 4 more datasets"
+# for several -- a dataset is never paired with a column it does not have.
+# Spans (identifier variants / shapes) add "an identifier written in another
+# format". Labels only -- never a value. PURE.
+.data_shield_sources <- function(labels, spans = character(0), prefer = character(0), max_ds = 3L) {
+  pick <- lapply(labels, function(l) {
+    l <- l[grepl("\x1f", l, fixed = TRUE)]
+    ds <- sub("\x1f.*$", "", l)
+    if (length(prefer) && any(toupper(ds) %in% toupper(prefer))) l[toupper(ds) %in% toupper(prefer)] else l
+  })
+  l <- unique(unlist(pick, use.names = FALSE))
+  out <- character(0)
+  if (length(l)) {
+    parts <- do.call(rbind, strsplit(l, "\x1f", fixed = TRUE))
+    key <- paste(parts[, 2], parts[, 3], sep = "\x1f")
+    for (k in unique(key)) {
+      ds <- sort(unique(parts[key == k, 1]))
+      col <- parts[key == k, 2][1]; cls <- parts[key == k, 3][1]
+      out <- c(out, if (length(ds) == 1L) sprintf("%s.%s (%s)", ds, col, cls) else
+        sprintf("%s (%s) in %s%s", col, cls, paste(utils::head(ds, max_ds), collapse = ", "),
+                if (length(ds) > max_ds) sprintf(" and %d more datasets", length(ds) - max_ds) else ""))
+    }
+  }
+  c(out, if (length(spans)) "an identifier written in another format")
+}
+
+# Whether the user sees the result a notice replaced, said to the model so it
+# can tell the user (a model cannot see the UI).
+.DATA_SHIELD_SEEN <- c(
+  card = " The user sees the full result in the tool card; only you cannot see it.",
+  none = " The result was not shown to the user either.",
+  not_run = " The tool did not run, so the user saw no result either.")
+
+# A tool result the user sees as its own card (ellmer ContentToolResult with
+# extra$display): replacing only its value leaves the card as it was.
+.data_shield_has_card <- function(result) {
+  if (!isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult), error = function(e) FALSE)))
+    return(FALSE)
+  ex <- tryCatch(result@extra, error = function(e) list())
+  length(ex$display) > 0L || length(ex$contents) > 0L || !is.null(ex$codeagent$artifact)
+}
+
+# The result the model gets when its value was replaced by `note`: the card
+# (extra) stays when the user may see it, else it is dropped too.
+.data_shield_replace <- function(result, note, keep_card, explain) {
+  if (!isTRUE(tryCatch(S7::S7_inherits(result, ellmer::ContentToolResult), error = function(e) FALSE)))
+    return(paste0(note, if (isTRUE(explain)) .DATA_SHIELD_SEEN[["none"]]))
+  card <- isTRUE(keep_card) && .data_shield_has_card(result)
+  result@value <- paste0(note, if (isTRUE(explain)) .DATA_SHIELD_SEEN[[if (card) "card" else "none"]])
+  if (!card) result@extra <- list()
+  result
+}
+
+# Registered dataset names that a tool's (already scanned) arguments name:
+# whole words, any case ("ADSL", dataset = "adsl", "ADSL.SUBJID").
+.data_shield_named_datasets <- function(args, datasets) {
+  if (!length(args) || !length(datasets)) return(character(0))
+  txt <- tryCatch(paste(unlist(args, use.names = FALSE), collapse = " "), error = function(e) "")
+  if (!is.character(txt) || !nzchar(txt)) return(character(0))
+  datasets[vapply(datasets, function(d)
+    grepl(paste0("(?<![[:alnum:]_])", .data_shield_escape_regex(d), "(?![[:alnum:]_])"), txt, perl = TRUE, ignore.case = TRUE),
+    logical(1))]
+}
+
+# The reason part of a withheld / denied notice: at most `max` sources.
+.data_shield_reason <- function(sources, max = 5L) {
+  sources <- unique(sources[nzchar(sources)])
+  if (!length(sources)) return("")
+  more <- length(sources) - max
+  paste0(" Source: ", paste(utils::head(sources, max), collapse = ", "),
+         if (more > 0L) sprintf(" and %d more", more), ".")
 }
 
 # Segment runs to try per compound token: the default, or more when the index
@@ -2625,7 +2853,7 @@ refresh_data_shield_context <- function(client) {
   if (any(!names(column_access) %in% names(df)))
     stop("`column_access` names must be columns in `df`.", call. = FALSE)
   access_levels <- c("none", "schema", "scan", "raw")
-  known_keys <- c("prompt", "egress", "reason", "scan_secrets")
+  known_keys <- c("prompt", "egress", "reason", "scan_secrets", "display")
   out <- list()
   for (cn in names(column_access)) {
     spec <- column_access[[cn]]
@@ -2651,9 +2879,12 @@ refresh_data_shield_context <- function(client) {
     if (is_raw && is.null(reason))
       stop("column_access[['", cn, "']]: raw access requires a non-empty `reason`.",
            call. = FALSE)
+    display <- spec$display
+    if (!is.null(display) && !(is.character(display) && length(display) == 1L && display %in% c("show", "hide")))
+      stop("column_access[['", cn, "']]: display must be \"show\" or \"hide\".", call. = FALSE)
     out[[cn]] <- list(
       prompt = prompt, egress = egress, reason = reason,
-      scan_secrets = isTRUE(spec$scan_secrets %||% TRUE))
+      scan_secrets = isTRUE(spec$scan_secrets %||% TRUE), display = display)
   }
   out
 }

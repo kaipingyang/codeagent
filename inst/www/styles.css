@@ -450,8 +450,10 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 .ca-interaction--questions { border-top-color: var(--bs-info, #0dcaf0); display: block; }
 .ca-interaction--form { border-top-color: var(--bs-primary, #0d6efd); display: block; }
 .ca-interaction--egress { border-top-color: var(--bs-danger, #dc3545); gap: 10px; }
-/* Long cards (forms, question sets): the fields scroll, the buttons stay in view. */
-.ca-interaction--scroll { max-height: 60vh; display: flex; flex-direction: column; overflow: hidden; }
+/* Long cards (forms, question sets): the fields scroll, the buttons stay in view.
+   Height: the cap and the height the user drags to (interaction.js handle). */
+.ca-interaction--scroll { max-height: var(--ca-ia-card-max, 60vh); height: var(--ca-ia-card-h, auto);
+  position: relative; display: flex; flex-direction: column; overflow: hidden; }
 .ca-interaction--scroll > .ca-interaction-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
 .ca-interaction--scroll > .ca-interaction-body > * { flex-shrink: 0; }
 .ca-interaction--scroll > .ca-interaction-actions { flex: 0 0 auto; justify-content: flex-end; padding-top: 8px; }
@@ -585,7 +587,8 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 /* --- Interaction card seat: above the composer (inst/www/interaction.js) -------- */
 .shiny-chat-layout { position: relative; }
 #ca_interaction_ui.ca-ia-overlay { position: absolute; z-index: 20; left: var(--ca-ia-left, 0);
-  width: var(--ca-ia-width, 100%); bottom: var(--ca-ia-bottom, 0); max-height: var(--ca-ia-max-height, 50%);
+  width: var(--ca-ia-width, 100%); bottom: var(--ca-ia-bottom, 0); max-height: var(--ca-ia-max-height, 60%);
+  height: var(--ca-ia-height, auto);
   display: flex; flex-direction: column; gap: 4px; overflow: hidden;
   padding-bottom: var(--ca-ia-gap, 8px); background: transparent; }
 /* The gap to the composer is opaque: the conversation must not show through it. */
@@ -602,6 +605,21 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
 #ca_interaction_ui.ca-ia-overlay > .ca-interaction-queue { background: var(--bs-body-bg, #fff);
   border-radius: 8px; padding: 2px 12px; align-self: flex-start; }
 #ca_interaction_ui.ca-ia-overlay > .ca-q-card { overflow: hidden; }
+/* A long form scrolls inside the card; its buttons stay at the bottom. */
+#ca_interaction_ui.ca-ia-overlay > .ca-interaction--scroll > .ca-interaction-actions {
+  position: sticky; bottom: -8px; z-index: 1; margin: 0 -16px -8px; padding: 8px 16px;
+  background: var(--bs-body-bg, #fff); }
+/* Resize handle on the card's top edge (interaction.js): drag up / down like a
+   phone's bottom sheet; double-click or Enter toggles full height. */
+#ca_interaction_ui .ca-ia-handle { position: absolute; z-index: 2; top: 0; left: 50%;
+  transform: translateX(-50%); width: 96px; height: 14px; cursor: ns-resize; touch-action: none;
+  border-radius: 7px; outline-offset: 1px; }
+#ca_interaction_ui .ca-ia-handle::before { content: ""; position: absolute; left: 30px; right: 30px;
+  top: 5px; height: 4px; border-radius: 2px; background: var(--bs-secondary-color, #999); opacity: .45; }
+#ca_interaction_ui .ca-ia-handle:hover::before,
+#ca_interaction_ui .ca-ia-handle:focus-visible::before,
+#ca_interaction_ui.ca-ia-dragging .ca-ia-handle::before { opacity: .8; }
+#ca_interaction_ui.ca-ia-dragging, #ca_interaction_ui.ca-ia-dragging * { user-select: none; cursor: ns-resize; }
 
 /* Slash-command palette (shinychat, portalled to <body>): the composer's width
    and left edge, just above it (vars set by inst/www/interaction.js). */
@@ -634,9 +652,10 @@ html[data-glass-mode] .bslib-sidebar-layout.sidebar-right:not(.sidebar-collapsed
   box-shadow: 0 2px 8px rgba(0,0,0,.06); }
 
 /* AskUserForm grouping: rows of group name + drop-down checklist */
-.ca-grp-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; }
+.ca-grp-row { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 6px; position: relative; }
 .ca-grp-name { flex: 0 0 34%; min-width: 0; }
-.ca-grp-pick { flex: 1 1 auto; min-width: 0; position: relative; }
+/* the open list spans the whole row (name column included): long arm names stay on one or two lines */
+.ca-grp-pick { flex: 1 1 auto; min-width: 0; position: static; }
 .ca-grp-summary { cursor: pointer; list-style: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ca-grp-summary::-webkit-details-marker { display: none; }
 .ca-grp-summary.is-empty { color: var(--bs-secondary-color, #6c757d); }
