@@ -225,15 +225,15 @@ library。
 - `mcptools` \>= 1.0.2.9000（所有 MCP client/server 入口的最低安全版本）
 - `httr2` 1.3.0（保持稳定版）
 
-**当前个人默认开发环境（2026-11-15）：**
+**当前个人默认开发环境（2026-11-25）：**
 
 个人库：`/home/kaiping.yang/R/x86_64-pc-linux-gnu-library/4.4`。
 
-- `ellmer` 0.5.2.9000 @ `3ebd68f749d77d66587ad6e779e90c53a9372b5c`
+- `ellmer` 0.5.2.9000 @ `602867c456e85f7ab59ad69859f6562679e52f34`
 - `btw` 1.5.0.9000 @ `df0f3d345829664d1a483063279896c0777e9f96`
 - `shinychat` 0.5.0.9000 @
   `2a1d456cb640692d58a51c8f58d87df8aa043d39`（monorepo：`posit-dev/shinychat/pkg-r`）
-- `shiny` 1.14.0.9000 @ `1f85217932665592b9715be794eee87c53f6bb3f`
+- `shiny` 1.15.0.9000 @ `4f2217e332c9c346295b860997612dafb5e7f319`
 - `bslib` 0.12.0.9000 @ `20b165f78ca479ffdcf5314a959dcf6f5e64ab10`
 - `mcptools` 1.0.3.9000 @ `714803bdfce903707a27d9c4740591d87f601aae`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
