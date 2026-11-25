@@ -1280,11 +1280,17 @@ body .ca-dsh-composer-toolbar:not(:has(#model_select)) .ca-dsh-voice-btn { margi
 
 /* Left column: shinychat history as DSH session rows. */
 body .shiny-chat-history {
-  --shiny-chat-history-bg: transparent;
+  /* A drawer over the chat (chat_ui(history = TRUE) in a host page) needs a
+     solid surface; transparent showed the chat through it. Only the history
+     column of the DSH page sidebar is transparent (the sidebar paints it). */
+  --shiny-chat-history-bg: var(--ca-dsh-bg-sidebar);
   --shiny-chat-history-item-hover-bg: var(--ca-dsh-bg-hover);
   --shiny-chat-history-item-active-bg: var(--ca-dsh-bg-hover);
   --shiny-chat-history-accent: var(--ca-dsh-label-primary);
   --shiny-chat-history-border-color: var(--ca-dsh-border-l2);
+}
+body .shiny-chat-page-sidebar .shiny-chat-history {
+  --shiny-chat-history-bg: transparent;
 }
 body .shiny-chat-history-new {
   border: 0.5px solid var(--ca-dsh-border-l4);

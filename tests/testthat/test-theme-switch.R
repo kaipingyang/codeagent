@@ -44,3 +44,9 @@ test_that("codeagent_server validates themes / on_theme; the stylesheet fix ship
   expect_match(js, "restyle=", fixed = TRUE)
   expect_match(js, "document.head.appendChild(el)", fixed = TRUE)
 })
+
+test_that("dsh: the history drawer is opaque; only the page-sidebar column is transparent", {
+  scss <- paste(readLines(system.file("themes", "dsh.scss", package = "codeagent")), collapse = "\n")
+  expect_match(scss, "body \\.shiny-chat-history \\{\\n[^}]*--shiny-chat-history-bg: var\\(--ca-dsh-bg-sidebar\\);", perl = TRUE)
+  expect_match(scss, "body .shiny-chat-page-sidebar .shiny-chat-history {\n  --shiny-chat-history-bg: transparent;", fixed = TRUE)
+})
