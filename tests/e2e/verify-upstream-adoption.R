@@ -51,7 +51,7 @@ mandatory_preflight <- function(start_wd) {
   libraries <- configure_validation_libraries()
   packages <- c(
     "codeagent", "ellmer", "btw", "shinychat", "shiny", "bslib",
-    "mcptools", "Rapp", "httr2", "callr", "chromote", "httpuv", "jsonlite")
+    "mcptools", "Rapp", "httr2", "coro", "callr", "chromote", "httpuv", "jsonlite")
   missing <- packages[!vapply(packages, requireNamespace, logical(1L), quietly = TRUE)]
   if (length(missing)) {
     fail("Mandatory E2E packages are missing: ", paste(missing, collapse = ", "))
@@ -74,7 +74,9 @@ mandatory_preflight <- function(start_wd) {
     Rapp = c(version = "0.4.1.9000",
              sha = "489655f24945042791ddb083d0d5518c4a905d9f"),
     httr2 = c(version = "1.3.0.9000",
-              sha = "74e3eec77263fd6e339095a1164e0a4af8df5ea0")
+              sha = "74e3eec77263fd6e339095a1164e0a4af8df5ea0"),
+    coro = c(version = "1.1.0.9000",
+             sha = "a8efdec66ec547e4697c78286135255429c326ae")
   )
   for (package in names(frozen)) {
     info <- utils::packageDescription(package)

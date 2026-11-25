@@ -26,7 +26,16 @@ test_that("streaming reuses a small coroutine rather than building one per turn"
   source <- paste(deparse(body(codeagent_stream_async)), collapse = "\n")
   expect_false(grepl("coro::async(", source, fixed = TRUE))
   driver <- get(".run_codeagent_stream", asNamespace("codeagent"), inherits = FALSE)
-  fn <- get("fn", environment(driver), inherits = FALSE)
+  # coro keeps the user function in the async closure's environment; since
+  # r-lib/coro#72 it lives in a `_static` environment embedded in the body.
+  fn <- get0("fn", environment(driver), inherits = FALSE)
+  if (is.null(fn)) {
+    static <- Filter(is.environment, lapply(as.list(body(driver)), function(e) {
+      if (is.call(e) && identical(e[[1]], as.name("<-")) &&
+          identical(e[[2]], as.name("_static"))) e[[3]]
+    }))
+    fn <- get("fn", static[[1]], inherits = FALSE)
+  }
   expect_lte(length(deparse(body(fn))), 40L)
 })
 

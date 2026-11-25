@@ -1,6 +1,6 @@
 ---
 name: posit-dev-packages
-description: 更新 codeagent 的八个核心 GitHub 包到最新开发版，并显示开发版相比 CRAN 的新功能。当用户提到"更新开发包"、"dev version"、"开发版包"、"更新 ellmer btw shinychat"、"posit dev packages"时触发。
+description: 更新 codeagent 的九个核心 GitHub 包到最新开发版，并显示开发版相比 CRAN 的新功能。当用户提到"更新开发包"、"dev version"、"开发版包"、"更新 ellmer btw shinychat"、"posit dev packages"时触发。
 metadata:
   argument-hint: "[package names, default: all eight core packages]"
 ---
@@ -21,13 +21,14 @@ refs <- c(
   "rstudio/bslib@20b165f78ca479ffdcf5314a959dcf6f5e64ab10",
   "posit-dev/mcptools@714803bdfce903707a27d9c4740591d87f601aae",
   "r-lib/Rapp@489655f24945042791ddb083d0d5518c4a905d9f",
-  "r-lib/httr2@74e3eec77263fd6e339095a1164e0a4af8df5ea0"
+  "r-lib/httr2@74e3eec77263fd6e339095a1164e0a4af8df5ea0",
+  "r-lib/coro@a8efdec66ec547e4697c78286135255429c326ae"
 )
 pak::pkg_install(refs, upgrade = TRUE, ask = FALSE,
   dependencies = c("Depends", "Imports", "LinkingTo"))
 
 for (pkg in c("ellmer", "btw", "shinychat", "shiny", "bslib",
-              "mcptools", "Rapp", "httr2")) {
+              "mcptools", "Rapp", "httr2", "coro")) {
   desc <- packageDescription(pkg)
   cat(pkg, desc[["Version"]], desc[["RemoteSha"]], "\n")
 }
@@ -70,6 +71,7 @@ pak::pak(c(
 - `mcptools` 1.0.3.9000 @ `714803bdfce903707a27d9c4740591d87f601aae`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
 - `httr2` 1.3.0.9000 @ `74e3eec77263fd6e339095a1164e0a4af8df5ea0`
+- `coro` 1.1.0.9000 @ `a8efdec66ec547e4697c78286135255429c326ae`（CRAN 1.1.0 每次调用生成器都触发 JIT 全量重编译，单次模型请求多约 0.9s；r-lib/coro#72 已修，未发 CRAN）
 
 普通运行不依赖`/tmp` candidate。exact shinychat的官方tool结果取值是
 `open_style = "framed"`（不是`"frame"`）；它还提供`page_chat()`、

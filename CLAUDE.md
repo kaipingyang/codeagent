@@ -179,10 +179,11 @@ my_tool <- function(con, mode = "bypass") {
 - `mcptools` 1.0.3.9000 @ `714803bdfce903707a27d9c4740591d87f601aae`
 - `Rapp` 0.4.1.9000 @ `489655f24945042791ddb083d0d5518c4a905d9f`
 - `httr2` 1.3.0.9000 @ `74e3eec77263fd6e339095a1164e0a4af8df5ea0`
+- `coro` 1.1.0.9000 @ `a8efdec66ec547e4697c78286135255429c326ae`（修复每次请求的 JIT 重编译，约 0.9s/请求；CRAN 1.1.0 未含 r-lib/coro#72）
 
 普通R环境直接使用该个人库，不依赖`/tmp` candidate或硬编码`.libPaths()`。
 上方0.2.0 shared release保持不变，除非另行执行发布promote。当前工作树
-`DESCRIPTION`固定全部八个完整SHA；更换任一SHA后必须同步manifest并重新执行
+`DESCRIPTION`固定全部九个完整SHA；更换任一SHA后必须同步manifest并重新执行
 完整testthat、R CMD check以及classic/page_chat真实Chromium gate。
 
 开发版 `Version` 字符串不能唯一标识构建，必须同时核对完整 `RemoteSha`。
