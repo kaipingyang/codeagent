@@ -19,6 +19,11 @@
 - `theme = "dsh"`: the empty composer’s placeholder stays on one line
   (it wrapped and showed a scrollbar).
 
+- `theme = "dsh"`: the shinychat history drawer of a host page
+  (`codeagent_chat_ui(history = TRUE)`) has the DSH sidebar surface; it
+  was transparent, so the chat showed through the list. Only the history
+  column of the DSH page sidebar stays transparent.
+
 - Data Shield says what the user still sees. Every notice the model gets
   ends with one of “The user sees the full result in the tool card; only
   you cannot see it.”, “The result was not shown to the user either.” or
