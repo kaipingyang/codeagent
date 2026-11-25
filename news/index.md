@@ -2,6 +2,17 @@
 
 ## codeagent (development version)
 
+- Interaction cards (questions, forms, approvals) have a handle on the
+  top edge: drag it up – as far as the top of the chat – or down, like a
+  phone’s bottom sheet; double-click or Enter toggles full height /
+  default, arrow keys step it. The default cap is 60% of the chat (was
+  half). The browser keeps the chosen height for later cards (capped by
+  it, they still shrink to their content). In the composer’s place
+  (theme `"dsh"`), forms get the same handle.
+
+- A long form keeps its buttons in view: the fields scroll, Cancel /
+  Submit stay at the bottom (with `theme = "dsh"` they were cut off).
+
 - New
   [`codeagent_theme_ui()`](https://kaipingyang.github.io/codeagent/reference/codeagent_theme_ui.md) +
   `codeagent_server(themes =, on_theme =)`: the user switches the page’s
