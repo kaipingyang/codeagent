@@ -26,7 +26,7 @@ Imports:
     shinychat (>= 0.4.0.9000),
     htmltools,
     sass,
-    coro,
+    coro (>= 1.1.0.9000),
     jsTreeR,
     keypress,
     base64enc,
@@ -91,7 +91,8 @@ Remotes:
     rstudio/bslib@20b165f78ca479ffdcf5314a959dcf6f5e64ab10,
     posit-dev/mcptools@714803bdfce903707a27d9c4740591d87f601aae,
     r-lib/Rapp@489655f24945042791ddb083d0d5518c4a905d9f,
-    r-lib/httr2@74e3eec77263fd6e339095a1164e0a4af8df5ea0
+    r-lib/httr2@74e3eec77263fd6e339095a1164e0a4af8df5ea0,
+    r-lib/coro@a8efdec66ec547e4697c78286135255429c326ae
 URL: https://kaipingyang.github.io/codeagent, https://github.com/kaipingyang/codeagent
 BugReports: https://github.com/kaipingyang/codeagent/issues
 Config/roxygen2/version: 8.1.0
