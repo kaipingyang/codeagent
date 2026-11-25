@@ -172,3 +172,22 @@ test_that("the gate's final decision is in the audit log (labels only)", {
   expect_match(src, "shield$record_gate(", fixed = TRUE)
   expect_match(src, "\"dont_send\"", fixed = TRUE)
 })
+
+test_that("display = 'hide': a variant or shape match of an identifier hides the card too", {
+  sh <- shield_with(display = "hide", column_access = NULL)
+  exact <- sh$scan_egress(card_result("subject S0007"), list(tool_name = "t"))
+  expect_length(exact@extra, 0L)
+  for (v in c("subject BGBX0007", "subject BGB-X-9999")) {    # variant, unregistered shape
+    out <- sh$scan_egress(card_result(v), list(tool_name = "t"))
+    if (!identical(out@value, v)) {                           # when the shield acted on it
+      expect_length(out@extra, 0L)
+      expect_false(grepl("user sees the full result", out@value, fixed = TRUE))
+    }
+  }
+})
+
+test_that("hit labels are never named by the protected value", {
+  sh <- shield_with()
+  vm <- .data_shield_hit_labels(c("S0007", "S0008"), sh$.__enclos_env__$private$index)
+  expect_null(names(vm))
+})

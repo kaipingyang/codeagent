@@ -640,9 +640,6 @@ is responsible for deciding what to read; the reviewer gets no tools).}
 \if{html}{\out{<a id="method-DataShield-record_gate"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-record_gate}{}}}
 \subsection{\code{DataShield$record_gate()}}{
-  Return a copy of non-sensitive decision events.
-
-
   Record the input gate's final decision on a user's message
 (it can differ from the scan's own event: a scan that redacted may
 end in a block, and a pasted table in the user's choice).
@@ -657,7 +654,6 @@ end in a block, and a pasted table in the user's choice).
       \item{\code{action}}{\code{"block"}, \code{"ask"}, \code{"send"} or \code{"dont_send"}.}
       \item{\code{reason}}{Labels only (source columns, table size) -- never a value.}
       \item{\code{match_count}}{Number of matches.}
-      \item{\code{limit}}{Optional number of most recent events.}
     }
     \if{html}{\out{</div>}}
   }
@@ -670,9 +666,17 @@ end in a block, and a pasted table in the user's choice).
 \if{html}{\out{<a id="method-DataShield-audit"></a>}}
 \if{latex}{\out{\hypertarget{method-DataShield-audit}{}}}
 \subsection{\code{DataShield$audit()}}{
+  Return a copy of non-sensitive decision events.
   \subsection{Usage}{
     \if{html}{\out{<div class="r">}}
     \preformatted{DataShield$audit(limit = NULL)}
+    \if{html}{\out{</div>}}
+  }
+  \subsection{Arguments}{
+    \if{html}{\out{<div class="arguments">}}
+    \describe{
+      \item{\code{limit}}{Optional number of most recent events.}
+    }
     \if{html}{\out{</div>}}
   }
 }

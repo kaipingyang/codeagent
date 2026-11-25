@@ -359,6 +359,14 @@ server_chat <- function(input, output, session, chat, settings,
           }
           .gate_note(session, .input_gate_user_note(list(action = "redact", sources = ig$sources)))
           continue_turn(ig$input %||% actual_input)
+        },
+        # the card went away unanswered (session closed, error): not sent, and
+        # the audit log says so
+        onRejected = function(e) {
+          shield <- .input_gate_shield(settings, chat)
+          tryCatch(shield$record_gate("dont_send", paste0("pasted table: ", ig$table %||% "",
+                                                         " (no answer)")), error = function(e2) NULL)
+          "blocked"
         }))
     }
     .gate_note(session, .input_gate_user_note(ig))

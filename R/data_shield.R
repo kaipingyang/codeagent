@@ -1627,8 +1627,6 @@ DataShield <- R6::R6Class(
       invisible(self)
     },
 
-    #' @description Return a copy of non-sensitive decision events.
-    #' @param limit Optional number of most recent events.
     #' @description Record the input gate's final decision on a user's message
     #'   (it can differ from the scan's own event: a scan that redacted may
     #'   end in a block, and a pasted table in the user's choice).
@@ -1645,6 +1643,8 @@ DataShield <- R6::R6Class(
       invisible(NULL)
     },
 
+    #' @description Return a copy of non-sensitive decision events.
+    #' @param limit Optional number of most recent events.
     audit = function(limit = NULL) {
       events <- private$audit_log
       if (!is.null(limit)) events <- utils::tail(events, max(0L, as.integer(limit)))
@@ -2372,7 +2372,8 @@ refresh_data_shield_context <- function(client) {
           sprintf("[data_shield] output %s: scan failed (fail-closed).", verb)
         else sprintf("[data_shield] output %s: contains %d protected data value(s).%s",
                      verb, matched$n, why),
-        changed = TRUE, labels = matched$labels, failed = isTRUE(matched$failed)))
+        changed = TRUE, labels = matched$labels, spans = matched$spans,
+        failed = isTRUE(matched$failed)))
     }
   }
   list(text = text, changed = FALSE)
@@ -2396,7 +2397,10 @@ refresh_data_shield_context <- function(client) {
       # values matched, the card stays)
       if (isTRUE(filtered$changed))
         return(.data_shield_replace(result, filtered$text,
-                                    keep_card = !isTRUE(filtered$failed) && displayable(filtered$labels),
+                                    # a variant or shape match (spans) has no column to ask:
+                                    # it is never shown
+                                    keep_card = !isTRUE(filtered$failed) && !length(filtered$spans) &&
+                                      displayable(filtered$labels),
                                     explain = explain))
     }
     return(result)
@@ -2683,8 +2687,9 @@ refresh_data_shield_context <- function(client) {
 # The labels of each matched value (a list: one character vector per value).
 .data_shield_hit_labels <- function(hits, index) {
   if (!length(hits) || !is.environment(index)) return(list())
-  lapply(mget(hits, envir = index, ifnotfound = list(character(0))), function(l)
-    as.character(l[!vapply(as.list(l), isTRUE, logical(1))]))
+  # unnamed: mget() names each entry by the matched value itself
+  unname(lapply(mget(hits, envir = index, ifnotfound = list(character(0))), function(l)
+    as.character(l[!vapply(as.list(l), isTRUE, logical(1))])))
 }
 
 # Where the matched values came from, as the notice says it. Each value

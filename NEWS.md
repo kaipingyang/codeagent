@@ -1,5 +1,12 @@
 # codeagent (development version)
 
+* Fixed (review of the Data Shield display work): with `display = "hide"` a
+  tool card stayed when the shield matched an identifier variant or an
+  unregistered identifier shape (no column to ask) -- it is hidden now. Hit
+  labels are no longer named by the matched value. A pasted-table question that
+  goes away unanswered is recorded in the audit log as not sent. `audit()` has
+  its own documentation again.
+
 * Interaction cards (questions, forms, approvals) have a handle on the top
   edge: drag it up -- as far as the top of the chat -- or down, like a phone's
   bottom sheet; double-click or Enter toggles full height / default, arrow keys
