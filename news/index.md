@@ -2,6 +2,13 @@
 
 ## codeagent (development version)
 
+- Data Shield registers datasets much faster: a newly registered dataset
+  is merged into the live value index instead of the index being rebuilt
+  from every dataset each time (a replaced or cleared dataset still
+  rebuilds), and value labels are added in bulk. 32 ADaM datasets: 15.6
+  s -\> 1.2 s, with an identical index (values, labels, deny values,
+  identifier variants).
+
 - Upstream packages updated: ellmer (with S7 1.0.0) and shiny
   1.15.0.9000 are pinned to their current GitHub HEADs; btw, shinychat,
   bslib, shinyglass, shinygenui, mcptools, Rapp and coro were already
