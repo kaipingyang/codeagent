@@ -232,7 +232,8 @@ codeagent_mode_ui <- function(modes = c("Ask before changes" = "default",
 #'   what a project contains), sent once with the first turn. It may also
 #'   return a promise of such a string when the facts are still being prepared:
 #'   the turn's first model request waits for it, at most `prompt_wait`
-#'   seconds (the turn then goes on without it).
+#'   seconds (the turn then goes on without it). A promise can only add
+#'   context; to block the turn, return the block list directly.
 #' @param prompt_wait Seconds a promise returned by `on_user_prompt` is waited
 #'   for (default 30).
 #' @param workspace `NULL` (no workspace tabs) or [workspace_options()]: place
@@ -273,9 +274,9 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                              on_tool_open = NULL, on_user_prompt = NULL, workspace = NULL,
                              sessions = FALSE, themes = NULL, on_theme = NULL,
                              form_widgets = NULL, prompt_wait = 30) {
-  .form_widgets_resolve(form_widgets)
+  .form_widgets_resolve(form_widgets)   # fail early on a bad spec
   if (!is.numeric(prompt_wait) || length(prompt_wait) != 1L || is.na(prompt_wait) || prompt_wait < 0)
-    stop("`prompt_wait` must be a non-negative number of seconds.", call. = FALSE)   # fail early on a bad spec
+    stop("`prompt_wait` must be a non-negative number of seconds.", call. = FALSE)
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))

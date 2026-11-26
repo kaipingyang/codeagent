@@ -68,8 +68,20 @@ test_that("blocking is unchanged: an id written any way is still withheld", {
 })
 
 test_that("32 datasets register fast", {
+  skip_on_cran()                                         # a timing check
   d <- mkdata(4); many <- stats::setNames(rep(list(d$ADSL), 32), sprintf("DS%02d", 1:32))
   sh <- DataShield$new()
   t <- system.time(reg(sh, many))[["elapsed"]]
   expect_lt(t, 5)
+})
+
+test_that("a deny column cut short by max_values still denies every value", {
+  df <- data.frame(a = c("alpha one", "beta two", "gamma three"),
+                   b = c("delta", "epsilon", "zeta"))
+  set <- .data_shield_build_value_index(df, max_values = 2L, deny_all = TRUE)
+  expect_true(attr(set, "truncated"))
+  expect_identical(attr(set, "n"), 2L)
+  # the value index stops at the cap, the fixed-string deny values do not
+  expect_setequal(unname(attr(set, "raw_values")), c("alpha one", "beta two", "gamma three"))
+  expect_false("delta" %in% attr(set, "raw_values"))   # columns after the cut are skipped, as before
 })
