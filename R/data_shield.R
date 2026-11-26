@@ -972,6 +972,7 @@ DataShield <- R6::R6Class(
         .ds_build_id_tables(
           df, id_cols = setdiff(names(sensitivity)[sensitivity == "identifier"], raw_egress_cols),
           min_len = min_len, min_card = min_card, max_values = max_index_values)
+      replacing <- name %in% names(private$datasets)
       private$datasets[[name]] <- list(
         name = name, data = df, sensitivity = sensitivity,
         column_access = col_access, display = display_map,
@@ -984,7 +985,9 @@ DataShield <- R6::R6Class(
       if (identical(private$config$distributions, "dp"))
         private$dp_budget[[name]] <- private$config$dp_budget %||%
           .DATA_SHIELD_DP_BUDGET_DEFAULT
-      private$rebuild_index()
+      # a new dataset is merged into the live index; a replaced one changes
+      # what earlier datasets contributed, so the index is rebuilt
+      if (replacing) private$rebuild_index() else private$merge_dataset(private$datasets[[name]])
       invisible(length(ls(idx, all.names = TRUE)))
     },
 
@@ -1960,24 +1963,28 @@ DataShield <- R6::R6Class(
       rm(list = ls(private$index, all.names = TRUE), envir = private$index)
       rm(list = ls(private$deny_index, all.names = TRUE), envir = private$deny_index)
       .ds_reset_id_tables(private$index)
-      deny_raw <- character()   # merge fixed-string deny values across datasets
-      for (dataset in private$datasets) {
-        keys <- ls(dataset$index, all.names = TRUE)
-        for (key in keys) .data_shield_add_label(private$index, key, get(key, envir = dataset$index, inherits = FALSE))
-        if (!is.null(dataset$id_tables))
-          .ds_merge_id_tables(private$index, dataset$id_tables)
-        if (!is.null(dataset$deny_index)) {
-          dkeys <- ls(dataset$deny_index, all.names = TRUE)
-          for (key in dkeys) .data_shield_add_label(private$deny_index, key, get(key, envir = dataset$deny_index, inherits = FALSE))
-          rv <- tryCatch(attr(dataset$deny_index, "raw_values"), error = function(e) NULL)
-          if (is.character(rv)) deny_raw <- c(deny_raw, rv)
+      attr(private$deny_index, "raw_values") <- character()
+      for (dataset in private$datasets) private$merge_dataset(dataset)
+      invisible(length(ls(private$index, all.names = TRUE)))
+    },
+    # One dataset into the live index, after the datasets already in it: the
+    # index of a full rebuild when datasets are merged in registration order,
+    # so a newly registered dataset is merged alone (no rebuild).
+    merge_dataset = function(dataset) {
+      .data_shield_merge_labels(private$index, dataset$index)
+      if (!is.null(dataset$id_tables))
+        .ds_merge_id_tables(private$index, dataset$id_tables)
+      if (!is.null(dataset$deny_index)) {
+        .data_shield_merge_labels(private$deny_index, dataset$deny_index)
+        # the merged fixed-string deny values on the live deny_index (kiro
+        # round-4 #4: .data_shield_deny_scan reads this attr)
+        rv <- tryCatch(attr(dataset$deny_index, "raw_values"), error = function(e) NULL)
+        if (is.character(rv)) {
+          all <- c(attr(private$deny_index, "raw_values") %||% character(), rv[nzchar(rv)])
+          attr(private$deny_index, "raw_values") <- all[!duplicated(paste(all, names(all), sep = "\r"))]
         }
       }
-      # carry the merged fixed-string deny values onto the live deny_index
-      # (kiro round-4 #4: .data_shield_deny_scan reads this attr).
-      deny_raw <- deny_raw[nzchar(deny_raw)]
-      attr(private$deny_index, "raw_values") <- deny_raw[!duplicated(paste(deny_raw, names(deny_raw), sep = "\r"))]
-      invisible(length(ls(private$index, all.names = TRUE)))
+      invisible(NULL)
     }
   )
 )
@@ -2578,11 +2585,14 @@ refresh_data_shield_context <- function(client) {
     # the value maps to every column label it comes from (dataset, column,
     # class -- for the notice); never used for matching
     lab <- if (!is.null(labels) && !is.na(labels[cn])) unname(labels[cn]) else cn
-    for (x in .data_shield_normalize(ch)) {
-      if (n >= max_values) { truncated <- TRUE; break }
-      .data_shield_add_label(set, x, lab)
-      n <- n + 1L
+    nx <- .data_shield_normalize(ch)
+    if (length(nx) > max_values - n) {       # the cap counts values, as before
+      nx <- nx[seq_len(max(0, max_values - n))]
+      truncated <- TRUE
     }
+    .data_shield_add_labels(set, unique(nx), lab)
+    n <- n + length(nx)
+    if (truncated) break
     if (isTRUE(deny_all))
       raw_values <- c(raw_values, stats::setNames(trimws(tolower(ch)), rep(lab, length(ch))))
   }
@@ -2682,6 +2692,36 @@ refresh_data_shield_context <- function(client) {
   old <- if (exists(key, envir = env, inherits = FALSE)) get(key, envir = env, inherits = FALSE) else character(0)
   old <- as.character(old[!vapply(as.list(old), isTRUE, logical(1))])
   assign(key, unique(c(old, labels)), envir = env)
+}
+
+# Bulk forms of .data_shield_add_label() (registering 32 datasets took 15 s
+# one value at a time, and the index was rebuilt after each one). Same result:
+# a key's labels are its old labels then the new ones, without duplicates.
+.data_shield_clean_labels <- function(x)
+  if (is.character(x)) x else as.character(x[!vapply(as.list(x), isTRUE, logical(1))])
+
+# One label for many keys (unique keys).
+.data_shield_add_labels <- function(env, keys, label) {
+  if (!length(keys)) return(invisible(env))
+  label <- .data_shield_clean_labels(label)
+  old <- mget(keys, envir = env, ifnotfound = list(NULL), inherits = FALSE)
+  new <- lapply(old, function(o) if (is.null(o)) label else unique(c(.data_shield_clean_labels(o), label)))
+  list2env(stats::setNames(new, keys), envir = env)
+  invisible(env)
+}
+
+# Every key of `src` (key -> labels) into `env`.
+.data_shield_merge_labels <- function(env, src) {
+  keys <- ls(src, all.names = TRUE)
+  if (!length(keys)) return(invisible(env))
+  add <- mget(keys, envir = src, inherits = FALSE)
+  old <- mget(keys, envir = env, ifnotfound = list(NULL), inherits = FALSE)
+  new <- Map(function(o, a) {
+    a <- .data_shield_clean_labels(a)
+    if (is.null(o)) a else unique(c(.data_shield_clean_labels(o), a))
+  }, old, add)
+  list2env(stats::setNames(new, keys), envir = env)
+  invisible(env)
 }
 
 # The labels of each matched value (a list: one character vector per value).
