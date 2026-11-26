@@ -35,7 +35,8 @@ codeagent_server(
   sessions = FALSE,
   themes = NULL,
   on_theme = NULL,
-  form_widgets = NULL
+  form_widgets = NULL,
+  prompt_wait = 30
 )
 ```
 
@@ -122,7 +123,10 @@ codeagent_server(
   character string to add it as context to this turn (the user's text is
   never changed), or `list(action = "block", message = )` to stop the
   turn. Typical use: facts the host knows that save the model a tool
-  call (e.g. what a project contains), sent once with the first turn.
+  call (e.g. what a project contains), sent once with the first turn. It
+  may also return a promise of such a string when the facts are still
+  being prepared: the turn's first model request waits for it, at most
+  `prompt_wait` seconds (the turn then goes on without it).
 
 - workspace:
 
@@ -167,6 +171,11 @@ codeagent_server(
   Shiny's control for that type. A preset whose package is not installed
   is skipped with a warning. Types: text, textarea, number, select,
   multiselect, checkbox, date (grouping is always drawn by codeagent).
+
+- prompt_wait:
+
+  Seconds a promise returned by `on_user_prompt` is waited for (default
+  30).
 
 ## Value
 

@@ -2,6 +2,12 @@
 
 ## codeagent (development version)
 
+- `codeagent_server(on_user_prompt =)` may return a promise of its
+  context when the host is still preparing it (e.g. a project index
+  being built): the turn’s first model request waits for it, at most
+  `prompt_wait` seconds (new argument, default 30), and goes on without
+  it after that.
+
 - Data Shield registers datasets much faster: a newly registered dataset
   is merged into the live value index instead of the index being rebuilt
   from every dataset each time (a replaced or cleared dataset still
