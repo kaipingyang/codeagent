@@ -6,7 +6,13 @@
   context when the host is still preparing it (e.g. a project index
   being built): the turn’s first model request waits for it, at most
   `prompt_wait` seconds (new argument, default 30), and goes on without
-  it after that.
+  it after that. A promise can only add context; blocking the turn still
+  needs a direct return.
+
+- Fixed: when an `egress = "none"` column reached `max_index_values`,
+  its fixed-string deny values were dropped along with the rest of the
+  column, so those values were no longer withheld. The whole column is
+  kept for deny matching again; only the value index stops at the cap.
 
 - Data Shield registers datasets much faster: a newly registered dataset
   is merged into the live value index instead of the index being rebuilt

@@ -126,7 +126,9 @@ codeagent_server(
   call (e.g. what a project contains), sent once with the first turn. It
   may also return a promise of such a string when the facts are still
   being prepared: the turn's first model request waits for it, at most
-  `prompt_wait` seconds (the turn then goes on without it).
+  `prompt_wait` seconds (the turn then goes on without it). A promise
+  can only add context; to block the turn, return the block list
+  directly.
 
 - workspace:
 

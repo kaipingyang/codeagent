@@ -820,7 +820,10 @@ turn ends. `on_restore = function(chat)` lets the host refresh its own
 panels when a saved conversation is opened.
 `on_user_prompt = function(text)` runs before each turn reaches the
 model and may add context to it or block it (the host side of the
-`UserPromptSubmit` hook).
+`UserPromptSubmit` hook). When the context is still being prepared it
+may return a promise of the text instead: the first model request waits
+for it at most `prompt_wait` seconds (default 30) and goes on without it
+after that. A promise can only add context, not block the turn.
 
 `AskUserQuestion` asks one question (`question`, optional `choices`) or,
 like Claude Code’s public tool, 1-4 questions at once (`questions`: each
