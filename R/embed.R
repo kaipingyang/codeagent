@@ -229,7 +229,12 @@ codeagent_mode_ui <- function(modes = c("Ask before changes" = "default",
 #'   string to add it as context to this turn (the user's text is never
 #'   changed), or `list(action = "block", message = )` to stop the turn.
 #'   Typical use: facts the host knows that save the model a tool call (e.g.
-#'   what a project contains), sent once with the first turn.
+#'   what a project contains), sent once with the first turn. It may also
+#'   return a promise of such a string when the facts are still being prepared:
+#'   the turn's first model request waits for it, at most `prompt_wait`
+#'   seconds (the turn then goes on without it).
+#' @param prompt_wait Seconds a promise returned by `on_user_prompt` is waited
+#'   for (default 30).
 #' @param workspace `NULL` (no workspace tabs) or [workspace_options()]: place
 #'   [codeagent_workspace_ui()] in the page. Each opened tool result, file or
 #'   host content gets its own tab; open tabs with the returned `ws`. Without an
@@ -267,8 +272,10 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                              modes = NULL, on_restore = NULL,
                              on_tool_open = NULL, on_user_prompt = NULL, workspace = NULL,
                              sessions = FALSE, themes = NULL, on_theme = NULL,
-                             form_widgets = NULL) {
-  .form_widgets_resolve(form_widgets)   # fail early on a bad spec
+                             form_widgets = NULL, prompt_wait = 30) {
+  .form_widgets_resolve(form_widgets)
+  if (!is.numeric(prompt_wait) || length(prompt_wait) != 1L || is.na(prompt_wait) || prompt_wait < 0)
+    stop("`prompt_wait` must be a non-negative number of seconds.", call. = FALSE)   # fail early on a bad spec
   if (!inherits(client, "CodeagentClient"))
     stop("`client` must be a CodeagentClient (see codeagent_client()).", call. = FALSE)
   if (!is.null(canvas) && !inherits(canvas, "codeagent_canvas_options"))
@@ -305,16 +312,18 @@ codeagent_server <- function(input, output, session, client, tools = list(),
     warning("[codeagent] `canvas` was given but the client's `tools=` selection ",
             "leaves out the canvas tools, so the model cannot draw. Add \"genui\" ",
             "to `tools=`.", call. = FALSE)
+  host_pending <- new.env(parent = emptyenv())   # a promise on_user_prompt returned
   if (!is.null(on_user_prompt)) {
     if (!is.function(on_user_prompt))
       stop("`on_user_prompt` must be NULL or a function(text).", call. = FALSE)
-    client$settings$hooks_registry <- .host_prompt_hook(client$settings$hooks_registry, on_user_prompt)
+    client$settings$hooks_registry <- .host_prompt_hook(client$settings$hooks_registry, on_user_prompt, host_pending)
   }
   core <- .codeagent_session_server(
     input, output, session, client,
     canvas = canvas, canvas_explicit = !is.null(canvas), per_session = TRUE,
     tools_ready = FALSE, host_tools = tools, tool_meta = tool_meta,
-    settings_overrides = list(form_widgets = form_widgets))
+    settings_overrides = list(form_widgets = form_widgets, host_prompt_pending = host_pending,
+                              host_prompt_wait = prompt_wait))
   # shinychat slash-command typeahead for skills and local commands ("/").
   server_slash(input, session, cwd = core$settings$cwd %||% getwd(),
                stream_task = core$stream_task, chat = client$chat,
@@ -351,13 +360,33 @@ codeagent_server <- function(input, output, session, client, tools = list(),
                  chat = client$chat, settings = core$settings, ws = ws))
 }
 
+# A promise from the host's on_user_prompt, as the text to add (NULL when it
+# fails or takes longer than `secs`: the turn goes on without it).
+.await_host_context <- function(p, secs = 30) {
+  promises::promise(function(resolve, reject) {
+    done <- FALSE
+    finish <- function(v) if (!done) { done <<- TRUE; resolve(v) }
+    later::later(function() finish(NULL), secs)
+    promises::then(p, function(v) {
+      txt <- if (is.character(v)) paste(v[!is.na(v)], collapse = "\n") else if (is.list(v)) v$additional_context
+      finish(if (length(txt) && nzchar(txt)) txt else NULL)
+    }, onRejected = function(e) finish(NULL))
+  })
+}
+
 # The host's on_user_prompt as a UserPromptSubmit hook, added to the client's
 # hook registry (one is made when settings declared none).
-.host_prompt_hook <- function(registry, fn) {
+.host_prompt_hook <- function(registry, fn, pending = NULL) {
   reg <- registry %||% HookRegistry$new()
   reg$register(HookEvent$USER_PROMPT_SUBMIT, function(message) {
     out <- fn(message)
     if (is.null(out)) return(NULL)
+    # still being prepared: the turn waits for it before its first request
+    # (.await_host_context(), server_chat.R)
+    if (promises::is.promise(out)) {
+      if (is.environment(pending)) pending$p <- out
+      return(NULL)
+    }
     if (is.list(out)) return(out)
     txt <- paste(as.character(out), collapse = "\n")
     if (nzchar(txt)) list(action = "add_context", additional_context = txt)

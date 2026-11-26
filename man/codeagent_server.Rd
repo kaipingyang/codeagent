@@ -22,7 +22,8 @@ codeagent_server(
   sessions = FALSE,
   themes = NULL,
   on_theme = NULL,
-  form_widgets = NULL
+  form_widgets = NULL,
+  prompt_wait = 30
 )
 }
 \arguments{
@@ -75,7 +76,10 @@ typed before each turn reaches the model -- the host side of Claude Code's
 string to add it as context to this turn (the user's text is never
 changed), or \code{list(action = "block", message = )} to stop the turn.
 Typical use: facts the host knows that save the model a tool call (e.g.
-what a project contains), sent once with the first turn.}
+what a project contains), sent once with the first turn. It may also
+return a promise of such a string when the facts are still being prepared:
+the turn's first model request waits for it, at most \code{prompt_wait}
+seconds (the turn then goes on without it).}
 
 \item{workspace}{\code{NULL} (no workspace tabs) or \code{\link[=workspace_options]{workspace_options()}}: place
 \code{\link[=codeagent_workspace_ui]{codeagent_workspace_ui()}} in the page. Each opened tool result, file or
@@ -104,6 +108,9 @@ A widget's value must come back as \code{input[[id]]} in the shape of Shiny's
 control for that type. A preset whose package is not installed is skipped
 with a warning. Types: text, textarea, number, select, multiselect,
 checkbox, date (grouping is always drawn by codeagent).}
+
+\item{prompt_wait}{Seconds a promise returned by \code{on_user_prompt} is waited
+for (default 30).}
 }
 \value{
 Invisibly, a list with \code{state} (the session \code{reactiveValues}),

@@ -167,6 +167,7 @@ server_chat <- function(input, output, session, chat, settings,
     # UserPromptSubmit hooks (CC parity with agent_loop): run on the text the
     # user typed, before the Data Shield gate. A block ends the turn with the
     # hook's message; added context rides with the system-reminder.
+    if (is.environment(settings$host_prompt_pending)) settings$host_prompt_pending$p <- NULL   # never a stale one
     ups <- .run_user_prompt_submit(settings, text_part)
     if (identical(ups$action, "block")) {
       tryCatch(shinychat::chat_append(
@@ -187,6 +188,21 @@ server_chat <- function(input, output, session, chat, settings,
       tryCatch(shinychat::chat_append("chat", msg, session = session),
                error = function(e) NULL)
       return(promises::promise_resolve("blocked"))
+    }
+
+    # A promise the host's on_user_prompt returned (facts still being
+    # prepared): wait for it, at most host_prompt_wait seconds, and add what it
+    # gives to this turn's context before the first request.
+    continue_after_host <- function(actual_input) {
+      pending <- settings$host_prompt_pending
+      p <- if (is.environment(pending)) pending$p
+      if (is.null(p)) return(continue_turn(actual_input))
+      pending$p <- NULL
+      promises::then(.await_host_context(p, settings$host_prompt_wait %||% 30), function(txt) {
+        if (length(txt) && nzchar(txt))
+          ups$additional_context <<- paste(c(ups$additional_context, txt), collapse = "\n")
+        continue_turn(actual_input)
+      })
     }
 
     # The rest of the turn once the input passed the gate (directly, or after
@@ -358,7 +374,7 @@ server_chat <- function(input, output, session, chat, settings,
             return("blocked")
           }
           .gate_note(session, .input_gate_user_note(list(action = "redact", sources = ig$sources)))
-          continue_turn(ig$input %||% actual_input)
+          continue_after_host(ig$input %||% actual_input)
         },
         # the card went away unanswered (session closed, error): not sent, and
         # the audit log says so
@@ -370,7 +386,7 @@ server_chat <- function(input, output, session, chat, settings,
         }))
     }
     .gate_note(session, .input_gate_user_note(ig))
-    continue_turn(ig$input %||% actual_input)   # may be redacted; rest preserved
+    continue_after_host(ig$input %||% actual_input)   # may be redacted; rest preserved
   })
 
   shiny::observeEvent(input$chat_user_input, {
