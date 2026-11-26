@@ -2592,9 +2592,11 @@ refresh_data_shield_context <- function(client) {
     }
     .data_shield_add_labels(set, unique(nx), lab)
     n <- n + length(nx)
-    if (truncated) break
+    # deny_all keeps the whole column for fixed-string matching even when the
+    # value index was cut short here: losing it would let those values through
     if (isTRUE(deny_all))
       raw_values <- c(raw_values, stats::setNames(trimws(tolower(ch)), rep(lab, length(ch))))
+    if (truncated) break
   }
   attr(set, "n") <- n
   attr(set, "truncated") <- truncated

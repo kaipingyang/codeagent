@@ -79,7 +79,8 @@ Typical use: facts the host knows that save the model a tool call (e.g.
 what a project contains), sent once with the first turn. It may also
 return a promise of such a string when the facts are still being prepared:
 the turn's first model request waits for it, at most \code{prompt_wait}
-seconds (the turn then goes on without it).}
+seconds (the turn then goes on without it). A promise can only add
+context; to block the turn, return the block list directly.}
 
 \item{workspace}{\code{NULL} (no workspace tabs) or \code{\link[=workspace_options]{workspace_options()}}: place
 \code{\link[=codeagent_workspace_ui]{codeagent_workspace_ui()}} in the page. Each opened tool result, file or

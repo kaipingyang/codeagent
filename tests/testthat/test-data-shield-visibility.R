@@ -113,7 +113,7 @@ test_that("the Shiny chat asks before sending a pasted table, and tells the user
   src <- paste(deparse(body(server_chat)), collapse = "\n")
   expect_match(src, "can_ask = is.function(ask_q)", fixed = TRUE)
   expect_match(src, "Send it to the model", fixed = TRUE)
-  expect_match(src, "continue_turn(ig$input %||% actual_input)", fixed = TRUE)
+  expect_match(src, "continue_after_host(ig$input %||% actual_input)", fixed = TRUE)
   expect_match(src, ".gate_note(session, .input_gate_user_note(ig))", fixed = TRUE)
   expect_match(src, "chat_append(\"chat\", \"Not sent", fixed = TRUE)   # ends the waiting state
 })
