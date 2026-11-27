@@ -381,6 +381,14 @@ public contract): a bare name (tool or group) removes the definition so the
 model never sees it; a scoped entry such as `"Bash(rm *)"` keeps the tool and
 becomes an ordinary deny rule, absolute in every mode including `bypass`.
 
+**Building only what can be kept (2026-11-27).** Two builds are skipped when
+the spec cannot keep their tools: btw's tool list (`btw::btw_tools()`, 0.3-0.6 s
+per session, and its once-per-process GitHub check) runs only for the btw
+groups the spec selects, and RunR (~1 s on a process's first session) only when
+`RunR` is selected (`.spec_may_keep()`, `.spec_btw_groups()`). The subtraction
+below stays the authority: a skip can only leave a tool out, never let one in.
+A test builds each spec both ways and compares the registered names.
+
 **Implementation shape — selection is a subtraction, applied last.**
 `.register_all_tools()` runs every `register_*()` call unchanged and only then
 calls `.apply_tool_spec()` / `.apply_disallowed_tools()`. The btw integration

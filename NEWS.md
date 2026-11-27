@@ -1,5 +1,11 @@
 # codeagent (development version)
 
+* `tools =` now also decides what is built, not only what is kept: btw's tool
+  list is built only for the btw groups the selection names (none for a
+  selection without btw groups, which also skips btw's GitHub authentication
+  check), and RunR only when it is selected. The registered tools are the same
+  as before; a host with a narrow selection saves about 0.5-2 s per session.
+
 * `codeagent_server(on_user_prompt =)` may return a promise of its context
   when the host is still preparing it (e.g. a project index being built): the
   turn's first model request waits for it, at most `prompt_wait` seconds
