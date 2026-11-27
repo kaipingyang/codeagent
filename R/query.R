@@ -777,9 +777,10 @@ agent_loop <- function(user_input,
   }
   tryCatch(register_web_tools(chat, citations = .web_citations_enabled(settings$web_citations)),
                                                               error = function(e) NULL)
-  tryCatch(register_run_r_tool(chat, "bypass", rules, NULL,
-                               sandbox = settings$sandbox,
-                               async = FALSE), error = function(e) NULL)
+  if (.spec_may_keep(settings$tools_spec, "RunR"))
+    tryCatch(register_run_r_tool(chat, "bypass", rules, NULL,
+                                 sandbox = settings$sandbox,
+                                 async = FALSE), error = function(e) NULL)
   tryCatch(register_memory_tool(chat),                        error = function(e) NULL)
   tryCatch(register_lint_tools(chat),                         error = function(e) NULL)
   if (!is.null(settings$mcp_config))
@@ -819,8 +820,12 @@ agent_loop <- function(user_input,
   # excludes btw_tool_agent_* so a raw upstream delegator cannot bypass
   # worktree/async/Data Shield semantics. The exported register_r_tools() keeps
   # groups="agent" compatibility for standalone callers.
-  tryCatch(.register_r_tools_impl(chat, groups = settings$btw_groups %||% NULL,
-                                  include_agent = FALSE),
+  # Only the btw groups `tools=` can keep are built (none for a spec without
+  # btw groups); .apply_tool_spec() below still removes anything unselected.
+  btw_groups <- .spec_btw_groups(settings$tools_spec, settings$btw_groups %||% NULL)
+  if (is.null(btw_groups) || length(btw_groups))
+    tryCatch(.register_r_tools_impl(chat, groups = btw_groups,
+                                    include_agent = FALSE),
                                                               error = function(e) NULL)
   # Plan-mode tools: let the model enter/exit read-only planning mode. Skip in
   # bypass (nothing to gate) so the model can't lock itself out.

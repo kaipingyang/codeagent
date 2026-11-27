@@ -421,3 +421,39 @@ test_that("a worker rebuild does not re-warn about the parent's request", {
   chat <- .registry_test_chat()
   expect_silent(.report_unfulfilled_tools(chat, spec))
 })
+
+test_that("tools= skips building the btw list and RunR when it cannot keep them", {
+  skip_if_not_installed("btw")
+  calls <- list()
+  local_mocked_bindings(
+    .register_r_tools_impl = function(chat, groups = NULL, include_agent = TRUE) {
+      calls$btw <<- c(calls$btw, list(groups)); invisible(0L) },
+    register_run_r_tool = function(chat, ...) { calls$runr <<- TRUE; invisible(chat) })
+  suppressWarnings(codeagent_client(.registry_test_chat(), tools = c("Read", "Glob", "use_skill", "interact")))
+  expect_null(calls$btw)                       # no btw group selected: btw_tools() never runs
+  expect_null(calls$runr)
+  suppressWarnings(codeagent_client(.registry_test_chat(), tools = c("Read", "docs")))
+  expect_identical(calls$btw, list("docs"))    # only the selected group is asked for
+  calls <- list()
+  suppressWarnings(codeagent_client(.registry_test_chat(), tools = "run"))
+  expect_true(isTRUE(calls$runr))
+  calls <- list()
+  codeagent_client(.registry_test_chat())      # default: everything, as before
+  expect_identical(calls$btw, list(NULL))
+  expect_true(isTRUE(calls$runr))
+})
+
+test_that("skipping unselected groups leaves the registered tool set unchanged", {
+  skip_if_not_installed("btw")
+  for (spec in list(c("Read", "interact", "use_skill"), c("files", "docs"), "web", c("shell", "run"))) {
+    full <- .registry_test_chat()
+    st <- codeagent_client(full, tools = spec)
+    # reference: build everything, then subtract (the behaviour before the skip)
+    ref <- .registry_test_chat()
+    with_mocked_bindings(
+      .spec_may_keep = function(spec, names) TRUE,
+      .spec_btw_groups = function(spec, legacy = NULL) legacy,
+      codeagent_client(ref, tools = spec))
+    expect_setequal(.registered_names(st$chat), .registered_names(ref))
+  }
+})

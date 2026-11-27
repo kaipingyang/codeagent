@@ -141,6 +141,25 @@ NULL
   unique(c(spec$native, btw_keep))
 }
 
+# Whether a spec can keep any of `names` (native tools). NULL / all = TRUE keep
+# everything. Used only to skip BUILDING tools .apply_tool_spec() would drop
+# anyway (btw's tool list costs ~0.3-0.6 s, RunR's first build ~1 s); the
+# subtraction in .apply_tool_spec() stays the authority, so a wrong FALSE
+# here can only leave a tool out, never let an unselected one through.
+#' @keywords internal
+.spec_may_keep <- function(spec, names) {
+  if (is.null(spec) || isTRUE(spec$all)) return(TRUE)
+  any(names %in% spec$native)
+}
+
+# The btw groups to build for a spec: NULL = all (btw's default, or the
+# legacy `btw_groups` setting when given), character(0) = none.
+#' @keywords internal
+.spec_btw_groups <- function(spec, legacy = NULL) {
+  if (is.null(spec) || isTRUE(spec$all)) return(legacy)
+  as.character(spec$btw_groups %||% character(0))
+}
+
 # A tool codeagent itself registered, and therefore one `tools=` may remove.
 # Everything else -- host tools registered on the Chat before or after
 # codeagent_client(), and resource-driven tools such as MCP -- is left alone.
